@@ -1,0 +1,184 @@
+//
+// std math pow
+//
+
+import std.math;
+
+pub const fn pow<T>(T x, #int y) -> T
+  where __is_arithmetic<T> && y == 2
+{
+  return x*x;
+}
+
+pub const fn pow<T>(T x, #int y) -> T
+  where __is_arithmetic<T> && y == 3
+{
+  return x*x*x;
+}
+
+pub const fn pow<T>(T x, #int y) -> T
+  where __is_arithmetic<T> && y == 4
+{
+  return x*x*x*x;
+}
+
+pub const fn pow<T>(T x, int y) -> T
+  where __is_integral<T>
+{
+  std::assert(y >= 0, "negative pow");
+
+  var result = 1;
+
+  for(;;)
+  {
+    if (y & 1 == 1)
+      result *= x;
+
+    y /= 2;
+
+    if (y == 0)
+      break;
+
+    x *= x;
+  }
+
+  return result;
+}
+
+pub const fn pow<T>(T x, int y) -> T
+  where __is_floating_point<T>
+{
+  let neg = (y < 0);
+
+  var result = 1.0;
+
+  for(;;)
+  {
+    if (y & 1 == 1)
+      result *= x;
+
+    y /= 2;
+
+    if (y == 0)
+      break;
+
+    x *= x;
+  }
+
+  return neg ? 1.0 / result : result;
+}
+
+pub const fn pow<T>(T x, T y) -> T
+  where __is_floating_point<T>
+{
+  // BSD-3
+  // https://golang.org/src/math/pow.go
+
+  using std;
+
+  if (y == 0.0 || x == 1.0)
+    return 1.0;
+
+  if (y == 1.0)
+    return x;
+
+  if (is_nan(x) || is_nan(y))
+    return NaN;
+
+  if (x == 0.0)
+  {
+    if (y < 0.0)
+      return is_odd(y) ? copysign(Infinity, x) : Infinity;
+    else
+      return is_odd(y) ? x : 0.0;
+  }
+
+  if (is_infinite(y))
+  {
+    if (x == -1.0)
+      return 1.0;
+
+    if ((abs(x) < 1.0) == (y > 0.0))
+      return 0.0;
+
+    return Infinity;
+  }
+
+  if (is_infinite(x))
+  {
+    if (x < 0.0)
+      return pow(1.0/x, -y);
+
+    if (y < 0.0)
+      return 0.0;
+    else
+      return Infinity;
+  }
+
+  let ya = abs(y);
+  var yi = trunc(ya);
+  var yf = ya - yi;
+
+  if (yf != 0.0 && x < 0.0)
+    return NaN;
+
+  if (x == -1.0)
+    return is_odd(y) ? -1.0 : 1.0;
+
+  var a1 = 1.0;
+  var ae = 0;
+
+  if (yf != 0.0)
+  {
+    if (yf > 0.5)
+    {
+      yf -= 1.0;
+      yi += 1.0;
+    }
+
+    a1 = exp(yf * ln(x));
+  }
+
+  let xa = __frexp(x);
+  var x1 = xa.0;
+  var xe = xa.1;
+
+  for(var i = cast<isize>(yi); i != 0; i >>= 1)
+  {
+    const Overflow = __is_same<T, f32> ? (1 << 9) : (1 << 12);
+
+    if (xe < -Overflow || Overflow < xe)
+    {
+      ae += xe;
+      break;
+    }
+
+    if (i & 1 == 1)
+    {
+      a1 *= x1;
+      ae += xe;
+    }
+
+    x1 *= x1;
+    xe <<= 1;
+
+    if (x1 < 0.5)
+    {
+      x1 += x1;
+      xe -= 1;
+    }
+  }
+
+  if (y < 0.0)
+  {
+    a1 = 1.0 / a1;
+    ae = -ae;
+  }
+
+  return __ldexp(a1, ae);
+}
+
+fn is_odd<T>(T x) -> bool
+{
+  return std::fract(x) == 0.0 && cast<i64>(x) & 1 == 1;
+}

@@ -1,0 +1,388 @@
+//
+// std strconv
+//
+
+import std.error;
+import std.string;
+import std.math;
+import std.algorithm;
+import std.bits.float as flt;
+
+pub struct strconv_result
+{
+  usize len;
+  u8 *ptr;
+  std::errc error;
+  
+  strconv_result() = default;
+  strconv_result(strconv_result&) = default;
+  fn =(strconv_result mut &, strconv_result&) -> strconv_result mut & = default;
+  ~strconv_result() = default;
+}
+
+const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+pub fn itoa(u8 mut *beg, u8 mut *end, bool value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<usize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, char value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<usize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, u8 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<usize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, u16 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<usize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, u32 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<usize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, u64 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<usize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, usize value, int base = 10) -> strconv_result
+{
+  std::assert(2 <= base && base < cast(digits.len));
+  
+  var result = strconv_result();
+
+  var i = 0;
+  let b = cast<usize>(base);
+
+  rof(var ch = end; ch == beg; --ch, ++i)
+  {
+    let x = value / b;
+
+    *ch = *(digits.data + (value - x*b));
+
+    value = x;
+
+    if (value == 0)
+      break;
+  }
+  
+  result.ptr = end - i;
+  result.len = i;
+  
+  if (value != 0)
+  {
+    result.error = std::errc::value_too_large;
+  }
+  
+  return result;
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, i8 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<isize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, i16 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<isize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, i32 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<isize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, i64 value, int base = 10) -> strconv_result
+{
+  return itoa(beg, end, cast<isize>(value), base);
+}
+
+pub fn itoa(u8 mut *beg, u8 mut *end, isize value, int base = 10) -> strconv_result
+{
+  var result = strconv_result();
+
+  if (value >= 0)
+  {
+    result = itoa(beg, end, cast<usize>(value), base);
+  }
+  else if (beg != end)
+  {
+    result = itoa(beg + 1, end, cast<usize>(~value) + 1, base);
+    
+    result.ptr -= 1;
+    result.len += 1;
+    *(beg + (result.ptr - beg)) = cast('-');
+  }
+  else
+  {
+    result.error = std::errc::value_too_large;
+  }    
+
+  return result;
+}
+
+pub fn btoa(u8 mut *beg, u8 mut *end, bool value) -> strconv_result
+{ 
+  const true_str = "true";
+  const false_str = "false";
+
+  var result = strconv_result();
+
+  if (value)
+  {
+    result.ptr = true_str.data;
+    result.len = true_str.len;
+  }
+  else
+  {
+    result.ptr = false_str.data;
+    result.len = false_str.len;
+  }
+
+  return result;
+}
+
+pub fn ctoa(u8 mut *beg, u8 mut *end, char value) -> strconv_result
+{  
+  var result = strconv_result();
+  
+  var ch = beg;
+  
+  if (value < 128 && end - ch >= 1)
+  {
+    *ch++ = cast(value);
+  }
+  else if (128 <= value && value < 2048 && end - ch >= 2)
+  {
+    *ch++ = 0b11000000 | cast(value >> 6);
+    *ch++ = 0b10000000 | cast(value) & 0b00111111;
+  }
+  else if (2048 <= value && value < 65536 && end - ch >= 3)
+  {
+    *ch++ = 0b11100000 | cast(value >> 12);
+    *ch++ = 0b10000000 | cast(value >> 6) & 0b00111111;
+    *ch++ = 0b10000000 | cast(value) & 0b00111111;
+  }  
+  else if (65536 <= value && end - ch >= 4)
+  {
+    *ch++ = 0b11110000 | cast(value >> 18);
+    *ch++ = 0b10000000 | cast(value >> 12) & 0b00111111;
+    *ch++ = 0b10000000 | cast(value >> 6) & 0b00111111;
+    *ch++ = 0b10000000 | cast(value) & 0b00111111;
+  }
+  else
+  {
+    result.error = std::errc::value_too_large;
+  }
+
+  result.ptr = beg;
+  result.len = ch - beg;
+
+  return result;
+}
+
+fn ftoa_exp(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit) -> strconv_result
+{
+  var result = strconv_result();
+
+  result.ptr = beg;
+
+  var ch = beg;
+
+  if (signbit != 0)
+  {
+    if (end - ch < 1)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+
+    *ch++ = cast('-');
+  }
+  
+  if (end - ch < len + 8)
+  {
+    result.error = std::errc::value_too_large;
+    return result;
+  }
+
+  *ch++ = *digits;
+  
+  if (len != 1)
+    *ch++ = cast('.');
+
+  ch = std::copy_n(ch, end, digits + 1, len - 1);
+
+  *ch++ = cast('e');
+
+  var exp = cast<int>(len) + K - 1;
+  
+  if (exp < 0)
+  {
+    exp = -exp;    
+    *ch++ = cast('-');
+  }
+  else
+  {
+    *ch++ = cast('+');
+  }
+  
+  var pow = 1000;
+  while (exp < pow)
+    pow /= 10;
+  
+  while (pow >= 10)
+  {
+    var digit = exp / pow;   
+    *ch++ = cast(digit + cast('0'));
+    exp -= digit * pow;
+    pow /= 10;
+  }
+
+  *ch++ = cast(exp + cast('0'));
+  
+  result.len = ch - beg;
+
+  return result;  
+}
+
+fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit) -> strconv_result
+{
+  var result = strconv_result();
+
+  result.ptr = beg;
+  
+  var ch = beg;
+
+  if (signbit != 0)
+  {
+    if (end - ch < 1)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+
+    *ch++ = cast('-');
+  }
+  
+  if (0 <= K)
+  {
+    var k = cast<usize>(K);
+
+    if (end - ch < len + k + 2)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+    
+    ch = std::copy_n(ch, end, digits, len);
+    ch = std::fill_n(ch, end, cast<u8>('0'), k);
+    *ch++ = cast('.');
+    *ch++ = cast('0');
+  }
+  else if (len <= cast(-K))
+  {
+    var k = cast<usize>(-K);
+
+    if (end - ch < k + 2)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+    
+    *ch++ = cast('0');
+    *ch++ = cast('.');
+    ch = std::fill_n(ch, end, cast<u8>('0'), k - len);
+    ch = std::copy_n(ch, end, digits, len);
+  }
+  else
+  {
+    var k = cast<usize>(-K);
+    
+    if (end - ch < len + 1)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+
+    ch = std::copy_n(ch, end, digits, len - k);
+    *ch++ = cast('.');
+    ch = std::copy_n(ch, end, digits + len - k, k);
+  }
+  
+  result.len = ch - beg;
+
+  return result;
+}
+
+fn ftoa_general(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit) -> strconv_result
+{
+  var exp = cast<int>(len) + K - 1;
+  
+  if (exp < -4 || exp >= 16)
+    return ftoa_exp(beg, end, digits, K, len, signbit);
+  else
+    return ftoa_fixed(beg, end, digits, K, len, signbit);
+}
+
+fn ftoa_special<T>(u8 mut *beg, u8 mut *end, T value) -> strconv_result
+{
+  const nan_str = "-NaN";
+  const inf_str = "-Inf";
+
+  var result = strconv_result();
+
+  if (std::is_infinite(value))
+  {
+    result.ptr = inf_str.data;
+    result.len = inf_str.len;
+  }
+  else
+  {
+    result.ptr = nan_str.data;
+    result.len = nan_str.len;
+  }
+
+  if (std::signbit(value) == 0)
+  {
+    result.ptr += 1;
+    result.len -= 1;
+  }
+
+  return result;
+}
+
+pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value) -> strconv_result
+{
+  if (!std::is_finite(value))
+    return ftoa_special(beg, end, value);
+
+  var K = 0;
+  var len = 0;
+  var digits = [0; 32];
+
+  flt::grisu(digits.begin, digits.end, value, K, len);
+
+  return ftoa_general(beg, end, digits.data, K, len, std::signbit(value));
+}
+
+pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value) -> strconv_result
+{
+  if (!std::is_finite(value))
+    return ftoa_special(beg, end, value);
+
+  var K = 0;
+  var len = 0;
+  var digits = [0; 32];
+
+  flt::grisu(digits.begin, digits.end, value, K, len);
+
+  return ftoa_general(beg, end, digits.data, K, len, std::signbit(value));
+}

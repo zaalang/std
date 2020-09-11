@@ -1,0 +1,114 @@
+//
+// std math atan
+//
+
+import std.math;
+
+pub const fn atan<T>(T x) -> T
+  where __is_floating_point<T>
+{
+  // BSD-3
+  // https://golang.org/src/math/atan.go
+
+  using std;
+
+  if (x == 0.0)
+    return x;
+
+  if (x > 0.0)
+    return satan(x);
+
+  return -satan(-x);
+}
+
+pub const fn atan2<T>(T y, T x) -> T
+  where __is_floating_point<T>
+{
+  // BSD-3
+  // https://golang.org/src/math/atan2.go
+
+  using std;
+
+  if (is_nan(x) || is_nan(y))
+    return NaN;
+
+  if (y == 0.0)
+  {
+    if (x >= 0.0 && signbit(x) == 0)
+      return copysign(0.0, y);
+    else
+      return copysign(PI, y);
+  }
+
+  if (x == 0.0)
+    return copysign(PI/2.0, y);
+
+  if (is_infinite(x))
+  {
+    if (x > 0.0)
+    {
+      if (is_infinite(y))
+        return copysign(PI/4.0, y);
+      else
+        return copysign(0.0, y);
+    }
+    else
+    {
+      if (is_infinite(y))
+        return copysign(3.0*PI/4.0, y);
+      else
+        return copysign(PI, y);
+    }
+  }
+
+  if (is_infinite(y))
+    return copysign(PI/2.0, y);
+
+  var q = atan(y / x);
+
+  if (x < 0.0)
+  {
+    if (q <= 0.0)
+      return q + PI;
+    else
+      return q - PI;
+  }
+
+  return q;
+}
+
+fn satan<T>(T x) -> T
+{
+  using std;
+
+  const Morebits = 6.123233995736765886130e-17;
+  const Tan3pio8 = 2.41421356237309504880;
+
+  if (x <= 0.66)
+    return xatan(x);
+
+  if (x > Tan3pio8)
+    return PI/2.0 - xatan(1.0/x) + Morebits;
+
+  return PI/4.0 + xatan((x - 1.0)/(x + 1.0)) + 0.5*Morebits;
+}
+
+fn xatan<T>(T x) -> T
+{
+  const P = [ -8.750608600031904122785e-01, -1.615753718733365076637e+01, -7.500855792314704667340e+01, -1.228866684490136173410e+02, -6.485021904942025371773e+01 ];
+  const Q = [ 1.00000000000000000000e0, 2.485846490142306297962e+01, 1.650270098316988542046e+02, 4.328810604912902668951e+02, 4.853903996359136964868e+02, 1.945506571482613964425e+02 ];
+
+  var xx = x * x;
+
+  return x + x * xx * poly(xx, P) / poly(xx, Q);
+}
+
+fn poly<T>(T x, T[5] a) -> T
+{
+  return ((((a[0]*x) + a[1])*x + a[2])*x + a[3])*x + a[4];
+}
+
+fn poly<T>(T x, T[6] a) -> T
+{
+  return (((((a[0]*x) + a[1])*x + a[2])*x + a[3])*x + a[4])*x + a[5];
+}

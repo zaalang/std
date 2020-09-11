@@ -1,0 +1,53 @@
+//
+// std type manipulation
+//
+
+pub const fn is_same<T, U>() -> bool
+{
+  return __is_same<T, U>();
+}
+
+pub const fn is_const<T>() -> bool
+{
+  return __is_const<T>();
+}
+
+pub const fn is_const<T>(T &&v) -> bool
+{
+  return __is_const<typeof(v)>();
+}
+
+pub const fn is_rvalue<T>() -> bool
+{
+  return __is_rvalue<T>();
+}
+
+pub const fn is_rvalue<T>(T &&v) -> bool
+{
+  return __is_rvalue<typeof(v)>();
+}
+
+pub const fn array_len<T>() -> usize
+{
+  return __array_len<T>();
+}
+
+pub const fn tuple_len<T>() -> usize
+{
+  return __tuple_len<T>();
+}
+
+pub const fn is_integral<T>() -> bool
+{
+  return __is_integral<T>();
+}
+
+pub const fn is_floating_point<T>() -> bool
+{
+  return __is_floating_point<T>();
+}
+
+pub const fn is_arithmetic<T>() -> bool
+{
+  return __is_arithmetic<T>();
+}

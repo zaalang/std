@@ -1,0 +1,50 @@
+//
+// std string
+//
+
+import std.span;
+
+pub concept String
+{
+  requires<T> (T x) { x.len; };
+  requires<T> (T x) { x.data; };
+  requires<T> (T x) { return *x.data; } -> u8;
+  requires<T> (T x) { x.begin; };
+  requires<T> (T x) { x.end; };
+}
+
+pub using string_literal = typeof("");
+
+pub struct string_view : std::span<u8>
+{
+  string_view(u8 *data, usize len)
+    : super(data, len)
+  {
+  }
+
+  string_view(u8 *beg, u8 *end)
+  : super(beg, end)
+  {
+  }
+
+  fn [](this&, (usize, usize) range) -> string_view
+  {
+    std::assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+
+    return string_view(this.data + range.0, this.data + range.1);
+  }
+
+  string_view(string_view &that) = default;
+  ~string_view() = default;
+}
+
+pub fn String(string_literal &str) -> string_view
+{
+  return string_view(str.data, str.len);
+}
+
+pub struct string
+{
+  string() = default;
+  ~string() = default;
+}

@@ -1,0 +1,17 @@
+//
+// std math sqrt
+//
+
+import std.numeric;
+
+pub const fn sqrt(#int x)
+  where x == 2
+{
+  return std::Sqrt2;
+}
+
+pub const fn sqrt<T>(T x) -> T
+  where __is_floating_point<T>
+{
+  return __sqrt(x);
+}

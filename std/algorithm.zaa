@@ -1,0 +1,62 @@
+//
+// std algorithm
+//
+
+import std.stdlib;
+
+pub fn swap<T>(T mut &a, T mut &b)
+{
+  var tmp = a;
+  a = b;
+  b = tmp;
+}
+
+pub fn copy<OI, OS, II, IS>(OI dst, OS dstl, II src, IS srcl) -> OI
+{
+  while (src != srcl)
+  {
+    std::assert(dst != dstl);
+
+    *dst++ = *src++;
+  }
+  
+  return dst;
+}
+
+pub fn fill<OI, OS, T>(OI dst, OS dstl, T &value) -> OI
+{
+  while (dst != dst1)
+  {
+    *dst++ = value;
+  }
+  
+  return dst;
+}
+
+pub fn copy_n<OI, OS, II, N>(OI dst, OS dstl, II src, N n) -> OI
+{
+  while (n > 0)
+  {
+    std::assert(dst != dstl);
+
+    *dst++ = *src++;
+    
+    --n;
+  }
+  
+  return dst;
+}
+
+pub fn fill_n<OI, OS, T, N>(OI dst, OS dstl, T &value, N n) -> OI
+{
+  while (n > 0)
+  {
+    std::assert(dst != dstl);
+
+    *dst++ = value;
+    
+    --n;
+  }
+  
+  return dst;
+}

@@ -1,0 +1,11 @@
+//
+// std math acos
+//
+
+import std.math;
+
+pub const fn acos<T>(T x) -> T
+  where __is_floating_point<T>
+{
+  return std::atan2(std::sqrt(1.0 - x*x), x);
+}

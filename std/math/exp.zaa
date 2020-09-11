@@ -1,0 +1,60 @@
+//
+// std math exp
+//
+
+import std.math;
+import std.numeric;
+
+pub const fn exp<T>(T x) -> T
+  where __is_floating_point<T>
+{
+  // BSD-3
+  // https://golang.org/src/math/exp.go
+
+  using std;
+
+  const Ln2Hi = 6.93147180369123816490e-01;
+  const Ln2Lo = 1.90821492927058770002e-10;
+  const Log2e = 1.44269504088896338700e+00;
+  const Overflow  = 7.09782712893383973096e+02;
+  const Underflow = -7.45133219101941108420e+02;
+  const NearZero  = 1.0 / cast<T>(1 << 28);
+
+  const P1 = 1.66666666666666657415e-01;  /* 0x3FC55555; 0x55555555 */
+  const P2 = -2.77777777770155933842e-03; /* 0xBF66C16C; 0x16BEBD93 */
+  const P3 = 6.61375632143793436117e-05;  /* 0x3F11566A; 0xAF25DE2C */
+  const P4 = -1.65339022054652515390e-06; /* 0xBEBBBD41; 0xC5D26BF1 */
+  const P5 = 4.13813679705723846039e-08;  /* 0x3E663769; 0x72BEA4D0 */
+
+  if (is_nan(x) || (x > 0.0 && is_infinite(x)))
+    return x;
+
+  if (is_infinite(x))
+    return 0.0;
+
+  if (x > Overflow)
+    return Infinity;
+
+  if (x < Underflow)
+    return 0.0;
+
+  if (-NearZero < x && x < NearZero)
+    return 1.0 + x;
+
+  var k = 0;
+
+  if (x < 0.0)
+    k = cast<int>(Log2e * x - 0.5);
+  else
+    k = cast<int>(Log2e * x + 0.5);
+
+  let hi = x - cast<T>(k) * Ln2Hi;
+  let lo = cast<T>(k) * Ln2Lo;
+
+  let r = hi - lo;
+  let t = r * r;
+  let c = r - t*(P1 + t*(P2 + t*(P3 + t*(P4 + t*P5))));
+  let y = 1.0 - ((lo - (r*c)/(2.0 - c)) - hi);
+
+  return __ldexp(y, k);
+}

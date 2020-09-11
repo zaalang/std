@@ -1,0 +1,381 @@
+//
+// std fmt
+//
+
+import std.io;
+import std.string;
+import std.strconv;
+import std.memory;
+import std.math;
+import std.type;
+
+using std::String;
+using std::OutputStream;
+
+struct fmt_context
+{
+  usize written;
+
+  fmt_context() = default;
+  ~fmt_context() = default;
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, bool value) throws -> void
+{
+  var buf = [0; 8];
+  var str = std::btoa(buf.begin, buf.end, value);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
+{
+  var buf = [0; 8];
+  var str = std::ctoa(buf.begin, buf.end, value);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, u8 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, u16 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, u32 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, u64 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, usize value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, i8 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, i16 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, i32 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, i64 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, isize value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::itoa(buf.begin, buf.end, value, 10);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, f32 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::ftoa(buf.begin, buf.end, value);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, f64 value) throws -> void
+{
+  var buf = [0; 64];
+  var str = std::ftoa(buf.begin, buf.end, value);
+
+  ctx.written += os.write(str.ptr, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &str) throws -> void
+{
+  ctx.written += os.write(str.data, str.len);
+}
+
+fn put(OutputStream mut &os, fmt_context mut &ctx, std::string_view &str) throws -> void
+{
+  ctx.written += os.write(str.data, str.len);
+}
+
+fn put<T, N>(OutputStream mut &os, fmt_context mut &ctx, T[N] &array) throws -> void
+{
+  put(os, ctx, '[');
+
+  for(var k = 0; k < array.len; ++k)
+  {
+    if (k != 0)
+      put(os, ctx, ", ");
+
+    put(os, ctx, array[k]);
+  }
+
+  put(os, ctx, ']');
+}
+
+fn put<T>(OutputStream mut &os, fmt_context mut &ctx, (T...) &tuple) throws -> void
+{
+  put(os, ctx, '(');
+
+  #for(const k = 0; k != __tuple_len<T>; ++k)
+  {
+    #if (k != 0)
+      put(os, ctx, ", ");
+
+    put(os, ctx, tuple.k);
+  }
+
+  put(os, ctx, ')');
+}
+
+fn put<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+{
+  put(os, ctx, "object");
+}
+
+pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
+{
+  var ctx = fmt_context();
+
+  #for(var &arg : args)
+  {
+    put(os, ctx, arg);
+  }
+
+  put(os, ctx, '\n');
+
+  return ctx.written;
+}
+
+struct Arguments<N>
+{
+  std::string_literal[N+1] pieces;
+
+  Spec[N] specs;
+
+  Arguments() = default;
+  Arguments(Arguments&) = default;
+  ~Arguments() = default;
+}
+
+struct Spec
+{
+  bool ok;
+
+  Spec() = default;
+  Spec(Spec&) = default;
+  fn =(this mut &, Spec &hat) -> Spec mut & = default;
+  ~Spec() = default;
+}
+
+fn compile_error(std::string_literal msg)
+{
+  std::panic(msg);
+}
+
+fn parse_spec(u8* mut &ch, u8 *end) -> Spec
+{
+  var spec = Spec();
+
+  for(; ch != end; ++ch)
+  {
+    if (*ch == cast('}'))
+    {
+      spec.ok = true;
+      break;
+    }
+  }
+
+  return spec;
+}
+
+fn flatten(std::string_literal str) -> std::string_literal
+{
+  let p = std::min(std::memchr(str.data, cast('{'), str.len), std::memchr(str.data, cast('}'), str.len));
+
+  if (p != str.len)
+    return str[0..p+1] + flatten(str[p+2..str.len]);
+
+  return str;
+}
+
+const fn parse_args<Args>(std::string_literal format) -> Arguments<std::tuple_len<Args>>
+{
+  var args = Arguments<std::tuple_len<Args>>();
+
+  var arg = 0;
+  var beg = format.data;
+  var end = format.data + format.len;
+
+  for(var ch = beg; ch != end; ++ch)
+  {
+    if (*ch == cast('{') || *ch == cast('}'))
+    {
+      ch += 1;
+
+      if (ch == end)
+        compile_error("premature end of format string");
+
+      if ((*ch == cast('{') && *(ch-1) == cast('{')) || (*ch == cast('}') && *(ch-1) == cast('}')))
+        continue;
+
+      if (arg >= args.specs.len)
+        compile_error("mismatched arg count in format string");
+
+      args.pieces[arg] = flatten(std::string_literal(beg, ch - beg - 1));
+
+      args.specs[arg] = parse_spec(ch, end);
+
+      if (!args.specs[arg].ok)
+        compile_error("invalid arg spec in format string");
+
+      beg = ch + 1;
+      arg += 1;
+    }
+  }
+
+  if (arg != args.specs.len)
+    compile_error("mismatched piece count in format string");
+
+  args.pieces[arg] = flatten(std::string_literal(beg, end - beg));
+
+  return args;
+}
+
+
+fn put_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &piece) throws -> void
+{
+  if (piece.len != 0)
+  {
+    put(os, ctx, piece);
+  }
+}
+
+fn put_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_view &piece) throws -> void
+{
+  var beg = piece.begin;
+  var end = piece.end;
+
+  while (beg != end)
+  {
+    var ch = beg + std::memchr(beg, cast('}'), end - beg);
+
+    if (ch != end)
+      ch += 1;
+
+    ctx.written += os.write(beg, ch - beg);
+
+    if (ch != end && *ch == cast('}'))
+      ch += 1;
+
+    beg = ch;
+  }
+}
+
+pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args) throws -> usize
+{ 
+  var ctx = fmt_context();
+  let spec = parse_args<Args>(format);
+
+  #for(const k = 0; k < std::tuple_len<Args>; ++k)
+  {
+    put_piece(os, ctx, spec.pieces[k]);
+
+    put(os, ctx, args.k);
+  }
+
+  put_piece(os, ctx, spec.pieces[args.len]);
+
+  return ctx.written;
+}
+
+pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) throws -> usize
+{
+  var ctx = fmt_context();
+
+  var beg = format.begin;
+  var end = format.end;
+
+  #for(var &arg : args)
+  {
+    while (beg != end)
+    {
+      var ch = beg + std::memchr(beg, cast('{'), end - beg);
+
+      if (ch != end)
+      {
+        ch += 1;
+
+        if (ch != end && *ch == cast('{'))
+        {
+          put_piece(os, ctx, std::string_view(beg, ch));
+          beg = ch + 1;
+          continue;
+        }
+
+        put_piece(os, ctx, std::string_view(beg, ch - beg - 1));
+
+        var spec = parse_spec(ch, end);
+
+        if (spec.ok)
+        {
+          put(os, ctx, arg);
+
+          ch += 1;
+        }
+
+        beg = ch;
+      }
+
+      break;
+    }
+  }
+
+  put_piece(os, ctx, std::string_view(beg, end));
+
+  return ctx.written;
+}

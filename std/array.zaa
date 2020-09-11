@@ -1,0 +1,22 @@
+//
+// std array
+//
+
+import std.stdlib;
+
+pub struct array<T, N> : T[N]
+{
+  array() = default;
+  array(array&) = default;
+  ~array() = default;
+
+  array(T[N] &that)
+    : super(that)
+  {
+  }
+
+  fn with_size(#usize size) -> array<T, size>
+  {
+    return array<T, size>();
+  }
+}

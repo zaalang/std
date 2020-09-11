@@ -1,0 +1,168 @@
+//
+// std math
+//
+
+pub import std.numeric;
+pub import std.math.exp;
+pub import std.math.log;
+pub import std.math.pow;
+pub import std.math.sqrt;
+pub import std.math.signum;
+pub import std.math.sin;
+pub import std.math.cos;
+pub import std.math.tan;
+pub import std.math.asin;
+pub import std.math.acos;
+pub import std.math.atan;
+
+pub const NaN = __nan;
+pub const Infinity = __inf;
+
+pub const E = 2.71828182845904523536028747135266249775724709369995957496696763;
+pub const PI = 3.14159265358979323846264338327950288419716939937510582097494459;
+pub const PHI = 1.61803398874989484820458683436563811772030917980576286213544862;
+
+pub const Sqrt2 = 1.41421356237309504880168872420969807856967187537694807317667974;
+pub const SqrtE = 1.64872127070012814684865078781416357165377610071014801157507931;
+pub const SqrtPI = 1.77245385090551602729816748334114518279754945612238712821380779;
+pub const SqrtPHI = 1.27201964951406896425242246173749149171560804184009624861664038;
+
+pub const Ln2 = 0.693147180559945309417232121458176568075500134360255254120680009;
+pub const Log2E = 1.442695040888963407359924681001892137426645954152985934135449408;
+pub const Ln10 = 2.30258509299404568401799145468436420760110148862877297603332790;
+pub const Log10E = 0.43429448190325182765112891891660508229439700580366656611445379;
+
+pub const fn clz<T>(T x) -> int
+  where __is_integral<T>
+{
+  return __clz(x);
+}
+
+pub const fn ctz<T>(T x) -> int
+  where __is_integral<T>
+{
+  return __ctz(x);
+}
+
+pub const fn popcnt<T>(T x) -> int
+  where __is_integral<T>
+{
+  return __popcnt(x);
+}
+
+pub const fn signbit<T>(T x) -> int
+  where __is_arithmetic<T>
+{
+  return __signbit(x);
+}
+
+pub const fn copysign<T>(T x, T sign) -> T
+  where __is_arithmetic<T>
+{
+  return __copysign(x, sign);
+}
+
+pub const fn abs<T>(T x) -> T
+  where __is_arithmetic<T>
+{
+  return __abs(x);
+}
+
+pub const fn absdiff<T>(T x, T y) -> T
+  where __is_arithmetic<T>
+{
+  return (x < y) ? y - x : x - y;
+}
+
+pub const fn floor<T>(T x) -> T
+  where __is_arithmetic<T>
+{
+  return __floor(x);
+}
+
+pub const fn ceil<T>(T x) -> T
+  where __is_arithmetic<T>
+{
+  return __ceil(x);
+}
+
+pub const fn round<T>(T x) -> T
+  where __is_arithmetic<T>
+{
+  return __round(x);
+}
+
+pub const fn trunc<T>(T x) -> T
+  where __is_arithmetic<T>
+{
+  return __trunc(x);
+}
+
+pub const fn fract<T>(T x) -> T
+  where __is_arithmetic<T>
+{
+  return x - __trunc(x);
+}
+
+pub const fn min<T>(T x, T y) -> T
+  where __is_arithmetic<T>
+{
+  return __min(x, y);
+}
+
+pub const fn max<T>(T x, T y) -> T
+  where __is_arithmetic<T>
+{
+  return __max(x, y);
+}
+
+pub fn add_with_carry<T>(T x, T y) -> (T, T)
+  where __is_integral<T>
+{
+  return __add_with_carry(x, y);
+}
+
+pub fn add_with_carry<T>(T x, T y, T carryin) -> (T, T)
+  where __is_integral<T>
+{
+  var add = __add_with_carry(x, y);
+  var sum = __add_with_carry(add.0, carryin);
+
+  sum.1 += add.1;
+
+  return sum;
+}
+
+pub fn sub_with_carry<T>(T x, T y) -> (T, T)
+  where __is_integral<T>
+{
+  return __sub_with_carry(x, y);
+}
+
+pub fn sub_with_carry<T>(T x, T y, T carryin) -> (T, T)
+  where __is_integral<T>
+{
+  var sub = __sub_with_carry(x, y);
+  var sum = __sub_with_carry(sub.0, carryin);
+
+  sum.1 += sub.1;
+
+  return sum;
+}
+
+pub fn mul_with_carry<T>(T x, T y) -> (T, T)
+  where __is_integral<T>
+{
+  return __mul_with_carry(x, y);
+}
+
+pub fn mul_with_carry<T>(T x, T y, T carryin) -> (T, T)
+  where __is_integral<T>
+{
+  var mul = __mul_with_carry(x, y);
+  var sum = __add_with_carry(mul.0, carryin);
+
+  sum.1 += mul.1;
+
+  return sum;
+}

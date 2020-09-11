@@ -1,0 +1,8 @@
+//
+// std io
+//
+
+pub concept OutputStream
+{
+  // fn write(this mut &, u8 *data, usize len) [throws] -> usize
+}

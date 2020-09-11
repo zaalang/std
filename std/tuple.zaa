@@ -1,0 +1,38 @@
+//
+// std tuple
+//
+
+import std.stdlib;
+
+pub using tuple<...T> = T;
+
+pub fn tuple<T>(T& ...elements) -> T
+{
+  return T(elements...);
+}
+
+//pub const fn tuple<T>(#T ...elements) -> T
+//{
+//  return elements;
+//}
+//
+//pub const fn tuple<...T>(#T ...elements) -> T
+//{
+//  return elements;
+//}
+
+pub fn tie<T>(T&& ...elements)
+  where !is_any_rvalue<typeof(elements)>
+{
+  return elements;
+}
+
+fn is_any_rvalue<T>() -> bool
+{
+  #for(const k = 0; k < __tuple_len<T>; ++k)
+    if (__is_rvalue<typeof(T::k)>())
+      return true;
+
+  return false;
+}
+

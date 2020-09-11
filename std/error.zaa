@@ -1,0 +1,60 @@
+//
+// std error
+//
+
+pub struct error_category
+{
+}
+
+pub struct source_location
+{
+  source_location() = default;
+  source_location(source_location &that) = default;
+  ~source_location() = default;
+}
+
+pub struct error
+{
+  i64 value;
+  error_category *category;
+  source_location location;
+  // backtrace ?
+  
+  error(error &that) = default;
+  ~error() = default;
+}
+
+pub enum errc : u32
+{
+  value_too_large = 112,
+
+  pub fn bool(errc code) -> bool
+  {
+    return cast<u32>(code) != 0;
+  }
+}
+
+pub struct system_error
+{
+  fn system_error(errc code) -> error
+  {
+    var result = error(void);
+    
+    result.value = cast(code);
+    //result.category = &category;
+    
+    return result;
+  }
+
+  //static system_error_category category;
+}
+  
+fn ==(error &lhs, error &rhs) -> bool
+{
+  return lhs.category == rhs.category && lhs.value == rhs.value;
+}
+
+//fn ==(error &lhs, errc rhs) -> bool
+//{
+//  return lhs.category == system_error_category && lhs.value == rhs;
+//}

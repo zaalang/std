@@ -1,0 +1,191 @@
+//
+// std bigint
+//
+
+import std.math;
+import std.memory;
+import std.algorithm;
+
+pub struct bigint<N>
+{
+  bigint() = default;
+  bigint(bigint&) = default;
+  ~bigint() = default;
+
+  bigint(u64 value)
+  {
+    n = 0;
+    bits[0] = value;
+  }
+
+  fn =(this mut &, u64 value) -> bigint mut &
+  {
+    this.n = 0;
+    this.bits[0] = value;
+    
+    return &this;
+  }
+
+  fn =(this mut &, bigint &that) -> bigint mut &
+  {
+    this.n = that.n;
+    this.bits = that.bits;
+    
+    return &this;
+  }
+  
+  fn +=(this mut &, u64 y) -> bigint mut &
+  {
+    var sum = std::add_with_carry(this.bits[0], y);
+    
+    for(var i = 0; i != this.n; ++i)
+    {
+      this.bits[i] = sum.0;
+      
+      sum = std::add_with_carry(this.bits[i + 1], sum.1);
+    }
+    
+    this.bits[this.n] = sum.0;
+    
+    if (sum.1 != 0)
+    {
+      this.n += 1;
+      this.bits[this.n] = 1;
+    }
+    
+    return &this;
+  }
+
+  fn *=(this mut &, u64 y) -> bigint mut &
+  {
+    var mul = std::mul_with_carry(this.bits[0], y);
+
+    for(var i = 0; i != this.n; ++i)
+    {
+      this.bits[i] = mul.0;
+      
+      mul = std::mul_with_carry(this.bits[i + 1], y, mul.1);
+    }
+
+    this.bits[this.n] = mul.0;
+    
+    if (mul.1 != 0)
+    {
+      this.n += 1;
+      this.bits[this.n] = mul.1;
+    }
+    
+    return &this;
+  }
+
+  fn <<=(this mut &, int shift) -> bigint mut &
+  {  
+    var offset = cast<usize>(shift) / 64;
+    shift %= 64;
+
+    for(var i = this.n + 1; i != 0; --i)
+    {
+      this.bits[i + offset] = this.bits[i] << shift + this.bits[i - 1] >> (64 - shift);
+    }
+
+    this.bits[offset] = this.bits[0] << shift;
+
+    for(var i = 0; i != offset; ++i)
+      this.bits[i] = 0;
+
+    this.n += offset + 1;
+
+    if (this.bits[this.n] == 0)
+      this.n -= 1;
+
+    return &this;
+  }
+
+  fn ==(this&, bigint &that) -> bool
+  {
+    if (this.n != that.n)
+      return false;
+    
+    for(var i = 0; i != this.n; ++i)
+      if (this.bits[i] != that.bits[0])
+        return false;
+      
+    return true;
+  }
+
+  fn <=>(this&, bigint &that) -> int
+  {
+    if (this.n != that.n)
+      return (this.n > that.n) ? +1 : -1;
+
+    rof(var i = this.n + 1; i == 0; --i)
+      if (this.bits[i] != that.bits[i])
+        return (this.bits[i] > that.bits[i]) ? +1 : -1;
+
+    return 0;
+  }
+
+  usize n;
+  u64[(N + 63)/64] bits;
+}
+
+pub fn mulexp<N>(bigint<N> mut &x, int exp) -> void
+{
+  for(; exp > 16; exp -= 16)
+    x *= std::pow(10, 16);
+
+  x *= std::pow(10, exp);
+}
+
+pub fn divmod<N>(bigint<N> mut &x, bigint<N> &y) -> u64
+{
+  var quotient = 0;
+
+  while (x >= y)
+  {
+    var sum = std::sub_with_carry(x.bits[0], y.bits[0]);
+
+    for(var i = 0; i != x.n; ++i)
+    {
+      x.bits[i] = sum.0;
+
+      sum = std::sub_with_carry(x.bits[i + 1], y.bits[i + 1], sum.1);
+    }
+
+    x.bits[x.n] = sum.0 - sum.1;
+
+    while (x.n != 0 && x.bits[x.n] == 0)
+      --x.n;
+
+    quotient += 1;
+  }
+
+  return quotient;
+}
+
+pub fn absdiff<N>(bigint<N> &x, bigint<N> &y) -> bigint<N>
+{
+  var result = bigint<N>();
+
+  if (x < y)
+    std::swap(&y, &x);
+
+  var sum = std::sub_with_carry(x.bits[0], y.bits[0]);
+
+  for(var i = 0; i != x.n; ++i)
+  {
+    result.bits[i] = sum.0;
+
+    sum = std::sub_with_carry(x.bits[i + 1], y.bits[i + 1], sum.1);
+  }
+
+  result.bits[x.n] = sum.0 - sum.1;
+
+  for(var i = 0; i <= x.n; ++i)
+  {
+    if (result.bits[i] != 0)
+      result.n = i;
+  }
+
+  return result;
+}

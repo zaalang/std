@@ -1,0 +1,122 @@
+//
+// std span
+//
+
+import std.stdlib;
+
+pub concept Span<U>
+{
+  requires<T> (T x) { x.len; };
+  requires<T> (T x) { x.data; };
+  requires<T> (T x) { return *x.data; } -> U;
+  requires<T> (T x) { x.begin; };
+  requires<T> (T x) { x.end; };
+}
+
+pub struct span<T>
+{
+  usize len;
+  T *data;
+
+  using value_type = T;
+  
+  fn begin(this&) -> T*
+  { 
+    return this.data;
+  }
+  
+  fn end(this&) -> T*
+  { 
+    return this.data + this.len;
+  }
+  
+  span(T *data, usize len)
+    : len(len), data(data)
+  {
+  }
+
+  span(T *beg, T *end)
+    : len(end - beg), data(beg)
+  {
+  }
+
+  fn [](this&, usize index) -> T&
+  {
+    std::assert(index < this.len);
+
+    return &*(this.data + index);
+  }
+
+  fn [](this&, (usize, usize) range) -> span
+  {
+    std::assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
+
+    return span<T>(this.data + range.0, this.data + range.1);
+  }
+
+  span(span &that) = default;
+  fn =(this mut &, span &that) -> span mut & = default;
+  ~span() = default;
+}
+
+pub struct mutable_span<T>
+{
+  usize len;
+  T mut *data;
+
+  using value_type = T;
+
+  fn begin(this&) -> T mut *
+  {
+    return this.data;
+  }
+
+  fn end(this&) -> T mut *
+  {
+    return this.data + this.len;
+  }
+
+  mutable_span(T mut *data, usize len)
+    : len(len), data(data)
+  {
+  }
+
+  mutable_span(T mut *beg, T mut *end)
+    : len(end - beg), data(beg)
+  {
+  }
+
+  fn [](this&, usize index) -> T mut &
+  {
+    std::assert(index < this.len);
+
+    return &*(this.data + index);
+  }
+
+  fn [](this&, (usize, usize) range) -> mutable_span
+  {
+    std::assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+
+    return mutable_span(this.data + range.0, this.data + range.1);
+  }
+
+  mutable_span(mutable_span &that) = default;
+  fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
+  ~mutable_span() = default;
+}
+
+pub fn Span<T = u8>(typeof("") &str) -> span<T>
+  where __is_same<T, u8>
+{
+  return span<u8>(str.data, str.len);
+}
+
+pub fn Span<T, N>(T[N] &array) -> span<T>
+{
+  return span<T>(array.data, array.len);
+}
+
+pub fn Span<T, N>(T[N] mut &array) -> mutable_span<T>
+{
+  return mutable_span<T>(array.data, array.len);
+}

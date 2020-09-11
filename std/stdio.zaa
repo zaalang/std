@@ -1,0 +1,130 @@
+//
+// std stdio
+//
+
+import std.io;
+import std.fmt;
+import std.string;
+import std.sys.fd;
+
+using std::String;
+using std::fd;
+using std::print_to;
+using std::format_to;
+
+pub struct file
+{
+  pub fn create(String &path) throws -> file
+  {
+    var fd = fd::open(path, fd::oflags::create | fd::oflags::trunc, fd::rights::read | fd::rights::write);
+
+    return file(fd);
+  }
+
+  fn write(this mut &, u8 *data, usize len) throws -> usize
+  {
+    return this.fd.write(data, len);
+  }
+
+  file(fd fd)
+    : fd(fd)
+  {
+  }
+
+  ~file()
+  {
+    fd.close();
+  }
+
+  std::fd fd;
+}
+
+pub struct StdOut
+{
+  fn write(this mut &, u8 *data, usize len) throws -> usize
+  {
+    return fd(STDOUT).write(data, len);
+  }
+
+  fn putc(this mut &, u8 ch) -> usize
+  {
+    try
+    {
+      return write(this, &ch, 1);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  fn print(this mut &, var & ...args) -> usize
+  {
+    try
+    {
+      return print_to(this, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
+  {
+    try
+    {
+      return format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  fn printf(this mut &, String &format, var & ...args) -> usize
+  {
+    try
+    {
+      return format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+  
+  fn flush(this mut &) -> void
+  {
+  }
+  
+  StdOut() = default;
+  ~StdOut() = default;
+}
+  
+//pub fn stdout_raw -> File
+//{
+//
+//}
+
+pub fn stdout -> StdOut
+{
+  //static StdOut instance;
+
+  return StdOut();
+}
+
+pub fn print(var & ...args) -> usize
+{
+  return stdout.print(args...);
+}
+
+pub fn printf(#std::string_literal format, var & ...args) -> usize
+{
+  return stdout.printf(format, args...);
+}
+
+pub fn printf(String &format, var & ...args) -> usize
+{
+  return stdout.printf(format, args...);
+}

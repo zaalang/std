@@ -1,0 +1,42 @@
+//
+// std stdlib
+//
+
+import std.stdio;
+import std.string;
+
+using std::String;
+
+pub fn move<T>(T mut &v) -> T&&
+{
+  return &v;
+}
+
+extern fn proc_exit(u32) -> void;
+
+pub fn abort() -> void
+{
+  proc_exit(1);
+}
+
+pub fn panic(String &msg = "") -> void
+{
+  std::print(msg);
+  
+  abort();
+}
+
+pub fn assert(var *condition, String &msg = "") -> void
+{
+  assert(condition != null, msg);
+}
+
+pub fn assert(bool condition, String &msg = "") -> void
+{
+  if (!condition)
+  {
+    std::print("ASSERTION FAILED: ", msg);
+    
+    abort();
+  }
+}

@@ -1,0 +1,172 @@
+//
+// std sys fd
+//
+
+import std.error;
+import std.string : String;
+
+pub const STDIN = 0;
+pub const STDOUT = 1;
+pub const STDERR = 2;
+
+pub struct iovec
+{
+  u8 mut *data;
+  usize len;
+
+  iovec() = default;
+  iovec(iovec&) = default;
+  ~iovec() = default;
+}
+
+pub struct ciovec
+{
+  u8 *data;
+  usize len;
+
+  ciovec() = default;
+  ciovec(ciovec&) = default;
+  ~ciovec() = default;
+}
+
+struct string
+{
+  u8 *data;
+  usize len;
+
+  string(u8 *data, usize len)
+    : data(data), len(len)
+  {
+  }
+
+  ~string() = default;
+}
+
+struct fd_result
+{
+  u32 errno;
+  usize length;
+
+  ~fd_result() = default;
+}
+
+extern fn fd_open(uintptr &fd, string path, u32 oflags, u64 rights, u32 fdflags) -> u32;
+extern fn fd_readv(uintptr fd, iovec *iovs, usize n) -> fd_result;
+extern fn fd_preadv(uintptr fd, iovec *iovs, usize n, u64 offset) -> fd_result;
+extern fn fd_writev(uintptr fd, ciovec *iovs, usize n) -> fd_result;
+extern fn fd_pwritev(uintptr fd, ciovec *iovs, usize n, u64 offset) -> fd_result;
+extern fn fd_close(uintptr fd) -> u32;
+
+pub struct fd
+{ 
+  enum oflags
+  {
+    open = 0x0,
+    create = 0x01,
+    exclusive = 0x02,
+    trunc = 0x04,
+
+    pub fn |(oflags lhs, oflags rhs) -> oflags { return cast<oflags>(cast<usize>(lhs) | cast<usize>(rhs)); }
+  }
+
+  enum rights
+  {
+    read = 0x01,
+    write = 0x02,
+
+    pub fn |(rights lhs, rights rhs) -> rights { return cast<rights>(cast<usize>(lhs) | cast<usize>(rhs)); }
+  }
+
+  enum fdflags
+  {
+    append = 0x01,
+    dsync = 0x02,
+    nonblock = 0x04,
+    rsync = 0x08,
+    sync = 0x10,
+
+    pub fn |(fdflags lhs, fdflags rhs) -> fdflags { return cast<fdflags>(cast<usize>(lhs) | cast<usize>(rhs)); }
+  }
+
+  pub fn open(String &path, oflags oflags, rights rights, fdflags fdflags = cast(0)) throws -> fd
+  {
+    var handle = fd(0);
+    var result = fd_open(handle.fd, string(path.data, path.len), cast(oflags), cast(rights), cast(fdflags));
+
+    if (result != 0)
+      throw std::system_error(cast<std::errc>(result));
+
+    return handle;
+  }
+
+  fd(uintptr fd)
+    : fd(fd)
+  {
+  }
+
+  fd(fd&) = default;
+  ~fd() = default;
+
+  uintptr fd;  
+}
+
+pub fn read(fd &fd, u8 mut *data, usize len) throws -> usize
+{
+  var buf = iovec(void);
+  buf.data = data;
+  buf.len = len;
+
+  var result = fd_readv(fd.fd, &buf, 1);
+
+  if (result.errno != 0)
+    throw std::system_error(cast<std::errc>(result.errno));
+
+  return result.length;
+}
+
+pub fn read(fd &fd, u64 offset, u8 mut *data, usize len) throws -> usize
+{
+  var buf = iovec(void);
+  buf.data = data;
+  buf.len = len;
+
+  var result = fd_preadv(fd.fd, &buf, 1, offset);
+
+  if (result.errno != 0)
+    throw std::system_error(cast<std::errc>(result.errno));
+
+  return result.length;
+}
+
+pub fn write(fd &fd, u8 *data, usize len) throws -> usize
+{
+  var buf = ciovec(void);
+  buf.data = data;
+  buf.len = len;
+
+  var result = fd_writev(fd.fd, &buf, 1);
+
+  if (result.errno != 0)
+    throw std::system_error(cast<std::errc>(result.errno));
+
+  return result.length;
+}
+
+pub fn write(fd &fd, u64 offset, u8 *data, usize len) throws -> usize
+{
+  var buf = ciovec(void);
+  buf.data = data;
+  buf.len = len;
+
+  var result = fd_pwritev(fd.fd, &buf, 1, offset);
+
+  if (result.errno != 0)
+    throw std::system_error(cast<std::errc>(result.errno));
+
+  return result.length;
+}
+
+pub fn close(fd &fd)
+{
+  fd_close(fd.fd);
+}

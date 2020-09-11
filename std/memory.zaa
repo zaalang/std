@@ -1,0 +1,45 @@
+//
+// std memocy
+//
+
+pub fn bit_cast<T, U>(U &value) -> T
+{
+  var result = T(void);
+
+  memcpy(&result, &value, sizeof(result));  
+
+  return result;
+}
+
+pub fn memset(void mut *dst, u8 ch, usize size) -> void mut *
+{
+  return __memset(dst, ch, size);
+}
+
+pub fn memcpy(void mut *dst, void *src, usize size) -> void mut *
+{
+  return __memcpy(dst, src, size);
+}
+
+pub fn memmove(void mut *dst, void *src, usize size) -> void mut *
+{
+  return __memmove(dst, src, size);
+}
+
+pub fn memchr(void *src, u8 ch, usize size) -> usize
+{
+  return __memfind(src, ch, size);
+}
+
+pub fn memrchr(void *src, u8 ch, usize size) -> usize
+{
+  var s = cast<u8*>(src) + size;
+
+  for(var n = size; n != 0; --n)
+  {
+    if (*--s == ch)
+      return n - 1;
+  }
+
+  return size;
+}

@@ -1,0 +1,23 @@
+//
+// std math signum
+//
+
+import std.numeric;
+
+pub const fn signum<T>(T x) -> T
+  where __is_integral<T>
+{
+  if (x == 0)
+    return 0;
+
+  return (x < 0) ? -1 : 1;
+}
+
+pub const fn signum<T>(T x) -> T
+  where __is_floating_point<T>
+{
+  if (std::is_nan(x))
+    return x;
+
+  return __copysign(1.0, x);
+}
