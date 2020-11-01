@@ -2,15 +2,27 @@
 // std error
 //
 
+import std.string;
+
 pub struct error_category
 {
 }
 
 pub struct source_location
 {
-  source_location() = default;
   source_location(source_location &that) = default;
   ~source_location() = default;
+
+  source_location((std::string_literal, int, int, std::string_literal) &site)
+    : lineno(site.1),
+      file_name(site.0),
+      function_name(site.3)
+  {
+  }
+
+  int lineno;
+  std::string_literal file_name;
+  std::string_literal function_name;
 }
 
 pub struct error

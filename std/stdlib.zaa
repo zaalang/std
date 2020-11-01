@@ -3,16 +3,13 @@
 //
 
 import std.stdio;
-import std.string;
-
-using std::String;
+import std.error;
+import std.string : String;
 
 pub fn move<T>(T mut &v) -> T&&
 {
   return &v;
 }
-
-extern fn proc_exit(u32) -> void;
 
 pub fn abort() -> void
 {
@@ -22,21 +19,30 @@ pub fn abort() -> void
 pub fn panic(String &msg = "") -> void
 {
   std::print(msg);
-  
   abort();
 }
 
-pub fn assert(var *condition, String &msg = "") -> void
+pub fn assert(var *condition, String &msg = "", var &loc = std::source_location(__site__)) -> void
 {
-  assert(condition != null, msg);
+  assert(condition != null, msg, loc: loc);
 }
 
-pub fn assert(bool condition, String &msg = "") -> void
+pub fn assert(bool condition, String &msg = "", var &loc = std::source_location(__site__)) -> void
 {
   if (!condition)
   {
-    std::print("ASSERTION FAILED: ", msg);
-    
+    std::print(loc.file_name, ":", loc.lineno, ": ASSERTION FAILED: ", msg);
     abort();
   }
 }
+
+pub fn assert(#bool condition, #std::string_literal msg = "", #var loc = #std::source_location(__site__)) -> void
+{
+  #if (!condition)
+  {
+    #std::print(loc.file_name, ":", loc.lineno, ": ASSERTION FAILED: ", msg);
+    #abort();
+  }
+}
+
+extern fn proc_exit(u32) -> void;
