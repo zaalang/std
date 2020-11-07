@@ -1,0 +1,271 @@
+//
+// std list
+//
+
+import std.alloc;
+import std.stdlib : assert;
+import std.type : as_const;
+
+pub struct list<T, Alloc = std::allocator>
+{
+  list()
+  {
+    root.next = root.prev = &root;
+  }
+
+  ~list()
+  {
+    clear(this);
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this.size;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this.size == 0;
+  }
+
+  pub fn begin(this mut &) -> iterator
+  {
+    return iterator(this.root.next);
+  }
+
+  pub fn end(this mut &) -> iterator
+  {
+    return iterator(&this.root);
+  }
+
+  pub fn begin(this &) -> const_iterator
+  {
+    return const_iterator(this.root.next);
+  }
+
+  pub fn end(this &) -> const_iterator
+  {
+    return const_iterator(&this.root);
+  }
+
+  pub struct iterator
+  {
+    iterator() = default;
+    iterator(iterator&) = default;
+    fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    ~iterator() = default;
+
+    iterator(Link mut *node)
+      : cursor(node)
+    {
+    }
+
+    fn ==(iterator &lhs, iterator &rhs) -> bool
+    {
+      return lhs.cursor == rhs.cursor;
+    }
+
+    fn *(iterator &this) -> T&
+    {
+      return &cast<Node*>(this.cursor).elem;
+    }
+
+    fn *(iterator mut &this) -> T mut &
+    {
+      return &cast<Node mut *>(this.cursor).elem;
+    }
+
+    fn ++(iterator mut &this) -> iterator &
+    {
+      this.cursor = this.cursor.next;
+      return &this;
+    }
+
+    fn --(iterator mut &this) -> iterator &
+    {
+      this.cursor = this.cursor.prev;
+      return &this;
+    }
+
+    Link mut *cursor;
+  }
+
+  pub struct const_iterator
+  {
+    const_iterator() = default;
+    const_iterator(const_iterator&) = default;
+    fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
+    ~const_iterator() = default;
+
+    const_iterator(Link *node)
+      : cursor(node)
+    {
+    }
+
+    const_iterator(iterator other)
+      : cursor(other.cursor)
+    {
+    }
+
+    fn ==(const_iterator &lhs, const_iterator &rhs) -> bool
+    {
+      return lhs.cursor == rhs.cursor;
+    }
+
+    fn *(const_iterator &this) -> T&
+    {
+      return &cast<Node*>(this.cursor).elem;
+    }
+
+    fn ++(const_iterator mut &this) -> const_iterator &
+    {
+      this.cursor = this.cursor.next;
+      return &this;
+    }
+
+    fn --(const_iterator mut &this) -> const_iterator &
+    {
+      this.cursor = this.cursor.prev;
+      return &this;
+    }
+
+    Link *cursor;
+  }
+  
+  pub concept Iterator
+  {
+    requires<T> __is_same<T, iterator> || __is_same<T, const_iterator>;
+  }
+
+  pub fn front(this &&)
+  {
+    assert(!this.empty);
+
+    return &cast<Node&&>(*this.root.next).elem;
+  }
+
+  pub fn back(this &&)
+  {
+    assert(!this.empty);
+
+    return &cast<Node&&>(*this.root.prev).elem;
+  }
+
+  pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
+  {
+    return &add_node(this, this.begin.cursor, &&args...).elem;
+  }
+
+  pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
+  {
+    return &add_node(this, this.end.cursor, &&args...).elem;
+  }
+  
+  pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
+  {
+    return iterator(add_node(this, position.cursor, &&args...));
+  }
+  
+  pub fn pop_front(this mut &) -> void
+  {
+    assert(!this.empty);
+    
+    erase_node(this, this.root.next);
+  }
+
+  pub fn pop_back(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    erase_node(this, this.root.prev);
+  }
+  
+  pub fn erase(this mut &, Iterator position) -> iterator
+  {
+    return iterator(erase_node(this, position.cursor));
+  }
+
+  pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
+  {
+    var node = cast<Node mut *>(first.cursor);
+    
+    while(node != last.cursor)
+      node = erase_node(this, node);
+  
+    return iterator(node);
+  }
+  
+  pub fn clear(this mut &) -> void
+  {
+    while (var link = this.root.next; link != &this.root)
+    {
+      var node = cast<Node mut *>(link);
+
+      link = link.next;
+
+      node.elem.~T();
+      this.allocator.free(node, sizeof<Node>);
+    }
+      
+    this.root.next = this.root.prev = &this.root;
+  }
+  
+  struct Link
+  {
+    Link mut *next;
+    Link mut *prev;
+
+    Link() = default;
+    ~Link() = default;
+  }
+
+  struct Node : Link
+  {
+    Node()
+      : elem(void)
+    {
+    }
+
+    ~Node() = default;
+
+    T elem;
+  }
+
+  fn add_node<Args>(this mut &, Link *position, Args && ...args) -> Node mut *
+  {
+    var node = new<Node>(this.allocator.allocate(sizeof<Node>, alignof<Node>));
+
+    new<T>(&node.elem)(&&args...);
+
+    node.next = cast(position);
+    node.prev = cast(position.prev);
+    node.next.prev = node.prev.next = node;
+
+    this.size += 1;
+    
+    return node;
+  }
+  
+  fn erase_node(this mut &, Link *position) -> Node mut *
+  {
+    assert(position != &this.root);
+
+    var node = cast<Node mut *>(position);
+    var nextnode = cast<Node mut *>(position.next);
+
+    node.prev.next = node.next;
+    node.next.prev = node.prev;
+
+    node.elem.~T();
+    this.allocator.free(node, sizeof<Node>);
+    
+    this.size -= 1;
+    
+    return nextnode;
+  }
+  
+  Link root;
+  usize size;
+
+  Alloc allocator;
+}

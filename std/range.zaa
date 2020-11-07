@@ -1,0 +1,12 @@
+//
+// std range
+//
+
+import std.stdlib;
+
+pub concept Range<U>
+{
+  requires<T> (T x) { return *x.data; } -> U;
+  requires<T> (T x) { x.begin; };
+  requires<T> (T x) { x.end; };
+}

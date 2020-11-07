@@ -1,0 +1,40 @@
+//
+// std alloc
+//
+
+import std.stdlib;
+
+struct mem_result
+{
+  u32 errno;
+  usize size;
+  void mut *addr;
+
+  ~mem_result() = default;
+}
+
+extern fn mem_alloc(usize size) -> mem_result;
+extern fn mem_free(void *addr) -> void;
+
+pub struct allocator
+{
+  allocator() = default;
+  allocator(allocator&) = default;
+  fn =(allocator mut &, allocator&) -> allocator mut & = default;
+  ~allocator() = default;
+  
+  pub fn allocate(this mut &, usize size, usize alignment) -> void mut *
+  {
+    var memory = mem_alloc(size);
+
+    if (memory.errno != 0)
+      std::panic("Memory Allocation Failure");
+    
+    return memory.addr;
+  }
+  
+  pub fn free(this mut &, void *addr, usize size) -> void
+  {
+    mem_free(addr);
+  }
+}

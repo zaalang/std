@@ -2,6 +2,8 @@
 // std type manipulation
 //
 
+pub using max_align_t = u64;
+
 pub const fn is_same<T, U>() -> bool
 {
   return __is_same<T, U>();
@@ -50,4 +52,9 @@ pub const fn is_floating_point<T>() -> bool
 pub const fn is_arithmetic<T>() -> bool
 {
   return __is_arithmetic<T>();
+}
+
+pub fn as_const<T>(T &v) -> T&
+{
+  return &v;
 }
