@@ -134,19 +134,16 @@ fn put(OutputStream mut &os, fmt_context mut &ctx, f64 value) throws -> void
 
 fn put(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws -> void
 {
-  var buf = [0; 64];
+  var buf = [0; 18];
   var str = std::itoa(buf.begin, buf.end, cast<uintptr>(pointer), 16);
-  
-  var pad = 16 - str.len;
-  std::memmove(buf.begin + pad + 2, str.ptr, str.len);
-  
+    
   buf[0] = cast('0');
   buf[1] = cast('x');
   
-  for(var ch = buf.begin + 2, var end = buf.begin + pad + 2; ch != end; ++ch)
+  for(var ch = buf.begin + 2, var end = buf.end - str.len; ch != end; ++ch)
     *ch = cast('0');
 
-  ctx.written += os.write(buf.data, str.len + pad + 2);
+  ctx.written += os.write(buf.data, buf.len);
 }
 
 fn put(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &str) throws -> void
