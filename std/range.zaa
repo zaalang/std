@@ -6,7 +6,12 @@ import std.stdlib;
 
 pub concept Range<U>
 {
-  requires<T> (T x) { return *x.data; } -> U;
-  requires<T> (T x) { x.begin; };
+  requires<T> (T x) { return *x.begin; } -> U;
   requires<T> (T x) { x.end; };
+}
+
+pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
+  where __is_same<T, u8>
+{
+  return std::span<u8>(str.data, str.len);
 }

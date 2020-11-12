@@ -6,9 +6,9 @@ import std.stdlib;
 
 pub fn swap<T>(T mut &a, T mut &b)
 {
-  var tmp = a;
-  a = b;
-  b = tmp;
+  var tmp = std::move(a);
+  a = std::move(b);
+  b = std::move(tmp);
 }
 
 pub fn copy<OI, OS, II, IS>(OI dst, OS dstl, II src, IS srcl) -> OI

@@ -2,7 +2,17 @@
 // std io
 //
 
+import std.error;
+
 pub concept OutputStream
 {
-  // fn write(this mut &, u8 *data, usize len) [throws] -> usize
+  requires<T> (T os, u8 *buf, usize len) {
+    try
+    {
+      len += os.write(buf, len);
+    }
+    catch(std::error e)
+    {
+    }
+  };
 }

@@ -3,14 +3,12 @@
 //
 
 import std.io;
-import std.fmt;
 import std.string;
 import std.sys.fd;
+import std.fmt;
 
-using std::String;
 using std::fd;
-using std::print_to;
-using std::format_to;
+using std::String;
 
 pub struct file
 {
@@ -24,6 +22,21 @@ pub struct file
   fn write(this mut &, u8 *data, usize len) throws -> usize
   {
     return this.fd.write(data, len);
+  }
+
+  fn print(this mut &, var & ...args) throws -> usize
+  {
+    return std::print_to(this, args..., '\n');
+  }
+
+  fn printf(this mut &, String &format, var & ...args) throws -> usize
+  {
+    return std::format_to(this, format, args...);
+  }
+  
+  fn printf(this mut &, #std::string_literal format, var & ...args) throws -> usize
+  {
+    return std::format_to(this, format, args...);
   }
 
   file(fd fd)
@@ -62,19 +75,7 @@ pub struct StdOut
   {
     try
     {
-      return print_to(this, args...);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
-  }
-
-  fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
-  {
-    try
-    {
-      return format_to(this, format, args...);
+      return std::print_to(this, args..., '\n');
     }
     catch(std::error e)
     {
@@ -86,7 +87,19 @@ pub struct StdOut
   {
     try
     {
-      return format_to(this, format, args...);
+      return std::format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+  
+  fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
+  {
+    try
+    {
+      return std::format_to(this, format, args...);
     }
     catch(std::error e)
     {
@@ -119,12 +132,12 @@ pub fn print(var & ...args) -> usize
   return stdout.print(args...);
 }
 
-pub fn printf(#std::string_literal format, var & ...args) -> usize
+pub fn printf(String &format, var & ...args) -> usize
 {
   return stdout.printf(format, args...);
 }
 
-pub fn printf(String &format, var & ...args) -> usize
+pub fn printf(#std::string_literal format, var & ...args) -> usize
 {
   return stdout.printf(format, args...);
 }

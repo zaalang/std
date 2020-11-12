@@ -156,6 +156,11 @@ fn put(OutputStream mut &os, fmt_context mut &ctx, std::string_view &str) throws
   ctx.written += os.write(str.data, str.len);
 }
 
+fn put(OutputStream mut &os, fmt_context mut &ctx, std::string &str) throws -> void
+{
+  ctx.written += os.write(str.data, str.len);
+}
+
 fn put<T, N>(OutputStream mut &os, fmt_context mut &ctx, T[N] &array) throws -> void
 {
   put(os, ctx, '[');
@@ -199,8 +204,6 @@ pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
   {
     put(os, ctx, arg);
   }
-
-  put(os, ctx, '\n');
 
   return ctx.written;
 }

@@ -3,6 +3,10 @@
 //
 
 import std.span;
+import std.alloc;
+import std.algorithm : swap;
+import std.memory : memcpy, memmove;
+import std.fmt;
 
 pub concept String
 {
@@ -43,8 +47,271 @@ pub fn String(string_literal &str) -> string_view
   return string_view(str.data, str.len);
 }
 
-pub struct string
+pub struct string<Alloc = std::allocator>
 {
-  string() = default;
-  ~string() = default;
+  string()
+  {
+    init(this);
+  }
+  
+  string(Alloc &allocator)
+    : allocator(allocator)
+  {
+    init(this);
+  }
+  
+  string(String &&other, Alloc &allocator = Alloc())
+    : allocator(allocator)
+  {
+    init(this);
+
+    #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
+    {
+      swap(this, other);
+    }
+    #else
+    {
+      this.write(other.data, other.len);
+    }
+  }
+
+  fn =(this mut &, String &&other) -> string mut &
+  {
+    if (this._data <= other.data && other.data < this._data + this._len)
+    {
+      memmove(this._data, other.data, other.len);
+      this._len = other.len;
+      return &this;
+    }
+
+    #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
+    {
+      swap(this, other);
+    }
+    #else
+    {
+      clear(this);
+
+      this.write(other.data, other.len);
+    }
+
+    return &this;
+  }
+
+  pub fn with_capacity(usize capacity, Alloc &allocator = std::allocator) -> string
+  {
+    var str = string(allocator);
+
+    str.reserve(capacity);
+
+    return str;
+  }
+
+  pub fn from_utf8(u8 *data, usize len, Alloc &allocator = std::allocator) -> string
+  {
+    return string(string_view(data, len), allocator);
+  }
+
+  pub fn from_utf8(u8 *beg, u8 *end, Alloc &allocator = std::allocator) -> string
+  {
+    return string(string_view(beg, end), allocator);
+  }
+
+  ~string()
+  {
+    if (_data != _smallbuffer.data)
+      this.allocator.free(_data, _capacity);
+  }
+  
+  pub fn len(this &) -> usize
+  {
+    return this._len;
+  }
+  
+  pub fn empty(this &) -> bool
+  {
+    return this._len == 0;
+  }
+  
+  pub fn capacity(this &) -> usize
+  {
+    return this._capacity;
+  }
+
+  pub fn data(this &&)
+  {
+    return this._data;
+  }
+
+  pub fn begin(this mut &) -> u8 mut *
+  {
+    return this._data;
+  }
+
+  pub fn end(this mut &) -> u8 mut *
+  {
+    return this._data + this._len;
+  }
+
+  pub fn begin(this &) -> u8*
+  {
+    return this._data;
+  }
+
+  pub fn end(this &) -> u8*
+  {
+    return this._data + this._len;
+  }
+
+  pub fn reserve(this mut &, usize capacity) -> void
+  {
+    if (this._capacity < capacity)
+    {
+      var data = cast<u8 mut *>(this.allocator.allocate(capacity, alignof<u8>));
+      
+      memcpy(data, this._data, this._len);
+      swap(this._data, data);
+      swap(this._capacity, capacity);
+
+      if (data != this._smallbuffer.data)
+        this.allocator.free(data, capacity);
+    }
+  }
+  
+  pub fn clear(this mut &) -> void
+  {
+    if (this._data != this._smallbuffer.data)
+      this.allocator.free(this._data, this._capacity);
+
+    this.init();
+  }
+
+  pub fn append(this mut &, var & ...args) -> usize
+  {
+    try
+    {
+      return std::print_to(this, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn appendf(this mut &, String &format, var & ...args) -> usize
+  {
+    ensure_capacity(this, this._len + format.len);
+
+    try
+    {
+      return std::format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn appendf(this mut &, #std::string_literal format, var & ...args) -> usize
+  {
+    ensure_capacity(this, this._len + format.len);
+
+    try
+    {
+      return std::format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn write(this mut &, u8 *data, usize len) -> usize
+  {
+    ensure_capacity(this, this._len + len);
+
+    memcpy(this._data + this._len, data, len);
+
+    this._len += len;
+
+    return len;
+  }
+
+  fn init(this mut &)
+  {
+    this._len = 0;
+    this._data = this._smallbuffer.data;
+    this._capacity = this._smallbuffer.len;
+  } 
+
+  fn swap(this mut &, string mut &other)
+  {
+    swap(this._data, other._data);
+
+    if (this._data == other._smallbuffer.data)
+    {
+      if (other._data == this._smallbuffer.data)
+      {
+        this._data = this._smallbuffer.data;
+        other._data = other._smallbuffer.data;
+        swap(this._smallbuffer, other._smallbuffer);
+      }
+      else
+      {
+        this._data = this._smallbuffer.data;
+        memcpy(this._data, other._smallbuffer.data, other._len);
+      }
+    }
+    else if (other._data == this._smallbuffer.data)
+    {
+      other._data = other._smallbuffer.data;
+      memcpy(other._data, this._smallbuffer.data, this._len);
+    }
+
+    swap(this._len, other._len);
+    swap(this._capacity, other._capacity);
+
+    swap(this.allocator, other.allocator);
+  }
+
+  fn ensure_capacity(this mut &, usize len)
+  {
+    if (len <= this._capacity)
+      return;
+
+    if (len < 2*this._capacity)
+      len = 2*this._capacity;
+
+    reserve(this, len);
+  }
+
+  usize _len;
+  u8 mut *_data;
+
+  usize _capacity;
+  u8[24] _smallbuffer;
+
+  Alloc allocator;
 }
+
+pub fn sprint(string mut &str, var & ...args) -> usize
+{
+  str.clear();
+
+  return str.append(args...);
+}
+
+pub fn sprintf(string mut &str, String &format, var & ...args) -> usize
+{
+  str.clear();
+
+  return str.appendf(format, args...);
+}
+
+pub fn sprintf(string mut &str, #std::string_literal format, var & ...args) -> usize
+{
+  str.clear();
+
+  return str.appendf(format, args...);
+}
+
