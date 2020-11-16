@@ -2,7 +2,7 @@
 // std float
 //
 
-import std.stdlib;
+import std.stdlib : assert;
 import std.memory;
 import std.numeric;
 import std.math;
@@ -108,7 +108,7 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
 
 fn normalize(DiyFp mut &fp) -> void
 {
-  std::assert(fp.f != 0);
+  assert(fp.f != 0);
 
   var shift = std::clz(fp.f);
   
@@ -135,7 +135,7 @@ fn pow10(int index) -> u64
 {
   const Pow10 = [ 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 ];
   
-  std::assert(0 <= index && cast(index) < Pow10.len);
+  assert(0 <= index && cast(index) < Pow10.len);
   
   return Pow10[cast(index)];
 }
@@ -256,7 +256,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
 
   var ch = beg;
 
-  std::assert(end - beg >= 32);
+  assert(end - beg >= 32);
 
   while (kappa > 0)
   {

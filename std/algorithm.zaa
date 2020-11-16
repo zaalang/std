@@ -2,7 +2,8 @@
 // std algorithm
 //
 
-import std.stdlib;
+import std.stdlib : assert;
+import std.range : Sentinal, Range;
 
 pub fn swap<T>(T mut &a, T mut &b)
 {
@@ -11,49 +12,49 @@ pub fn swap<T>(T mut &a, T mut &b)
   b = std::move(tmp);
 }
 
-pub fn copy<OI, OS, II, IS>(OI dst, OS dstl, II src, IS srcl) -> OI
+pub fn fill<O, T>(O dst, Sentinal<O> end, T &value) -> O
 {
-  while (src != srcl)
-  {
-    std::assert(dst != dstl);
-
-    *dst++ = *src++;
-  }
-  
-  return dst;
-}
-
-pub fn fill<OI, OS, T>(OI dst, OS dstl, T &value) -> OI
-{
-  while (dst != dst1)
+  while (dst != end)
   {
     *dst++ = value;
   }
-  
+
   return dst;
 }
 
-pub fn copy_n<OI, OS, II, N>(OI dst, OS dstl, II src, N n) -> OI
+pub fn fill_n<O, T, N>(O dst, Sentinal<O> end, T &value, N n) -> O
 {
   while (n > 0)
   {
-    std::assert(dst != dstl);
+    assert(dst != end);
 
-    *dst++ = *src++;
-    
+    *dst++ = value;
+
     --n;
   }
+
+  return dst;
+}
+
+pub fn copy<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
+{
+  while (first != last)
+  {
+    assert(dst != end);
+
+    *dst++ = *first++;
+  }
   
   return dst;
 }
 
-pub fn fill_n<OI, OS, T, N>(OI dst, OS dstl, T &value, N n) -> OI
+pub fn copy_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
 {
   while (n > 0)
   {
-    std::assert(dst != dstl);
+    assert(dst != end);
 
-    *dst++ = value;
+    *dst++ = *first++;
     
     --n;
   }

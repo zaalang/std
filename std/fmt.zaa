@@ -196,6 +196,16 @@ fn put<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   put(os, ctx, "object");
 }
 
+fn put<T>(OutputStream mut &os, fmt_context mut &ctx, typeof(0) literal) throws -> void
+{
+  put(os, ctx, cast<int>(literal));
+}
+
+fn put<T>(OutputStream mut &os, fmt_context mut &ctx, typeof(0.0) literal) throws -> void
+{
+  put(os, ctx, cast<float>(literal));
+}
+
 pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
 {
   var ctx = fmt_context();
@@ -302,7 +312,6 @@ const fn parse_args<Args>(std::string_literal format) -> Arguments<std::tuple_le
 
   return args;
 }
-
 
 fn put_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &piece) throws -> void
 {

@@ -29,6 +29,11 @@ pub const fn is_rvalue<T>(T &&v) -> bool
   return __is_rvalue<typeof(v)>();
 }
 
+pub const fn is_match<T, U>() -> bool
+{
+  return __is_match<T, U>();
+}
+
 pub const fn array_len<T>() -> usize
 {
   return __array_len<T>();

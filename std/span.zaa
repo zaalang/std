@@ -8,7 +8,7 @@ pub concept Span<U>
 {
   requires<T> (T x) { x.len; };
   requires<T> (T x) { x.data; };
-  requires<T> (T x) { return *x.data; } -> U;
+  requires<T> (T x) -> U { return *x.data; };
   requires<T> (T x) { x.begin; };
   requires<T> (T x) { x.end; };
 }

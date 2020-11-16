@@ -5,7 +5,7 @@
 import std.alloc;
 import std.stdlib : assert;
 import std.algorithm : swap;
-import std.range : Range;
+import std.range : Sentinal, Range;
 import std.type : as_const;
 
 pub struct list<T, Alloc = std::allocator>
@@ -55,22 +55,13 @@ pub struct list<T, Alloc = std::allocator>
     return &this;
   }
 
-  fn from<N>(T[N] &&other, Alloc &allocator = Alloc()) -> list
-  {
-    var str = list<T>(allocator);
-
-    str.insert(str.end, &&other);
-
-    return str;
-  }
-
   fn from(Range<T> &&other, Alloc &allocator = Alloc()) -> list
   {
-    var str = list<T>(allocator);
+    var result = list<T>(allocator);
 
-    str.insert(str.end, &&other);
+    result.insert(result.end, &&other);
 
-    return str;
+    return result;
   }
 
   ~list()
@@ -197,6 +188,11 @@ pub struct list<T, Alloc = std::allocator>
     requires<T> __is_same<T, iterator> || __is_same<T, const_iterator>;
   }
 
+  fn ==(Iterator &lhs, Iterator &rhs) -> bool
+  {
+    return lhs.cursor == rhs.cursor;
+  }
+
   pub fn front(this &&)
   {
     assert(!this.empty);
@@ -242,7 +238,7 @@ pub struct list<T, Alloc = std::allocator>
     }
   }
 
-  pub fn insert<II, IS>(this mut &, Iterator position, II first, IS last) -> iterator
+  pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
   {
     var node = cast<Node mut *>(position.cursor);
 

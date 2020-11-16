@@ -4,9 +4,20 @@
 
 import std.stdlib;
 
+pub concept Iterator
+{
+  requires<T> (T x) { *x; };
+  requires<T> (T x) { ++x; };
+}
+
+pub concept Sentinal<I>
+{
+  requires<T> (T x, I y) { y == x; };
+}
+
 pub concept Range<U>
 {
-  requires<T> (T x) { return *x.begin; } -> U;
+  requires<T> (T x) -> U { return *x.begin; };
   requires<T> (T x) { x.end; };
 }
 
@@ -14,4 +25,41 @@ pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
   where __is_same<T, u8>
 {
   return std::span<u8>(str.data, str.len);
+}
+
+pub fn Range<T, N>(T[N] &array) -> std::span<T>
+{
+  return std::span<T>(array.data, array.len);
+}
+
+pub fn Range<T, N>(T[N] mut &array) -> std::mutable_span<T>
+{
+  return std::mutable_span<T>(array.data, array.len);
+}
+
+pub fn distance<I>(I first, Sentinal<I> last) -> usize
+{
+  using S = typeof(last);
+
+  #if (requires (I x, S y) { y - x; })
+  {
+    return last - first;
+  }
+  #else
+  {
+    var result = 0;
+
+    while (first != last)
+    {
+      ++first;
+      ++result;
+    }
+
+    return result;
+  }
+}
+
+pub fn len<T>(Range<T> &range) -> usize
+{
+  return distance(range.begin, range.end);
 }
