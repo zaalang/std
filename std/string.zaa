@@ -4,6 +4,7 @@
 
 import std.span;
 import std.alloc;
+import std.stdlib : assert;
 import std.algorithm : swap;
 import std.memory : memcpy, memmove;
 import std.fmt;
@@ -49,12 +50,7 @@ pub fn String(string_literal &str) -> string_view
 
 pub struct string<Alloc = std::allocator>
 {
-  string()
-  {
-    init(this);
-  }
-  
-  string(Alloc &allocator)
+  string(Alloc &allocator = Alloc())
     : allocator(allocator)
   {
     init(this);
@@ -98,7 +94,7 @@ pub struct string<Alloc = std::allocator>
     return &this;
   }
 
-  pub fn with_capacity(usize capacity, Alloc &allocator = std::allocator) -> string
+  pub fn with_capacity(usize capacity, Alloc &allocator = Alloc()) -> string
   {
     var result = string(allocator);
 
@@ -107,12 +103,12 @@ pub struct string<Alloc = std::allocator>
     return result;
   }
 
-  pub fn from_utf8(u8 *data, usize len, Alloc &allocator = std::allocator) -> string
+  pub fn from_utf8(u8 *data, usize len, Alloc &allocator = Alloc()) -> string
   {
     return string(string_view(data, len), allocator);
   }
 
-  pub fn from_utf8(u8 *beg, u8 *end, Alloc &allocator = std::allocator) -> string
+  pub fn from_utf8(u8 *beg, u8 *end, Alloc &allocator = Alloc()) -> string
   {
     return string(string_view(beg, end), allocator);
   }
@@ -246,6 +242,8 @@ pub struct string<Alloc = std::allocator>
 
   fn swap(this mut &, string mut &other)
   {
+    assert(this.allocator == other.allocator);
+
     swap(this._data, other._data);
 
     if (this._data == other._smallbuffer.data)
@@ -291,7 +289,7 @@ pub struct string<Alloc = std::allocator>
   usize _capacity;
   u8[24] _smallbuffer;
 
-  Alloc allocator;
+  allocator: Alloc;
 }
 
 pub fn sprint(string mut &str, var & ...args) -> usize

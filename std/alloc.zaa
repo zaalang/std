@@ -29,12 +29,17 @@ pub struct allocator
 
     if (memory.errno != 0)
       std::panic("Memory Allocation Failure");
-    
+
     return memory.addr;
   }
   
   pub fn free(this mut &, void *addr, usize size) -> void
   {
     mem_free(addr);
+  }
+
+  pub fn ==(this &, allocator &rhs) -> bool
+  {
+    return true;
   }
 }

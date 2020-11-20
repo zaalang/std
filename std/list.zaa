@@ -10,18 +10,13 @@ import std.type : as_const;
 
 pub struct list<T, Alloc = std::allocator>
 {
-  list()
-  {
-    init(this);
-  }
-
-  list(Alloc &allocator)
+  list(Alloc &allocator = Alloc())
     : allocator(allocator)
   {
     init(this);
   }
 
-  list(list<T> &&other, Alloc &allocator = Alloc())
+  list(list &&other, Alloc &allocator = Alloc())
     : allocator(allocator)
   {
     init(this);
@@ -57,7 +52,7 @@ pub struct list<T, Alloc = std::allocator>
 
   fn from(Range<T> &&other, Alloc &allocator = Alloc()) -> list
   {
-    var result = list<T>(allocator);
+    var result = list(allocator);
 
     result.insert(result.end, &&other);
 
@@ -255,17 +250,13 @@ pub struct list<T, Alloc = std::allocator>
 
   pub fn splice(this mut &, Iterator position, list mut &other) -> iterator
   {
+    assert(this.allocator == other.allocator);
+
     var node = cast<Node mut *>(position.cursor);
 
-    if (other._len != 0)
+    if (other.len != 0)
     {
-      node = move_node(this, position.cursor, cast<Node mut *>(other._root.next));
-
-      while (other._root.next != &other._root)
-        move_node(this, position.cursor, cast<Node mut *>(other._root.next));
-
-      this._len += other.len;
-      other._len = 0;
+      node = transfer_nodes(this, position.cursor, other, other.begin.cursor, other.end.cursor, other.len);
     }
 
     return iterator(node);
@@ -273,14 +264,13 @@ pub struct list<T, Alloc = std::allocator>
 
   pub fn splice(this mut &, Iterator position, list mut &other, Iterator first) -> iterator
   {
+    assert(this.allocator == other.allocator);
+
     var node = cast<Node mut *>(position.cursor);
 
     if (first != other.end)
     {
-      node = move_node(this, position.cursor, cast<Node mut *>(first.cursor));
-
-      this._len += 1;
-      other._len -= 1;
+      node = transfer_nodes(this, position.cursor, other, first.cursor, first.cursor.next, 1);
     }
 
     return iterator(node);
@@ -288,30 +278,13 @@ pub struct list<T, Alloc = std::allocator>
 
   pub fn splice(this mut &, Iterator position, list mut &other, Iterator first, Iterator last) -> iterator
   {
+    assert(this.allocator == other.allocator);
+
     var node = cast<Node mut *>(position.cursor);
 
     if (first != last)
     {
-      var count = 1;
-      var current = first.cursor;
-
-      var tmp = current;
-      current = current.next;
-
-      node = move_node(this, position.cursor, cast<Node mut *>(tmp));
-
-      while (current != last.cursor)
-      {
-        tmp = current;
-        current = current.next;
-
-        move_node(this, position.cursor, cast<Node mut *>(tmp));
-
-        count += 1;
-      }
-
-      this._len += count;
-      other._len -= count;
+      node = transfer_nodes(this, position.cursor, other, first.cursor, last.cursor, std::distance(first, last));
     }
 
     return iterator(node);
@@ -389,11 +362,14 @@ pub struct list<T, Alloc = std::allocator>
 
   fn init(this mut &)
   {
+    this._len = 0;
     this._root.next = this._root.prev = &this._root;
   }
 
   fn swap(this mut &, list mut &other)
   {
+    assert(this.allocator == other.allocator);
+
     this._root.next.prev = this._root.prev.next = &other._root;
     other._root.next.prev = other._root.prev.next = &this._root;
 
@@ -409,7 +385,10 @@ pub struct list<T, Alloc = std::allocator>
   {
     var node = new<Node>(this.allocator.allocate(sizeof<Node>, alignof<Node>));
 
-    new<T>(&node.value)(&&args...);
+    #if (__is_allocator_aware<T>)
+      new<T>(&node.value)(&&args..., allocator: this.allocator);
+    #else
+      new<T>(&node.value)(&&args...);
 
     node.next = cast(position);
     node.prev = cast(position.prev);
@@ -420,14 +399,21 @@ pub struct list<T, Alloc = std::allocator>
     return node;
   }
 
-  fn move_node(this mut &, Link *position, Node mut *node) -> Node mut *
+  fn transfer_nodes(this mut &, Link *position, list mut &other, Link *first, Link *last, usize len) -> Node mut *
   {
-    node.next.prev = node.prev;
-    node.prev.next = node.next;
+    var node = cast<Node mut *>(first);
+    var last = cast<Link mut *>(last.prev);
 
-    node.next = cast(position);
+    last.next.prev = node.prev;
+    node.prev.next = last.next;
+
+    last.next = cast(position);
     node.prev = cast(position.prev);
-    node.next.prev = node.prev.next = node;
+    last.next.prev = last;
+    node.prev.next = node;
+
+    this._len += len;
+    other._len -= len;
 
     return node;
   }
@@ -453,5 +439,5 @@ pub struct list<T, Alloc = std::allocator>
   Link _root;
   usize _len;
 
-  Alloc allocator;
+  allocator: Alloc;
 }
