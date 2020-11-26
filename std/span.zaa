@@ -2,7 +2,7 @@
 // std span
 //
 
-import std.stdlib;
+import std.stdlib : assert;
 
 pub concept Span<U>
 {
@@ -42,14 +42,14 @@ pub struct span<T>
 
   fn [](this&, usize index) -> T&
   {
-    std::assert(index < this.len);
+    assert(index < this.len);
 
     return &*(this.data + index);
   }
 
   fn [](this&, (usize, usize) range) -> span
   {
-    std::assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
 
     return span<T>(this.data + range.0, this.data + range.1);
   }
@@ -66,12 +66,12 @@ pub struct mutable_span<T>
 
   using value_type = T;
 
-  fn begin(this&) -> T mut *
+  fn begin(this mut &) -> T mut *
   {
     return this.data;
   }
 
-  fn end(this&) -> T mut *
+  fn end(this mut &) -> T mut *
   {
     return this.data + this.len;
   }
@@ -86,16 +86,16 @@ pub struct mutable_span<T>
   {
   }
 
-  fn [](this&, usize index) -> T mut &
+  fn [](this mut &, usize index) -> T mut &
   {
-    std::assert(index < this.len);
+    assert(index < this.len);
 
     return &*(this.data + index);
   }
 
-  fn [](this&, (usize, usize) range) -> mutable_span
+  fn [](this mut &, (usize, usize) range) -> mutable_span
   {
-    std::assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return mutable_span(this.data + range.0, this.data + range.1);
   }

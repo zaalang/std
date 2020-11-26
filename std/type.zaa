@@ -4,6 +4,8 @@
 
 pub using max_align_t = u64;
 
+pub extern fn declval<T>() -> T&;
+
 pub const fn is_same<T, U>() -> bool
 {
   return __is_same<T, U>();

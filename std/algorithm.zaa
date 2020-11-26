@@ -105,16 +105,63 @@ pub const fn max<Args>(Args & ...args)
 pub const less = fn (var &x, var &y) -> bool { return x < y; };
 pub const greater = fn (var &x, var &y) -> bool { return x > y; };
 
-pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less)
-  where __is_match<RandomAccessIterator, I>
+pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> I
+{
+  var result = first;
+
+  if (first != last)
+  {
+    for(++first; first != last; ++first)
+    {
+      if (cmp(*first, *result))
+        result = first;
+    }
+  }
+
+  return result;
+}
+
+pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = less)
+{
+  return min_element(range.begin, range.end, cmp);
+}
+
+pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> I
+{
+  var result = first;
+
+  if (first != last)
+  {
+    for(++first; first != last; ++first)
+    {
+      if (cmp(*result, *first))
+        result = first;
+    }
+  }
+
+  return result;
+}
+
+pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = less)
+{
+  return max_element(range.begin, range.end, cmp);
+}
+
+pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> void
+  where __is_match<RandomAccessIterator, I> && requires (I i, I j, Cmp &cmp) { cmp(*i, *j); swap(*i, *j); }
 {
   for(var i = first; i != last; ++i)
   {
     for(var j = first; j != i; ++j)
     {
       if (cmp(*i, *j))
-        std::swap(*i, *j);
+        swap(*i, *j);
     }
   }
 }
 
+pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = less) -> void
+  where requires (typeof(range) mut &range, Cmp &cmp) { sort(range.begin, range.end, cmp); }
+{
+  sort(range.begin, range.end, cmp);
+}
