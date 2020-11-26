@@ -34,9 +34,19 @@ pub const fn is_match<T, U>() -> bool
   return __is_match<T, U>();
 }
 
+pub const fn is_array<T>() -> bool
+{
+  return __is_array<T>();
+}
+
 pub const fn array_len<T>() -> usize
 {
   return __array_len<T>();
+}
+
+pub const fn is_tuple<T>() -> bool
+{
+  return __is_tuple<T>();
 }
 
 pub const fn tuple_len<T>() -> usize

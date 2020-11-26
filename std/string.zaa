@@ -48,16 +48,18 @@ pub fn String(string_literal &str) -> string_view
   return string_view(str.data, str.len);
 }
 
-pub struct string<Alloc = std::allocator>
+pub struct string<Alloc = std::allocator, N = 24>
 {
   string(Alloc &allocator = Alloc())
-    : allocator(allocator)
+    : allocator(allocator),
+      _smallbuffer(void)
   {
     init(this);
   }
   
   string(String &&other, Alloc &allocator = Alloc())
-    : allocator(allocator)
+    : allocator(allocator),
+      _smallbuffer(void)
   {
     init(this);
 
@@ -287,7 +289,7 @@ pub struct string<Alloc = std::allocator>
   u8 mut *_data;
 
   usize _capacity;
-  u8[24] _smallbuffer;
+  u8[N] _smallbuffer;
 
   allocator: Alloc;
 }

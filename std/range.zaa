@@ -10,6 +10,12 @@ pub concept Iterator
   requires<T> (T x) { ++x; };
 }
 
+pub concept RandomAccessIterator
+{
+  requires<T> __is_match<Iterator, T>;
+  requires<T> (T x, T y) { y - x; };
+}
+
 pub concept Sentinal<I>
 {
   requires<T> (T x, I y) { y == x; };

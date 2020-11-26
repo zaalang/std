@@ -3,7 +3,9 @@
 //
 
 import std.stdlib : assert;
-import std.range : Sentinal, Range;
+import std.type;
+import std.tuple;
+import std.range : Iterator, RandomAccessIterator, Sentinal, Range;
 
 pub fn swap<T>(T mut &a, T mut &b)
 {
@@ -61,3 +63,58 @@ pub fn copy_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
   
   return dst;
 }
+
+pub const fn min<T>(T &&a, T &&b)
+  where !__is_arithmetic<T>
+{
+  return (b < a) ? &b : &a;
+}
+
+pub const fn max<T>(T &&a, T &&b)
+  where !__is_arithmetic<T>
+{
+  return (a < b) ? &b : &a;
+}
+
+pub const fn min<Args>(Args & ...args)
+  where __tuple_len<Args> > 2 && std::is_all_same<Args>
+{
+  var &result = args.0;
+  #for(const k = 1; k < __tuple_len<Args>; ++k)
+  {
+    if (args.k < result)
+      &result = &args.k;
+  }
+
+  return &result;
+}
+
+pub const fn max<Args>(Args & ...args)
+  where __tuple_len<Args> > 2 && std::is_all_same<Args>
+{
+  var &result = args.0;
+  #for(const k = 1; k < __tuple_len<Args>; ++k)
+  {
+    if (result < args.k)
+      &result = &args.k;
+  }
+
+  return &result;
+}
+
+pub const less = fn (var &x, var &y) -> bool { return x < y; };
+pub const greater = fn (var &x, var &y) -> bool { return x > y; };
+
+pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less)
+  where __is_match<RandomAccessIterator, I>
+{
+  for(var i = first; i != last; ++i)
+  {
+    for(var j = first; j != i; ++j)
+    {
+      if (cmp(*i, *j))
+        std::swap(*i, *j);
+    }
+  }
+}
+
