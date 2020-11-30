@@ -202,19 +202,22 @@ pub struct list<T, Alloc = std::allocator>
     return &cast<Node&&>(*this._root.prev).value;
   }
 
-  pub fn push_front(this mut &, T &&value) -> T mut &
+  pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
+    match (Args args) { T(args...); }
   {
-    return &add_node(this, this.begin.cursor, &&value).value;
+    return &add_node(this, this.begin.cursor, &&args...).value;
   }
 
-  pub fn push_back(this mut &, T &&value) -> T mut &
+  pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
+    match (Args args) { T(args...); }
   {
-    return &add_node(this, this.end.cursor, &&value).value;
+    return &add_node(this, this.end.cursor, &&args...).value;
   }
 
-  pub fn insert(this mut &, Iterator position, T &&value) -> iterator
+  pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
+    match (Args args) { T(args...); }
   {
-    return iterator(add_node(this, position.cursor, &&value));
+    return iterator(add_node(this, position.cursor, &&args...));
   }
 
   pub fn insert(this mut &, Iterator position, Range<T> &&other) -> iterator
@@ -290,11 +293,6 @@ pub struct list<T, Alloc = std::allocator>
     return iterator(node);
   }
 
-  pub fn emplace<Args>(this mut &, Iterator position, Args && ...args) -> iterator
-  {
-    return iterator(add_node(this, position.cursor, &&args...));
-  }
-  
   pub fn pop_front(this mut &) -> void
   {
     assert(!this.empty);

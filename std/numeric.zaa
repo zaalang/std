@@ -127,25 +127,25 @@ pub struct F64
   const is_integer = false;
 }
 
-pub const fn is_nan<T>(T x)
+pub const fn is_nan<T>(T x) -> bool
   where __is_floating_point<T>
 {
   return __is_nan(x);
 }
 
-pub const fn is_infinite<T>(T x)
+pub const fn is_infinite<T>(T x) -> bool
   where __is_floating_point<T>
 {
   return !__is_nan(x) && !__is_finite(x);
 }
 
-pub const fn is_finite<T>(T x)
+pub const fn is_finite<T>(T x) -> bool
   where __is_floating_point<T>
 {
   return __is_finite(x);
 }
 
-pub const fn is_normal<T>(T x)
+pub const fn is_normal<T>(T x) -> bool
   where __is_floating_point<T>
 {
   return __is_normal(x);
@@ -181,5 +181,5 @@ pub struct numeric_traits<T>
     using type_traits = F64;
   #else
     using type_traits = T::numeric_traits;
-  #endif    
+  #end
 }
