@@ -1,0 +1,91 @@
+//
+// std iterator
+//
+
+import std.stdlib;
+
+pub concept Iterator
+{
+  requires<T> (T x) { *x; };
+  requires<T> (T x) { ++x; };
+}
+
+pub concept RandomAccessIterator
+{
+  requires<T> __is_match<Iterator, T>;
+  requires<T> (T x, T y) { y - x; };
+}
+
+pub concept Sentinal<I>
+{
+  requires<T> (T x, I y) { y == x; };
+}
+
+pub struct move_iterator<I>
+{
+  I base;
+
+  move_iterator(I base)
+    : base(base)
+  {
+  }
+
+  move_iterator() = default;
+  move_iterator(move_iterator &&) = default;
+  fn =(move_iterator mut &, move_iterator &) -> move_iterator mut & = default;
+  ~move_iterator() = default;
+
+  fn *(move_iterator &&this)
+  {
+    return &std::move(*this.base);
+  }
+
+  fn ++(move_iterator mut &this) -> move_iterator mut &
+  {
+    ++this.base;
+    return &this;
+  }
+
+  fn --(move_iterator mut &this) -> move_iterator mut &
+  {
+    --this.base;
+    return &this;
+  }
+}
+
+pub fn ==<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> bool
+{
+  return lhs.base == rhs.base;
+}
+
+pub fn -<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> usize
+  where requires (I i, J j) { i - j; }
+{
+  return lhs.base - rhs.base;
+}
+
+pub struct iterator_pair<I, J>
+{
+  I first;
+  J second;
+
+  iterator_pair(I first, J second)
+    : first(first), second(second)
+  {
+  }
+
+  iterator_pair() = default;
+  iterator_pair(iterator_pair &&) = default;
+  fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
+  ~iterator_pair() = default;
+
+  fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  fn end(this &&)
+  {
+    return this.second;
+  }
+}

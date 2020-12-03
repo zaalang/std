@@ -1,0 +1,458 @@
+//
+// std vector
+//
+
+import std.alloc;
+import std.stdlib : assert;
+import std.algorithm : swap, move, move_backward;
+import std.range : Sentinal, Range;
+import std.type : as_const;
+
+pub struct vector<T, Alloc = std::allocator, N = 0>
+{
+  const is_owning_container = true;
+
+  vector(Alloc &allocator = Alloc())
+    : allocator(allocator),
+      _smallbuffer(void)
+  {
+    init(this);
+  }
+
+  vector<M>(vector<T, Alloc, M> &&other, Alloc &allocator = Alloc())
+    : allocator(allocator),
+      _smallbuffer(void)
+  {
+    init(this);
+
+    #if (__is_rvalue<typeof(other)>)
+      take(this, other);
+    #else
+      insert(this, this.end, &&other);
+  }
+
+  pub fn =<M>(this mut &, vector<T, Alloc, M> &&other) -> vector mut &
+  {
+    if (&this == &other)
+      return &this;
+
+    clear(this);
+
+    #if (__is_rvalue<typeof(other)>)
+      take(this, other);
+    #else
+      insert(this, this.end, &&other);
+
+    return &this;
+  }
+
+  pub fn with_size(usize size, Alloc &allocator = Alloc()) -> vector
+  {
+    var result = vector(allocator);
+
+    result.resize(size);
+
+    return result;
+  }
+
+  pub fn with_capacity(usize capacity, Alloc &allocator = Alloc()) -> vector
+  {
+    var result = vector(allocator);
+
+    result.reserve(capacity);
+
+    return result;
+  }
+
+  pub fn from(Range<T> &&other, Alloc &allocator = Alloc()) -> vector
+  {
+    var result = vector(allocator);
+
+    result.insert(result.end, &&other);
+
+    return result;
+  }
+
+  ~vector()
+  {
+    clear(this);
+
+    if (this._data != cast(this._smallbuffer.data))
+      this.allocator.free(this._data, this._capacity * sizeof<T>);
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this._len == 0;
+  }
+
+  pub fn capacity(this &) -> usize
+  {
+    return this._capacity;
+  }
+
+  pub fn data(this &&)
+  {
+    return this._data;
+  }
+
+  pub fn begin(this mut &) -> iterator
+  {
+    return iterator(this._data);
+  }
+
+  pub fn end(this mut &) -> iterator
+  {
+    return iterator(this._data + this._len);
+  }
+
+  pub fn begin(this &) -> const_iterator
+  {
+    return const_iterator(this._data);
+  }
+
+  pub fn end(this &) -> const_iterator
+  {
+    return const_iterator(this._data + this._len);
+  }
+
+  pub struct iterator
+  {
+    iterator() = default;
+    iterator(iterator&) = default;
+    fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    ~iterator() = default;
+
+    iterator(T mut *item)
+      : cursor(item)
+    {
+    }
+
+    fn ==(iterator &lhs, iterator &rhs) -> bool
+    {
+      return lhs.cursor == rhs.cursor;
+    }
+
+    fn *(iterator &this) -> T&
+    {
+      return &*this.cursor;
+    }
+
+    fn *(iterator mut &this) -> T mut &
+    {
+      return &*this.cursor;
+    }
+
+    fn ++(iterator mut &this) -> iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    fn --(iterator mut &this) -> iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    T mut *cursor;
+  }
+
+  pub struct const_iterator
+  {
+    const_iterator() = default;
+    const_iterator(const_iterator&) = default;
+    fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
+    ~const_iterator() = default;
+
+    const_iterator(T *item)
+      : cursor(item)
+    {
+    }
+
+    const_iterator(iterator other)
+      : cursor(other.cursor)
+    {
+    }
+
+    fn ==(const_iterator &lhs, const_iterator &rhs) -> bool
+    {
+      return lhs.cursor == rhs.cursor;
+    }
+
+    fn *(const_iterator &this) -> T&
+    {
+      return &*this.cursor;
+    }
+
+    fn ++(const_iterator mut &this) -> const_iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    fn --(const_iterator mut &this) -> const_iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    T *cursor;
+  }
+  
+  pub concept Iterator
+  {
+    requires<T> __is_same<T, iterator> || __is_same<T, const_iterator>;
+  }
+
+  fn ==(Iterator &lhs, Iterator &rhs) -> bool
+  {
+    return lhs.cursor == rhs.cursor;
+  }
+
+  pub fn front(this &&)
+  {
+    assert(!this.empty);
+
+    return &*this._data;
+  }
+
+  pub fn back(this &&)
+  {
+    assert(!this.empty);
+
+    return &*(this._data + this._len);
+  }
+
+  pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
+    match (Args args) { T(args...); }
+  {
+    return &*add_item(this, this.begin.cursor, &&args...);
+  }
+
+  pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
+    match (Args args) { T(args...); }
+  {
+    return &*add_item(this, this.end.cursor, &&args...);
+  }
+
+  pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
+    match (Args args) { T(args...); }
+  {
+    return iterator(add_item(this, position.cursor, &&args...));
+  }
+
+  pub fn insert(this mut &, Iterator position, Range<T> &&other) -> iterator
+  {
+    #if (__is_same<vector, typeof(other)>)
+      assert(&this != &other);
+
+    #if (__is_rvalue<typeof(other)> && (__is_array<typeof(other)> || requires { typeof(other)::is_owning_container; } && typeof(other)::is_owning_container))
+    {
+      return iterator(insert_items(this, position.cursor, std::move_iterator(other.begin), std::move_iterator(other.end), other.len));
+    }
+    #else
+    {
+      return iterator(insert_items(this, position.cursor, other.begin, other.end, other.len));
+    }
+  }
+
+  pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
+  {
+    return iterator(insert_items(this, position.cursor, first, last, std::distance(first, last)));
+  }
+
+  pub fn append(this mut &, Range<T> &&other) -> iterator
+  {
+    return insert(this, this.end, &&other);
+  }
+
+  pub fn append<I>(this mut &, I first, Sentinal<I> last) -> iterator
+  {
+    return insert(this, this.end, first, last);
+  }
+
+  pub fn pop_front(this mut &) -> void
+  {
+    assert(!this.empty);
+    
+    erase_items(this, this._data, 1);
+  }
+
+  pub fn pop_back(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    erase_items(this, this._data + this._len - 1, 1);
+  }
+  
+  pub fn erase(this mut &, Iterator position) -> iterator
+  {
+    return iterator(erase_items(this, position.cursor, 1));
+  }
+
+  pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
+  {
+    return iterator(erase_items(this, first.cursor, last.cursor - first.cursor));
+  }
+  
+  pub fn reserve(this mut &, usize capacity) -> void
+  {
+    if (this._capacity < capacity)
+    {
+      var data = cast<T mut *>(this.allocator.allocate(capacity * sizeof<T>, alignof<T>));
+
+      uninitialised_move(this, data, this._data, this._data + this._len);
+
+      swap(this._data, data);
+      swap(this._capacity, capacity);
+
+      destruct(this, data, data + this._len);
+
+      if (data != cast(this._smallbuffer.data))
+        this.allocator.free(data, capacity * sizeof<T>);
+    }
+  }
+
+  pub fn resize(this mut &, usize size) -> void
+  {
+    reserve(this, size);
+
+    while (size < this._len)
+      this.pop_back();
+
+    while (this._len < size)
+      this.push_back();
+  }
+
+  pub fn clear(this mut &) -> void
+  {
+    erase_items(this, this._data, this._len);
+  }
+  
+  fn init(this mut &)
+  {
+    this._len = 0;
+    this._data = cast(this._smallbuffer.data);
+    this._capacity = this._smallbuffer.len / sizeof<T>;
+
+    assert(cast<usize>(this._data) & (alignof<T> - 1) == 0);
+  }
+
+  fn take<M>(this mut &, vector<T, Alloc, M> mut &other)
+  {
+    assert(this.empty());
+    assert(this.allocator == other.allocator);
+
+    if (other._data != cast(other._smallbuffer.data))
+    {
+      swap(this._data, other._data);
+      swap(this._len, other._len);
+      swap(this._capacity, other._capacity);
+
+      if (other._data == cast(this._smallbuffer.data))
+        other.init();
+    }
+    else
+    {
+      insert(this, this.end, std::move(other));
+    }
+
+    swap(this.allocator, other.allocator);
+
+    other.clear();
+  }
+
+  fn ensure_capacity(this mut &, usize len) -> void
+  {
+    if (len <= this._capacity)
+      return;
+
+    if (len < 2*this._capacity)
+      len = 2*this._capacity;
+
+    reserve(this, len);
+  }
+
+  fn ensure_space(this mut &, T *position, usize len) -> T mut *
+  {
+    var index = position - this._data;
+
+    ensure_capacity(this, this._len + len);
+
+    if (index != this._len)
+    {
+      uninitialised_move(this, this._data + this._len, this._data + this._len - len, this._data + this._len);
+      move_backward(this._data + index + len, this._data + this._len, this._data + index, this._data + this._len - len);
+      destruct(this, this._data + index, this._data + index + len);
+    }
+
+    this._len += len;
+
+    return this._data + index;
+  }
+
+  fn add_item<Args>(this mut &, T *position, Args && ...args) -> T mut *
+  {
+    var item = ensure_space(this, position, 1);
+
+    construct(this, item, &&args...);
+    
+    return item;
+  }
+
+  fn insert_items<I>(this mut &, T *position, I first, Sentinal<I> last, usize count) -> T mut *
+  {
+    var item = ensure_space(this, position, count);
+
+    for(var it = item; first != last; ++it, ++first)
+      construct(this, it, *first);
+
+    return item;
+  }
+
+  fn erase_items<I>(this mut &, T *first, usize count) -> T mut *
+  {
+    var index = first - this._data;
+
+    move(this._data + index, this._data + this._len - count, this._data + index + count, this._data + this._len);
+    destruct(this, this._data + this._len - count, this._data + this._len);
+
+    this._len -= count;
+
+    return this._data + index;
+  }
+
+  fn construct<Args>(this mut &, T mut *item, Args && ...args) -> void
+  {
+    #if (__is_allocator_aware<T>)
+      new<T>(item)(&&args..., allocator: this.allocator);
+    #else
+      new<T>(item)(&&args...);
+  }
+
+  fn uninitialised_move(this mut &, T mut *dst, T mut *first, T mut *last) -> void
+  {
+    while (first != last)
+      construct(this, dst++, std::move(*first++));
+  }
+
+  fn destruct(this mut &, T mut *first, T mut *last) -> void
+  {
+    while (first != last)
+      T::~T(*first++);
+  }
+
+  usize _len;
+  T mut *_data;
+
+  usize _capacity;
+  u8[N*sizeof<T>] _smallbuffer; // NOTE: relying on alignment after a usize
+
+  allocator: Alloc;
+}

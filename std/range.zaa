@@ -3,23 +3,7 @@
 //
 
 import std.stdlib;
-
-pub concept Iterator
-{
-  requires<T> (T x) { *x; };
-  requires<T> (T x) { ++x; };
-}
-
-pub concept RandomAccessIterator
-{
-  requires<T> __is_match<Iterator, T>;
-  requires<T> (T x, T y) { y - x; };
-}
-
-pub concept Sentinal<I>
-{
-  requires<T> (T x, I y) { y == x; };
-}
+import std.iterator : Iterator, Sentinal, RandomAccessIterator;
 
 pub concept Range<U>
 {
@@ -33,14 +17,14 @@ pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
   return std::span<u8>(str.data, str.len);
 }
 
-pub fn Range<T, N>(T[N] &array) -> std::span<T>
+pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
 {
-  return std::span<T>(array.data, array.len);
+  return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
 
-pub fn Range<T, N>(T[N] mut &array) -> std::mutable_span<T>
+pub fn move<T>(std::mutable_span<T> mut &range)
 {
-  return std::mutable_span<T>(array.data, array.len);
+  return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
 
 pub fn distance<I>(I first, Sentinal<I> last) -> usize
@@ -68,4 +52,40 @@ pub fn distance<I>(I first, Sentinal<I> last) -> usize
 pub fn len<T>(Range<T> &range) -> usize
 {
   return distance(range.begin, range.end);
+}
+
+pub fn ==<T>(Range<T> &lhs, Range<T> &rhs) -> bool
+  where requires (typeof(lhs) &x, typeof(rhs) &y) { *x.begin == *y.begin; }
+{
+  if (lhs.len != rhs.len)
+    return false;
+
+  for(var i = lhs.begin, var j = rhs.begin, var end = lhs.end; i != end; ++i, ++j)
+  {
+    if (!(*i == *j))
+      return false;
+  }
+
+  return true;
+}
+
+pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
+  where requires (typeof(lhs) &x, typeof(rhs) &y) { *x.begin <=> *y.begin; }
+{
+  var i = lhs.begin;
+  var j = rhs.begin;
+
+  for(var endi = lhs.end, var endj = rhs.end; j != endj; ++i, ++j)
+  {
+    if (i == endi)
+      return -1;
+
+    if (var cmp = (*i <=> *j); cmp != 0)
+      return cmp;
+  }
+
+  if (i != lhs.end)
+    return +1;
+
+  return 0;
 }

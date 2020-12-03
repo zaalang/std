@@ -18,8 +18,6 @@ pub struct span<T>
   usize len;
   T *data;
 
-  using value_type = T;
-  
   fn begin(this&) -> T*
   { 
     return this.data;
@@ -64,8 +62,6 @@ pub struct mutable_span<T>
   usize len;
   T mut *data;
 
-  using value_type = T;
-
   fn begin(this mut &) -> T mut *
   {
     return this.data;
@@ -109,14 +105,4 @@ pub fn Span<T = u8>(typeof("") &str) -> span<T>
   where __is_same<T, u8>
 {
   return span<u8>(str.data, str.len);
-}
-
-pub fn Span<T, N>(T[N] &array) -> span<T>
-{
-  return span<T>(array.data, array.len);
-}
-
-pub fn Span<T, N>(T[N] mut &array) -> mutable_span<T>
-{
-  return mutable_span<T>(array.data, array.len);
 }

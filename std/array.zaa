@@ -4,22 +4,33 @@
 
 import std.span;
 import std.stdlib : assert;
+import std.range : Range;
 
 pub struct array<T, N> : T[N]
 {
-  array() = default;
-  array(array&) = default;
-  ~array() = default;
+  const is_owning_container = true;
 
-  array(T[N] &that)
-    : super(that)
+  array() = default;
+  array(array&&) = default;
+  fn =(this mut &, array &&) -> array mut & = default;
+
+  array(T[N] &&that)
+    : super(&&that)
   {
+  }
+
+  fn =(this mut &, T[N] &&other) -> array mut &
+  {
+    this.super = &&other;
+    return &this;
   }
 
   fn with_size(#usize size) -> array<T, size>
   {
     return array<T, size>();
   }
+
+  ~array() = default;
 
   fn [](this&, (usize, usize) range) -> std::span<T>
   {

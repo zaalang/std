@@ -10,6 +10,8 @@ import std.type : as_const;
 
 pub struct list<T, Alloc = std::allocator>
 {
+  const is_owning_container = true;
+
   list(Alloc &allocator = Alloc())
     : allocator(allocator)
   {
@@ -21,36 +23,31 @@ pub struct list<T, Alloc = std::allocator>
   {
     init(this);
 
-    #if (__is_rvalue<typeof(other)>)
-    {
-      swap(this, other);
-    }
-    #else
-    {
-      this.insert(this.end, other.begin, other.end);
-    }
+    insert(this, this.end, &&other);
   }
 
-  fn =(this mut &, list &&other) -> list mut &
+  pub fn =(this mut &, list &&other) -> list mut &
   {
     if (&this == &other)
       return &this;
 
-    #if (__is_rvalue<typeof(other)>)
-    {
-      swap(this, other);
-    }
-    #else
-    {
-      clear(this);
+    clear(this);
 
-      this.insert(this.end, other.begin, other.end);
-    }
+    insert(this, this.end, &&other);
 
     return &this;
   }
 
-  fn from(Range<T> &&other, Alloc &allocator = Alloc()) -> list
+  pub fn with_size(usize size, Alloc &allocator = Alloc()) -> list
+  {
+    var result = list(allocator);
+
+    result.resize(size);
+
+    return result;
+  }
+
+  pub fn from(Range<T> &&other, Alloc &allocator = Alloc()) -> list
   {
     var result = list(allocator);
 
@@ -121,13 +118,13 @@ pub struct list<T, Alloc = std::allocator>
       return &cast<Node mut *>(this.cursor).value;
     }
 
-    fn ++(iterator mut &this) -> iterator &
+    fn ++(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
-    fn --(iterator mut &this) -> iterator &
+    fn --(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.prev;
       return &this;
@@ -163,13 +160,13 @@ pub struct list<T, Alloc = std::allocator>
       return &cast<Node*>(this.cursor).value;
     }
 
-    fn ++(const_iterator mut &this) -> const_iterator &
+    fn ++(const_iterator mut &this) -> const_iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
-    fn --(const_iterator mut &this) -> const_iterator &
+    fn --(const_iterator mut &this) -> const_iterator mut &
     {
       this.cursor = this.cursor.prev;
       return &this;
@@ -226,10 +223,10 @@ pub struct list<T, Alloc = std::allocator>
     {
       return this.splice(position, other);
     }
-    //#else if (__is_rvalue<typeof(other)>) // TODO
-    //{
-    //  return this.insert(position, std::move_iterator(other.begin), std::move_iterator(other.end));
-    //}
+    #else if (__is_rvalue<typeof(other)> && (__is_array<typeof(other)> || requires { typeof(other)::is_owning_container; } && typeof(other)::is_owning_container))
+    {
+      return this.insert(position, std::move_iterator(other.begin), std::move_iterator(other.end));
+    }
     #else
     {
       return this.insert(position, other.begin, other.end);
@@ -251,8 +248,19 @@ pub struct list<T, Alloc = std::allocator>
     return iterator(node);
   }
 
+  pub fn append(this mut &, Range<T> &&other) -> iterator
+  {
+    return insert(this, this.end, &&other);
+  }
+
+  pub fn append<I>(this mut &, I first, Sentinal<I> last) -> iterator
+  {
+    return insert(this, this.end, first, last);
+  }
+
   pub fn splice(this mut &, Iterator position, list mut &other) -> iterator
   {
+    assert(&this != &other);
     assert(this.allocator == other.allocator);
 
     var node = cast<Node mut *>(position.cursor);
@@ -321,7 +329,16 @@ pub struct list<T, Alloc = std::allocator>
   
     return iterator(node);
   }
-  
+
+  pub fn resize(this mut &, usize size) -> void
+  {
+    while (size < this._len)
+      this.pop_back();
+
+    while (this._len < size)
+      this.push_back();
+  }
+
   pub fn clear(this mut &) -> void
   {
     while (var current = this._root.next; current != &this._root)
@@ -364,21 +381,6 @@ pub struct list<T, Alloc = std::allocator>
     this._root.next = this._root.prev = &this._root;
   }
 
-  fn swap(this mut &, list mut &other)
-  {
-    assert(this.allocator == other.allocator);
-
-    this._root.next.prev = this._root.prev.next = &other._root;
-    other._root.next.prev = other._root.prev.next = &this._root;
-
-    swap(this._root.prev, other._root.prev);
-    swap(this._root.next, other._root.next);
-
-    swap(this._len, other._len);
-
-    swap(this.allocator, other.allocator);
-  }
-
   fn add_node<Args>(this mut &, Link *position, Args && ...args) -> Node mut *
   {
     var node = new<Node>(this.allocator.allocate(sizeof<Node>, alignof<Node>));
@@ -397,7 +399,7 @@ pub struct list<T, Alloc = std::allocator>
     return node;
   }
 
-  fn transfer_nodes(this mut &, Link *position, list mut &other, Link *first, Link *last, usize len) -> Node mut *
+  fn transfer_nodes(this mut &, Link *position, list mut &other, Link *first, Link *last, usize count) -> Node mut *
   {
     var node = cast<Node mut *>(first);
     var last = cast<Link mut *>(last.prev);
@@ -410,8 +412,8 @@ pub struct list<T, Alloc = std::allocator>
     last.next.prev = last;
     node.prev.next = node;
 
-    this._len += len;
-    other._len -= len;
+    this._len += count;
+    other._len -= count;
 
     return node;
   }
@@ -433,7 +435,7 @@ pub struct list<T, Alloc = std::allocator>
     
     return nextnode;
   }
-  
+
   Link _root;
   usize _len;
 

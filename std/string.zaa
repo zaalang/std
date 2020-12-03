@@ -64,13 +64,9 @@ pub struct string<Alloc = std::allocator, N = 24>
     init(this);
 
     #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
-    {
       swap(this, other);
-    }
     #else
-    {
       this.write(other.data, other.len);
-    }
   }
 
   fn =(this mut &, String &&other) -> string mut &
@@ -82,16 +78,12 @@ pub struct string<Alloc = std::allocator, N = 24>
       return &this;
     }
 
-    #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
-    {
-      swap(this, other);
-    }
-    #else
-    {
-      clear(this);
+    clear(this);
 
+    #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
+      swap(this, other);
+    #else
       this.write(other.data, other.len);
-    }
 
     return &this;
   }
@@ -274,7 +266,7 @@ pub struct string<Alloc = std::allocator, N = 24>
     swap(this.allocator, other.allocator);
   }
 
-  fn ensure_capacity(this mut &, usize len)
+  fn ensure_capacity(this mut &, usize len) -> void
   {
     if (len <= this._capacity)
       return;

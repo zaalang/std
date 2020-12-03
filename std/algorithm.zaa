@@ -50,6 +50,18 @@ pub fn copy<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
   return dst;
 }
 
+pub fn copy_backward<O, I>(Sentinal<O> dst, O end, Sentinal<I> first, I last) -> O
+{
+  while (first != last)
+  {
+    assert(end != dst);
+
+    *--end = *--last;
+  }
+
+  return end;
+}
+
 pub fn copy_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
 {
   while (n > 0)
@@ -61,6 +73,44 @@ pub fn copy_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
     --n;
   }
   
+  return dst;
+}
+
+pub fn move<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
+{
+  while (first != last)
+  {
+    assert(dst != end);
+
+    *dst++ = std::move(*first++);
+  }
+
+  return dst;
+}
+
+pub fn move_backward<O, I>(Sentinal<O> dst, O end, Sentinal<I> first, I last) -> O
+{
+  while (first != last)
+  {
+    assert(end != dst);
+
+    *--end = std::move(*--last);
+  }
+
+  return end;
+}
+
+pub fn move_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
+{
+  while (n > 0)
+  {
+    assert(dst != end);
+
+    *dst++ = std::move(*first++);
+
+    --n;
+  }
+
   return dst;
 }
 
