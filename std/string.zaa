@@ -63,8 +63,8 @@ pub struct string<Alloc = std::allocator, N = 24>
   {
     init(this);
 
-    #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
-      swap(this, other);
+    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
+      take(this, other);
     #else
       this.write(other.data, other.len);
   }
@@ -80,8 +80,8 @@ pub struct string<Alloc = std::allocator, N = 24>
 
     clear(this);
 
-    #if (__is_same<string, typeof(other)> && __is_rvalue<typeof(other)>)
-      swap(this, other);
+    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
+      take(this, other);
     #else
       this.write(other.data, other.len);
 
@@ -151,6 +151,13 @@ pub struct string<Alloc = std::allocator, N = 24>
   pub fn end(this &) -> u8*
   {
     return this._data + this._len;
+  }
+
+  pub fn [](this &, (usize, usize) range) -> string_view
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+
+    return string_view(this.data + range.0, this.data + range.1);
   }
 
   pub fn reserve(this mut &, usize capacity) -> void
@@ -234,38 +241,6 @@ pub struct string<Alloc = std::allocator, N = 24>
     this._capacity = this._smallbuffer.len;
   } 
 
-  fn swap(this mut &, string mut &other)
-  {
-    assert(this.allocator == other.allocator);
-
-    swap(this._data, other._data);
-
-    if (this._data == other._smallbuffer.data)
-    {
-      if (other._data == this._smallbuffer.data)
-      {
-        this._data = this._smallbuffer.data;
-        other._data = other._smallbuffer.data;
-        swap(this._smallbuffer, other._smallbuffer);
-      }
-      else
-      {
-        this._data = this._smallbuffer.data;
-        memcpy(this._data, other._smallbuffer.data, other._len);
-      }
-    }
-    else if (other._data == this._smallbuffer.data)
-    {
-      other._data = other._smallbuffer.data;
-      memcpy(other._data, this._smallbuffer.data, this._len);
-    }
-
-    swap(this._len, other._len);
-    swap(this._capacity, other._capacity);
-
-    swap(this.allocator, other.allocator);
-  }
-
   fn ensure_capacity(this mut &, usize len) -> void
   {
     if (len <= this._capacity)
@@ -275,6 +250,30 @@ pub struct string<Alloc = std::allocator, N = 24>
       len = 2*this._capacity;
 
     reserve(this, len);
+  }
+
+  fn take<M>(this mut &, string<Alloc, M> mut &other) -> void
+  {
+    assert(this.empty);
+    assert(this.allocator == other.allocator);
+
+    if (other._data != other._smallbuffer.data)
+    {
+      swap(this._data, other._data);
+      swap(this._len, other._len);
+      swap(this._capacity, other._capacity);
+
+      if (other._data == this._smallbuffer.data)
+        other.init();
+    }
+    else
+    {
+      write(this, other.data, other.len);
+
+      other.clear();
+    }
+
+    swap(this.allocator, other.allocator);
   }
 
   usize _len;

@@ -6,9 +6,9 @@ import std.stdlib;
 
 pub using tuple<...T> = T;
 
-pub fn tuple<T>(T& ...elements) -> T
+pub fn tuple<T>(T&& ...elements) -> T
 {
-  return T(elements...);
+  return T(&&elements...);
 }
 
 //pub const fn tuple<T>(#T ...elements) -> T

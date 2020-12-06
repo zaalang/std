@@ -191,6 +191,13 @@ fn put<T>(OutputStream mut &os, fmt_context mut &ctx, (T...) &tuple) throws -> v
   put(os, ctx, ')');
 }
 
+fn put<T>(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws -> void
+{
+  put(os, ctx, loc.file_name);
+  put(os, ctx, ":");
+  put(os, ctx, loc.lineno);
+}
+
 fn put<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 {
   put(os, ctx, "object");

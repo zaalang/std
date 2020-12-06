@@ -31,7 +31,7 @@ pub fn assert(bool condition, String &msg = "", var &loc = std::source_location(
 {
   if (!condition)
   {
-    std::print(loc.file_name, ":", loc.lineno, ": ASSERTION FAILED: ", msg);
+    std::print(loc, ": ASSERTION FAILED: ", msg);
     abort();
   }
 }
@@ -40,7 +40,7 @@ pub fn assert(#bool condition, #std::string_literal msg = "", #var loc = #std::s
 {
   #if (!condition)
   {
-    #std::print(loc.file_name, ":", loc.lineno, ": ASSERTION FAILED: ", msg);
+    #std::print(loc, ": ASSERTION FAILED: ", msg);
     #abort();
   }
 }

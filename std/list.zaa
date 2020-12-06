@@ -219,7 +219,7 @@ pub struct list<T, Alloc = std::allocator>
 
   pub fn insert(this mut &, Iterator position, Range<T> &&other) -> iterator
   {
-    #if (__is_same<list, typeof(other)> && __is_rvalue<typeof(other)>)
+    #if (__is_rvalue<typeof(other)> && __is_same<list, typeof(other)>)
     {
       return this.splice(position, other);
     }
@@ -267,7 +267,7 @@ pub struct list<T, Alloc = std::allocator>
 
     if (other.len != 0)
     {
-      node = transfer_nodes(this, position.cursor, other, other.begin.cursor, other.end.cursor, other.len);
+      node = take_nodes(this, position.cursor, other, other.begin.cursor, other.end.cursor, other.len);
     }
 
     return iterator(node);
@@ -281,7 +281,7 @@ pub struct list<T, Alloc = std::allocator>
 
     if (first != other.end)
     {
-      node = transfer_nodes(this, position.cursor, other, first.cursor, first.cursor.next, 1);
+      node = take_nodes(this, position.cursor, other, first.cursor, first.cursor.next, 1);
     }
 
     return iterator(node);
@@ -295,7 +295,7 @@ pub struct list<T, Alloc = std::allocator>
 
     if (first != last)
     {
-      node = transfer_nodes(this, position.cursor, other, first.cursor, last.cursor, std::distance(first, last));
+      node = take_nodes(this, position.cursor, other, first.cursor, last.cursor, std::distance(first, last));
     }
 
     return iterator(node);
@@ -305,29 +305,24 @@ pub struct list<T, Alloc = std::allocator>
   {
     assert(!this.empty);
     
-    erase_node(this, this._root.next);
+    erase_nodes(this, this._root.next, this._root.next.next);
   }
 
   pub fn pop_back(this mut &) -> void
   {
     assert(!this.empty);
 
-    erase_node(this, this._root.prev);
+    erase_nodes(this, this._root.prev, this._root.prev.next);
   }
   
   pub fn erase(this mut &, Iterator position) -> iterator
   {
-    return iterator(erase_node(this, position.cursor));
+    return iterator(erase_nodes(this, position.cursor, position.cursor.next));
   }
 
   pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
   {
-    var node = cast<Node mut *>(first.cursor);
-    
-    while(node != last.cursor)
-      node = erase_node(this, node);
-  
-    return iterator(node);
+    return iterator(erase_nodes(this, first.cursor, last.cursor));
   }
 
   pub fn resize(this mut &, usize size) -> void
@@ -341,17 +336,7 @@ pub struct list<T, Alloc = std::allocator>
 
   pub fn clear(this mut &) -> void
   {
-    while (var current = this._root.next; current != &this._root)
-    {
-      var node = cast<Node mut *>(current);
-
-      current = current.next;
-
-      T::~T(node.value);
-      this.allocator.free(node, sizeof<Node>);
-    }
-      
-    init(this);
+    erase_nodes(this, this._root.next, &this._root);
   }
   
   struct Link
@@ -399,7 +384,7 @@ pub struct list<T, Alloc = std::allocator>
     return node;
   }
 
-  fn transfer_nodes(this mut &, Link *position, list mut &other, Link *first, Link *last, usize count) -> Node mut *
+  fn take_nodes(this mut &, Link *position, list mut &other, Link *first, Link *last, usize count) -> Node mut *
   {
     var node = cast<Node mut *>(first);
     var last = cast<Link mut *>(last.prev);
@@ -418,22 +403,30 @@ pub struct list<T, Alloc = std::allocator>
     return node;
   }
 
-  fn erase_node(this mut &, Link *position) -> Node mut *
+  fn erase_nodes(this mut &, Link *first, Link *last) -> Node mut *
   {
-    assert(position != &this._root);
+    var count = 0;
+    var node = cast<Node mut *>(first);
+    var prev = cast<Link mut *>(first.prev);
+    var last = cast<Link mut *>(last);
 
-    var node = cast<Node mut *>(position);
-    var nextnode = cast<Node mut *>(position.next);
+    while (node != last)
+    {
+      var next = cast<Node mut *>(node.next);
 
-    node.prev.next = node.next;
-    node.next.prev = node.prev;
+      T::~T(node.value);
+      this.allocator.free(node, sizeof<Node>);
 
-    T::~T(node.value);
-    this.allocator.free(node, sizeof<Node>);
-    
-    this._len -= 1;
-    
-    return nextnode;
+      count += 1;
+      node = next;
+    }
+
+    prev.next = last;
+    last.prev = prev;
+
+    this._len -= count;
+
+    return node;
   }
 
   Link _root;
