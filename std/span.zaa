@@ -38,18 +38,18 @@ pub struct span<T>
   {
   }
 
-  fn [](this&, usize index) -> T&
+  fn [](this &, usize index) -> T&
   {
     assert(index < this.len);
 
     return &*(this.data + index);
   }
 
-  fn [](this&, (usize, usize) range) -> span
+  fn [](this &, (usize, usize) range) -> span
   {
     assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
 
-    return span<T>(this.data + range.0, this.data + range.1);
+    return span(this.data + range.0, this.data + range.1);
   }
 
   span(span &that) = default;
@@ -62,12 +62,12 @@ pub struct mutable_span<T>
   usize len;
   T mut *data;
 
-  fn begin(this mut &) -> T mut *
+  fn begin(this &&)
   {
     return this.data;
   }
 
-  fn end(this mut &) -> T mut *
+  fn end(this &&)
   {
     return this.data + this.len;
   }
@@ -82,14 +82,21 @@ pub struct mutable_span<T>
   {
   }
 
-  fn [](this mut &, usize index) -> T mut &
+  fn [](this &&, usize index)
   {
     assert(index < this.len);
 
     return &*(this.data + index);
   }
 
-  fn [](this mut &, (usize, usize) range) -> mutable_span
+  fn [](this &, (usize, usize) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+
+    return span(this.data + range.0, this.data + range.1);
+  }
+
+  fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 

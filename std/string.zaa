@@ -3,10 +3,10 @@
 //
 
 import std.span;
-import std.alloc;
 import std.stdlib : assert;
 import std.algorithm : swap;
 import std.memory : memcpy, memmove;
+import std.range: Range;
 import std.fmt;
 
 pub concept String
@@ -48,23 +48,23 @@ pub fn String(string_literal &str) -> string_view
   return string_view(str.data, str.len);
 }
 
-pub struct string<Alloc = std::allocator, N = 24>
+pub struct string<Allocator = std::allocator, N = 24>
 {
-  string(Alloc &allocator = Alloc())
+  string(Allocator &allocator = Allocator())
     : allocator(allocator),
       _smallbuffer(void)
   {
     init(this);
   }
   
-  string(String &&other, Alloc &allocator = Alloc())
+  string(String &&other, Allocator &allocator = Allocator())
     : allocator(allocator),
       _smallbuffer(void)
   {
     init(this);
 
     #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
-      take(this, other);
+      this.take(other);
     #else
       this.write(other.data, other.len);
   }
@@ -81,14 +81,14 @@ pub struct string<Alloc = std::allocator, N = 24>
     clear(this);
 
     #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
-      take(this, other);
+      this.take(other);
     #else
       this.write(other.data, other.len);
 
     return &this;
   }
 
-  pub fn with_capacity(usize capacity, Alloc &allocator = Alloc()) -> string
+  pub fn with_capacity(usize capacity, Allocator &allocator = Allocator()) -> string
   {
     var result = string(allocator);
 
@@ -97,12 +97,12 @@ pub struct string<Alloc = std::allocator, N = 24>
     return result;
   }
 
-  pub fn from_utf8(u8 *data, usize len, Alloc &allocator = Alloc()) -> string
+  pub fn from_utf8(u8 *data, usize len, Allocator &allocator = Allocator()) -> string
   {
     return string(string_view(data, len), allocator);
   }
 
-  pub fn from_utf8(u8 *beg, u8 *end, Alloc &allocator = Alloc()) -> string
+  pub fn from_utf8(u8 *beg, u8 *end, Allocator &allocator = Allocator()) -> string
   {
     return string(string_view(beg, end), allocator);
   }
@@ -133,24 +133,11 @@ pub struct string<Alloc = std::allocator, N = 24>
     return this._data;
   }
 
-  pub fn begin(this mut &) -> u8 mut *
+  pub fn [](this &&, usize index)
   {
-    return this._data;
-  }
+    assert(index < this.len);
 
-  pub fn end(this mut &) -> u8 mut *
-  {
-    return this._data + this._len;
-  }
-
-  pub fn begin(this &) -> u8*
-  {
-    return this._data;
-  }
-
-  pub fn end(this &) -> u8*
-  {
-    return this._data + this._len;
+    return &*(this.data + index);
   }
 
   pub fn [](this &, (usize, usize) range) -> string_view
@@ -158,6 +145,16 @@ pub struct string<Alloc = std::allocator, N = 24>
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return string_view(this.data + range.0, this.data + range.1);
+  }
+
+  pub fn begin(this &&)
+  {
+    return this._data;
+  }
+
+  pub fn end(this &&)
+  {
+    return this._data + this._len;
   }
 
   pub fn reserve(this mut &, usize capacity) -> void
@@ -252,7 +249,7 @@ pub struct string<Alloc = std::allocator, N = 24>
     reserve(this, len);
   }
 
-  fn take<M>(this mut &, string<Alloc, M> mut &other) -> void
+  fn take<M>(this mut &, string<Allocator, M> mut &other) -> void
   {
     assert(this.empty);
     assert(this.allocator == other.allocator);
@@ -272,8 +269,6 @@ pub struct string<Alloc = std::allocator, N = 24>
 
       other.clear();
     }
-
-    swap(this.allocator, other.allocator);
   }
 
   usize _len;
@@ -282,7 +277,7 @@ pub struct string<Alloc = std::allocator, N = 24>
   usize _capacity;
   u8[N] _smallbuffer;
 
-  allocator: Alloc;
+  Allocator allocator;
 }
 
 pub fn sprint(string mut &str, var & ...args) -> usize
@@ -305,4 +300,3 @@ pub fn sprintf(string mut &str, #std::string_literal format, var & ...args) -> u
 
   return str.appendf(format, args...);
 }
-

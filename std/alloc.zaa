@@ -22,7 +22,7 @@ pub struct allocator
   allocator(allocator&) = default;
   fn =(allocator mut &, allocator&) -> allocator mut & = default;
   ~allocator() = default;
-  
+
   pub fn allocate(this mut &, usize size, usize alignment) -> void mut *
   {
     var memory = mem_alloc(size);
@@ -32,13 +32,13 @@ pub struct allocator
 
     return memory.addr;
   }
-  
+
   pub fn free(this mut &, void *addr, usize size) -> void
   {
     mem_free(addr);
   }
 
-  pub fn ==(this &, allocator &rhs) -> bool
+  pub fn ==(this &, allocator &) -> bool
   {
     return true;
   }

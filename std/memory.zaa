@@ -1,6 +1,9 @@
 //
-// std memocy
+// std memory
 //
+
+import std.alloc;
+import std.stdlib;
 
 pub fn bit_cast<T, U>(U &value) -> T
 {

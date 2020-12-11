@@ -2,23 +2,21 @@
 // std list
 //
 
-import std.alloc;
+import std.memory;
 import std.stdlib : assert;
 import std.algorithm : swap;
 import std.range : Sentinal, Range;
 import std.type : as_const;
 
-pub struct list<T, Alloc = std::allocator>
+pub struct list<T, Allocator = std::allocator>
 {
-  const is_owning_container = true;
-
-  list(Alloc &allocator = Alloc())
+  list(Allocator &allocator = Allocator())
     : allocator(allocator)
   {
     init(this);
   }
 
-  list(list &&other, Alloc &allocator = Alloc())
+  list(list &&other, Allocator &allocator = Allocator())
     : allocator(allocator)
   {
     init(this);
@@ -38,7 +36,7 @@ pub struct list<T, Alloc = std::allocator>
     return &this;
   }
 
-  pub fn with_size(usize size, Alloc &allocator = Alloc()) -> list
+  pub fn with_size(usize size, Allocator &allocator = Allocator()) -> list
   {
     var result = list(allocator);
 
@@ -47,7 +45,7 @@ pub struct list<T, Alloc = std::allocator>
     return result;
   }
 
-  pub fn from(Range<T> &&other, Alloc &allocator = Alloc()) -> list
+  pub fn from(Range<T> &&other, Allocator &allocator = Allocator()) -> list
   {
     var result = list(allocator);
 
@@ -71,24 +69,28 @@ pub struct list<T, Alloc = std::allocator>
     return this._len == 0;
   }
 
-  pub fn begin(this mut &) -> iterator
+  pub fn begin(this &&)
   {
-    return iterator(this._root.next);
+    #if (__is_const<typeof(this)>)
+      return const_iterator(this._root.next);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(this._root.next);
+
+    #else
+      return iterator(this._root.next);
   }
 
-  pub fn end(this mut &) -> iterator
+  pub fn end(this &&)
   {
-    return iterator(&this._root);
-  }
+    #if (__is_const<typeof(this)>)
+      return const_iterator(&this._root);
 
-  pub fn begin(this &) -> const_iterator
-  {
-    return const_iterator(this._root.next);
-  }
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(&this._root);
 
-  pub fn end(this &) -> const_iterator
-  {
-    return const_iterator(&this._root);
+    #else
+      return iterator(&this._root);
   }
 
   pub struct iterator
@@ -101,11 +103,6 @@ pub struct list<T, Alloc = std::allocator>
     iterator(Link mut *node)
       : cursor(node)
     {
-    }
-
-    fn ==(iterator &lhs, iterator &rhs) -> bool
-    {
-      return lhs.cursor == rhs.cursor;
     }
 
     fn *(iterator &this) -> T&
@@ -133,6 +130,43 @@ pub struct list<T, Alloc = std::allocator>
     Link mut *cursor;
   }
 
+  pub struct move_iterator
+  {
+    move_iterator() = default;
+    move_iterator(move_iterator&) = default;
+    fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
+    ~move_iterator() = default;
+
+    move_iterator(Link mut *node)
+      : cursor(node)
+    {
+    }
+
+    fn *(move_iterator &this) -> T&
+    {
+      return &cast<Node*>(this.cursor).value;
+    }
+
+    fn *(move_iterator mut &this) -> T mut &
+    {
+      return &std::move(cast<Node mut *>(this.cursor).value);
+    }
+
+    fn ++(move_iterator mut &this) -> move_iterator mut &
+    {
+      this.cursor = this.cursor.next;
+      return &this;
+    }
+
+    fn --(move_iterator mut &this) -> move_iterator mut &
+    {
+      this.cursor = this.cursor.prev;
+      return &this;
+    }
+
+    Link mut *cursor;
+  }
+
   pub struct const_iterator
   {
     const_iterator() = default;
@@ -148,11 +182,6 @@ pub struct list<T, Alloc = std::allocator>
     const_iterator(iterator other)
       : cursor(other.cursor)
     {
-    }
-
-    fn ==(const_iterator &lhs, const_iterator &rhs) -> bool
-    {
-      return lhs.cursor == rhs.cursor;
     }
 
     fn *(const_iterator &this) -> T&
@@ -177,10 +206,10 @@ pub struct list<T, Alloc = std::allocator>
   
   pub concept Iterator
   {
-    requires<T> __is_same<T, iterator> || __is_same<T, const_iterator>;
+    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
   }
 
-  fn ==(Iterator &lhs, Iterator &rhs) -> bool
+  pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
   {
     return lhs.cursor == rhs.cursor;
   }
@@ -200,19 +229,19 @@ pub struct list<T, Alloc = std::allocator>
   }
 
   pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(args...); }
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     return &add_node(this, this.begin.cursor, &&args...).value;
   }
 
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(args...); }
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     return &add_node(this, this.end.cursor, &&args...).value;
   }
 
   pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
-    match (Args args) { T(args...); }
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     return iterator(add_node(this, position.cursor, &&args...));
   }
@@ -223,14 +252,13 @@ pub struct list<T, Alloc = std::allocator>
     {
       return this.splice(position, other);
     }
-    #else if (__is_rvalue<typeof(other)> && (__is_array<typeof(other)> || requires { typeof(other)::is_owning_container; } && typeof(other)::is_owning_container))
+
+    #if (__is_rvalue<typeof(other)> && __is_array<typeof(other)>)
     {
       return this.insert(position, std::move_iterator(other.begin), std::move_iterator(other.end));
     }
-    #else
-    {
-      return this.insert(position, other.begin, other.end);
-    }
+
+    return this.insert(position, (&&other).begin, (&&other).end);
   }
 
   pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
@@ -370,10 +398,7 @@ pub struct list<T, Alloc = std::allocator>
   {
     var node = new<Node>(this.allocator.allocate(sizeof<Node>, alignof<Node>));
 
-    #if (__is_allocator_aware<T>)
-      new<T>(&node.value)(&&args..., allocator: this.allocator);
-    #else
-      new<T>(&node.value)(&&args...);
+    new<T>(&node.value)(&&args..., allocator?: this.allocator);
 
     node.next = cast(position);
     node.prev = cast(position.prev);
@@ -432,5 +457,5 @@ pub struct list<T, Alloc = std::allocator>
   Link _root;
   usize _len;
 
-  allocator: Alloc;
+  Allocator allocator;
 }

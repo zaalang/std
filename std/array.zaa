@@ -5,11 +5,11 @@
 import std.span;
 import std.stdlib : assert;
 import std.range : Range;
+import std.span : span, mutable_span;
+import std.type : as_const;
 
 pub struct array<T, N> : T[N]
 {
-  const is_owning_container = true;
-
   array() = default;
   array(array&&) = default;
   fn =(this mut &, array &&) -> array mut & = default;
@@ -32,17 +32,174 @@ pub struct array<T, N> : T[N]
 
   ~array() = default;
 
-  fn [](this&, (usize, usize) range) -> std::span<T>
+  pub fn [](this &, (usize, usize) range) -> span<T>
   {
-    assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
-    return std::span<T>(this.data + range.0, this.data + range.1);
+    return span(this.data + range.0, this.data + range.1);
   }
 
-  fn [](this mut &, (usize, usize) range) -> std::mutable_span<T>
+  pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
-    assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
-    return std::mutable_span<T>(this.data + range.0, this.data + range.1);
+    return mutable_span(this.data + range.0, this.data + range.1);
+  }
+
+  pub fn begin(this &&)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(this.data);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(this.data);
+
+    #else
+      return iterator(this.data);
+  }
+
+  pub fn end(this &&)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(this.data + this.len);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(this.data + this.len);
+
+    #else
+      return iterator(this.data + this.len);
+  }
+
+  pub struct iterator
+  {
+    iterator() = default;
+    iterator(iterator&) = default;
+    fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    ~iterator() = default;
+
+    iterator(T mut *item)
+      : cursor(item)
+    {
+    }
+
+    fn *(iterator &this) -> T&
+    {
+      return &*this.cursor;
+    }
+
+    fn *(iterator mut &this) -> T mut &
+    {
+      return &*this.cursor;
+    }
+
+    fn ++(iterator mut &this) -> iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    fn --(iterator mut &this) -> iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    T mut *cursor;
+  }
+
+  pub struct move_iterator
+  {
+    move_iterator() = default;
+    move_iterator(move_iterator&) = default;
+    fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
+    ~move_iterator() = default;
+
+    move_iterator(T mut *item)
+      : cursor(item)
+    {
+    }
+
+    fn *(move_iterator &this) -> T&
+    {
+      return &*this.cursor;
+    }
+
+    fn *(move_iterator mut &this) -> T mut &
+    {
+      return &std::move(*this.cursor);
+    }
+
+    fn ++(move_iterator mut &this) -> move_iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    fn --(move_iterator mut &this) -> move_iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    T mut *cursor;
+  }
+
+  pub struct const_iterator
+  {
+    const_iterator() = default;
+    const_iterator(const_iterator&) = default;
+    fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
+    ~const_iterator() = default;
+
+    const_iterator(T *item)
+      : cursor(item)
+    {
+    }
+
+    const_iterator(iterator other)
+      : cursor(other.cursor)
+    {
+    }
+
+    fn *(const_iterator &this) -> T&
+    {
+      return &*this.cursor;
+    }
+
+    fn ++(const_iterator mut &this) -> const_iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    fn --(const_iterator mut &this) -> const_iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    T *cursor;
+  }
+
+  pub concept Iterator
+  {
+    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
+  }
+
+  pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
+  {
+    return lhs.cursor == rhs.cursor;
+  }
+
+  pub fn -(Iterator lhs, Iterator rhs) -> usize
+  {
+    return lhs.cursor - rhs.cursor;
+  }
+
+  pub fn +(Iterator lhs, usize rhs) -> typeof(lhs)
+  {
+    using Iterator = typeof(lhs);
+
+    return Iterator(lhs.cursor + rhs);
   }
 }

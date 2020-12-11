@@ -8,12 +8,14 @@ pub concept Iterator
 {
   requires<T> (T x) { *x; };
   requires<T> (T x) { ++x; };
+  requires<T> (T x, T y) { x == y; };
 }
 
 pub concept RandomAccessIterator
 {
   requires<T> __is_match<Iterator, T>;
-  requires<T> (T x, T y) { y - x; };
+  requires<T> (T x, T y) { x - y; };
+  requires<T> (T x, usize y) { x + y; };
 }
 
 pub concept Sentinal<I>
@@ -58,10 +60,16 @@ pub fn ==<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> bool
   return lhs.base == rhs.base;
 }
 
-pub fn -<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> usize
+pub fn -<I, J>(move_iterator<I> lhs, move_iterator<J> rhs) -> usize
   where requires (I i, J j) { i - j; }
 {
   return lhs.base - rhs.base;
+}
+
+pub fn +<I>(move_iterator<I> lhs, usize rhs) -> move_iterator<I>
+  where requires (I i, usize j) { i + j; }
+{
+  return move_iterator<I>(lhs.base + rhs);
 }
 
 pub struct iterator_pair<I, J>
