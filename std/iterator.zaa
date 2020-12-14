@@ -97,3 +97,39 @@ pub struct iterator_pair<I, J>
     return this.second;
   }
 }
+
+pub fn next(Iterator i, usize n = 1) -> typeof(i)
+{
+  #if (requires (typeof(i) x, usize y) { x + y; })
+  {
+    return i + n;
+  }
+  #else
+  {
+    while (n != 0)
+    {
+      ++i;
+      --n;
+    }
+
+    return i;
+  }
+}
+
+pub fn prev(Iterator i, usize n = 1) -> typeof(i)
+{
+  #if (requires (typeof(i) x, usize y) { x - y; })
+  {
+    return i - n;
+  }
+  #else
+  {
+    while (n != 0)
+    {
+      --i;
+      --n;
+    }
+
+    return i;
+  }
+}

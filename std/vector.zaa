@@ -115,30 +115,6 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return mutable_span(this.data + range.0, this.data + range.1);
   }
 
-  pub fn begin(this &&)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(this._data);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(this._data);
-
-    #else
-      return iterator(this._data);
-  }
-
-  pub fn end(this &&)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(this._data + this._len);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(this._data + this._len);
-
-    #else
-      return iterator(this._data + this._len);
-  }
-
   pub struct iterator
   {
     iterator() = default;
@@ -188,12 +164,12 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     {
     }
 
-    fn *(move_iterator &this) -> T&
+    fn *(move_iterator &this) -> T &
     {
       return &*this.cursor;
     }
 
-    fn *(move_iterator mut &this) -> T mut &
+    fn *(move_iterator mut &this) -> T &&
     {
       return &std::move(*this.cursor);
     }
@@ -270,6 +246,28 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     using Iterator = typeof(lhs);
 
     return Iterator(lhs.cursor + rhs);
+  }
+
+  fn iter(this &&, var item)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(item);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(item);
+
+    #else
+      return iterator(item);
+  }
+
+  pub fn begin(this &&)
+  {
+    return iter(&&this, this._data);
+  }
+
+  pub fn end(this &&)
+  {
+    return iter(&&this, this._data + this._len);
   }
 
   pub fn front(this &&)

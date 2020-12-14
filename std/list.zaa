@@ -69,30 +69,6 @@ pub struct list<T, Allocator = std::allocator>
     return this._len == 0;
   }
 
-  pub fn begin(this &&)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(this._root.next);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(this._root.next);
-
-    #else
-      return iterator(this._root.next);
-  }
-
-  pub fn end(this &&)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(&this._root);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(&this._root);
-
-    #else
-      return iterator(&this._root);
-  }
-
   pub struct iterator
   {
     iterator() = default;
@@ -142,12 +118,12 @@ pub struct list<T, Allocator = std::allocator>
     {
     }
 
-    fn *(move_iterator &this) -> T&
+    fn *(move_iterator &this) -> T &
     {
       return &cast<Node*>(this.cursor).value;
     }
 
-    fn *(move_iterator mut &this) -> T mut &
+    fn *(move_iterator mut &this) -> T &&
     {
       return &std::move(cast<Node mut *>(this.cursor).value);
     }
@@ -212,6 +188,28 @@ pub struct list<T, Allocator = std::allocator>
   pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
   {
     return lhs.cursor == rhs.cursor;
+  }
+
+  fn iter(this &&, var node)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(node);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(node);
+
+    #else
+      return iterator(node);
+  }
+
+  pub fn begin(this &&)
+  {
+    return iter(&&this, this._root.next);
+  }
+
+  pub fn end(this &&)
+  {
+    return iter(&&this, &this._root);
   }
 
   pub fn front(this &&)
@@ -439,7 +437,7 @@ pub struct list<T, Allocator = std::allocator>
     {
       var next = cast<Node mut *>(node.next);
 
-      T::~T(node.value);
+      Node::~Node(*node);
       this.allocator.free(node, sizeof<Node>);
 
       count += 1;
