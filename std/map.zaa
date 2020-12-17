@@ -296,7 +296,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     #if (__is_rvalue<typeof(other)> && __is_same<map, typeof(other)>)
     {
       if (this.empty)
-        return this._tree.take(other.tree);
+        return this._tree.take(other._tree);
 
       return this.merge(other);
     }
@@ -322,7 +322,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     assert(&this != &other);
     assert(this.allocator == other.allocator);
 
-    for(var node = other.tree.leftmost, var end = &other.tree.root; node != end; )
+    for(var node = other._tree.leftmost, var end = &other._tree.root; node != end; )
     {
       var next = node.next;
 
@@ -330,7 +330,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
       if (pos.1)
       {
-        pos.0 = this._tree.splice(pos.1, other.tree.extract(node, next));
+        pos.0 = this._tree.splice(pos.1, other._tree.extract(node, next));
       }
 
       node = next;

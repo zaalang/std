@@ -108,7 +108,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return this._len;
   }
 
-  pub fn empty() -> bool
+  pub fn empty(this &) -> bool
   {
     return this._len == 0;
   }
@@ -256,10 +256,10 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     if (!other.empty)
     {
-      this._root.parent = other.root.parent;
+      this._root.parent = other._root.parent;
       this._root.parent.parent = &this._root;
-      this._root.left = other.root.left;
-      this._leftmost = other.leftmost;
+      this._root.left = other._root.left;
+      this._leftmost = other._leftmost;
     }
 
     swap(this._len, other.len);
@@ -283,15 +283,18 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       this._leftmost = next;
 
     if (node == this._root.left)
-      this._root.left = node.prev;
+      this._root.left = (this._len == 1) ? &this._root : node.prev;
 
     tree_balance_for_erase(this._root.parent, node);
 
     node.left = null;
     node.right = null;
     node.parent = null;
+    node.color = Color::red;
 
     this._len -= 1;
+
+    //assert(tree_verify(this));
 
     return cast<Node mut *>(node);
   }
@@ -324,6 +327,8 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     tree_balance_after_insert(this._root.parent, node);
 
     this._len += 1;
+
+    //assert(tree_verify(this));
 
     return node;
   }
@@ -657,8 +662,8 @@ fn tree_verify<K, T, Cmp, Allocator>(tree<K, T, Cmp, Allocator> &tree) -> bool
 {
   using Node = tree<K, T, Cmp, Allocator>::Node;
 
-  if (tree.len == 0 || tree.begin() == tree.end())
-    return tree.len == 0 && tree.begin() == tree.end() && tree.leftmost == &tree.root && tree.root.left == &tree.root;
+  if (tree.len == 0)
+    return tree.len == 0 && tree.leftmost == &tree.root && tree.rightmost == &tree.root;
 
   fn black_count(Link *first, Link *last) -> usize
   {
@@ -675,9 +680,9 @@ fn tree_verify<K, T, Cmp, Allocator>(tree<K, T, Cmp, Allocator> &tree) -> bool
 
   var len = black_count(tree.leftmost, tree.root.parent);
 
-  for(var node = tree.begin; node != tree.end; ++node)
+  for(var node = tree.leftmost; node != &tree.root; node = node.next)
   {
-    var x = node.cursor;
+    var x = node;
     var l = x.left;
     var r = x.right;
 
