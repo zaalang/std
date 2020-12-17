@@ -8,43 +8,24 @@ import std.algorithm : swap;
 import std.range : Sentinal, Range;
 import std.tuple : tuple;
 import std.type : as_const;
+import std.bits.tree as Tree;
 
 pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
-  pub struct value_type
-  {
-    K const key;
-    T value;
-
-    value_type<Key, Args>(Key &&key, Args && ...args, Allocator &allocator = Allocator())
-      : key(&&key, allocator?: allocator), value(&&args..., allocator?: allocator)
-    {
-    }
-
-    value_type(value_type &&, Allocator &allocator = Allocator()) = default;
-    fn =(this mut &, value_type &&) -> value_type mut & = default;
-
-    ~value_type() = default;
-  }
-
   map(Allocator &allocator = Allocator())
-    : allocator(allocator)
+    : _tree(allocator)
   {
-    init(this);
   }
 
   map(Cmp &&cmp, Allocator &allocator = Allocator())
     where requires (Cmp cmp, K i, K j) { cmp(i, j); }
-    : cmp(&&cmp), allocator(allocator)
+    : _tree(&&cmp, allocator)
   {
-    init(this);
   }
 
   map(map &&other, Allocator &allocator = Allocator())
-    : cmp(&&other.cmp), allocator(allocator)
+    : _tree(other.cmp, allocator)
   {
-    init(this);
-
     insert(this, &&other);
   }
 
@@ -55,7 +36,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     clear(this);
 
-    this.cmp = &&other.cmp;
+    this._tree.cmp = other.cmp;
 
     insert(this, &&other);
 
@@ -73,17 +54,26 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   ~map()
   {
-    clear(this);
   }
 
   pub fn len(this &) -> usize
   {
-    return this._len;
+    return this._tree.len;
   }
 
   pub fn empty(this &) -> bool
   {
-    return this._len == 0;
+    return this._tree.len == 0;
+  }
+
+  pub fn cmp(this &) -> Cmp &
+  {
+    return &this._tree.cmp;
+  }
+
+  pub fn allocator(this &) -> Allocator &
+  {
+    return &this._tree.allocator;
   }
 
   pub struct iterator
@@ -93,19 +83,19 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     ~iterator() = default;
 
-    iterator(Link mut *node)
+    iterator(Tree::Link mut *node)
       : cursor(node)
     {
     }
 
     fn *(iterator &this) -> value_type &
     {
-      return &cast<Node*>(this.cursor).value;
+      return &cast<node_type*>(this.cursor).value;
     }
 
     fn *(iterator mut &this) -> value_type mut &
     {
-      return &cast<Node mut *>(this.cursor).value;
+      return &cast<node_type mut *>(this.cursor).value;
     }
 
     fn ++(iterator mut &this) -> iterator mut &
@@ -120,7 +110,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return &this;
     }
 
-    Link mut *cursor;
+    Tree::Link mut *cursor;
   }
 
   pub struct move_iterator
@@ -130,19 +120,19 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
     ~move_iterator() = default;
 
-    move_iterator(Link mut *node)
+    move_iterator(Tree::Link mut *node)
       : cursor(node)
     {
     }
 
     fn *(move_iterator &this) -> value_type &
     {
-      return &cast<Node*>(this.cursor).value;
+      return &cast<node_type*>(this.cursor).value;
     }
 
     fn *(move_iterator mut &this) -> value_type &&
     {
-      return &std::move(cast<Node mut *>(this.cursor).value);
+      return &std::move(cast<node_type mut *>(this.cursor).value);
     }
 
     fn ++(move_iterator mut &this) -> move_iterator mut &
@@ -157,7 +147,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return &this;
     }
 
-    Link mut *cursor;
+    Tree::Link mut *cursor;
   }
 
   pub struct const_iterator
@@ -167,7 +157,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
     ~const_iterator() = default;
 
-    const_iterator(Link *node)
+    const_iterator(Tree::Link *node)
       : cursor(node)
     {
     }
@@ -179,7 +169,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     fn *(const_iterator &this) -> value_type &
     {
-      return &cast<Node*>(this.cursor).value;
+      return &cast<node_type*>(this.cursor).value;
     }
 
     fn ++(const_iterator mut &this) -> const_iterator mut &
@@ -194,7 +184,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return &this;
     }
 
-    Link *cursor;
+    Tree::Link *cursor;
   }
 
   pub concept Iterator
@@ -231,103 +221,58 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   pub fn begin(this &&)
   {
-    return iter(&&this, this._leftmost);
+    return iter(&&this, this._tree.leftmost);
   }
 
   pub fn end(this &&)
   {
-    return iter(&&this, &this._root);
+    return iter(&&this, &this._tree.root);
   }
 
   pub fn lower_bound<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
   {
-    var x = this._root.parent;
-    var y = &this._root;
-
-    while (x)
-    {
-      if (!this.cmp(cast<Node*>(x).value.key, key))
-      {
-        y = x;
-        x = x.left;
-      }
-      else
-      {
-        x = x.right;
-      }
-    }
-
-    return iter(&&this, y);
+    return iter(&&this, this._tree.lower_bound(key));
   }
 
   pub fn upper_bound<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
   {
-    var x = this._root.parent;
-    var y = &this._root;
-
-    while (x)
-    {
-      if (this.cmp(key, cast<Node*>(x).value.key))
-      {
-        y = x;
-        x = x.left;
-      }
-      else
-      {
-        x = x.right;
-      }
-    }
-
-    return iter(&&this, y);
+    return iter(&&this, this._tree.upper_bound(key));
   }
 
   pub fn equal_range<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
   {
-    var x = this._root.parent;
-    var y = &this._root;
+    var x = this._tree.equal_range(key);
 
-    while (x)
-    {
-      if (this.cmp(key, cast<Node*>(x).value.key))
-      {
-        y = x;
-        x = x.left;
-      }
-      else if (this.cmp(cast<Node*>(x).value.key, key))
-      {
-        x = x.right;
-      }
-      else
-      {
-        return std::iterator_pair(iter(&&this, x), ++iter(&&this, x));
-      }
-    }
-
-    return std::iterator_pair(iter(&&this, y), iter(&&this, y));
+    return std::iterator_pair(iter(&&this, x.0), iter(&&this, x.1));
   }
 
   pub fn find<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
   {
     var x = lower_bound(&&this, key);
 
-    if (x == this.end || this.cmp(key, x.key))
+    if (x == this.end || this.cmp()(key, x.key))
       return (&&this).end;
 
     return x;
   }
 
   pub fn contains<Key>(this &, Key &key) -> bool
+    match (Key key) { K(key); }
   {
     return this.find(key) != this.end;
   }
 
   pub fn insert(this mut &, value_type &&value) -> (iterator, bool)
   {
-    var pos = find_insert_position(this, value.key);
+    var pos = this._tree.find_insert_position_unique(value.key);
 
     if (pos.1)
     {
-      pos.0 = add_node(this, pos.1, &&value);
+      pos.0 = this._tree.insert(pos.1, &&value);
     }
 
     return tuple(iterator(pos.0), !!pos.1);
@@ -336,11 +281,11 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
   {
-    var pos = find_insert_position(this, key);
+    var pos = this._tree.find_insert_position_unique(key);
 
     if (pos.1)
     {
-      pos.0 = add_node(this, pos.1, &&key, &&args...);
+      pos.0 = this._tree.insert(pos.1, &&key, &&args...);
     }
 
     return tuple(iterator(pos.0), !!pos.1);
@@ -351,7 +296,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     #if (__is_rvalue<typeof(other)> && __is_same<map, typeof(other)>)
     {
       if (this.empty)
-        return this.take(other);
+        return this._tree.take(other.tree);
 
       return this.merge(other);
     }
@@ -368,7 +313,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     while (first != last)
     {
-      this.insert(*first++);
+      insert(this, *first++);
     }
   }
 
@@ -377,7 +322,19 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     assert(&this != &other);
     assert(this.allocator == other.allocator);
 
-    std::panic("not implemented");
+    for(var node = other.tree.leftmost, var end = &other.tree.root; node != end; )
+    {
+      var next = node.next;
+
+      var pos = this._tree.find_insert_position_unique(cast<node_type*>(node).value.key);
+
+      if (pos.1)
+      {
+        pos.0 = this._tree.splice(pos.1, other.tree.extract(node, next));
+      }
+
+      node = next;
+    }
   }
 
   pub fn erase<Key>(this mut &, Key &key) -> usize
@@ -387,540 +344,29 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     if (x == this.end)
       return 0;
 
-    erase_nodes(this, x.cursor, x.cursor.next);
+    this._tree.erase(x.cursor, x.cursor.next);
 
     return 1;
   }
 
   pub fn erase(this mut &, Iterator position) -> iterator
   {
-    return iterator(erase_nodes(this, position.cursor, position.cursor.next));
+    return iterator(this._tree.erase(position.cursor, position.cursor.next));
   }
 
   pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
   {
-    return iterator(erase_nodes(this, first.cursor, last.cursor));
+    return iterator(this._tree.erase(first.cursor, last.cursor));
   }
 
   pub fn clear(this mut &) -> void
   {
-    destroy_nodes(this, this._root.parent);
-
-    init(this);
+    this._tree.clear();
   }
 
-  struct Link
-  {
-    enum Color { red, black }
-
-    Color color;
-    Link mut *parent;
-    Link mut *left;
-    Link mut *right;
-
-    Link() = default;
-    ~Link() = default;
-  }
-
-  struct Node : Link
-  {
-    Node()
-      : value(void)
-    {
-    }
-
-    ~Node() = default;
-
-    value_type value;
-  }
-
-  fn init(this mut &)
-  {
-    this._len = 0;
-    this._root.color = Link::Color::red;
-    this._root.parent = null;
-    this._root.left = &this._root;
-    this._leftmost = &this._root;
-  }
-
-  fn take(this mut &, map mut &other) -> void
-  {
-    assert(this.empty);
-    assert(this.allocator == other.allocator);
-
-    if (!other.empty)
-    {
-      this._root.parent = other._root.parent;
-      this._root.parent.parent = &this._root;
-      this._root.left = other._root.left;
-      this._leftmost = other._leftmost;
-    }
-
-    swap(this._len, other._len);
-    swap(this.cmp, other.cmp);
-
-    other.init();
-  }
-
-  fn add_node<Args>(this mut &, Link mut *parent, Args && ...args) -> Node mut *
-  {
-    var node = new<Node>(this.allocator.allocate(sizeof<Node>, alignof<Node>));
-
-    new<value_type>(&node.value)(&&args..., allocator?: this.allocator);
-
-    node.parent = parent;
-
-    if (parent == &this._root)
-    {
-      this._root.parent = node;
-      this._root.left = node;
-      this._leftmost = node;
-    }
-    else if (this.cmp(node.value.key, cast<Node*>(parent).value.key))
-    {
-      parent.left = node;
-
-      if (parent == this._leftmost)
-        this._leftmost = node;
-    }
-    else
-    {
-      parent.right = node;
-
-      if (parent == this._root.left)
-        this._root.left = node;
-    }
-
-    tree_balance_after_insert(this._root.parent, node);
-
-    this._len += 1;
-
-    return node;
-  }
-
-  fn erase_nodes(this mut &, Link *first, Link *last) -> Node mut *
-  {
-    var count = 0;
-    var node = cast<Node mut *>(first);
-    var last = cast<Link mut *>(last);
-
-    while (node != last)
-    {
-      var next = cast<Node mut *>(node.next);
-
-      if (node == this._leftmost)
-        this._leftmost = next;
-
-      if (node == this._root.left)
-        this._root.left = node.prev;
-
-      tree_balance_for_erase(this._root.parent, node);
-
-      Node::~Node(*node);
-      this.allocator.free(node, sizeof<Node>);
-
-      count += 1;
-      node = next;
-    }
-
-    this._len -= count;
-
-    return node;
-  }
-
-  fn destroy_nodes(this mut &, Link mut *node) -> void
-  {
-    var node = cast<Node mut *>(node);
-
-    if (node)
-    {
-      destroy_nodes(this, node.left);
-      destroy_nodes(this, node.right);
-
-      Node::~Node(*node);
-      this.allocator.free(node, sizeof<Node>);
-    }
-  }
-
-  fn find_insert_position<Key>(this mut &, Key &key) -> (Link mut *, Link mut *)
-  {
-    var x = this._root.parent;
-    var y = &this._root;
-    var v = true;
-
-    while (x)
-    {
-      y = x;
-      v = this.cmp(key, cast<Node*>(x).value.key);
-      x = v ? x.left : x.right;
-    }
-
-    if (v || this.cmp(cast<Node*>(y).value.key, key))
-      return tuple(null, y);
-
-    return tuple(y, null);
-  }
-
-  fn next(Link &&link)
-  {
-    var x = &link;
-
-    if (x.right)
-    {
-      x = x.right;
-
-      while (x.left)
-        x = x.left;
-    }
-    else
-    {
-      while (x == x.parent.right)
-        x = x.parent;
-
-      x = x.parent;
-    }
-
-    return x;
-  }
-
-  fn prev(Link &&link)
-  {
-    var x = &link;
-
-    if (x.left)
-    {
-      x = x.left;
-
-      while (x.right)
-        x = x.right;
-    }
-    else
-    {
-      while (x == x.parent.left)
-        x = x.parent;
-
-      x = x.parent;
-    }
-
-    return x;
-  }
-
-  Link _root;
-  Link mut *_leftmost;
-  usize _len;
-
-  Cmp cmp;
-  Allocator allocator;
-}
-
-fn tree_rotate_left<K, T, Cmp, Allocator>(map<K, T, Cmp, Allocator>::Link mut * mut &root, map<K, T, Cmp, Allocator>::Link mut *x) -> void
-{
-  var y = x.right;
-
-  x.right = y.left;
-
-  if (x.right)
-    x.right.parent = x;
-
-  y.parent = x.parent;
-
-  if (x == root)
-    root = y;
-  else if (x == x.parent.left)
-    x.parent.left = y;
-  else
-    x.parent.right = y;
-
-  y.left = x;
-  x.parent = y;
-}
-
-fn tree_rotate_right<K, T, Cmp, Allocator>(map<K, T, Cmp, Allocator>::Link mut * mut &root, map<K, T, Cmp, Allocator>::Link mut *x) -> void
-{
-  var y = x.left;
-
-  x.left = y.right;
-
-  if (x.left)
-    x.left.parent = x;
-
-  y.parent = x.parent;
-
-  if (x == root)
-    root = y;
-  else if (x == x.parent.right)
-    x.parent.right = y;
-  else
-    x.parent.left = y;
-
-  y.right = x;
-  x.parent = y;
-}
-
-fn tree_balance_after_insert<K, T, Cmp, Allocator>(map<K, T, Cmp, Allocator>::Link mut * mut &root, map<K, T, Cmp, Allocator>::Link mut *x) -> void
-{
-  using Color = map<K, T, Cmp, Allocator>::Link::Color;
-
-  while (x != root && x.parent.color == Color::red)
-  {
-    var xpp = x.parent.parent;
-
-    if (x.parent == xpp.left)
-    {
-      var y = xpp.right;
-
-      if (y && y.color == Color::red)
-      {
-        x.parent.color = Color::black;
-        y.color = Color::black;
-        xpp.color = Color::red;
-        x = xpp;
-      }
-      else
-      {
-        if (x == x.parent.right)
-        {
-          x = x.parent;
-          tree_rotate_left(root, x);
-        }
-
-        x.parent.color = Color::black;
-        xpp.color = Color::red;
-        tree_rotate_right(root, xpp);
-      }
-    }
-    else
-    {
-      var y = xpp.left;
-
-      if (y && y.color == Color::red)
-      {
-        x.parent.color = Color::black;
-        y.color = Color::black;
-        xpp.color = Color::red;
-        x = xpp;
-      }
-      else
-      {
-        if (x == x.parent.left)
-        {
-          x = x.parent;
-          tree_rotate_right(root, x);
-        }
-
-        x.parent.color = Color::black;
-        xpp.color = Color::red;
-        tree_rotate_left(root, xpp);
-      }
-    }
-  }
-
-  root.color = Color::black;
-}
-
-fn tree_balance_for_erase<K, T, Cmp, Allocator>(map<K, T, Cmp, Allocator>::Link mut * mut &root, map<K, T, Cmp, Allocator>::Link mut *z) -> void
-{
-  using Color = map<K, T, Cmp, Allocator>::Link::Color;
-
-  var y = z;
-  var x = z;
-  var xp = z;
-
-  if (!y.left)
-    x = y.right;
-  else if (!y.right)
-    x = y.left;
-  else
-  {
-    y = y.right;
-    while (y.left)
-      y = y.left;
-    x = y.right;
-  }
-
-  if (y != z)
-  {
-    z.left.parent = y;
-    y.left = z.left;
-
-    if (y != z.right)
-    {
-      xp = y.parent;
-      if (x)
-        x.parent = y.parent;
-      y.parent.left = x;
-      y.right = z.right;
-      z.right.parent = y;
-    }
-    else
-      xp = y;
-
-    if (z == root)
-      root = y;
-    else if (z.parent.left == z)
-      z.parent.left = y;
-    else
-      z.parent.right = y;
-
-    y.parent = z.parent;
-    swap(y.color, z.color);
-    y = z;
-  }
-  else
-  {
-    xp = y.parent;
-    if (x)
-      x.parent = y.parent;
-
-    if (z == root)
-      root = x;
-    else if (z.parent.left == z)
-      z.parent.left = x;
-    else
-      z.parent.right = x;
-  }
-
-  if (y.color == Color::black)
-  {
-    while (x != root && (!x || x.color == Color::black))
-    {
-      if (x == xp.left)
-      {
-        var w = xp.right;
-
-        if (w.color == Color::red)
-        {
-          w.color = Color::black;
-          xp.color = Color::red;
-          tree_rotate_left(root, xp);
-          w = xp.right;
-        }
-
-        if ((!w.left || w.left.color == Color::black) && (!w.right || w.right.color == Color::black))
-        {
-          w.color = Color::red;
-          x = xp;
-          xp = xp.parent;
-        }
-        else
-        {
-          if (!w.right || w.right.color == Color::black)
-          {
-            w.left.color = Color::black;
-            w.color = Color::red;
-            tree_rotate_right(root, w);
-            w = xp.right;
-          }
-
-          w.color = xp.color;
-          xp.color = Color::black;
-          if (w.right)
-            w.right.color = Color::black;
-          tree_rotate_left(root, xp);
-          break;
-        }
-      }
-      else
-      {
-        var w = xp.left;
-
-        if (w.color == Color::red)
-        {
-          w.color = Color::black;
-          xp.color = Color::red;
-          tree_rotate_right(root, xp);
-          w = xp.left;
-        }
-
-        if ((!w.right || w.right.color == Color::black) && (!w.left || w.left.color == Color::black))
-        {
-          w.color = Color::red;
-          x = xp;
-          xp = xp.parent;
-        }
-        else
-        {
-          if (!w.left || w.left.color == Color::black)
-          {
-            w.right.color = Color::black;
-            w.color = Color::red;
-            tree_rotate_left(root, w);
-            w = xp.left;
-          }
-
-          w.color = xp.color;
-          xp.color = Color::black;
-          if (w.left)
-            w.left.color = Color::black;
-          tree_rotate_right(root, xp);
-          break;
-        }
-      }
-    }
-
-    if (x)
-      x.color = Color::black;
-  }
-}
-
-fn tree_verify<K, T, Cmp, Allocator>(map<K, T, Cmp, Allocator> &map) -> bool
-{
-  using Link = map<K, T, Cmp, Allocator>::Link;
-  using Node = map<K, T, Cmp, Allocator>::Node;
-  using Color = map<K, T, Cmp, Allocator>::Link::Color;
-
-  if (map._len == 0 || map.begin() == map.end())
-    return map._len == 0 && map.begin() == map.end() && map._leftmost == &map._root && map._root.left == &map._root;
-
-  fn black_count(Link *first, Link *last) -> usize
-  {
-    var len = 0;
-
-    for(var node = first; node != last; node = node.parent)
-    {
-      if (node.color == Color::black)
-        ++len;
-    }
-
-    return len;
-  }
-
-  var len = black_count(map._leftmost, map._root.parent);
-
-  for(var node = map.begin; node != map.end; ++node)
-  {
-    var x = node.cursor;
-    var l = x.left;
-    var r = x.right;
-
-    if (x.color == Color::red && ((l && l.color == Color::red) || (r && r.color == Color::red)))
-      return false;
-
-    if (l && map.cmp(cast<Node*>(x).value.key, cast<Node*>(l).value.key))
-      return false;
-
-    if (r && map.cmp(cast<Node*>(r).value.key, cast<Node*>(x).value.key))
-      return false;
-
-    if (!l && !r && black_count(x, map._root.parent) != len)
-      return false;
-  }
-
-  var leftmost = map._root.parent;
-
-  while (leftmost.left)
-    leftmost = leftmost.left;
-
-  if (map._leftmost != leftmost)
-    return false;
-
-  var rightmost = map._root.parent;
-
-  while (rightmost.right)
-    rightmost = rightmost.right;
-
-  if (map._root.left != rightmost)
-    return false;
-
-  return true;
+  using tree_type = Tree::tree<K, T, Cmp, Allocator>;
+  using value_type = Tree::tree<K, T, Cmp, Allocator>::value_type;
+  using node_type = Tree::tree<K, T, Cmp, Allocator>::Node;
+
+  tree_type _tree;
 }

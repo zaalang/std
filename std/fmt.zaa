@@ -198,6 +198,11 @@ fn put<T>(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc)
   put(os, ctx, loc.lineno);
 }
 
+fn put<T>(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
+{
+  put(os, ctx, "void");
+}
+
 fn put<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 {
   put(os, ctx, "object");
