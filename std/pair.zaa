@@ -1,0 +1,23 @@
+//
+// std pair
+//
+
+import std.memory;
+import std.stdlib : assert;
+
+pub struct key_value_pair<K, T, Allocator = std::allocator>
+{
+  K const key;
+  T value;
+
+  key_value_pair<Key, Args>(Key &&key, Args && ...args, Allocator &allocator = Allocator())
+    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+    : key(&&key, allocator?: allocator), value(&&args..., allocator?: allocator)
+  {
+  }
+
+  key_value_pair(key_value_pair &&, Allocator &allocator = Allocator()) = default;
+  fn =(this mut &, key_value_pair &&) -> key_value_pair mut & = default;
+
+  ~key_value_pair() = default;
+}

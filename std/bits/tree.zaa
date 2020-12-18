@@ -6,6 +6,7 @@ import std.memory;
 import std.stdlib : assert;
 import std.algorithm : swap;
 import std.tuple : tuple;
+import std.pair;
 
 pub enum Color
 {
@@ -70,21 +71,19 @@ pub struct Link
 
 pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
-  pub struct value_type
+  struct Node : Link
   {
-    K const key;
-    T value;
-
-    value_type<Key, Args>(Key &&key, Args && ...args, Allocator &allocator = Allocator())
-      : key(&&key, allocator?: allocator), value(&&args..., allocator?: allocator)
+    Node()
+      : value(void)
     {
     }
 
-    value_type(value_type &&, Allocator &allocator = Allocator()) = default;
-    fn =(this mut &, value_type &&) -> value_type mut & = default;
+    ~Node() = default;
 
-    ~value_type() = default;
+    value_type value;
   }
+  
+  using value_type = std::key_value_pair<K, T, Allocator>;
 
   tree(Allocator &allocator = Allocator())
     : allocator(allocator)
@@ -226,18 +225,6 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     destroy(this, this._root.parent);
 
     init(this);
-  }
-
-  struct Node : Link
-  {
-    Node()
-      : value(void)
-    {
-    }
-
-    ~Node() = default;
-
-    value_type value;
   }
 
   pub fn init(this mut &)
