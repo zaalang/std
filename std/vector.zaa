@@ -3,8 +3,8 @@
 //
 
 import std.stdlib : assert;
-import std.memory : memcpy;
-import std.algorithm : swap, move, move_backward;
+import std.memory : memcpy, memmove;
+import std.algorithm : swap;
 import std.range : Sentinal, Range;
 import std.span : span, mutable_span;
 import std.type : as_const;
@@ -426,7 +426,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     if (index != this._len)
     {
       uninitialised_move(this, this._data + this._len, this._data + this._len - len, this._data + this._len);
-      move_backward(this._data + index + len, this._data + this._len, this._data + index, this._data + this._len - len);
+      initialised_move_backward(this, this._data + index + len, this._data + index, this._data + this._len - len);
       destruct(this, this._data + index, this._data + index + len);
     }
 
@@ -473,7 +473,9 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     var item = ensure_space(this, position, count);
 
     for(var it = item; first != last; ++it, ++first)
+    {
       new<T>(it)(*first, allocator?: this.allocator);
+    }
 
     return item;
   }
@@ -482,7 +484,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     var index = first - this._data;
 
-    move(this._data + index, this._data + this._len - count, this._data + index + count, this._data + this._len);
+    initialised_move(this, this._data + index, this._data + index + count, this._data + this._len);
     destruct(this, this._data + this._len - count, this._data + this._len);
 
     this._len -= count;
@@ -490,12 +492,52 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return this._data + index;
   }
 
+  fn initialised_move(this mut &, T mut *dst, T mut *first, T mut *last) -> void
+  {
+    #if (!__is_trivial_copy<T>)
+    {
+      while (first != last)
+      {
+        #if (!__is_trivial_destroy<T>)
+          T::~T(*dst);
+
+        new<T>(dst++)(std::move(*first++), allocator?: this.allocator);
+      }
+    }
+    #else
+    {
+      memcpy(dst, first, cast<u8 mut *>(last) - cast<u8 mut *>(first));
+    }
+  }
+
+  fn initialised_move_backward(this mut &, T mut *dst, T mut *first, T mut *last) -> void
+  {
+    #if (!__is_trivial_copy<T>)
+    {
+      var end = dst + (last - first);
+
+      while (first != last)
+      {
+        #if (!__is_trivial_destroy<T>)
+          T::~T(*(end-1));
+
+        new<T>(--end)(std::move(*--last), allocator?: this.allocator);
+      }
+    }
+    #else
+    {
+      memmove(dst, first, cast<u8 mut *>(last) - cast<u8 mut *>(first));
+    }
+  }
+
   fn uninitialised_move(this mut &, T mut *dst, T mut *first, T mut *last) -> void
   {
     #if (!__is_trivial_copy<T>)
     {
       while (first != last)
+      {
         new<T>(dst++)(std::move(*first++), allocator?: this.allocator);
+      }
     }
     #else
     {

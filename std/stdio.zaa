@@ -52,6 +52,29 @@ pub struct file
   std::fd fd;
 }
 
+pub struct StdIn
+{
+  fn read(this mut &, u8 mut *data, usize len) throws -> usize
+  {
+    return fd(STDIN).read(data, len);
+  }
+
+  StdIn() = default;
+  ~StdIn() = default;
+}
+
+pub fn stdin_raw -> file
+{
+  return file(fd(STDIN));
+}
+
+pub fn stdin -> StdIn
+{
+  //static instance = #StdIn();
+
+  return StdIn();
+}
+
 pub struct StdOut
 {
   fn write(this mut &, u8 *data, usize len) throws -> usize
@@ -114,15 +137,15 @@ pub struct StdOut
   StdOut() = default;
   ~StdOut() = default;
 }
-  
-//pub fn stdout_raw -> File
-//{
-//
-//}
+
+pub fn stdout_raw -> file
+{
+  return file(fd(STDOUT));
+}
 
 pub fn stdout -> StdOut
 {
-  //static StdOut instance;
+//  static instance = #StdOut();
 
   return StdOut();
 }

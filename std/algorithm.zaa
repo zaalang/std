@@ -249,7 +249,7 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = les
 
 
 pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> I
-  where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); }
+  where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(value, *i); }
 {
   var count = std::distance(first, last);
 
@@ -280,7 +280,7 @@ pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = les
 }
 
 pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> std::iterator_pair<I, I>
-  where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); }
+  where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); cmp(value, *i); }
 {
   return std::iterator_pair(lower_bound(first, last, value, cmp), upper_bound(first, last, value, cmp));
 }
