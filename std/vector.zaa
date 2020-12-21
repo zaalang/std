@@ -352,6 +352,9 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   
   pub fn erase(this mut &, Iterator position) -> iterator
   {
+    if (position == this.end)
+      return iterator(position);
+
     return iterator(erase(this, position.cursor, 1));
   }
 

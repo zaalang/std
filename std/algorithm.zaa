@@ -223,30 +223,28 @@ pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
 
   while (count > 0)
   {
-    var it = first;
-    var step = count / 2;
-
-    it = std::next(it, step);
+    var m = count / 2;
+    var it = first + m;
 
     if (cmp(*it, value))
     {
       first = ++it;
-      count -= step + 1;
+      count -= m + 1;
     }
     else
     {
-      count = step;
+      count = m;
     }
   }
 
   return first;
 }
 
-pub fn lower_bound<T, Value, Cmp>(Range<T> mut &range, Value &value, Cmp &cmp = less)
+pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
   match (Value value) { T(value); }
-  where requires (typeof(range) mut &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
 {
-  return lower_bound(range.begin, range.end, value, cmp);
+  return lower_bound((&&range).begin, (&&range).end, value, cmp);
 }
 
 
@@ -257,30 +255,28 @@ pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
 
   while (count > 0)
   {
-    var it = first;
-    var step = count / 2;
-
-    it = std::next(it, step);
+    var m = count / 2;
+    var it = first + m;
 
     if (!cmp(value, *it))
     {
       first = ++it;
-      count -= step + 1;
+      count -= m + 1;
     }
     else
     {
-      count = step;
+      count = m;
     }
   }
 
   return first;
 }
 
-pub fn upper_bound<T, Value, Cmp>(Range<T> mut &range, Value &value, Cmp &cmp = less)
+pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
   match (Value value) { T(value); }
-  where requires (typeof(range) mut &range, Value &value, Cmp &cmp) { upper_bound(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) &range, Value &value, Cmp &cmp) { upper_bound(range.begin, range.end, value, cmp); }
 {
-  return upper_bound(range.begin, range.end, value, cmp);
+  return upper_bound((&&range).begin, (&&range).end, value, cmp);
 }
 
 pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> std::iterator_pair<I, I>
@@ -289,9 +285,9 @@ pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return std::iterator_pair(lower_bound(first, last, value, cmp), upper_bound(first, last, value, cmp));
 }
 
-pub fn equal_range<T, Value, Cmp>(Range<T> mut &range, Value &value, Cmp &cmp = less)
+pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
   match (Value value) { T(value); }
-  where requires (typeof(range) mut &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
 {
-  return equal_range(range.begin, range.end, value, cmp);
+  return equal_range((&&range).begin, (&&range).end, value, cmp);
 }

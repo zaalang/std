@@ -1,0 +1,263 @@
+//
+// std flat_map
+//
+
+import std.memory;
+import std.stdlib : assert;
+import std.algorithm : swap;
+import std.range : Sentinal, Range;
+import std.tuple : tuple;
+import std.type : as_const;
+
+pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
+{
+  flat_map(Allocator &allocator = Allocator())
+    : _tree(allocator)
+  {
+  }
+
+  flat_map(Cmp &&cmp, Allocator &allocator = Allocator())
+    where requires (Cmp cmp, K i, K j) { cmp(i, j); }
+    : cmp(&&cmp), _tree(allocator)
+  {
+  }
+
+  flat_map(flat_map &&other, Allocator &allocator = Allocator())
+    : cmp(other.cmp), _tree(allocator)
+  {
+    insert(this, &&other);
+  }
+
+  pub fn =(this mut &, flat_map &&other) -> flat_map mut &
+  {
+    if (&this == &other)
+      return &this;
+
+    clear(this);
+
+    this.cmp = other.cmp;
+
+    insert(this, &&other);
+
+    return &this;
+  }
+
+  pub fn with_capacity(usize capacity, Allocator &allocator = Allocator()) -> flat_map
+  {
+    var result = flat_map(allocator);
+
+    result.reserve(capacity);
+
+    return result;
+  }
+
+  pub fn from(Range<value_type> &&other, Allocator &allocator = Allocator()) -> flat_map
+  {
+    var result = flat_map(allocator);
+
+    result.insert(&&other);
+
+    return result;
+  }
+
+  ~flat_map()
+  {
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._tree.len;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this._tree.len == 0;
+  }
+
+  pub fn capacity(this &) -> usize
+  {
+    return this._tree.capacity;
+  }
+
+  pub fn data(this &&)
+  {
+    return this._tree.data;
+  }
+
+  pub fn allocator(this &) -> Allocator &
+  {
+    return &this._tree.allocator;
+  }
+
+  using iterator = tree_type::iterator;
+  using move_iterator = tree_type::move_iterator;
+  using const_iterator = tree_type::const_iterator;
+
+  pub concept Iterator
+  {
+    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
+  }
+
+  pub fn begin(this &&)
+  {
+    return (&&this)._tree.begin;
+  }
+
+  pub fn end(this &&)
+  {
+    return (&&this)._tree.end;
+  }
+
+  pub fn lower_bound<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    //return std::lower_bound(&&this._tree, key, fn [&](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
+
+    struct C
+    {
+      Cmp &cmp;
+
+      C(Cmp &cmp)
+        : cmp(&cmp)
+      {
+      }
+
+      fn ()(this &, var &lhs, Key &rhs) -> bool
+      {
+        return this.cmp(lhs.key, rhs);
+      }
+
+      ~C() = default;
+    }
+
+    return std::lower_bound(&&this._tree, key, C(this.cmp));
+  }
+
+//  pub fn upper_bound<Key>(this &&, Key &key)
+//    match (Key key) { K(key); }
+//  {
+//    return std::upper_bound(&&this._tree, key, fn [&](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
+//  }
+//
+//  pub fn equal_range<Key>(this &&, Key &key)
+//    match (Key key) { K(key); }
+//  {
+//    return std::equal_range(&&this._tree, key, fn [&](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
+//  }
+
+  pub fn find<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    var x = lower_bound(&&this, key);
+
+    if (x == this.end || this.cmp(key, (*x).key))
+      return (&&this).end;
+
+    return x;
+  }
+
+  pub fn contains<Key>(this &, Key &key) -> bool
+    match (Key key) { K(key); }
+  {
+    return this.find(key) != this.end;
+  }
+
+  pub fn insert(this mut &, value_type &&value) -> (iterator, bool)
+  {
+    var pos = this.lower_bound(value.key);
+
+    if (pos == this.end || this.cmp(value.key, (*pos).key))
+    {
+      pos = this._tree.insert(pos, &&value);
+
+      return tuple(pos, true);
+    }
+
+    return tuple(pos, false);
+  }
+
+  pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
+    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    var pos = this.lower_bound(key);
+
+    if (pos == this.end || this.cmp(key, (*pos).key))
+    {
+      pos = this._tree.insert(pos, &&key, &&args...);
+
+      return tuple(pos, true);
+    }
+
+    return tuple(pos, false);
+  }
+
+  pub fn insert(this mut &, Range<value_type> &&other) -> void
+  {
+    #if (__is_rvalue<typeof(other)> && __is_same<flat_map, typeof(other)>)
+    {
+      if (this.empty)
+        this._tree = std::move(other._tree);
+
+      return this.merge(other);
+    }
+
+    #if (__is_rvalue<typeof(other)> && __is_array<typeof(other)>)
+    {
+      return this.insert(std::move_iterator(other.begin), std::move_iterator(other.end));
+    }
+
+    return this.insert((&&other).begin, (&&other).end);
+  }
+
+  pub fn insert<I>(this mut &, I first, Sentinal<I> last) -> void
+  {
+    while (first != last)
+    {
+      insert(this, *first++);
+    }
+  }
+
+  pub fn merge(this mut &, flat_map mut &other) -> void
+  {
+    assert(&this != &other);
+    assert(this.allocator == other.allocator);
+
+    for(var &it : other)
+    {
+      insert(this, std::move(it));
+    }
+  }
+
+  pub fn erase<Key>(this mut &, Key &key) -> usize
+  {
+    this._tree.erase(this.find(key));
+
+    return 1;
+  }
+
+  pub fn erase(this mut &, Iterator position) -> iterator
+  {
+    return this._tree.erase(position);
+  }
+
+  pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
+  {
+    return this._tree.erase(first, last);
+  }
+
+  pub fn reserve(this mut &, usize capacity) -> void
+  {
+    this._tree.reserve(capacity);
+  }
+
+  pub fn clear(this mut &) -> void
+  {
+    this._tree.clear();
+  }
+
+  using tree_type = std::vector<value_type, Allocator>;
+  using value_type = std::key_value_pair<K, T, Allocator>;
+
+  Cmp cmp;
+  tree_type _tree;
+}

@@ -345,6 +345,9 @@ pub struct list<T, Allocator = std::allocator>
   
   pub fn erase(this mut &, Iterator position) -> iterator
   {
+    if (position == this.end)
+      return iterator(position);
+
     return iterator(erase(this, position.cursor, position.cursor.next));
   }
 
