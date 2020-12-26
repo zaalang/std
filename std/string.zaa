@@ -171,7 +171,14 @@ pub struct string<Allocator = std::allocator, N = 24>
         this.allocator.free(data, capacity);
     }
   }
-  
+
+  pub fn resize(this mut &, usize size) -> void
+  {
+    reserve(this, size);
+
+    this._len = size;
+  }
+
   pub fn clear(this mut &) -> void
   {
     if (this._data != this._smallbuffer.data)

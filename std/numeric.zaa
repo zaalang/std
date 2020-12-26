@@ -28,8 +28,8 @@ pub struct I8
 
 pub struct I16
 {
-  const min = -32768;
-  const max = 32767;
+  const min = -32_768;
+  const max = 32_767;
 
   const is_signed = true;
   const is_integer = true;  
@@ -65,7 +65,7 @@ pub struct U8
 pub struct U16
 {
   const min = 0;
-  const max = 65536;
+  const max = 65_535;
 
   const is_signed = false;
   const is_integer = true;    
@@ -74,7 +74,7 @@ pub struct U16
 pub struct U32
 {
   const min = 0;
-  const max = 4_294_967_295 ;
+  const max = 4_294_967_295;
 
   const is_signed = false;
   const is_integer = true;  
@@ -178,6 +178,14 @@ pub struct numeric_traits<T>
   #else if (__is_same<T, f32>)
     using type_traits = F32;
   #else if (__is_same<T, f64>)
+    using type_traits = F64;
+  #else if (__is_same<T, isize>)
+    using type_traits = I64;
+  #else if (__is_same<T, usize>)
+    using type_traits = U64;
+  #else if (__is_same<T, int>)
+    using type_traits = I32;
+  #else if (__is_same<T, float>)
     using type_traits = F64;
   #else
     using type_traits = T::numeric_traits;

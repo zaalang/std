@@ -19,6 +19,11 @@ pub struct file
     return file(fd);
   }
 
+  fn read(this mut &, u8 mut *data, usize len) throws -> usize
+  {
+    return this.fd.read(data, len);
+  }
+
   fn write(this mut &, u8 *data, usize len) throws -> usize
   {
     return this.fd.write(data, len);
@@ -54,12 +59,20 @@ pub struct file
 
 pub struct StdIn
 {
-  fn read(this mut &, u8 mut *data, usize len) throws -> usize
+  fn read(this mut &, u8 mut *data, usize len) -> usize
   {
-    return fd(STDIN).read(data, len);
+    try
+    {
+      return fd(STDIN).read(data, len);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
   }
 
   StdIn() = default;
+  StdIn(StdIn&) = default;
   ~StdIn() = default;
 }
 
@@ -68,18 +81,25 @@ pub fn stdin_raw -> file
   return file(fd(STDIN));
 }
 
-pub fn stdin -> StdIn
+pub fn stdin -> StdIn mut &
 {
-  //static instance = #StdIn();
+  static instance = #StdIn();
 
-  return StdIn();
+  return &instance;
 }
 
 pub struct StdOut
 {
-  fn write(this mut &, u8 *data, usize len) throws -> usize
+  fn write(this mut &, u8 *data, usize len) -> usize
   {
-    return fd(STDOUT).write(data, len);
+    try
+    {
+      return fd(STDOUT).write(data, len);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
   }
 
   fn putc(this mut &, u8 ch) -> usize
@@ -135,6 +155,7 @@ pub struct StdOut
   }
   
   StdOut() = default;
+  StdOut(StdOut&) = default;
   ~StdOut() = default;
 }
 
@@ -143,11 +164,11 @@ pub fn stdout_raw -> file
   return file(fd(STDOUT));
 }
 
-pub fn stdout -> StdOut
+pub fn stdout -> StdOut mut &
 {
-//  static instance = #StdOut();
+  static instance = #StdOut();
 
-  return StdOut();
+  return &instance;
 }
 
 pub fn print(var & ...args) -> usize

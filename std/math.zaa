@@ -122,28 +122,28 @@ pub fn add_with_carry<T>(T x, T y) -> (T, T)
   return __add_with_carry(x, y);
 }
 
-pub fn add_with_carry<T>(T x, T y, T carryin) -> (T, T)
+pub fn add_with_carry<T>(T x, T y, T z) -> (T, T)
   where __is_integral<T>
 {
   var add = __add_with_carry(x, y);
-  var sum = __add_with_carry(add.0, carryin);
+  var sum = __add_with_carry(add.0, z);
 
   sum.1 += add.1;
 
   return sum;
 }
 
-pub fn sub_with_carry<T>(T x, T y) -> (T, T)
+pub fn sub_with_borrow<T>(T x, T y) -> (T, T)
   where __is_integral<T>
 {
-  return __sub_with_carry(x, y);
+  return __sub_with_borrow(x, y);
 }
 
-pub fn sub_with_carry<T>(T x, T y, T carryin) -> (T, T)
+pub fn sub_with_borrow<T>(T x, T y, T z) -> (T, T)
   where __is_integral<T>
 {
-  var sub = __sub_with_carry(x, y);
-  var sum = __sub_with_carry(sub.0, carryin);
+  var sub = __sub_with_borrow(x, y);
+  var sum = __sub_with_borrow(sub.0, z);
 
   sum.1 += sub.1;
 
@@ -156,11 +156,11 @@ pub fn mul_with_carry<T>(T x, T y) -> (T, T)
   return __mul_with_carry(x, y);
 }
 
-pub fn mul_with_carry<T>(T x, T y, T carryin) -> (T, T)
+pub fn muladd_with_carry<T>(T x, T y, T z) -> (T, T)
   where __is_integral<T>
 {
   var mul = __mul_with_carry(x, y);
-  var sum = __add_with_carry(mul.0, carryin);
+  var sum = __add_with_carry(mul.0, z);
 
   sum.1 += mul.1;
 

@@ -38,6 +38,8 @@ pub struct error
 
 pub enum errc : u32
 {
+  invalid_argument = 22,
+  result_out_of_range = 34,
   value_too_large = 112,
 
   pub fn bool(errc code) -> bool
