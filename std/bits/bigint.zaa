@@ -64,7 +64,7 @@ pub struct bigint<N>
     {
       this.bits[i] = mul.0;
       
-      mul = std::mul_with_carry(this.bits[i + 1], y, mul.1);
+      mul = std::muladd_with_carry(this.bits[i + 1], y, mul.1);
     }
 
     this.bits[this.n] = mul.0;
@@ -143,13 +143,13 @@ pub fn divmod<N>(bigint<N> mut &x, bigint<N> &y) -> u64
 
   while (x >= y)
   {
-    var sum = std::sub_with_carry(x.bits[0], y.bits[0]);
+    var sum = std::sub_with_borrow(x.bits[0], y.bits[0]);
 
     for(var i = 0; i != x.n; ++i)
     {
       x.bits[i] = sum.0;
 
-      sum = std::sub_with_carry(x.bits[i + 1], y.bits[i + 1], sum.1);
+      sum = std::sub_with_borrow(x.bits[i + 1], y.bits[i + 1], sum.1);
     }
 
     x.bits[x.n] = sum.0 - sum.1;
