@@ -3,7 +3,7 @@
 //
 
 import std.stdlib : assert;
-import std.memory : memcpy, memmove;
+import std.memory : memset, memcpy, memmove;
 import std.algorithm : swap;
 import std.range : Sentinal, Range;
 import std.span : span, mutable_span;
@@ -241,6 +241,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return lhs.cursor - rhs.cursor;
   }
 
+  pub fn -(Iterator lhs, usize rhs) -> typeof(lhs)
+  {
+    using Iterator = typeof(lhs);
+
+    return Iterator(lhs.cursor - rhs);
+  }
+
   pub fn +(Iterator lhs, usize rhs) -> typeof(lhs)
   {
     using Iterator = typeof(lhs);
@@ -385,11 +392,21 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     reserve(this, size);
 
-    while (size < this._len)
-      this.pop_back();
+    #if (!__is_builtin<T>)
+    {
+      while (size < this._len)
+        this.pop_back();
 
-    while (this._len < size)
-      this.push_back();
+      while (this._len < size)
+        this.push_back();
+    }
+    #else
+    {
+      if (this._len < size)
+        memset(this._data + this._len, 0, (size - this._len) * sizeof<T>);
+
+      this._len = size;
+    }
   }
 
   pub fn clear(this mut &) -> void

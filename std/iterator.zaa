@@ -66,6 +66,12 @@ pub fn -<I, J>(move_iterator<I> lhs, move_iterator<J> rhs) -> usize
   return lhs.base - rhs.base;
 }
 
+pub fn -<I>(move_iterator<I> lhs, usize rhs) -> move_iterator<I>
+  where requires (I i, usize j) { i - j; }
+{
+  return move_iterator<I>(lhs.base - rhs);
+}
+
 pub fn +<I>(move_iterator<I> lhs, usize rhs) -> move_iterator<I>
   where requires (I i, usize j) { i + j; }
 {

@@ -2,7 +2,25 @@
 // std io
 //
 
+import std.stdlib : assert;
+import std.memory : memcpy;
+import std.math;
+import std.vector;
+import std.span;
 import std.error;
+
+pub concept InputStream
+{
+  requires<T> (T is, u8 mut *buf, usize len) {
+    try
+    {
+      len += is.read(buf, len);
+    }
+    catch(std::error e)
+    {
+    }
+  };
+}
 
 pub concept OutputStream
 {
@@ -16,3 +34,110 @@ pub concept OutputStream
     }
   };
 }
+
+pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
+{
+  T mut &reader;
+
+  buffered_reader(T mut &reader, Allocator &allocator = Allocator())
+    : reader(&reader),
+      _buffer(allocator)
+  {
+    std::assert(__is_match<InputStream, T>);
+
+    _head = 0;
+    _tail = 0;
+    _buffer.resize(N == 0 ? 8192 : N);
+  }
+
+  ~buffered_reader() = default;
+
+  pub fn buffer(this &) -> std::span<u8>
+  {
+    return std::span<u8>(this._buffer.data + this._head, this._buffer.data + this._tail);
+  }
+
+  pub fn fetch(this mut &) throws -> std::span<u8>
+  {
+    if (this._head == this._tail)
+    {
+      this._head = 0;
+      this._tail = this.reader.read(this._buffer.data, this._buffer.len);
+    }
+
+    return this.buffer;
+  }
+
+  pub fn discard(this mut &, usize len) throws -> void
+  {
+    assert(len <= this._tail - this._head);
+
+    this._head += len;
+  }
+
+  pub fn read(this mut &, u8 mut *data, usize len) throws -> usize
+  {
+    var ch = data;
+
+    if (this._head != this._tail)
+    {
+      var size = std::min(this._tail - this._head, len);
+
+      memcpy(ch, this._buffer.data + this._head, size);
+
+      ch += size;
+      this._head += size;
+    }
+
+    if (var remaining = len - (ch - data); remaining != 0)
+    {
+      if (remaining < this._buffer.len)
+      {
+        fetch(this);
+
+        var size = std::min(this._tail - this._head, remaining);
+
+        memcpy(ch, this._buffer.data + this._head, size);
+
+        ch += size;
+        this._head += size;
+      }
+      else
+      {
+        ch += this.reader.read(ch, remaining);
+      }
+    }
+
+    return ch - data;
+  }
+
+  pub fn read_line(this mut &, std::string<var, var> mut &buf) throws -> usize
+  {
+    var count = 0;
+
+    for(var buffer = this.fetch(); buffer.len != 0; buffer = this.fetch())
+    {
+      var n = std::memchr(buffer.data, cast('\n'), buffer.len);
+
+      if (n != buffer.len)
+      {
+        buf.write(buffer.data, n + 1);
+        this.discard(n + 1);
+        count += n + 1;
+
+        break;
+      }
+
+      buf.write(buffer.data, n);
+      this.discard(n);
+      count += n;
+    }
+
+    return count;
+  }
+
+  usize _head;
+  usize _tail;
+  std::vector<u8, Allocator, N> _buffer;
+}
+

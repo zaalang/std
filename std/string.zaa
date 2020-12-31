@@ -109,6 +109,8 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   ~string()
   {
+    this._len = 0;
+
     if (_data != _smallbuffer.data)
       this.allocator.free(_data, _capacity);
   }

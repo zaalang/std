@@ -19,6 +19,18 @@ pub struct file
     return file(fd);
   }
 
+  pub fn open(String &path) throws -> file
+  {
+    var fd = fd::open(path, fd::oflags::open, fd::rights::read);
+
+    return file(fd);
+  }
+
+  pub fn stat(this mut &) throws -> std::filestat
+  {
+    return this.fd.stat();
+  }
+
   fn read(this mut &, u8 mut *data, usize len) throws -> usize
   {
     return this.fd.read(data, len);
@@ -55,6 +67,50 @@ pub struct file
   }
 
   std::fd fd;
+}
+
+pub fn read_into<Alloc, N>(file mut &fd, std::vector<u8, Alloc, N> mut &buf, usize maxread = ~usize(0)) throws
+{
+  var size = cast<usize>(fd.stat().size);
+
+  if (maxread < size)
+    size = maxread;
+
+  buf.resize(buf.len + size);
+  fd.read(buf.data + (buf.len - size), size);
+
+  return &buf;
+}
+
+pub fn read_into<Alloc, N>(file mut &fd, std::string<Alloc, N> mut &buf, usize maxread = ~usize(0)) throws
+{
+  var size = cast<usize>(fd.stat().size);
+
+  if (maxread < size)
+    size = maxread;
+
+  buf.resize(buf.len + size);
+  fd.read(buf.data + (buf.len - size), size);
+
+  return &buf;
+}
+
+pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~usize(0)) throws
+{
+  var buf = std::vector<u8, Alloc, N>(alloc);
+
+  std::file::open(path).read_into(buf, maxread);
+
+  return buf;
+}
+
+pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~usize(0)) throws
+{
+  var buf = std::string<Alloc, N>(alloc);
+
+  std::file::open(path).read_into(buf, maxread);
+
+  return buf;
 }
 
 pub struct StdIn
