@@ -111,33 +111,32 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     return ch - data;
   }
 
-  pub fn read_line(this mut &, std::string<var, var> mut &buf) throws -> usize
-  {
-    var count = 0;
-
-    for(var buffer = this.fetch(); buffer.len != 0; buffer = this.fetch())
-    {
-      var n = std::memchr(buffer.data, cast('\n'), buffer.len);
-
-      if (n != buffer.len)
-      {
-        buf.write(buffer.data, n + 1);
-        this.discard(n + 1);
-        count += n + 1;
-
-        break;
-      }
-
-      buf.write(buffer.data, n);
-      this.discard(n);
-      count += n;
-    }
-
-    return count;
-  }
-
   usize _head;
   usize _tail;
   std::vector<u8, Allocator, N> _buffer;
 }
 
+pub fn read_line<T>(buffered_reader<T> mut &reader, std::string mut &buf) throws -> usize
+{
+  var count = 0;
+
+  for(var buffer = reader.fetch(); buffer.len != 0; buffer = reader.fetch())
+  {
+    var n = std::memchr(buffer.data, cast('\n'), buffer.len);
+
+    if (n != buffer.len)
+    {
+      buf.write(buffer.data, n + 1);
+      reader.discard(n + 1);
+      count += n + 1;
+
+      break;
+    }
+
+    buf.write(buffer.data, n);
+    reader.discard(n);
+    count += n;
+  }
+
+  return count;
+}
