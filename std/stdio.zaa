@@ -113,6 +113,16 @@ pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &al
   return buf;
 }
 
+pub fn readfile<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~usize(0)) throws
+{
+  return readfile_to_string<Alloc, N>(path, alloc, maxread);
+}
+
+pub fn writefile(String &path, std::string &content) throws
+{
+  std::file::create(path).write(content.data, content.len);
+}
+
 pub struct StdIn
 {
   fn read(this mut &, u8 mut *data, usize len) -> usize
