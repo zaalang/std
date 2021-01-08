@@ -1,0 +1,99 @@
+//
+// std.optional
+//
+
+import std.stdlib;
+import std.memory;
+import std.string : String;
+
+pub union optional<T, Allocator = std::allocator>
+{
+  None,
+  Some(T),
+
+  optional()
+    : kind(typeof(kind)::None)
+  {
+  }
+
+  optional(T &&value, Allocator &allocator = Allocator())
+    : kind(typeof(kind)::Some)
+  {
+    new<T>(&this.Some)(&&value, allocator?: allocator);
+  }
+
+  optional<Args>(Args && ...args, Allocator &allocator = Allocator())
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    : kind(typeof(kind)::Some)
+  {
+    new<T>(&this.Some)(&&args..., allocator?: allocator);
+  }
+
+  pub fn bool(this &) -> bool
+  {
+    return this.kind == typeof(this.kind)::Some;
+  }
+
+  pub fn is_none(this &) -> bool
+  {
+    return this.kind == typeof(this.kind)::None;
+  }
+
+  pub fn is_some(this &) -> bool
+  {
+    return this.kind == typeof(this.kind)::Some;
+  }
+
+  pub fn value(this &&)
+  {
+    std::assert(this.is_some);
+
+    return &(&&this.Some);
+  }
+
+  pub fn value_or(this &&, var &&default) -> T
+  {
+    return (this.is_some) ? &&this.Some : T(&&default);
+  }
+
+  pub fn unwrap(this mut &) -> T
+  {
+    std::assert(this.is_some);
+
+    return std::move(this.Some);
+  }
+
+  pub fn unwrap_or(this mut &, var &&default) -> T
+  {
+    return (this.is_some) ? std::move(this.Some) : T(&&default);
+  }
+
+  pub fn expect(this mut &, String &msg) -> T
+  {
+    if (!this.is_some)
+      std::panic(msg);
+
+    return std::move(this.Some);
+  }
+
+  pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    optional::~optional(this);
+    new<optional>(&this)(&&args..., allocator?: allocator);
+  }
+
+  optional(optional &&, Allocator &allocator = Allocator()) = default;
+  fn =(optional mut &, optional &&) -> optional mut & = default;
+  ~optional() = default;
+}
+
+// pub fn None<T> -> T
+// {
+//   return T();
+// }
+//
+// pub fn Some<T>(T &&value) -> optional<T>
+// {
+//   return optional<T>(value);
+// }

@@ -18,6 +18,5 @@ pub struct key_value_pair<K, T, Allocator = std::allocator>
 
   key_value_pair(key_value_pair &&, Allocator &allocator = Allocator()) = default;
   fn =(this mut &, key_value_pair &&) -> key_value_pair mut & = default;
-
   ~key_value_pair() = default;
 }

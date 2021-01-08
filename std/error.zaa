@@ -6,11 +6,15 @@ import std.string;
 
 pub struct error_category
 {
+  error_category() = default;
+  error_category(error_category &) = default;
+  ~error_category() = default;
 }
 
 pub struct source_location
 {
   source_location(source_location &that) = default;
+  fn =(source_location mut &, source_location &) -> source_location mut & = default;
   ~source_location() = default;
 
   source_location((std::string_literal, int, int, std::string_literal) &site)
@@ -29,7 +33,7 @@ pub struct error
 {
   i64 value;
   error_category *category;
-  source_location location;
+  // source_location location; ?
   // backtrace ?
   
   error(error &that) = default;
@@ -38,6 +42,7 @@ pub struct error
 
 pub enum errc : u32
 {
+  file_not_found = 2,
   invalid_argument = 22,
   result_out_of_range = 34,
   value_too_large = 112,
@@ -50,25 +55,37 @@ pub enum errc : u32
 
 pub struct system_error
 {
-  fn system_error(errc code) -> error
-  {
+  pub fn system_error(errc code) -> error
+  { 
     var result = error(void);
     
     result.value = cast(code);
-    //result.category = &category;
+    result.category = category();
     
     return result;
   }
 
-  //static system_error_category category;
+  pub fn category() -> system_error_category *
+  {
+    static instance = #system_error_category();
+
+    return &instance;
+  }
 }
-  
-fn ==(error &lhs, error &rhs) -> bool
+
+pub struct system_error_category : error_category
+{
+  system_error_category() = default;
+  system_error_category(system_error_category &) = default;
+  ~system_error_category() = default;
+}
+
+pub fn ==(error &lhs, error &rhs) -> bool
 {
   return lhs.category == rhs.category && lhs.value == rhs.value;
 }
 
-//fn ==(error &lhs, errc rhs) -> bool
-//{
-//  return lhs.category == system_error_category && lhs.value == rhs;
-//}
+pub fn ==(error &lhs, errc rhs) -> bool
+{
+  return lhs.category == system_error::category() && lhs.value == cast(rhs);
+}
