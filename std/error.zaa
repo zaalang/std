@@ -45,7 +45,8 @@ pub enum errc : u32
   file_not_found = 2,
   invalid_argument = 22,
   result_out_of_range = 34,
-  value_too_large = 112,
+  value_too_large = 75,
+  line_too_long = 175,
 
   pub fn bool(errc code) -> bool
   {

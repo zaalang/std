@@ -4,6 +4,7 @@
 
 import std.stdlib : assert;
 import std.memory : memcpy;
+import std.string;
 import std.math;
 import std.vector;
 import std.span;
@@ -52,6 +53,11 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
 
   pub ~buffered_reader() = default;
 
+  pub fn capacity(this &) -> usize
+  {
+    return this._buffer.capacity;
+  }
+
   pub fn buffer(this &) -> std::span<u8>
   {
     return std::span<u8>(this._buffer.data + this._head, this._buffer.data + this._tail);
@@ -64,6 +70,20 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
       this._head = 0;
       this._tail = this.reader.read(this._buffer.data, this._buffer.len);
     }
+
+    return this.buffer;
+  }
+
+  pub fn pack_and_fetch(this mut &) throws -> std::span<u8>
+  {
+    if (this._head != 0)
+    {
+      std::memmove(this._buffer.data, this._buffer.data + this._head, this._tail - this._head);
+      this._tail -= this._head;
+      this._head = 0;
+    }
+
+    this._tail += this.reader.read(this._buffer.data + this._tail, this._buffer.len - this._tail);
 
     return this.buffer;
   }
@@ -109,6 +129,79 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     }
 
     return ch - data;
+  }
+
+  pub struct line_iterator
+  {
+    pub line_iterator(line_iterator&) = default;
+    pub ~line_iterator() = default;
+
+    pub fn *(line_iterator &this) -> std::string_view
+    {
+      return std::string_view(this.reader.buffer.data, this.m);
+    }
+
+    pub fn ++(line_iterator mut &this) throws -> line_iterator mut &
+    {
+      this.reader.discard(this.n);
+
+      if (var buffer = this.reader.fetch(); buffer.len != 0)
+      {
+        this.n = std::memchr(buffer.data, cast('\n'), buffer.len);
+
+        if (this.n == buffer.len)
+        {
+          buffer = this.reader.pack_and_fetch();
+          this.n += std::memchr(buffer.data + this.n, cast('\n'), buffer.len - this.n);
+
+          if (this.n == this.reader.capacity)
+            throw std::system_error(std::errc::line_too_long);
+        }
+
+        this.m = this.n;
+
+        if (this.n != buffer.len)
+        {
+          if (this.m != 0 && buffer[this.m - 1] == cast('\r'))
+            this.m -= 1;
+
+          this.n += 1;
+        }
+      }
+      else
+      {
+        this.n = this.m = 0;
+      }
+
+      return &this;
+    }
+
+    pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
+    {
+      return lhs.n == 0;
+    }
+
+    line_iterator(buffered_reader mut &reader)
+      : reader(&reader)
+    {
+    }
+
+    usize n;
+    usize m;
+    buffered_reader mut &reader;
+  }
+
+  pub struct end_iterator
+  {
+    pub end_iterator() = default;
+    pub end_iterator(end_iterator&) = default;
+    pub fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
+    pub ~end_iterator() = default;
+  }
+
+  pub fn lines(this mut &) throws -> std::iterator_pair<line_iterator, end_iterator>
+  {
+    return std::iterator_pair(++line_iterator(this), end_iterator);
   }
 
   usize _head;

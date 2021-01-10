@@ -56,12 +56,12 @@ pub struct file
     return std::format_to(this, format, args...);
   }
 
-  file(fd fd)
+  pub file(fd fd)
     : fd(fd)
   {
   }
 
-  ~file()
+  pub ~file()
   {
     fd.close();
   }

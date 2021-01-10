@@ -395,8 +395,8 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   Link mut *_leftmost;
   usize _len;
 
-  Cmp cmp;
-  Allocator allocator;
+  pub Cmp cmp;
+  pub Allocator allocator;
 }
 
 fn tree_rotate_left(Link mut * mut &root, Link mut *x) -> void
