@@ -19,112 +19,112 @@ pub concept Numeric
 
 pub struct I8
 {
-  const min = -128;
-  const max = 127;
+  pub const min = -128;
+  pub const max = 127;
   
-  const is_signed = true;
-  const is_integer = true;  
+  pub const is_signed = true;
+  pub const is_integer = true;
 }
 
 pub struct I16
 {
-  const min = -32_768;
-  const max = 32_767;
+  pub const min = -32_768;
+  pub const max = 32_767;
 
-  const is_signed = true;
-  const is_integer = true;  
+  pub const is_signed = true;
+  pub const is_integer = true;
 }
 
 pub struct I32
 {
-  const min = -2_147_483_648;
-  const max = 2_147_483_647;
+  pub const min = -2_147_483_648;
+  pub const max = 2_147_483_647;
 
-  const is_signed = true;
-  const is_integer = true;  
+  pub const is_signed = true;
+  pub const is_integer = true;
 }
 
 pub struct I64
 {
-  const min = -9_223_372_036_854_775_808;
-  const max = 9_223_372_036_854_775_807;
+  pub const min = -9_223_372_036_854_775_808;
+  pub const max = 9_223_372_036_854_775_807;
 
-  const is_signed = true;
-  const is_integer = true;  
+  pub const is_signed = true;
+  pub const is_integer = true;
 }
 
 pub struct U8
 {
-  const min = 0;
-  const max = 255;
+  pub const min = 0;
+  pub const max = 255;
   
-  const is_signed = false;
-  const is_integer = true;    
+  pub const is_signed = false;
+  pub const is_integer = true;
 }
 
 pub struct U16
 {
-  const min = 0;
-  const max = 65_535;
+  pub const min = 0;
+  pub const max = 65_535;
 
-  const is_signed = false;
-  const is_integer = true;    
+  pub const is_signed = false;
+  pub const is_integer = true;
 }
 
 pub struct U32
 {
-  const min = 0;
-  const max = 4_294_967_295;
+  pub const min = 0;
+  pub const max = 4_294_967_295;
 
-  const is_signed = false;
-  const is_integer = true;  
+  pub const is_signed = false;
+  pub const is_integer = true;
 }
 
 pub struct U64
 {
-  const min = 0;
-  const max = 18_446_744_073_709_551_615;
+  pub const min = 0;
+  pub const max = 18_446_744_073_709_551_615;
 
-  const is_signed = false;
-  const is_integer = true;  
+  pub const is_signed = false;
+  pub const is_integer = true;
 }
 
 pub struct F32
 {
-  const min = -3.40282347e+38;
-  const max = 3.40282347e+38;
-  const smallest = 1.17549435e-38;
-  const epsilon = 1.19209290e-07;
+  pub const min = -3.40282347e+38;
+  pub const max = 3.40282347e+38;
+  pub const smallest = 1.17549435e-38;
+  pub const epsilon = 1.19209290e-07;
 
-  const radix = 2;
-  const digits = 24;
-  const decimal_digits = 6;
-  const min_exponent = -125;
-  const min_decimal_exponent = -37;
-  const max_exponent = 128;
-  const max_decimal_exponent = 38;
+  pub const radix = 2;
+  pub const digits = 24;
+  pub const decimal_digits = 6;
+  pub const min_exponent = -125;
+  pub const min_decimal_exponent = -37;
+  pub const max_exponent = 128;
+  pub const max_decimal_exponent = 38;
 
-  const is_signed = true;
-  const is_integer = false;  
+  pub const is_signed = true;
+  pub const is_integer = false;
 }
 
 pub struct F64
 {
-  const min = -1.7976931348623157e+308;
-  const max = 1.7976931348623157e+308;
-  const smallest = 2.2250738585072014e-308;
-  const epsilon = 2.2204460492503131e-16;
+  pub const min = -1.7976931348623157e+308;
+  pub const max = 1.7976931348623157e+308;
+  pub const smallest = 2.2250738585072014e-308;
+  pub const epsilon = 2.2204460492503131e-16;
   
-  const radix = 2;
-  const digits = 53;
-  const decimal_digits = 15;
-  const min_exponent = -1021;
-  const min_decimal_exponent = -307;
-  const max_exponent = 1024;
-  const max_decimal_exponent = 308;
+  pub const radix = 2;
+  pub const digits = 53;
+  pub const decimal_digits = 15;
+  pub const min_exponent = -1021;
+  pub const min_decimal_exponent = -307;
+  pub const max_exponent = 1024;
+  pub const max_decimal_exponent = 308;
   
-  const is_signed = true;
-  const is_integer = false;
+  pub const is_signed = true;
+  pub const is_integer = false;
 }
 
 pub const fn is_nan<T>(T x) -> bool
@@ -153,11 +153,11 @@ pub const fn is_normal<T>(T x) -> bool
 
 pub struct numeric_traits<T>
 {
-  const min = type_traits::min;
-  const max = type_traits::max;
+  pub const min = type_traits::min;
+  pub const max = type_traits::max;
 
-  const is_signed = type_traits::is_signed;
-  const is_integer = type_traits::is_integer;
+  pub const is_signed = type_traits::is_signed;
+  pub const is_integer = type_traits::is_integer;
 
   #if (__is_same<T, i8>)
     using type_traits = I8;

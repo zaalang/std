@@ -3,6 +3,7 @@
 //
 
 import std.stdlib : assert;
+import std.range: Range;
 
 pub concept Span<U>
 {
@@ -15,97 +16,97 @@ pub concept Span<U>
 
 pub struct span<T>
 {
-  usize len;
-  T *data;
+  pub usize len;
+  pub T *data;
 
-  fn begin(this&) -> T*
+  pub fn begin(this&) -> T*
   { 
     return this.data;
   }
   
-  fn end(this&) -> T*
+  pub fn end(this&) -> T*
   { 
     return this.data + this.len;
   }
   
-  span(T *data, usize len)
+  pub span(T *data, usize len)
     : len(len), data(data)
   {
   }
 
-  span(T *beg, T *end)
+  pub span(T *beg, T *end)
     : len(end - beg), data(beg)
   {
   }
 
-  fn [](this &, usize index) -> T&
+  pub fn [](this &, usize index) -> T&
   {
     assert(index < this.len);
 
     return &*(this.data + index);
   }
 
-  fn [](this &, (usize, usize) range) -> span
+  pub fn [](this &, (usize, usize) range) -> span
   {
     assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
 
     return span(this.data + range.0, this.data + range.1);
   }
 
-  span(span &that) = default;
-  fn =(this mut &, span &that) -> span mut & = default;
-  ~span() = default;
+  pub span(span &that) = default;
+  pub fn =(this mut &, span &that) -> span mut & = default;
+  pub ~span() = default;
 }
 
 pub struct mutable_span<T>
 {
-  usize len;
-  T mut *data;
+  pub usize len;
+  pub T mut *data;
 
-  fn begin(this &&)
+  pub fn begin(this &&)
   {
     return this.data;
   }
 
-  fn end(this &&)
+  pub fn end(this &&)
   {
     return this.data + this.len;
   }
 
-  mutable_span(T mut *data, usize len)
+  pub mutable_span(T mut *data, usize len)
     : len(len), data(data)
   {
   }
 
-  mutable_span(T mut *beg, T mut *end)
+  pub mutable_span(T mut *beg, T mut *end)
     : len(end - beg), data(beg)
   {
   }
 
-  fn [](this &&, usize index)
+  pub fn [](this &&, usize index)
   {
     assert(index < this.len);
 
     return &*(this.data + index);
   }
 
-  fn [](this &, (usize, usize) range) -> span<T>
+  pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return span(this.data + range.0, this.data + range.1);
   }
 
-  fn [](this mut &, (usize, usize) range) -> mutable_span<T>
+  pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return mutable_span(this.data + range.0, this.data + range.1);
   }
 
-  mutable_span(mutable_span &that) = default;
-  fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
-  ~mutable_span() = default;
+  pub mutable_span(mutable_span &that) = default;
+  pub fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
+  pub ~mutable_span() = default;
 }
 
 pub fn Span<T = u8>(typeof("") &str) -> span<T>

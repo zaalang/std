@@ -8,25 +8,23 @@ import std.string : String;
 
 pub union optional<T, Allocator = std::allocator>
 {
-  None,
-  Some(T),
+  pub None,
+  pub Some(T),
 
-  optional()
-    : kind(typeof(kind)::None)
+  pub optional()
+    : None()
   {
   }
 
-  optional(T &&value, Allocator &allocator = Allocator())
-    : kind(typeof(kind)::Some)
+  pub optional(T &&value, Allocator &allocator = Allocator())
+    : Some(&&value, allocator?: allocator)
   {
-    new<T>(&this.Some)(&&value, allocator?: allocator);
   }
 
-  optional<Args>(Args && ...args, Allocator &allocator = Allocator())
+  pub optional<Args>(Args && ...args, Allocator &allocator = Allocator())
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
-    : kind(typeof(kind)::Some)
+    : Some(&&args..., allocator?: allocator)
   {
-    new<T>(&this.Some)(&&args..., allocator?: allocator);
   }
 
   pub fn bool(this &) -> bool
@@ -36,7 +34,7 @@ pub union optional<T, Allocator = std::allocator>
 
   pub fn is_none(this &) -> bool
   {
-    return this.kind == typeof(this.kind)::None;
+    return this.kind != typeof(this.kind)::Some;
   }
 
   pub fn is_some(this &) -> bool
@@ -83,9 +81,9 @@ pub union optional<T, Allocator = std::allocator>
     new<optional>(&this)(&&args..., allocator?: allocator);
   }
 
-  optional(optional &&, Allocator &allocator = Allocator()) = default;
-  fn =(optional mut &, optional &&) -> optional mut & = default;
-  ~optional() = default;
+  pub optional(optional &&, Allocator &allocator = Allocator()) = default;
+  pub fn =(optional mut &, optional &&) -> optional mut & = default;
+  pub ~optional() = default;
 }
 
 // pub fn None<T> -> T

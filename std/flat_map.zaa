@@ -12,18 +12,18 @@ import std.pair;
 
 pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
-  flat_map(Allocator &allocator = Allocator())
+  pub flat_map(Allocator &allocator = Allocator())
     : _tree(allocator)
   {
   }
 
-  flat_map(Cmp &&cmp, Allocator &allocator = Allocator())
+  pub flat_map(Cmp &&cmp, Allocator &allocator = Allocator())
     where requires (Cmp cmp, K i, K j) { cmp(i, j); }
     : cmp(&&cmp), _tree(allocator)
   {
   }
 
-  flat_map(flat_map &&other, Allocator &allocator = Allocator())
+  pub flat_map(flat_map &&other, Allocator &allocator = Allocator())
     : cmp(other.cmp), _tree(allocator)
   {
     insert(this, &&other);
@@ -61,7 +61,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return result;
   }
 
-  ~flat_map()
+  pub ~flat_map()
   {
   }
 

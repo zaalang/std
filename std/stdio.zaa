@@ -31,27 +31,27 @@ pub struct file
     return this.fd.stat();
   }
 
-  fn read(this mut &, u8 mut *data, usize len) throws -> usize
+  pub fn read(this mut &, u8 mut *data, usize len) throws -> usize
   {
     return this.fd.read(data, len);
   }
 
-  fn write(this mut &, u8 *data, usize len) throws -> usize
+  pub fn write(this mut &, u8 *data, usize len) throws -> usize
   {
     return this.fd.write(data, len);
   }
 
-  fn print(this mut &, var & ...args) throws -> usize
+  pub fn print(this mut &, var & ...args) throws -> usize
   {
     return std::print_to(this, args..., '\n');
   }
 
-  fn printf(this mut &, String &format, var & ...args) throws -> usize
+  pub fn printf(this mut &, String &format, var & ...args) throws -> usize
   {
     return std::format_to(this, format, args...);
   }
   
-  fn printf(this mut &, #std::string_literal format, var & ...args) throws -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args) throws -> usize
   {
     return std::format_to(this, format, args...);
   }
@@ -125,7 +125,7 @@ pub fn writefile(String &path, std::string &content) throws
 
 pub struct StdIn
 {
-  fn read(this mut &, u8 mut *data, usize len) -> usize
+  pub fn read(this mut &, u8 mut *data, usize len) -> usize
   {
     try
     {
@@ -156,7 +156,7 @@ pub fn stdin -> StdIn mut &
 
 pub struct StdOut
 {
-  fn write(this mut &, u8 *data, usize len) -> usize
+  pub fn write(this mut &, u8 *data, usize len) -> usize
   {
     try
     {
@@ -168,7 +168,7 @@ pub struct StdOut
     }
   }
 
-  fn putc(this mut &, u8 ch) -> usize
+  pub fn putc(this mut &, u8 ch) -> usize
   {
     try
     {
@@ -180,7 +180,7 @@ pub struct StdOut
     }
   }
 
-  fn print(this mut &, var & ...args) -> usize
+  pub fn print(this mut &, var & ...args) -> usize
   {
     try
     {
@@ -192,7 +192,7 @@ pub struct StdOut
     }
   }
 
-  fn printf(this mut &, String &format, var & ...args) -> usize
+  pub fn printf(this mut &, String &format, var & ...args) -> usize
   {
     try
     {
@@ -204,7 +204,7 @@ pub struct StdOut
     }
   }
   
-  fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
   {
     try
     {
@@ -216,7 +216,7 @@ pub struct StdOut
     }
   }
   
-  fn flush(this mut &) -> void
+  pub fn flush(this mut &) -> void
   {
   }
   

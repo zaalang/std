@@ -11,36 +11,36 @@ pub const STDERR = 2;
 
 pub struct filestat
 {
-  u8 type;
-  u64 size;
-  u64 atime;
-  u64 mtime;
-  u64 ctime;
+  pub u8 type;
+  pub u64 size;
+  pub u64 atime;
+  pub u64 mtime;
+  pub u64 ctime;
 
-  filestat() = default;
-  filestat(filestat&) = default;
-  fn =(filestat mut &, filestat &) -> filestat mut & = default;
-  ~filestat() = default;
+  pub filestat() = default;
+  pub filestat(filestat&) = default;
+  pub fn =(filestat mut &, filestat &) -> filestat mut & = default;
+  pub ~filestat() = default;
 }
 
 pub struct iovec
 {
-  u8 mut *data;
-  usize len;
+  pub u8 mut *data;
+  pub usize len;
 
-  iovec() = default;
-  iovec(iovec&) = default;
-  ~iovec() = default;
+  pub iovec() = default;
+  pub iovec(iovec&) = default;
+  pub ~iovec() = default;
 }
 
 pub struct ciovec
 {
-  u8 *data;
-  usize len;
+  pub u8 *data;
+  pub usize len;
 
-  ciovec() = default;
-  ciovec(ciovec&) = default;
-  ~ciovec() = default;
+  pub ciovec() = default;
+  pub ciovec(ciovec&) = default;
+  pub ~ciovec() = default;
 }
 
 struct string
@@ -114,13 +114,13 @@ pub struct fd
     return handle;
   }
 
-  fd(uintptr fd)
+  pub fd(uintptr fd)
     : fd(fd)
   {
   }
 
-  fd(fd&) = default;
-  ~fd() = default;
+  pub fd(fd&) = default;
+  pub ~fd() = default;
 
   uintptr fd;  
 }

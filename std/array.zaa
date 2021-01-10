@@ -10,27 +10,27 @@ import std.type : as_const;
 
 pub struct array<T, N> : T[N]
 {
-  array() = default;
-  array(array&&) = default;
-  fn =(this mut &, array &&) -> array mut & = default;
+  pub array() = default;
+  pub array(array&&) = default;
+  pub fn =(this mut &, array &&) -> array mut & = default;
 
-  array(T[N] &&that)
+  pub array(T[N] &&that)
     : super(&&that)
   {
   }
 
-  fn =(this mut &, T[N] &&other) -> array mut &
+  pub fn =(this mut &, T[N] &&other) -> array mut &
   {
     this.super = &&other;
     return &this;
   }
 
-  fn with_size(#usize size) -> array<T, size>
+  pub fn with_size(#usize size) -> array<T, size>
   {
     return array<T, size>();
   }
 
-  ~array() = default;
+  pub ~array() = default;
 
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
@@ -48,36 +48,36 @@ pub struct array<T, N> : T[N]
 
   pub struct iterator
   {
-    iterator() = default;
-    iterator(iterator&) = default;
-    fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
-    ~iterator() = default;
+    pub iterator() = default;
+    pub iterator(iterator&) = default;
+    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    pub ~iterator() = default;
 
-    iterator(T mut *item)
-      : cursor(item)
-    {
-    }
-
-    fn *(iterator &this) -> T&
+    pub fn *(iterator &this) -> T&
     {
       return &*this.cursor;
     }
 
-    fn *(iterator mut &this) -> T mut &
+    pub fn *(iterator mut &this) -> T mut &
     {
       return &*this.cursor;
     }
 
-    fn ++(iterator mut &this) -> iterator mut &
+    pub fn ++(iterator mut &this) -> iterator mut &
     {
       ++this.cursor;
       return &this;
     }
 
-    fn --(iterator mut &this) -> iterator mut &
+    pub fn --(iterator mut &this) -> iterator mut &
     {
       --this.cursor;
       return &this;
+    }
+
+    iterator(T mut *item)
+      : cursor(item)
+    {
     }
 
     T mut *cursor;
@@ -85,36 +85,36 @@ pub struct array<T, N> : T[N]
 
   pub struct move_iterator
   {
-    move_iterator() = default;
-    move_iterator(move_iterator&) = default;
-    fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
-    ~move_iterator() = default;
+    pub move_iterator() = default;
+    pub move_iterator(move_iterator&) = default;
+    pub fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
+    pub ~move_iterator() = default;
 
-    move_iterator(T mut *item)
-      : cursor(item)
-    {
-    }
-
-    fn *(move_iterator &this) -> T &
+    pub fn *(move_iterator &this) -> T &
     {
       return &*this.cursor;
     }
 
-    fn *(move_iterator mut &this) -> T &&
+    pub fn *(move_iterator mut &this) -> T &&
     {
       return &std::move(*this.cursor);
     }
 
-    fn ++(move_iterator mut &this) -> move_iterator mut &
+    pub fn ++(move_iterator mut &this) -> move_iterator mut &
     {
       ++this.cursor;
       return &this;
     }
 
-    fn --(move_iterator mut &this) -> move_iterator mut &
+    pub fn --(move_iterator mut &this) -> move_iterator mut &
     {
       --this.cursor;
       return &this;
+    }
+
+    move_iterator(T mut *item)
+      : cursor(item)
+    {
     }
 
     T mut *cursor;
@@ -122,36 +122,36 @@ pub struct array<T, N> : T[N]
 
   pub struct const_iterator
   {
-    const_iterator() = default;
-    const_iterator(const_iterator&) = default;
-    fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
-    ~const_iterator() = default;
+    pub const_iterator() = default;
+    pub const_iterator(const_iterator&) = default;
+    pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
+    pub ~const_iterator() = default;
 
-    const_iterator(T *item)
-      : cursor(item)
-    {
-    }
-
-    const_iterator(iterator other)
+    pub const_iterator(iterator other)
       : cursor(other.cursor)
     {
     }
 
-    fn *(const_iterator &this) -> T&
+    pub fn *(const_iterator &this) -> T&
     {
       return &*this.cursor;
     }
 
-    fn ++(const_iterator mut &this) -> const_iterator mut &
+    pub fn ++(const_iterator mut &this) -> const_iterator mut &
     {
       ++this.cursor;
       return &this;
     }
 
-    fn --(const_iterator mut &this) -> const_iterator mut &
+    pub fn --(const_iterator mut &this) -> const_iterator mut &
     {
       --this.cursor;
       return &this;
+    }
+
+    const_iterator(T *item)
+      : cursor(item)
+    {
     }
 
     T *cursor;
@@ -179,18 +179,6 @@ pub struct array<T, N> : T[N]
     return Iterator(lhs.cursor + rhs);
   }
 
-  fn iter(this &&, var item)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(item);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(item);
-
-    #else
-      return iterator(item);
-  }
-
   pub fn begin(this &&)
   {
     return iter(&&this, this.data);
@@ -203,15 +191,27 @@ pub struct array<T, N> : T[N]
 
   pub fn front(this &&)
   {
-    assert(!this.empty);
+    assert(N != 0);
 
-    return &*this._data;
+    return &*this.data;
   }
 
   pub fn back(this &&)
   {
-    assert(!this.empty);
+    assert(N != 0);
 
-    return &*(this._data + this._len);
+    return &*(this.data + this.len - 1);
+  }
+
+  fn iter(this &&, var item)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(item);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(item);
+
+    #else
+      return iterator(item);
   }
 }

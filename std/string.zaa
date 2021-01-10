@@ -22,25 +22,25 @@ pub using string_literal = typeof("");
 
 pub struct string_view : std::span<u8>
 {
-  string_view(u8 *data, usize len)
+  pub string_view(u8 *data, usize len)
     : super(data, len)
   {
   }
 
-  string_view(u8 *beg, u8 *end)
-  : super(beg, end)
+  pub string_view(u8 *beg, u8 *end)
+    : super(beg, end)
   {
   }
 
-  fn [](this&, (usize, usize) range) -> string_view
+  pub fn [](this&, (usize, usize) range) -> string_view
   {
     std::assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return string_view(this.data + range.0, this.data + range.1);
   }
 
-  string_view(string_view &that) = default;
-  ~string_view() = default;
+  pub string_view(string_view &that) = default;
+  pub ~string_view() = default;
 }
 
 pub fn String(string_literal &str) -> string_view
@@ -50,14 +50,14 @@ pub fn String(string_literal &str) -> string_view
 
 pub struct string<Allocator = std::allocator, N = 24>
 {
-  string(Allocator &allocator = Allocator())
+  pub string(Allocator &allocator = Allocator())
     : allocator(allocator),
       _smallbuffer(void)
   {
     init(this);
   }
   
-  string(String &&other, Allocator &allocator = Allocator())
+  pub string(String &&other, Allocator &allocator = Allocator())
     : allocator(allocator),
       _smallbuffer(void)
   {
@@ -69,7 +69,7 @@ pub struct string<Allocator = std::allocator, N = 24>
       this.write(other.data, other.len);
   }
 
-  fn =(this mut &, String &&other) -> string mut &
+  pub fn =(this mut &, String &&other) -> string mut &
   {
     if (this._data <= other.data && other.data < this._data + this._len)
     {
@@ -107,7 +107,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     return string(string_view(beg, end), allocator);
   }
 
-  ~string()
+  pub ~string()
   {
     this._len = 0;
 

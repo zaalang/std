@@ -13,31 +13,31 @@ pub struct error_category
 
 pub struct source_location
 {
-  source_location(source_location &that) = default;
-  fn =(source_location mut &, source_location &) -> source_location mut & = default;
-  ~source_location() = default;
+  pub source_location(source_location &that) = default;
+  pub fn =(source_location mut &, source_location &) -> source_location mut & = default;
+  pub ~source_location() = default;
 
-  source_location((std::string_literal, int, int, std::string_literal) &site)
+  pub source_location((std::string_literal, int, int, std::string_literal) &site)
     : lineno(site.1),
       file_name(site.0),
       function_name(site.3)
   {
   }
 
-  int lineno;
-  std::string_literal file_name;
-  std::string_literal function_name;
+  pub int lineno;
+  pub std::string_literal file_name;
+  pub std::string_literal function_name;
 }
 
 pub struct error
 {
-  i64 value;
-  error_category *category;
-  // source_location location; ?
-  // backtrace ?
+  pub i64 value;
+  pub error_category *category;
+  // pub source_location location; ?
+  // pub backtrace ?
   
-  error(error &that) = default;
-  ~error() = default;
+  pub error(error &that) = default;
+  pub ~error() = default;
 }
 
 pub enum errc : u32

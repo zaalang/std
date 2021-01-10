@@ -8,17 +8,17 @@ import std.algorithm;
 
 pub struct bigint<N>
 {
-  bigint() = default;
-  bigint(bigint&) = default;
-  ~bigint() = default;
+  pub bigint() = default;
+  pub bigint(bigint&) = default;
+  pub ~bigint() = default;
 
-  bigint(u64 value)
+  pub bigint(u64 value)
   {
     n = 0;
     bits[0] = value;
   }
 
-  fn =(this mut &, u64 value) -> bigint mut &
+  pub fn =(this mut &, u64 value) -> bigint mut &
   {
     this.n = 0;
     this.bits[0] = value;
@@ -26,7 +26,7 @@ pub struct bigint<N>
     return &this;
   }
 
-  fn =(this mut &, bigint &that) -> bigint mut &
+  pub fn =(this mut &, bigint &that) -> bigint mut &
   {
     this.n = that.n;
     this.bits = that.bits;
@@ -34,7 +34,7 @@ pub struct bigint<N>
     return &this;
   }
   
-  fn +=(this mut &, u64 y) -> bigint mut &
+  pub fn +=(this mut &, u64 y) -> bigint mut &
   {
     var sum = std::add_with_carry(this.bits[0], y);
     
@@ -56,7 +56,7 @@ pub struct bigint<N>
     return &this;
   }
 
-  fn *=(this mut &, u64 y) -> bigint mut &
+  pub fn *=(this mut &, u64 y) -> bigint mut &
   {
     var mul = std::mul_with_carry(this.bits[0], y);
 
@@ -78,7 +78,7 @@ pub struct bigint<N>
     return &this;
   }
 
-  fn <<=(this mut &, int shift) -> bigint mut &
+  pub fn <<=(this mut &, int shift) -> bigint mut &
   {  
     var offset = cast<usize>(shift) / 64;
     shift %= 64;
@@ -101,7 +101,7 @@ pub struct bigint<N>
     return &this;
   }
 
-  fn ==(this&, bigint &that) -> bool
+  pub fn ==(this&, bigint &that) -> bool
   {
     if (this.n != that.n)
       return false;
@@ -113,7 +113,7 @@ pub struct bigint<N>
     return true;
   }
 
-  fn <=>(this&, bigint &that) -> int
+  pub fn <=>(this&, bigint &that) -> int
   {
     if (this.n != that.n)
       return (this.n > that.n) ? +1 : -1;
@@ -125,8 +125,8 @@ pub struct bigint<N>
     return 0;
   }
 
-  usize n;
-  u64[(N + 63)/64] bits;
+  pub usize n;
+  pub u64[(N + 63)/64] bits;
 }
 
 pub fn mulexp<N>(bigint<N> mut &x, int exp) -> void

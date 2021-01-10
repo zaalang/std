@@ -8,12 +8,12 @@ import std.math;
 import std.algorithm;
 import std.bits.float as flt;
 
-pub struct strconv_result
+struct strconv_result
 {
   usize len;
   u8 *ptr;
   std::errc error;
-  
+
   strconv_result() = default;
   strconv_result(strconv_result&) = default;
   fn =(strconv_result mut &, strconv_result&) -> strconv_result mut & = default;
@@ -573,6 +573,46 @@ pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
     else
       value = cast<isize>(body);
   }
+
+  return result;
+}
+
+pub fn atob(u8 *beg, u8 *end, bool mut &value) -> strconv_result
+{
+  const true_strs = [ "1", "true", "True", "TRUE" ];
+  const false_strs = [ "0", "false", "False", "FALSE" ];
+
+  var result = strconv_result();
+
+  result.ptr = beg;
+
+  for(var &str : true_strs)
+  {
+    if (end - beg < str.len)
+      break;
+
+    if (std::span(beg, str.len) == str)
+    {
+      value = true;
+      result.len = str.len;
+      return result;
+    }
+  }
+
+  for(var &str : false_strs)
+  {
+    if (end - beg < str.len)
+      break;
+
+    if (std::span(beg, str.len) == str)
+    {
+      value = false;
+      result.len = str.len;
+      return result;
+    }
+  }
+
+  result.error = std::errc::result_out_of_range;
 
   return result;
 }

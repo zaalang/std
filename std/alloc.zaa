@@ -18,10 +18,10 @@ extern fn mem_free(void *addr) -> void;
 
 pub struct allocator
 {
-  allocator() = default;
-  allocator(allocator&) = default;
-  fn =(allocator mut &, allocator&) -> allocator mut & = default;
-  ~allocator() = default;
+  pub allocator() = default;
+  pub allocator(allocator&) = default;
+  pub fn =(allocator mut &, allocator&) -> allocator mut & = default;
+  pub ~allocator() = default;
 
   pub fn allocate(this mut &, usize size, usize alignment) -> void mut *
   {

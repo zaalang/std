@@ -8,7 +8,7 @@ import std.algorithm : swap;
 import std.tuple : tuple;
 import std.pair;
 
-pub enum Color
+enum Color
 {
   red,
   black
@@ -24,7 +24,7 @@ pub struct Link
   Link() = default;
   ~Link() = default;
 
-  fn next(Link &&link)
+  pub fn next(Link &&link)
   {
     var x = &link;
 
@@ -46,7 +46,7 @@ pub struct Link
     return x;
   }
 
-  fn prev(Link &&link)
+  pub fn prev(Link &&link)
   {
     var x = &link;
 
@@ -71,7 +71,7 @@ pub struct Link
 
 pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
-  struct Node : Link
+  pub struct Node : Link
   {
     Node()
       : value(void)
@@ -80,24 +80,24 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     ~Node() = default;
 
-    value_type value;
+    pub value_type value;
   }
   
-  using value_type = std::key_value_pair<K, T, Allocator>;
+  pub using value_type = std::key_value_pair<K, T, Allocator>;
 
-  tree(Allocator &allocator = Allocator())
+  pub tree(Allocator &allocator = Allocator())
     : allocator(allocator)
   {
     init(this);
   }
 
-  tree(Cmp &&cmp, Allocator &allocator = Allocator())
+  pub tree(Cmp &&cmp, Allocator &allocator = Allocator())
     : cmp(&&cmp), allocator(allocator)
   {
     init(this);
   }
 
-  ~tree()
+  pub ~tree()
   {
     clear(this);
   }
@@ -353,7 +353,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     }
   }
 
-  fn find_insert_position_unique<Key>(this mut &, Key &key) -> (Link mut *, Link mut *)
+  pub fn find_insert_position_unique<Key>(this mut &, Key &key) -> (Link mut *, Link mut *)
   {
     var x = this._root.parent;
     var y = &this._root;
@@ -373,7 +373,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return tuple(null, y);
   }
 
-  fn find_insert_position_multi<Key>(this mut &, Key &key) -> (Link mut *, Link mut *)
+  pub fn find_insert_position_multi<Key>(this mut &, Key &key) -> (Link mut *, Link mut *)
   {
     var x = this._root.parent;
     var y = &this._root;

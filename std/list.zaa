@@ -10,13 +10,13 @@ import std.type : as_const;
 
 pub struct list<T, Allocator = std::allocator>
 {
-  list(Allocator &allocator = Allocator())
+  pub list(Allocator &allocator = Allocator())
     : allocator(allocator)
   {
     init(this);
   }
 
-  list(list &&other, Allocator &allocator = Allocator())
+  pub list(list &&other, Allocator &allocator = Allocator())
     : allocator(allocator)
   {
     init(this);
@@ -54,7 +54,7 @@ pub struct list<T, Allocator = std::allocator>
     return result;
   }
 
-  ~list()
+  pub ~list()
   {
     clear(this);
   }
@@ -71,36 +71,36 @@ pub struct list<T, Allocator = std::allocator>
 
   pub struct iterator
   {
-    iterator() = default;
-    iterator(iterator&) = default;
-    fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
-    ~iterator() = default;
+    pub iterator() = default;
+    pub iterator(iterator&) = default;
+    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    pub ~iterator() = default;
 
-    iterator(Link mut *node)
-      : cursor(node)
-    {
-    }
-
-    fn *(iterator &this) -> T&
+    pub fn *(iterator &this) -> T&
     {
       return &cast<Node*>(this.cursor).value;
     }
 
-    fn *(iterator mut &this) -> T mut &
+    pub fn *(iterator mut &this) -> T mut &
     {
       return &cast<Node mut *>(this.cursor).value;
     }
 
-    fn ++(iterator mut &this) -> iterator mut &
+    pub fn ++(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
-    fn --(iterator mut &this) -> iterator mut &
+    pub fn --(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.prev;
       return &this;
+    }
+
+    iterator(Link mut *node)
+      : cursor(node)
+    {
     }
 
     Link mut *cursor;
@@ -108,36 +108,36 @@ pub struct list<T, Allocator = std::allocator>
 
   pub struct move_iterator
   {
-    move_iterator() = default;
-    move_iterator(move_iterator&) = default;
-    fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
-    ~move_iterator() = default;
+    pub move_iterator() = default;
+    pub move_iterator(move_iterator&) = default;
+    pub fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
+    pub ~move_iterator() = default;
 
-    move_iterator(Link mut *node)
-      : cursor(node)
-    {
-    }
-
-    fn *(move_iterator &this) -> T &
+    pub fn *(move_iterator &this) -> T &
     {
       return &cast<Node*>(this.cursor).value;
     }
 
-    fn *(move_iterator mut &this) -> T &&
+    pub fn *(move_iterator mut &this) -> T &&
     {
       return &std::move(cast<Node mut *>(this.cursor).value);
     }
 
-    fn ++(move_iterator mut &this) -> move_iterator mut &
+    pub fn ++(move_iterator mut &this) -> move_iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
-    fn --(move_iterator mut &this) -> move_iterator mut &
+    pub fn --(move_iterator mut &this) -> move_iterator mut &
     {
       this.cursor = this.cursor.prev;
       return &this;
+    }
+
+    move_iterator(Link mut *node)
+      : cursor(node)
+    {
     }
 
     Link mut *cursor;
@@ -145,36 +145,36 @@ pub struct list<T, Allocator = std::allocator>
 
   pub struct const_iterator
   {
-    const_iterator() = default;
-    const_iterator(const_iterator&) = default;
-    fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
-    ~const_iterator() = default;
+    pub const_iterator() = default;
+    pub const_iterator(const_iterator&) = default;
+    pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
+    pub ~const_iterator() = default;
 
-    const_iterator(Link *node)
-      : cursor(node)
-    {
-    }
-
-    const_iterator(iterator other)
+    pub const_iterator(iterator other)
       : cursor(other.cursor)
     {
     }
 
-    fn *(const_iterator &this) -> T&
+    pub fn *(const_iterator &this) -> T&
     {
       return &cast<Node*>(this.cursor).value;
     }
 
-    fn ++(const_iterator mut &this) -> const_iterator mut &
+    pub fn ++(const_iterator mut &this) -> const_iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
-    fn --(const_iterator mut &this) -> const_iterator mut &
+    pub fn --(const_iterator mut &this) -> const_iterator mut &
     {
       this.cursor = this.cursor.prev;
       return &this;
+    }
+
+    const_iterator(Link *node)
+      : cursor(node)
+    {
     }
 
     Link *cursor;
@@ -188,18 +188,6 @@ pub struct list<T, Allocator = std::allocator>
   pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
   {
     return lhs.cursor == rhs.cursor;
-  }
-
-  fn iter(this &&, var node)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(node);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(node);
-
-    #else
-      return iterator(node);
   }
 
   pub fn begin(this &&)
@@ -395,6 +383,18 @@ pub struct list<T, Allocator = std::allocator>
   {
     this._len = 0;
     this._root.next = this._root.prev = &this._root;
+  }
+
+  fn iter(this &&, var node)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(node);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(node);
+
+    #else
+      return iterator(node);
   }
 
   fn insert<Args>(this mut &, Link *position, Args && ...args) -> Node mut *
