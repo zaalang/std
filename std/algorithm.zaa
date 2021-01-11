@@ -247,7 +247,6 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = les
   return lower_bound((&&range).begin, (&&range).end, value, cmp);
 }
 
-
 pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> I
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(value, *i); }
 {
@@ -290,4 +289,22 @@ pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = les
   where requires (typeof(range) &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
 {
   return equal_range((&&range).begin, (&&range).end, value, cmp);
+}
+
+pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> I
+  where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); }
+{
+  var j = lower_bound(first, last, value, cmp);
+
+  if (j == last || cmp(value, *j))
+    return last;
+
+  return j;
+}
+
+pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
+  match (Value value) { T(value); }
+  where requires (typeof(range) &range, Value &value, Cmp &cmp) { binary_search(range.begin, range.end, value, cmp); }
+{
+  return binary_search((&&range).begin, (&&range).end, value, cmp);
 }

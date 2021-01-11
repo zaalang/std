@@ -6,20 +6,27 @@ import std.stdio;
 import std.error;
 import std.string : String;
 
+pub extern fn exit(u32) -> void;
+
 pub fn move<T>(T mut &v) -> T&&
 {
   return &v;
 }
 
-pub fn abort() -> void
+pub fn abort(var & ...args) -> void
 {
-  proc_exit(1);
+  if (args.len != 0)
+    std::print(&&args...);
+
+  exit(1);
 }
 
-pub fn panic(String &msg = "") -> void
+pub fn panic(var & ...args) -> void
 {
-  std::print(msg);
-  abort();
+  if (args.len != 0)
+    std::print(&&args...);
+
+  exit(1);
 }
 
 pub fn assert(var *condition, String &msg = "", var &loc = std::source_location(__site__)) -> void
@@ -31,8 +38,7 @@ pub fn assert(bool condition, String &msg = "", var &loc = std::source_location(
 {
   if (!condition)
   {
-    std::print(loc, ": ASSERTION FAILED: ", msg);
-    abort();
+    panic(loc, ": ASSERTION FAILED: ", msg);
   }
 }
 
@@ -40,9 +46,6 @@ pub fn assert(#bool condition, #std::string_literal msg = "", #var loc = #std::s
 {
   #if (!condition)
   {
-    #std::print(loc, ": ASSERTION FAILED: ", msg);
-    #abort();
+    #panic(loc, ": ASSERTION FAILED: ", msg);
   }
 }
-
-extern fn proc_exit(u32) -> void;
