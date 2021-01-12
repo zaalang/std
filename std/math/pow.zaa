@@ -22,8 +22,8 @@ pub const fn pow<T>(T x, #int y) -> T
   return x*x*x*x;
 }
 
-pub const fn pow<T>(T x, int y) -> T
-  where __is_integral<T>
+pub const fn pow<T, U>(T x, U y) -> T
+  where __is_integral<T> && __is_integral<U>
 {
   std::assert(y >= 0, "negative pow");
 
@@ -45,8 +45,8 @@ pub const fn pow<T>(T x, int y) -> T
   return result;
 }
 
-pub const fn pow<T>(T x, int y) -> T
-  where __is_floating_point<T>
+pub const fn pow<T, U>(T x, U y) -> T
+  where __is_floating_point<T> && __is_integral<U>
 {
   let neg = (y < 0);
 

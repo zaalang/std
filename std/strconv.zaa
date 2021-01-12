@@ -6,6 +6,7 @@ import std.error;
 import std.string;
 import std.math;
 import std.algorithm;
+import std.bits.utf as utf;
 import std.bits.float as flt;
 
 struct strconv_result
@@ -162,20 +163,20 @@ pub fn ctoa(u8 mut *beg, u8 mut *end, char value) -> strconv_result
   else if (128 <= value && value < 2048 && end - ch >= 2)
   {
     *ch++ = 0b11000000 | cast(value >> 6);
-    *ch++ = 0b10000000 | cast(value) & 0b00111111;
+    *ch++ = 0b10000000 | cast(value & 0b00111111);
   }
   else if (2048 <= value && value < 65536 && end - ch >= 3)
   {
     *ch++ = 0b11100000 | cast(value >> 12);
-    *ch++ = 0b10000000 | cast(value >> 6) & 0b00111111;
-    *ch++ = 0b10000000 | cast(value) & 0b00111111;
+    *ch++ = 0b10000000 | cast((value >> 6) & 0b00111111);
+    *ch++ = 0b10000000 | cast(value & 0b00111111);
   }  
   else if (65536 <= value && end - ch >= 4)
   {
     *ch++ = 0b11110000 | cast(value >> 18);
-    *ch++ = 0b10000000 | cast(value >> 12) & 0b00111111;
-    *ch++ = 0b10000000 | cast(value >> 6) & 0b00111111;
-    *ch++ = 0b10000000 | cast(value) & 0b00111111;
+    *ch++ = 0b10000000 | cast((value >> 12) & 0b00111111);
+    *ch++ = 0b10000000 | cast((value >> 6) & 0b00111111);
+    *ch++ = 0b10000000 | cast(value & 0b00111111);
   }
   else
   {
@@ -392,10 +393,10 @@ pub fn atoi(u8 *beg, u8 *end, bool mut &value, int base = 10) -> strconv_result
   var v = usize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v > 1)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v <= 1)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -405,10 +406,10 @@ pub fn atoi(u8 *beg, u8 *end, u8 mut &value, int base = 10) -> strconv_result
   var v = usize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v > 255)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v <= 255)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -418,10 +419,10 @@ pub fn atoi(u8 *beg, u8 *end, u16 mut &value, int base = 10) -> strconv_result
   var v = usize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v > 65_535)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v <= 65_535)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -431,10 +432,10 @@ pub fn atoi(u8 *beg, u8 *end, u32 mut &value, int base = 10) -> strconv_result
   var v = usize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v > 4_294_967_295)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v <= 4_294_967_295)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -456,9 +457,9 @@ pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
   var result = strconv_result();
 
   value = 0;
-  var i = 0;
+  var ch = beg;
 
-  for(var ch = beg; ch != end; ++ch, ++i)
+  for(; ch != end; ++ch)
   {
     var d = 0;
 
@@ -488,13 +489,13 @@ pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
     value = sum.0;
   }
 
-  if (i == 0)
+  if (ch == beg)
   {
     result.error = std::errc::invalid_argument;
   }
 
   result.ptr = beg;
-  result.len = i;
+  result.len = ch - beg;
 
   return result;
 }
@@ -504,10 +505,10 @@ pub fn atoi(u8 *beg, u8 *end, i8 mut &value, int base = 10) -> strconv_result
   var v = isize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v < -128 || v > 127)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v >= -128 && v <= 127)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -517,10 +518,10 @@ pub fn atoi(u8 *beg, u8 *end, i16 mut &value, int base = 10) -> strconv_result
   var v = isize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v < -32_768 || v > 32_767)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v >= -32_768 && v <= 32_767)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -530,10 +531,10 @@ pub fn atoi(u8 *beg, u8 *end, i32 mut &value, int base = 10) -> strconv_result
   var v = isize(0);
   var result = atoi(beg, end, v, base);
 
-  if (v < -2_147_483_648 || v > 2_147_483_647)
-    result.error = std::errc::result_out_of_range;
-  else
+  if (v >= -2_147_483_648 && v <= 2_147_483_647)
     value = cast(v);
+  else
+    result.error = std::errc::result_out_of_range;
 
   return result;
 }
@@ -558,20 +559,23 @@ pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
 
   if (ch != beg) // negative
   {
-    if (body > 9_223_372_036_854_775_808)
-      result.error = std::errc::result_out_of_range;
-    else if (body != 0)
-      value = ~cast<isize>(body - 1);
+    if (body != 0)
+    {
+      if (body <= 9_223_372_036_854_775_808)
+        value = ~cast<isize>(body - 1);
+      else
+        result.error = std::errc::result_out_of_range;
+    }
 
     result.ptr -= 1;
     result.len += 1;
   }
   else
   {
-    if (body > 9_223_372_036_854_775_807)
-      result.error = std::errc::result_out_of_range;
-    else
+    if (body <= 9_223_372_036_854_775_807)
       value = cast<isize>(body);
+    else
+      result.error = std::errc::result_out_of_range;
   }
 
   return result;
@@ -612,7 +616,36 @@ pub fn atob(u8 *beg, u8 *end, bool mut &value) -> strconv_result
     }
   }
 
-  result.error = std::errc::result_out_of_range;
+  result.error = std::errc::invalid_argument;
+
+  return result;
+}
+
+pub fn atoc(u8 *beg, u8 *end, char mut &value) -> strconv_result
+{   
+  var result = strconv_result();
+  
+  value = 0;
+  var ch = beg;
+  var state = 0;
+
+  for(; ch != end; )
+  {
+    if (utf::decode(state, value, *ch) != utf::REJECT)
+      ++ch;
+    
+    if (state == utf::ACCEPT || state == utf::REJECT)
+      break;
+  }
+
+  if (ch == beg || state != 0)
+  {
+    value = '\uFFFD';
+    result.error = std::errc::invalid_argument;
+  }
+
+  result.ptr = beg;
+  result.len = ch - beg;
 
   return result;
 }

@@ -8,6 +8,8 @@ import std.algorithm : swap;
 import std.memory : memcpy, memmove;
 import std.range: Range;
 import std.fmt;
+import std.unicode;
+import std.bits.utf as utf;
 
 pub concept String
 {
@@ -308,4 +310,55 @@ pub fn sprintf(string mut &str, #std::string_literal format, var & ...args) -> u
   str.clear();
 
   return str.appendf(format, args...);
+}
+
+pub fn trim_left(String &str) -> string_view
+{
+  var i = str.begin;
+
+  for(; i != str.end; )
+  {
+    var k = 1;
+    var state = 0;
+    var codepoint = char(0);
+    for(var j = i; j != str.end; ++j, ++k)
+    {
+      if (utf::decode(state, codepoint, *j) == 0)
+        break;
+    }
+
+    if (!std::is_whitespace(codepoint))
+      break;
+
+    i += k;
+  }
+
+  return std::string_view(i, str.end);
+}
+
+pub fn trim_right(String &str) -> string_view
+{
+  var j = str.end;
+
+  for(; j != str.begin; )
+  {
+    var k = utf::len_last(str.begin, j);
+
+    var state = 0;
+    var codepoint = char(0);
+    for(var i = j - k; i != j; ++i)
+      utf::decode(state, codepoint, *i);
+
+    if (!std::is_whitespace(codepoint))
+      break;
+
+    j -= k;
+  }
+
+  return std::string_view(str.begin, j);
+}
+
+pub fn trim(String &str) -> string_view
+{
+  return trim_right(trim_left(str));
 }

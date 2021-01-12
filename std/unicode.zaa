@@ -1,0 +1,15 @@
+//
+// std unicode
+//
+
+import std.span;
+
+pub fn is_whitespace(u8 ch) -> bool
+{
+  return ch == cast(' ') || ch == cast('\t') || ch == cast('\n') || ch == cast('\r') || ch == cast('\v') || ch == cast('\f');
+}
+
+pub fn is_whitespace(char ch) -> bool
+{
+  return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f' || ch == 0x85 || ch == 0xA0;
+}

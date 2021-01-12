@@ -69,7 +69,7 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
     var half_ulp = 1 << (F64::digits - F32::digits - 1);
     
     if (min_normal_e > result.value.e) 
-      half_ulp <<= cast(min_normal_e - result.value.e);
+      half_ulp <<= min_normal_e - result.value.e;
 
     if (significand == 0 && biased_e != 0 && result.value.e > min_normal_e)
     {

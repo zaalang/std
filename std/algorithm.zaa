@@ -308,3 +308,21 @@ pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = l
 {
   return binary_search((&&range).begin, (&&range).end, value, cmp);
 }
+
+pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
+{
+  var count = 0;
+
+  for (; first != last; ++first)
+  {
+    if (pred(*first))
+      ++count;
+  }
+
+  return count;
+}
+
+pub fn count_if<T, Pred>(Range<T> &&range, Pred &pred)
+{
+  return count_if((&&range).begin, (&&range).end, pred);
+}
