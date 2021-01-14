@@ -12,14 +12,14 @@ import std.type : as_const;
 pub struct vector<T, Allocator = std::allocator, N = 0>
 {
   pub vector(Allocator &allocator = Allocator())
-    : allocator(allocator),
+    : _allocator(allocator),
       _smallbuffer(void)
   {
     init(this);
   }
 
   pub vector<M>(vector<T, Allocator, M> &&other, Allocator &allocator = Allocator())
-    : allocator(allocator),
+    : _allocator(allocator),
       _smallbuffer(void)
   {
     init(this);
@@ -66,12 +66,23 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return result;
   }
 
+  pub fn from<U>(Range<U> &&other, Allocator &allocator = Allocator()) -> vector
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    where !__is_same<T, U>
+  {
+    var result = vector(allocator);
+
+    result.insert(result.end, &&other);
+
+    return result;
+  }
+
   pub ~vector()
   {
     clear(this);
 
     if (this._data != cast(this._smallbuffer.data))
-      this.allocator.free(this._data, this._capacity * sizeof<T>);
+      this._allocator.free(this._data, this._capacity * sizeof<T>);
   }
 
   pub fn len(this &) -> usize
@@ -92,6 +103,11 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   pub fn data(this &&)
   {
     return this._data;
+  }
+
+  pub fn allocator(this &) -> Allocator &
+  {
+    return &this._allocator;
   }
 
   pub fn [](this &&, usize index)
@@ -297,7 +313,8 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return iterator(insert(this, position.cursor, &&args...));
   }
 
-  pub fn insert(this mut &, Iterator position, Range<T> &&other) -> iterator
+  pub fn insert<U>(this mut &, Iterator position, Range<U> &&other) -> iterator
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
     #if (__is_same<vector, typeof(other)>)
       assert(&this != &other);
@@ -362,7 +379,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     if (this._capacity < capacity)
     {
-      var data = cast<T mut *>(this.allocator.allocate(capacity * sizeof<T>, alignof<T>));
+      var data = cast<T mut *>(this._allocator.allocate(capacity * sizeof<T>, alignof<T>));
 
       uninitialised_move(this, data, this._data, this._data + this._len);
 
@@ -372,7 +389,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
       destruct(this, data, data + this._len);
 
       if (data != cast(this._smallbuffer.data))
-        this.allocator.free(data, capacity * sizeof<T>);
+        this._allocator.free(data, capacity * sizeof<T>);
     }
   }
 
@@ -577,5 +594,5 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   usize _capacity;
   u8[N*sizeof<T>] _smallbuffer; // NOTE: relying on alignment after a usize
 
-  Allocator allocator;
+  Allocator _allocator;
 }

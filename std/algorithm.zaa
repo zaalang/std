@@ -309,7 +309,29 @@ pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = l
   return binary_search((&&range).begin, (&&range).end, value, cmp);
 }
 
+pub fn count<I, Value>(I first, Sentinal<I> last, Value &value) -> usize
+  where __is_match<Iterator, I> && requires (I i, Value &value) { *i == value; }
+{
+  var count = 0;
+
+  for (; first != last; ++first)
+  {
+    if (*first == value)
+      ++count;
+  }
+
+  return count;
+}
+
+pub fn count<T, Value>(Range<T> &range, Value &value) -> usize
+  match (Value value) { T(value); }
+  where requires (typeof(range) &range, Value &value) { count(range.begin, range.end, value); }
+{
+  return count(range.begin, range.end, value);
+}
+
 pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
 {
   var count = 0;
 
@@ -322,7 +344,45 @@ pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
   return count;
 }
 
-pub fn count_if<T, Pred>(Range<T> &&range, Pred &pred)
+pub fn count_if<T, Pred>(Range<T> &range, Pred &pred)
+  where requires (typeof(range) &range, Pred &pred) { count_if(range.begin, range.end, pred); }
 {
-  return count_if((&&range).begin, (&&range).end, pred);
+  return count_if(range.begin, range.end, pred);
+}
+
+pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
+  where __is_match<Iterator, I> && requires (I i, Value &value) { *i == value; }
+{
+  for (; first != last; ++first)
+  {
+    if (*first == value)
+      return first;
+  }
+
+  return first;
+}
+
+pub fn find<T, Value>(Range<T> &&range, Value &value)
+  match (Value value) { T(value); }
+  where requires (typeof(range) &range, Value &value) { find(range.begin, range.end, value); }
+{
+  return find((&&range).begin, (&&range).end, value);
+}
+
+pub fn find_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  for (; first != last; ++first)
+  {
+    if (pred(*first))
+      return first;
+  }
+
+  return first;
+}
+
+pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
+  where requires (typeof(range) &range, Pred &pred) { find_if(range.begin, range.end, pred); }
+{
+  return find_if((&&range).begin, (&&range).end, pred);
 }

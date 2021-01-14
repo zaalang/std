@@ -4,6 +4,10 @@
 
 import std.stdlib;
 
+// NOTE:
+//  Iterator is expected to behave like at least a multi-pass-forward iterator.
+//  Input iterators shouldn't match due to throwing operations
+
 pub concept Iterator
 {
   requires<T> (T x) { *x; };
@@ -21,6 +25,14 @@ pub concept RandomAccessIterator
 pub concept Sentinal<I>
 {
   requires<T> (T x, I y) { y == x; };
+}
+
+pub struct end_iterator
+{
+  pub end_iterator() = default;
+  pub end_iterator(end_iterator&) = default;
+  pub fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
+  pub ~end_iterator() = default;
 }
 
 pub struct move_iterator<I>

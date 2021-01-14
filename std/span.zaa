@@ -39,6 +39,11 @@ pub struct span<T>
   {
   }
 
+  pub fn empty(this &) -> bool
+  {
+    return this.len == 0;
+  }
+
   pub fn [](this &, usize index) -> T&
   {
     assert(index < this.len);

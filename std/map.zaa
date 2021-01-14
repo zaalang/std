@@ -365,7 +365,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   using tree_type = Tree::tree<K, T, Cmp, Allocator>;
-  using value_type = Tree::tree<K, T, Cmp, Allocator>::value_type;
+  pub using value_type = Tree::tree<K, T, Cmp, Allocator>::value_type;
   using node_type = Tree::tree<K, T, Cmp, Allocator>::Node;
 
   tree_type _tree;

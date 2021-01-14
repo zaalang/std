@@ -5,6 +5,10 @@
 import std.stdlib;
 import std.iterator : Iterator, Sentinal, RandomAccessIterator;
 
+// NOTE:
+//  Range is expected to behave like at least a multi-pass-forward range.
+//  Input iterator ranges shouldn't match due to throwing operations
+
 pub concept Range<U>
 {
   requires<T> (T x) -> U { return *x.begin; };

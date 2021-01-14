@@ -11,13 +11,13 @@ import std.type : as_const;
 pub struct list<T, Allocator = std::allocator>
 {
   pub list(Allocator &allocator = Allocator())
-    : allocator(allocator)
+    : _allocator(allocator)
   {
     init(this);
   }
 
   pub list(list &&other, Allocator &allocator = Allocator())
-    : allocator(allocator)
+    : _allocator(allocator)
   {
     init(this);
 
@@ -54,6 +54,17 @@ pub struct list<T, Allocator = std::allocator>
     return result;
   }
 
+  pub fn from<U>(Range<U> &&other, Allocator &allocator = Allocator()) -> list
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    where !__is_same<T, U>
+  {
+    var result = list(allocator);
+
+    result.insert(result.end, &&other);
+
+    return result;
+  }
+
   pub ~list()
   {
     clear(this);
@@ -67,6 +78,11 @@ pub struct list<T, Allocator = std::allocator>
   pub fn empty(this &) -> bool
   {
     return this._len == 0;
+  }
+
+  pub fn allocator(this &) -> Allocator &
+  {
+    return &this._allocator;
   }
 
   pub struct iterator
@@ -232,7 +248,8 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(insert(this, position.cursor, &&args...));
   }
 
-  pub fn insert(this mut &, Iterator position, Range<T> &&other) -> iterator
+  pub fn insert<U>(this mut &, Iterator position, Range<U> &&other) -> iterator
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
     #if (__is_rvalue<typeof(other)> && __is_same<list, typeof(other)>)
     {
@@ -399,7 +416,7 @@ pub struct list<T, Allocator = std::allocator>
 
   fn insert<Args>(this mut &, Link *position, Args && ...args) -> Node mut *
   {
-    var node = new<Node>(this.allocator.allocate(sizeof<Node>, alignof<Node>));
+    var node = new<Node>(this._allocator.allocate(sizeof<Node>, alignof<Node>));
 
     new<T>(&node.value)(&&args..., allocator?: this.allocator);
 
@@ -443,7 +460,7 @@ pub struct list<T, Allocator = std::allocator>
       var next = node.next;
 
       Node::~Node(*cast<Node mut *>(node));
-      this.allocator.free(node, sizeof<Node>);
+      this._allocator.free(node, sizeof<Node>);
 
       count += 1;
       node = next;
@@ -460,5 +477,5 @@ pub struct list<T, Allocator = std::allocator>
   Link _root;
   usize _len;
 
-  Allocator allocator;
+  Allocator _allocator;
 }

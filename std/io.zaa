@@ -176,7 +176,7 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
       return &this;
     }
 
-    pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
+    pub fn ==(line_iterator &lhs, std::end_iterator rhs) -> bool
     {
       return lhs.n == 0;
     }
@@ -191,17 +191,9 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     buffered_reader mut &reader;
   }
 
-  pub struct end_iterator
+  pub fn lines(this mut &) throws -> std::iterator_pair<line_iterator, std::end_iterator>
   {
-    pub end_iterator() = default;
-    pub end_iterator(end_iterator&) = default;
-    pub fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
-    pub ~end_iterator() = default;
-  }
-
-  pub fn lines(this mut &) throws -> std::iterator_pair<line_iterator, end_iterator>
-  {
-    return std::iterator_pair(++line_iterator(this), end_iterator);
+    return std::iterator_pair(++line_iterator(this), std::end_iterator);
   }
 
   usize _head;
