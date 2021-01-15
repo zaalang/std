@@ -27,17 +27,9 @@ pub concept Sentinal<I>
   requires<T> (T x, I y) { y == x; };
 }
 
-pub struct end_iterator
-{
-  pub end_iterator() = default;
-  pub end_iterator(end_iterator&) = default;
-  pub fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
-  pub ~end_iterator() = default;
-}
-
 pub struct move_iterator<I>
 {
-  I base;
+  pub I base;
 
   pub move_iterator(I base)
     : base(base)
@@ -113,6 +105,28 @@ pub struct iterator_pair<I, J>
   pub fn end(this &&)
   {
     return this.second;
+  }
+}
+
+pub fn distance<I>(I first, Sentinal<I> last) -> usize
+{
+  using S = typeof(last);
+
+  #if (requires (I x, S y) { y - x; })
+  {
+    return last - first;
+  }
+  #else
+  {
+    var result = 0;
+
+    while (first != last)
+    {
+      ++first;
+      ++result;
+    }
+
+    return result;
   }
 }
 

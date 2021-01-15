@@ -31,31 +31,9 @@ pub fn move<T>(std::mutable_span<T> mut &range)
   return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
 
-pub fn distance<I>(I first, Sentinal<I> last) -> usize
-{
-  using S = typeof(last);
-
-  #if (requires (I x, S y) { y - x; })
-  {
-    return last - first;
-  }
-  #else
-  {
-    var result = 0;
-
-    while (first != last)
-    {
-      ++first;
-      ++result;
-    }
-
-    return result;
-  }
-}
-
 pub fn len<T>(Range<T> &range) -> usize
 {
-  return distance(range.begin, range.end);
+  return std::distance(range.begin, range.end);
 }
 
 pub fn ==<T>(Range<T> &lhs, Range<T> &rhs) -> bool

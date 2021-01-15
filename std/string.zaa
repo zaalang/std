@@ -34,11 +34,159 @@ pub struct string_view : std::span<u8>
   {
   }
 
+  pub string_view(string_literal &str)
+    : super(str.data, str.len)
+  {
+  }
+
   pub fn [](this&, (usize, usize) range) -> string_view
   {
     std::assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return string_view(this.data + range.0, this.data + range.1);
+  }
+
+  pub struct char_iterator : u8 *
+  {
+    pub char_iterator(char_iterator&) = default;
+    pub ~char_iterator() = default;
+
+    pub fn *(char_iterator &this) -> char
+    {
+      return this.codepoint;
+    }
+
+    pub fn ++(char_iterator mut &this) -> char_iterator mut &
+    {
+      this.super += this.n;
+
+      this.n = 0;
+
+      var state = 0;
+      for(var ch = this.super; ch != this.end; ++ch)
+      {
+        this.n += 1;
+
+        if (utf::decode(state, this.codepoint, *ch) == 0)
+          break;
+      }
+
+      return &this;
+    }
+
+    pub fn --(char_iterator mut &this) -> char_iterator mut &
+    {
+      this.n = utf::len_last(this.beg, this.super);
+
+      var state = 0;
+      for(var ch = this.super - this.n; ch != this.super; ++ch)
+      {
+        utf::decode(state, this.codepoint, *ch);
+      }
+
+      this.super -= this.n;
+
+      return &this;
+    }
+
+    pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
+
+    pub fn ==(char_iterator &lhs, end_iterator rhs) -> bool
+    {
+      return lhs.n == 0;
+    }
+
+    pub fn len(char_iterator &this) -> usize
+    {
+      return this.n;
+    }
+
+    char_iterator(u8 *beg, u8 *end, u8 *cursor)
+      : super(cursor), beg(beg), end(end)
+    {
+    }
+
+    usize n;
+    char codepoint;
+    u8 *beg, u8 *end
+  }
+
+  pub struct line_iterator
+  {
+    pub line_iterator(line_iterator&) = default;
+    pub ~line_iterator() = default;
+
+    pub fn *(line_iterator &this) -> string_view
+    {
+      return string_view(this.cursor, this.m);
+    }
+
+    pub fn ++(line_iterator mut &this) -> line_iterator mut &
+    {
+      this.cursor += this.n;
+
+      if (this.cursor != this.end)
+      {
+        this.n = std::memchr(this.cursor, cast('\n'), this.end - this.cursor);
+
+        this.m = this.n;
+
+        if (this.cursor + this.n != this.end)
+        {
+          if (this.m != 0 && *(this.cursor + this.m - 1) == cast('\r'))
+            this.m -= 1;
+
+          this.n += 1;
+        }
+      }
+      else
+      {
+        this.n = this.m = 0;
+      }
+
+      return &this;
+    }
+
+    pub fn ==(line_iterator &lhs, u8 *rhs) -> bool
+    {
+      return lhs.cursor == rhs;
+    }
+
+    pub fn ==(line_iterator &lhs, line_iterator &rhs) -> bool
+    {
+      return lhs.cursor == rhs.cursor;
+    }
+
+    pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
+    {
+      return lhs.n == 0;
+    }
+
+    line_iterator(u8 *beg, u8 *end)
+      : cursor(beg), end(end)
+    {
+    }
+
+    usize n, usize m;
+    u8 *cursor, u8 *end;
+  }
+
+  struct end_iterator
+  {
+    end_iterator() = default;
+    end_iterator(end_iterator&) = default;
+    fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
+    ~end_iterator() = default;
+  }
+
+  pub fn chars(this &) -> std::iterator_pair<char_iterator, char_iterator>
+  {
+    return std::iterator_pair(++char_iterator(this.begin, this.end, this.begin), char_iterator(this.begin, this.end, this.end));
+  }
+
+  pub fn lines(this &) -> std::iterator_pair<line_iterator, end_iterator>
+  {
+    return std::iterator_pair(++line_iterator(this.begin, this.end), end_iterator);
   }
 
   pub string_view(string_view &that) = default;
@@ -296,63 +444,6 @@ pub struct string<Allocator = std::allocator, N = 24>
   Allocator _allocator;
 }
 
-pub struct line_iterator
-{
-  pub line_iterator(line_iterator&) = default;
-  pub ~line_iterator() = default;
-
-  pub fn *(line_iterator &this) -> string_view
-  {
-    return string_view(this.cursor, this.m);
-  }
-
-  pub fn ++(line_iterator mut &this) -> line_iterator mut &
-  {
-    this.cursor += this.n;
-
-    if (this.cursor != this.end)
-    {
-      this.n = std::memchr(this.cursor, cast('\n'), this.end - this.cursor);
-
-      this.m = this.n;
-
-      if (this.cursor + this.n != this.end)
-      {
-        if (this.m != 0 && *(this.cursor + this.m - 1) == cast('\r'))
-          this.m -= 1;
-
-        this.n += 1;
-      }
-    }
-    else
-    {
-      this.n = this.m = 0;
-    }
-
-    return &this;
-  }
-
-  pub fn ==(line_iterator &lhs, std::end_iterator rhs) -> bool
-  {
-    return lhs.n == 0;
-  }
-
-  line_iterator(u8 *beg, u8 *end)
-    : cursor(beg), end(end)
-  {
-  }
-
-  usize n;
-  usize m;
-  u8 *cursor;
-  u8 *end;
-}
-
-pub fn lines(String &str) -> std::iterator_pair<line_iterator, std::end_iterator>
-{
-  return std::iterator_pair(++line_iterator(str.begin, str.end), std::end_iterator);
-}
-
 pub fn sprint(string mut &str, var & ...args) -> usize
 {
   str.clear();
@@ -374,6 +465,16 @@ pub fn sprintf(string mut &str, #std::string_literal format, var & ...args) -> u
   return str.appendf(format, args...);
 }
 
+pub fn chars(String &str)
+{
+  return string_view(str.data, str.len).chars;
+}
+
+pub fn lines(String &str)
+{
+  return string_view(str.data, str.len).lines;
+}
+
 pub fn find(String &&haystack, char needle)
 {
   // TODO: unicode
@@ -382,23 +483,12 @@ pub fn find(String &&haystack, char needle)
 
 pub fn trim_left(String &str) -> string_view
 {
-  var i = str.begin;
+  var i = str.chars.begin;
 
-  for(; i != str.end; )
+  for(; i != str.end; ++i)
   {
-    var k = 1;
-    var state = 0;
-    var codepoint = char(0);
-    for(var j = i; j != str.end; ++j, ++k)
-    {
-      if (utf::decode(state, codepoint, *j) == 0)
-        break;
-    }
-
-    if (!std::is_whitespace(codepoint))
+    if (!std::is_whitespace(*i))
       break;
-
-    i += k;
   }
 
   return std::string_view(i, str.end);
@@ -408,19 +498,12 @@ pub fn trim_right(String &str) -> string_view
 {
   var j = str.end;
 
-  for(; j != str.begin; )
+  rof(var i = str.chars.end; i == str.begin; --i)
   {
-    var k = utf::len_last(str.begin, j);
-
-    var state = 0;
-    var codepoint = char(0);
-    for(var i = j - k; i != j; ++i)
-      utf::decode(state, codepoint, *i);
-
-    if (!std::is_whitespace(codepoint))
+    if (!std::is_whitespace(*i))
       break;
 
-    j -= k;
+    j = i;
   }
 
   return std::string_view(str.begin, j);
