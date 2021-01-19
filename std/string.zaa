@@ -5,10 +5,10 @@
 import std.span;
 import std.stdlib : assert;
 import std.algorithm : swap;
-import std.memory : memcpy, memmove, memchr;
+import std.memory : memcpy, memmove, memchr, memrchr, memcmp;
+import std.unicode : is_whitespace;
 import std.range: Range;
 import std.fmt;
-import std.unicode;
 import std.bits.utf as utf;
 
 pub concept String
@@ -41,7 +41,7 @@ pub struct string_view : std::span<u8>
 
   pub fn [](this&, (usize, usize) range) -> string_view
   {
-    std::assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return string_view(this.data + range.0, this.data + range.1);
   }
@@ -111,29 +111,29 @@ pub struct string_view : std::span<u8>
     u8 *beg, u8 *end
   }
 
-  pub struct line_iterator
+  pub struct line_iterator : u8 *
   {
     pub line_iterator(line_iterator&) = default;
     pub ~line_iterator() = default;
 
     pub fn *(line_iterator &this) -> string_view
     {
-      return string_view(this.cursor, this.m);
+      return string_view(this.super, this.m);
     }
 
     pub fn ++(line_iterator mut &this) -> line_iterator mut &
     {
-      this.cursor += this.n;
+      this.super += this.n;
 
-      if (this.cursor != this.end)
+      if (this.super != this.end)
       {
-        this.n = std::memchr(this.cursor, cast('\n'), this.end - this.cursor);
+        this.n = memchr(this.super, cast('\n'), this.end - this.super);
 
         this.m = this.n;
 
-        if (this.cursor + this.n != this.end)
+        if (this.super + this.n != this.end)
         {
-          if (this.m != 0 && *(this.cursor + this.m - 1) == cast('\r'))
+          if (this.m != 0 && *(this.super + this.m - 1) == cast('\r'))
             this.m -= 1;
 
           this.n += 1;
@@ -147,15 +147,7 @@ pub struct string_view : std::span<u8>
       return &this;
     }
 
-    pub fn ==(line_iterator &lhs, u8 *rhs) -> bool
-    {
-      return lhs.cursor == rhs;
-    }
-
-    pub fn ==(line_iterator &lhs, line_iterator &rhs) -> bool
-    {
-      return lhs.cursor == rhs.cursor;
-    }
+    pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
 
     pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -163,12 +155,122 @@ pub struct string_view : std::span<u8>
     }
 
     line_iterator(u8 *beg, u8 *end)
-      : cursor(beg), end(end)
+      : super(beg), end(end)
     {
     }
 
     usize n, usize m;
-    u8 *cursor, u8 *end;
+    u8 *end;
+  }
+
+  pub struct word_iterator : u8 *
+  {
+    pub word_iterator(word_iterator&) = default;
+    pub ~word_iterator() = default;
+
+    pub fn *(word_iterator &this) -> string_view
+    {
+      return string_view(this.super, this.n);
+    }
+
+    pub fn ++(word_iterator mut &this) -> word_iterator mut &
+    {
+      this.super += this.n;
+      this.super = find_first_not_of(string_view(this.super, this.end), this.delimiters);
+
+      if (this.super != this.end)
+      {
+        this.n = find_first_of(string_view(this.super + 1, this.end), this.delimiters) - this.super;
+      }
+      else
+      {
+        this.n = 0;
+      }
+
+      return &this;
+    }
+
+    pub fn -(u8 *rhs, word_iterator &lhs) -> usize = delete;
+
+    pub fn ==(word_iterator &lhs, end_iterator rhs) -> bool
+    {
+      return lhs.n == 0;
+    }
+
+    word_iterator(u8 *beg, u8 *end, String &delimiters)
+      : super(beg), end(end), delimiters(delimiters.data, delimiters.len)
+    {
+    }
+
+    usize n;
+    string_view delimiters;
+    u8 *end;
+  }
+
+  pub struct split_iterator : u8 *
+  {
+    pub split_iterator(split_iterator&) = default;
+    pub ~split_iterator() = default;
+
+    pub fn *(split_iterator &this) -> string_view
+    {
+      return string_view(this.super, this.m);
+    }
+
+    pub fn ++(split_iterator mut &this) -> split_iterator mut &
+    {
+      this.super += this.n;
+
+      if (this.count > 2)
+      {
+        var it = find_first(string_view(this.super, this.end), this.seperator);
+
+        this.n = this.m = it - this.super;
+
+        if (it != this.end)
+        {
+          this.n += this.seperator.len;
+        }
+        else
+        {
+          this.count = 2;
+        }
+      }
+      else
+      {
+        this.n = this.m = this.end - this.super;
+      }
+
+      if (this.inclusive)
+      {
+        this.m = this.n;
+
+        if (this.n == 0)
+          this.count = 1;
+      }
+
+      this.count -= 1;
+
+      return &this;
+    }
+
+    pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
+
+    pub fn ==(split_iterator &lhs, end_iterator rhs) -> bool
+    {
+      return lhs.count == 0;//lhs.n + lhs.leftover == 0;
+    }
+
+    split_iterator(u8 *beg, u8 *end, String &seperator, bool inclusive, usize count)
+      : super(beg), end(end), seperator(seperator.data, seperator.len), inclusive(inclusive), count(count)
+    {
+    }
+
+    usize count;
+    bool inclusive;
+    usize n, usize m;
+    string_view seperator;
+    u8 *end;
   }
 
   struct end_iterator
@@ -187,6 +289,31 @@ pub struct string_view : std::span<u8>
   pub fn lines(this &) -> std::iterator_pair<line_iterator, end_iterator>
   {
     return std::iterator_pair(++line_iterator(this.begin, this.end), end_iterator);
+  }
+
+  pub fn words(this &, String &delimiters = " \r\n\t") -> std::iterator_pair<word_iterator, end_iterator>
+  {
+    return std::iterator_pair(++word_iterator(this.begin, this.end, delimiters), end_iterator);
+  }
+
+  pub fn split(this &, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
+  {
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~usize(0)), end_iterator);
+  }
+
+  pub fn split_after(this &, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
+  {
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~usize(0)), end_iterator);
+  }
+
+  pub fn split_n(this &, usize n, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
+  {
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, n + 1), end_iterator);
+  }
+
+  pub fn split_after_n(this &, usize n, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
+  {
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator);
   }
 
   pub string_view(string_view &that) = default;
@@ -338,10 +465,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn clear(this mut &) -> void
   {
-    if (this._data != this._smallbuffer.data)
-      this._allocator.free(this._data, this._capacity);
-
-    this.init();
+    this._len = 0;
   }
 
   pub fn append(this mut &, var & ...args) -> usize
@@ -370,7 +494,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     }
   }
 
-  pub fn appendf(this mut &, #std::string_literal format, var & ...args) -> usize
+  pub fn appendf(this mut &, #string_literal format, var & ...args) -> usize
   {
     ensure_capacity(this, this._len + format.len);
 
@@ -458,7 +582,7 @@ pub fn sprintf(string mut &str, String &format, var & ...args) -> usize
   return str.appendf(format, args...);
 }
 
-pub fn sprintf(string mut &str, #std::string_literal format, var & ...args) -> usize
+pub fn sprintf(string mut &str, #string_literal format, var & ...args) -> usize
 {
   str.clear();
 
@@ -475,10 +599,227 @@ pub fn lines(String &str)
   return string_view(str.data, str.len).lines;
 }
 
-pub fn find(String &&haystack, char needle)
+pub fn words(String &str, String &delimiters = " \r\n\t")
 {
-  // TODO: unicode
-  return haystack.data + memchr(haystack.data, cast<u8>(needle), haystack.len);
+  return string_view(str.data, str.len).words(delimiters);
+}
+
+pub fn split(String &str, String &seperator)
+{
+  return string_view(str.data, str.len).split(seperator);
+}
+
+pub fn split_after(String &str, String &seperator)
+{
+  return string_view(str.data, str.len).split_after(seperator);
+}
+
+pub fn split_n(String &str, usize n, String &seperator)
+{
+  return string_view(str.data, str.len).split_n(n, seperator);
+}
+
+pub fn split_after_n(String &str, usize n, String &seperator)
+{
+  return string_view(str.data, str.len).split_after_n(n, seperator);
+}
+
+pub fn find_first(String &&haystack, char needle)
+{
+  return find_first(&&haystack, haystack.begin, needle);
+}
+
+pub fn find_first(String &&haystack, u8 *pos, char needle)
+{
+  var n = pos - haystack.data;
+
+  if (needle < 0x80)
+    return haystack.data + n + memchr(haystack.data + n, cast<u8>(needle), haystack.len - n);
+
+  var buf = [0; 8];
+  var len = utf::encode(buf.data, needle);
+
+  return find_first(&&haystack, pos, string_view(buf.data, len));
+}
+
+pub fn find_first(String &&haystack, String &needle)
+{
+  return find_first(&&haystack, haystack.begin, needle);
+}
+
+pub fn find_first(String &&haystack, u8 *pos, String &needle)
+{
+  var n = pos - haystack.data;
+
+  if (needle.len == 0)
+    return haystack.data + n;
+
+  if (needle.len <= haystack.len - n)
+  {
+    for(var i = haystack.data + n, var end = haystack.end + 1 - needle.len; i != end; ++i)
+    {
+      if (memcmp(i, needle.data, needle.len) == 0)
+        return i;
+    }
+  }
+
+  return haystack.end;
+}
+
+pub fn find_first_of(String &&haystack, String &needle)
+{
+  return find_first_of(&&haystack, haystack.begin, needle);
+}
+
+pub fn find_first_of(String &&haystack, u8 *pos, String &needle)
+{
+  var n = pos - haystack.data;
+
+  for(var i = haystack.data + n, var end = haystack.end; i != end; ++i)
+  {
+    for(var j = needle.begin; j != needle.end; )
+    {
+      var k = utf::len_next(j, needle.end);
+
+      if (memcmp(i, j, k) == 0)
+        return i;
+
+      j += k;
+    }
+  }
+
+  return haystack.end;
+}
+
+pub fn find_first_not_of(String &&haystack, String &needle)
+{
+  return find_first_not_of(&&haystack, haystack.begin, needle);
+}
+
+pub fn find_first_not_of(String &&haystack, u8 *pos, String &needle)
+{
+  var n = pos - haystack.data;
+
+  for(var i = haystack.data + n, var end = haystack.end; i != end; ++i)
+  {
+    var found = true;
+    for(var j = needle.begin; j != needle.end; )
+    {
+      var k = utf::len_next(j, needle.end);
+
+      if (memcmp(i, j, k) == 0)
+      {
+        found = false;
+        break;
+      }
+
+      j += k;
+    }
+
+    if (found)
+      return i;
+  }
+
+  return haystack.end;
+}
+
+pub fn find_last(String &&haystack, char needle)
+{
+  return find_last(&&haystack, haystack.end, needle);
+}
+
+pub fn find_last(String &&haystack, u8 *pos, char needle)
+{
+  var n = pos - haystack.data;
+
+  if (needle < 0x80)
+    return haystack.data + memrchr(haystack.data, cast<u8>(needle), n);
+
+  var buf = [0; 8];
+  var len = utf::encode(buf.data, needle);
+
+  return find_last(&&haystack, pos, string_view(buf.data, len));
+}
+
+pub fn find_last(String &&haystack, String &needle)
+{
+  return find_last(&&haystack, haystack.end, needle);
+}
+
+pub fn find_last(String &&haystack, u8 *pos, String &needle)
+{
+  var n = pos - haystack.data;
+
+  if (needle.len == 0)
+    return haystack.data + n;
+
+  if (needle.len <= n)
+  {
+    rof(var i = haystack.data + n + 1 - needle.len, var end = haystack.data; i == end; --i)
+    {
+      if (memcmp(i, needle.data, needle.len) == 0)
+        return i;
+    }
+  }
+
+  return haystack.end;
+}
+
+pub fn find_last_of(String &&haystack, String &needle)
+{
+  return find_last_of(&&haystack, haystack.end, needle);
+}
+
+pub fn find_last_of(String &&haystack, u8 *pos, String &needle)
+{
+  var n = pos - haystack.data;
+
+  rof(var i = haystack.data + n, var end = haystack.data; i == end; --i)
+  {
+    for(var j = needle.begin; j != needle.end; )
+    {
+      var k = utf::len_next(j, needle.end);
+
+      if (memcmp(i, j, k) == 0)
+        return i;
+
+      j += k;
+    }
+  }
+
+  return haystack.end;
+}
+
+pub fn find_last_not_of(String &&haystack, String &needle)
+{
+  return find_last_not_of(&&haystack, haystack.end, needle);
+}
+
+pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
+{
+  var n = pos - haystack.data;
+
+  rof(var i = haystack.data + n, var end = haystack.data; i == end; --i)
+  {
+    var found = true;
+    for(var j = needle.begin; j != needle.end; )
+    {
+      var k = utf::len_next(j, needle.end);
+
+      if (memcmp(i, j, k) == 0)
+      {
+        found = false;
+        break;
+      }
+
+      j += k;
+    }
+
+    if (found)
+      return i;
+  }
+
+  return haystack.end;
 }
 
 pub fn trim_left(String &str) -> string_view
@@ -487,11 +828,11 @@ pub fn trim_left(String &str) -> string_view
 
   for(; i != str.end; ++i)
   {
-    if (!std::is_whitespace(*i))
+    if (!is_whitespace(*i))
       break;
   }
 
-  return std::string_view(i, str.end);
+  return string_view(i, str.end);
 }
 
 pub fn trim_right(String &str) -> string_view
@@ -500,13 +841,13 @@ pub fn trim_right(String &str) -> string_view
 
   rof(var i = str.chars.end; i == str.begin; --i)
   {
-    if (!std::is_whitespace(*i))
+    if (!is_whitespace(*i))
       break;
 
     j = i;
   }
 
-  return std::string_view(str.begin, j);
+  return string_view(str.begin, j);
 }
 
 pub fn trim(String &str) -> string_view

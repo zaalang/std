@@ -154,37 +154,28 @@ pub fn ctoa(u8 mut *beg, u8 mut *end, char value) -> strconv_result
 {  
   var result = strconv_result();
   
-  var ch = beg;
-  
-  if (value < 128 && end - ch >= 1)
+  result.ptr = beg;
+
+  if (value < 128 && end - beg >= 1)
   {
-    *ch++ = cast(value);
+    result.len = utf::encode1(beg, value);
   }
-  else if (128 <= value && value < 2048 && end - ch >= 2)
+  else if (128 <= value && value < 2048 && end - beg >= 2)
   {
-    *ch++ = 0b11000000 | cast(value >> 6);
-    *ch++ = 0b10000000 | cast(value & 0b00111111);
+    result.len = utf::encode2(beg, value);
   }
-  else if (2048 <= value && value < 65536 && end - ch >= 3)
+  else if (2048 <= value && value < 65536 && end - beg >= 3)
   {
-    *ch++ = 0b11100000 | cast(value >> 12);
-    *ch++ = 0b10000000 | cast((value >> 6) & 0b00111111);
-    *ch++ = 0b10000000 | cast(value & 0b00111111);
-  }  
-  else if (65536 <= value && end - ch >= 4)
+    result.len = utf::encode3(beg, value);
+  }
+  else if (65536 <= value && end - beg >= 4)
   {
-    *ch++ = 0b11110000 | cast(value >> 18);
-    *ch++ = 0b10000000 | cast((value >> 12) & 0b00111111);
-    *ch++ = 0b10000000 | cast((value >> 6) & 0b00111111);
-    *ch++ = 0b10000000 | cast(value & 0b00111111);
+    result.len = utf::encode4(beg, value);
   }
   else
   {
     result.error = std::errc::value_too_large;
   }
-
-  result.ptr = beg;
-  result.len = ch - beg;
 
   return result;
 }

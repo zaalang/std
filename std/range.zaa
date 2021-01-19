@@ -15,6 +15,32 @@ pub concept Range<U>
   requires<T> (T x) { x.end; };
 }
 
+pub struct iterator_pair<I, J>
+{
+  pub I first;
+  pub J second;
+
+  pub iterator_pair(I first, J second)
+    : first(first), second(second)
+  {
+  }
+
+  pub iterator_pair() = default;
+  pub iterator_pair(iterator_pair &&) = default;
+  pub fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
+  pub ~iterator_pair() = default;
+
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+}
+
 pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
   where __is_same<T, u8>
 {
@@ -70,4 +96,157 @@ pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
     return +1;
 
   return 0;
+}
+
+pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_iterator<J>>
+{
+  pub filter_view(I beg, J end, Pred &&pred)
+    : super(filter_iterator(beg, end, _pred), filter_iterator(end, _pred)),
+      _pred(&&pred)
+  {
+  }
+
+  pub ~filter_view() = default;
+
+  pub struct filter_iterator<X>
+  {
+    pub X base;
+
+    filter_iterator(X &&base, J &&end, Pred &pred)
+      : base(&&base), end(&&end), pred(&pred)
+    {
+      while (this.base != this.end && !this.pred(*this.base))
+        ++this.base;
+    }
+
+    filter_iterator(X &&end, Pred &pred)
+      : base(&&end), end(&&end), pred(&pred)
+    {
+    }
+
+    pub filter_iterator() = default;
+    pub filter_iterator(filter_iterator &&) = default;
+    pub fn =(filter_iterator mut &, filter_iterator &) -> filter_iterator mut & = default;
+    pub ~filter_iterator() = default;
+
+    pub fn *(filter_iterator &&this)
+    {
+      return &&(*this.base);
+    }
+
+    pub fn ++(filter_iterator mut &this) -> filter_iterator mut &
+      where requires (X mut &x) { ++x; }
+    {
+      ++this.base;
+
+      while (this.base != this.end && !this.pred(*this.base))
+        ++this.base;
+
+      return &this;
+    }
+
+    pub fn --(filter_iterator mut &this) -> filter_iterator mut &
+      where requires (X mut &x) { --x; }
+    {
+      while (true)
+      {
+        --this.base;
+
+        if (this.pred(*this.base))
+          break;
+      }
+
+      return &this;
+    }
+
+    pub fn ==(filter_iterator &lhs, X &rhs) -> bool
+    {
+      return lhs.base == rhs;
+    }
+
+    pub fn ==(filter_iterator &lhs, filter_iterator<J> &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+
+    J end;
+    Pred &pred;
+  }
+
+  Pred _pred;
+}
+
+pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
+{
+  return filter_view((&&range).begin, (&&range).end, &&pred);
+}
+
+pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, transform_iterator<J>>
+{
+  pub transform_view(I beg, J end, Func &&func)
+    : super(transform_iterator(beg, _func), transform_iterator(end, _func)),
+      _func(&&func)
+  {
+  }
+
+  pub ~transform_view() = default;
+
+  pub struct transform_iterator<X>
+  {
+    pub X base;
+
+    transform_iterator(X &&base, Func &func)
+      : base(&&base), func(&func)
+    {
+    }
+
+    pub transform_iterator() = default;
+    pub transform_iterator(transform_iterator &&) = default;
+    pub fn =(transform_iterator mut &, transform_iterator &) -> transform_iterator mut & = default;
+    pub ~transform_iterator() = default;
+
+    pub fn *(transform_iterator &&this)
+    {
+      return &&this.func(*this.base);
+    }
+
+    pub fn ++(transform_iterator mut &this) -> transform_iterator mut &
+      where requires (X mut &x) { ++x; }
+    {
+      ++this.base;
+      return &this;
+    }
+
+    pub fn --(transform_iterator mut &this) -> transform_iterator mut &
+      where requires (X mut &x) { --x; }
+    {
+      --this.base;
+      return &this;
+    }
+
+    pub fn ==(transform_iterator &lhs, X &rhs) -> bool
+    {
+      return lhs.base == rhs;
+    }
+
+    pub fn ==(transform_iterator &lhs, transform_iterator<J> &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+
+    Func &func;
+  }
+
+  pub fn -<I, J>(transform_iterator<I> &lhs, transform_iterator<J> &rhs) -> usize
+    where requires (I i, J j) { i - j; }
+  {
+    return lhs.base - rhs.base;
+  }
+
+  Func _func;
+}
+
+pub fn transform<T, Func>(Range<T> &&range, Func &&func)
+{
+  return transform_view((&&range).begin, (&&range).end, &&func);
 }

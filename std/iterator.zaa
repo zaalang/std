@@ -31,8 +31,8 @@ pub struct move_iterator<I>
 {
   pub I base;
 
-  pub move_iterator(I base)
-    : base(base)
+  pub move_iterator(I &&base)
+    : base(&&base)
   {
   }
 
@@ -43,16 +43,18 @@ pub struct move_iterator<I>
 
   pub fn *(move_iterator &&this)
   {
-    return &std::move(*this.base);
+    return &&std::move(*this.base);
   }
 
   pub fn ++(move_iterator mut &this) -> move_iterator mut &
+    where requires (I mut &x) { ++x; }
   {
     ++this.base;
     return &this;
   }
 
   pub fn --(move_iterator mut &this) -> move_iterator mut &
+    where requires (I mut &x) { --x; }
   {
     --this.base;
     return &this;
@@ -64,51 +66,25 @@ pub fn ==<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> bool
   return lhs.base == rhs.base;
 }
 
-pub fn -<I, J>(move_iterator<I> lhs, move_iterator<J> rhs) -> usize
+pub fn -<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> usize
   where requires (I i, J j) { i - j; }
 {
   return lhs.base - rhs.base;
 }
 
-pub fn -<I>(move_iterator<I> lhs, usize rhs) -> move_iterator<I>
+pub fn -<I>(move_iterator<I> &lhs, usize rhs) -> move_iterator<I>
   where requires (I i, usize j) { i - j; }
 {
   return move_iterator<I>(lhs.base - rhs);
 }
 
-pub fn +<I>(move_iterator<I> lhs, usize rhs) -> move_iterator<I>
+pub fn +<I>(move_iterator<I> &lhs, usize rhs) -> move_iterator<I>
   where requires (I i, usize j) { i + j; }
 {
   return move_iterator<I>(lhs.base + rhs);
 }
 
-pub struct iterator_pair<I, J>
-{
-  pub I first;
-  pub J second;
-
-  pub iterator_pair(I first, J second)
-    : first(first), second(second)
-  {
-  }
-
-  pub iterator_pair() = default;
-  pub iterator_pair(iterator_pair &&) = default;
-  pub fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
-  pub ~iterator_pair() = default;
-
-  pub fn begin(this &&)
-  {
-    return this.first;
-  }
-
-  pub fn end(this &&)
-  {
-    return this.second;
-  }
-}
-
-pub fn distance<I>(I first, Sentinal<I> last) -> usize
+pub fn distance<I>(I &first, Sentinal<I> &last) -> usize
 {
   using S = typeof(last);
 
