@@ -27,6 +27,14 @@ pub union optional<T, Allocator = std::allocator>
   {
   }
 
+  pub fn =<Args>(this mut &, Args && ...args) -> optional mut &
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    this.insert(&&args...);
+
+    return &this;
+  }
+
   pub fn bool(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Some;

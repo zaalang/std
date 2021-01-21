@@ -35,7 +35,9 @@ pub struct error
   pub error_category *category;
   // pub source_location location; ?
   // pub backtrace ?
-  
+
+  // pub fn what() { return category.what(value); }
+
   pub error(error &that) = default;
   pub ~error() = default;
 }
@@ -54,31 +56,28 @@ pub enum errc : u32
   }
 }
 
-pub struct system_error
+pub struct system_error_category : error_category
 {
-  pub fn system_error(errc code) -> error
-  { 
-    var result = error(void);
-    
-    result.value = cast(code);
-    result.category = category();
-    
-    return result;
-  }
-
-  pub fn category() -> system_error_category *
+  pub fn instance() -> system_error_category *
   {
     static instance = #system_error_category();
 
     return &instance;
   }
-}
 
-pub struct system_error_category : error_category
-{
   system_error_category() = default;
   system_error_category(system_error_category &) = default;
   ~system_error_category() = default;
+}
+
+pub fn system_error(errc code) -> error
+{
+  var result = error(void);
+
+  result.value = cast(code);
+  result.category = system_error_category::instance;
+
+  return result;
 }
 
 pub fn ==(error &lhs, error &rhs) -> bool
@@ -88,5 +87,5 @@ pub fn ==(error &lhs, error &rhs) -> bool
 
 pub fn ==(error &lhs, errc rhs) -> bool
 {
-  return lhs.category == system_error::category() && lhs.value == cast(rhs);
+  return lhs.category == system_error_category::instance && lhs.value == cast(rhs);
 }

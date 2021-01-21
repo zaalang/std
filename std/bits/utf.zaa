@@ -97,19 +97,19 @@ pub fn encode(u8 mut *ch, char value) -> usize
 {
   if (value < 128)
   {
-    return utf::encode1(beg, value);
+    return encode1(ch, value);
   }
   else if (128 <= value && value < 2048)
   {
-    return utf::encode2(beg, value);
+    return encode2(ch, value);
   }
   else if (2048 <= value && value < 65536)
   {
-    return utf::encode3(beg, value);
+    return encode3(ch, value);
   }
   else if (65536 <= value)
   {
-    return utf::encode4(beg, value);
+    return encode4(ch, value);
   }
 
   return 0;

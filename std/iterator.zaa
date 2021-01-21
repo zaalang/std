@@ -84,7 +84,7 @@ pub fn +<I>(move_iterator<I> &lhs, usize rhs) -> move_iterator<I>
   return move_iterator<I>(lhs.base + rhs);
 }
 
-pub fn distance<I>(I &first, Sentinal<I> &last) -> usize
+pub fn distance<I>(I first, Sentinal<I> last) -> usize
 {
   using S = typeof(last);
 

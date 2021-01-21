@@ -32,12 +32,12 @@ pub struct iterator_pair<I, J>
 
   pub fn begin(this &&)
   {
-    return this.first;
+    return &this.first;
   }
 
   pub fn end(this &&)
   {
-    return this.second;
+    return &this.second;
   }
 }
 
