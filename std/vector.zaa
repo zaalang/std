@@ -364,8 +364,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   
   pub fn erase(this mut &, Iterator position) -> iterator
   {
-    if (position == this.end)
-      return iterator(position);
+    assert(this._data <= position.cursor && position.cursor < this._data + this._len);
 
     return iterator(erase(this, position.cursor, 1));
   }
@@ -375,6 +374,30 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return iterator(erase(this, first.cursor, last.cursor - first.cursor));
   }
   
+  pub fn swap_erase(this mut &, Iterator position) -> iterator
+  {
+    assert(this._data <= position.cursor && position.cursor < this._data + this._len);
+
+    if (position != this.end - 1)
+      initialised_move(this, this._data + (position.cursor - this._data), this._data + this._len - 1, this._data + this._len);
+
+    erase(this, this._data + this._len - 1, 1);
+
+    return iterator(position);
+  }
+
+  pub fn take(this mut &, Iterator first, Iterator last) -> vector
+  {
+    var i = first.cursor - this._data;
+    var j = last.cursor - this._data;
+
+    var result = vector::from(std::move(this[i..j]), this.allocator);
+
+    erase(this, this._data + i, j - i);
+
+    return result;
+  }
+
   pub fn reserve(this mut &, usize capacity) -> void
   {
     if (this._capacity < capacity)
@@ -595,4 +618,31 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   u8[N*sizeof<T>] _smallbuffer; // NOTE: relying on alignment after a usize
 
   Allocator _allocator;
+}
+
+pub fn erase_if<T, Pred>(vector<T> mut &range, Pred &pred) -> usize
+  where requires (T i, Pred &pred) { pred(i); }
+{
+  var n = range.len;
+
+  range.erase(std::remove_if(range.begin, range.end, pred), range.end);
+
+  return n - range.len;
+}
+
+pub fn unordered_erase_if<T, Pred>(std::vector<T> mut &range, Pred &pred) -> usize
+  where requires (T i, Pred &pred) { pred(i); }
+{
+  var n = range.len;
+  var first = range.begin;
+
+  for (; first != range.end; )
+  {
+    if (pred(*first))
+      range.swap_erase(first);
+    else
+      ++first;
+  }
+
+  return n - range.len;
 }

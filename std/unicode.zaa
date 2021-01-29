@@ -2,7 +2,107 @@
 // std unicode
 //
 
-import std.span;
+import std.stdlib : assert;
+import std.string;
+import std.span : Span;
+import std.bits.utf as utf;
+
+struct caseconv_result
+{
+  usize len;
+  fn ptr(this &) { return this.str.data; }
+
+  caseconv_result() = default;
+  caseconv_result(caseconv_result&) = default;
+  fn =(caseconv_result mut &, caseconv_result&) -> caseconv_result mut & = default;
+  ~caseconv_result() = default;
+
+  char[3] str;
+}
+
+pub fn encode_utf8(Span<u8> mut &dst, char ch) -> std::string_view
+{
+  assert(0 < utf::len(ch) && utf::len(ch) <= dst.len);
+
+  var len = utf::encode(dst.data, ch);
+
+  return std::string_view(dst.data, len);
+}
+
+pub fn is_ascii(u8 ch) -> bool
+{
+  return ch < 128;
+}
+
+pub fn is_ascii(char ch) -> bool
+{
+  return ch < 128;
+}
+
+pub fn is_alpha(u8 ch) -> bool
+{
+  return cast('a') <= ch && ch <= cast('z') || cast('A') <= ch && ch <= cast('Z');
+}
+
+pub fn is_alpha(char ch) -> bool
+{
+  // TODO: unicode
+  return 'a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z';
+}
+
+pub fn is_digit(u8 ch) -> bool
+{
+  return cast('0') <= ch && ch <= cast('9');
+}
+
+pub fn is_digit(char ch) -> bool
+{
+  // TODO: unicode
+  return '0' <= ch && ch <= '9';
+}
+
+pub fn is_alphanumeric(u8 ch) -> bool
+{
+  return cast('a') <= ch && ch <= cast('z') || cast('A') <= ch && ch <= cast('Z') || cast('0') <= ch && ch <= cast('9');
+}
+
+pub fn is_alphanumeric(char ch) -> bool
+{
+  return is_alpha(ch) || is_digit(ch);
+}
+
+pub fn is_cntrl(u8 ch) -> bool
+{
+  return ch < 32 || ch == 127;
+}
+
+pub fn is_cntrl(char ch) -> bool
+{
+  // TODO: unicode
+  return ch < 32 || ch == 127;
+}
+
+pub fn is_lowercase(u8 ch) -> bool
+{
+  return cast('a') <= ch && ch <= cast('z');
+}
+
+pub fn is_lowercase(char ch) -> bool
+{
+  // TODO: unicode
+  return 'a' <= ch && ch <= 'z';
+}
+
+pub fn is_uppercase(u8 ch) -> bool
+{
+  return cast('A') <= ch && ch <= cast('Z');
+}
+
+pub fn is_uppercase(char ch) -> bool
+{
+  // TODO: unicode
+  return 'A' <= ch && ch <= 'Z';
+}
 
 pub fn is_whitespace(u8 ch) -> bool
 {
@@ -12,4 +112,44 @@ pub fn is_whitespace(u8 ch) -> bool
 pub fn is_whitespace(char ch) -> bool
 {
   return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f' || ch == 0x85 || ch == 0xA0;
+}
+
+pub fn to_lowercase(u8 ch) -> u8
+{
+  return ch | (cast<u8>(is_uppercase(ch)) << 5);
+}
+
+pub fn to_lowercase(char ch) -> caseconv_result
+{
+  // TODO: unicode
+
+  var result = caseconv_result();
+
+  result.len = 1;
+  result.str[0] = ch;
+
+  if (is_ascii(ch))
+    result.str[0] = cast<char>(to_lowercase(cast<u8>(ch)));
+
+  return result;
+}
+
+pub fn to_uppercase(u8 ch) -> u8
+{
+  return ch & ~(cast<u8>(is_lowercase(ch)) << 5);
+}
+
+pub fn to_uppercase(char ch) -> caseconv_result
+{
+  // TODO: unicode
+
+  var result = caseconv_result();
+
+  result.len = 1;
+  result.str[0] = ch;
+
+  if (is_ascii(ch))
+    result.str[0] = cast<char>(to_uppercase(cast<u8>(ch)));
+
+  return result;
 }

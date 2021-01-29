@@ -77,3 +77,49 @@ pub fn as_const<T>(T &v) -> T&
 {
   return &v;
 }
+
+pub struct add_const_t<T>
+{
+  pub using type = T const;
+}
+
+pub using add_const<T> = add_const_t<T>::type;
+
+pub struct remove_const_t<T>
+{
+  #if __is_const<T>
+    pub using type = typeof(declval<T>);
+  #else
+    pub using type = T;
+  #end
+}
+
+pub using remove_const<T> = remove_const_t<T>::type;
+
+pub const fn is_pointer<T>() -> bool
+{
+  return __is_pointer<T>();
+}
+
+pub const fn is_reference<T>() -> bool
+{
+  return __is_reference<T>();
+}
+
+pub struct add_pointer_t<T>
+{
+  pub using type = T mut *;
+}
+
+pub using add_pointer<T> = add_pointer_t<T>::type;
+
+pub struct remove_pointer_t<T>
+{
+  #if __is_pointer<T>
+    pub using type = typeof(*declval<T>);
+  #else
+    pub using type = T;
+  #end
+}
+
+pub using remove_pointer<T> = remove_pointer_t<T>::type;

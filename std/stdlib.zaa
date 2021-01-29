@@ -38,7 +38,7 @@ pub fn assert(bool condition, String &msg = "", var &loc = std::source_location(
 {
   if (!condition)
   {
-    panic(loc, ": ASSERTION FAILED: ", msg);
+    panic(loc, ": assertion: ", msg);
   }
 }
 
@@ -46,6 +46,6 @@ pub fn assert(#bool condition, #std::string_literal msg = "", #var loc = #std::s
 {
   #if (!condition)
   {
-    #panic(loc, ": ASSERTION FAILED: ", msg);
+    #panic(loc, ": assertion: ", msg);
   }
 }

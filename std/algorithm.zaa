@@ -386,3 +386,50 @@ pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
 {
   return find_if((&&range).begin, (&&range).end, pred);
 }
+
+pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
+  where __is_match<Iterator, I> && requires (I i, Value &value) { *i == value; }
+{
+  first = find(first, last, value);
+
+  if (first != last)
+  {
+    for(var i = first; ++i != last; )
+    {
+      if (!(*i == value))
+        *first++ = std::move(*i);
+    }
+  }
+
+  return first;
+}
+
+pub fn remove<T, Value>(Range<T> &&range, Value &value)
+  match (Value value) { T(value); }
+  where requires (typeof(range) &range, Value &value) { remove(range.begin, range.end, value); }
+{
+  return remove((&&range).begin, (&&range).end, value);
+}
+
+pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  first = find_if(first, last, pred);
+
+  if (first != last)
+  {
+    for(var i = first; ++i != last; )
+    {
+      if (!pred(*i))
+        *first++ = std::move(*i);
+    }
+  }
+
+  return first;
+}
+
+pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
+  where requires (typeof(range) &range, Pred &pred) { remove_if(range.begin, range.end, pred); }
+{
+  return remove_if((&&range).begin, (&&range).end, pred);
+}

@@ -69,7 +69,7 @@ pub struct file
   std::fd fd;
 }
 
-pub fn read_into<Alloc, N>(file mut &fd, std::vector<u8, Alloc, N> mut &buf, usize maxread = ~usize(0)) throws
+pub fn read_into(file mut &fd, std::vector<u8> mut &buf, usize maxread = ~0) throws
 {
   var size = cast<usize>(fd.stat().size);
 
@@ -82,7 +82,7 @@ pub fn read_into<Alloc, N>(file mut &fd, std::vector<u8, Alloc, N> mut &buf, usi
   return &buf;
 }
 
-pub fn read_into<Alloc, N>(file mut &fd, std::string<Alloc, N> mut &buf, usize maxread = ~usize(0)) throws
+pub fn read_into(file mut &fd, std::string mut &buf, usize maxread = ~0) throws
 {
   var size = cast<usize>(fd.stat().size);
 
@@ -95,7 +95,7 @@ pub fn read_into<Alloc, N>(file mut &fd, std::string<Alloc, N> mut &buf, usize m
   return &buf;
 }
 
-pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~usize(0)) throws
+pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws
 {
   var buf = std::vector<u8, Alloc, N>(alloc);
 
@@ -104,7 +104,7 @@ pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &al
   return buf;
 }
 
-pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~usize(0)) throws
+pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws
 {
   var buf = std::string<Alloc, N>(alloc);
 
@@ -113,7 +113,7 @@ pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &al
   return buf;
 }
 
-pub fn readfile<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~usize(0)) throws
+pub fn readfile<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws
 {
   return readfile_to_string<Alloc, N>(path, alloc, maxread);
 }

@@ -298,12 +298,12 @@ pub struct string_view : std::span<u8>
 
   pub fn split(this &, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
   {
-    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~usize(0)), end_iterator);
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~0), end_iterator);
   }
 
   pub fn split_after(this &, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
   {
-    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~usize(0)), end_iterator);
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~0), end_iterator);
   }
 
   pub fn split_n(this &, usize n, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
