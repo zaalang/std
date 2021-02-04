@@ -19,6 +19,11 @@ pub struct span<T>
   pub usize len;
   pub T *data;
 
+  pub fn empty(this &) -> bool
+  {
+    return this.len == 0;
+  }
+
   pub fn begin(this&) -> T*
   { 
     return this.data;
@@ -67,6 +72,11 @@ pub struct mutable_span<T>
 {
   pub usize len;
   pub T mut *data;
+
+  pub fn empty(this &) -> bool
+  {
+    return this.len == 0;
+  }
 
   pub fn begin(this &&)
   {

@@ -114,6 +114,37 @@ pub fn move_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
   return dst;
 }
 
+pub fn reverse<I>(I first, I last) -> void
+{
+  while (first != last && first != --last)
+  {
+    swap(*first++, *last);
+  }
+}
+
+pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
+{
+  if (first == last) return first;
+
+  var tmp = std::move(*first);
+  var lm1 = move(first, last, std::next(first), last);
+  *lm1 = std::move(tmp);
+
+  return lm1;
+}
+
+pub fn rotate_right<I>(I first, I last) -> I
+{
+  if (first == last) return last;
+
+  var lm1 = std::prev(last);
+  var tmp = std::move(*lm1);
+  var fp1 = move_backward(first, last, first, lm1);
+  *first = std::move(tmp);
+
+  return fp1;
+}
+
 pub const fn min<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {

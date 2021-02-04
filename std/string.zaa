@@ -49,6 +49,7 @@ pub struct string_view : std::span<u8>
   pub struct char_iterator : u8 *
   {
     pub char_iterator(char_iterator&) = default;
+    pub fn =(char_iterator mut &this, char_iterator &that) -> char_iterator mut & = default;
     pub ~char_iterator() = default;
 
     pub fn *(char_iterator &this) -> char
@@ -90,6 +91,8 @@ pub struct string_view : std::span<u8>
     }
 
     pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
+    pub fn +(char_iterator &lhs, usize) -> char_iterator = delete;
+    pub fn -(char_iterator &lhs, usize) -> char_iterator = delete;
 
     pub fn ==(char_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -114,6 +117,7 @@ pub struct string_view : std::span<u8>
   pub struct line_iterator : u8 *
   {
     pub line_iterator(line_iterator&) = default;
+    pub fn =(line_iterator mut &this, line_iterator &that) -> line_iterator mut & = default;
     pub ~line_iterator() = default;
 
     pub fn *(line_iterator &this) -> string_view
@@ -147,7 +151,9 @@ pub struct string_view : std::span<u8>
       return &this;
     }
 
-    pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
+    pub fn -(u8 *rhs, line_iterator &lhs) -> usize = delete;
+    pub fn +(line_iterator &lhs, usize) -> line_iterator = delete;
+    pub fn -(line_iterator &lhs, usize) -> line_iterator = delete;
 
     pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -166,6 +172,7 @@ pub struct string_view : std::span<u8>
   pub struct word_iterator : u8 *
   {
     pub word_iterator(word_iterator&) = default;
+    pub fn =(word_iterator mut &this, word_iterator &that) -> word_iterator mut & = default;
     pub ~word_iterator() = default;
 
     pub fn *(word_iterator &this) -> string_view
@@ -191,6 +198,8 @@ pub struct string_view : std::span<u8>
     }
 
     pub fn -(u8 *rhs, word_iterator &lhs) -> usize = delete;
+    pub fn +(word_iterator &lhs, usize) -> word_iterator = delete;
+    pub fn -(word_iterator &lhs, usize) -> word_iterator = delete;
 
     pub fn ==(word_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -210,6 +219,7 @@ pub struct string_view : std::span<u8>
   pub struct split_iterator : u8 *
   {
     pub split_iterator(split_iterator&) = default;
+    pub fn =(split_iterator mut &this, split_iterator &that) -> split_iterator mut & = default;
     pub ~split_iterator() = default;
 
     pub fn *(split_iterator &this) -> string_view
@@ -254,7 +264,9 @@ pub struct string_view : std::span<u8>
       return &this;
     }
 
-    pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
+    pub fn -(u8 *rhs, split_iterator &lhs) -> usize = delete;
+    pub fn +(split_iterator &lhs, usize) -> split_iterator = delete;
+    pub fn -(split_iterator &lhs, usize) -> split_iterator = delete;
 
     pub fn ==(split_iterator &lhs, end_iterator rhs) -> bool
     {
