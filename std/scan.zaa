@@ -1,0 +1,171 @@
+//
+// std scan
+//
+
+import std.io;
+import std.string;
+import std.strconv;
+import std.memory;
+import std.math;
+import std.type;
+
+using std::String;
+using std::InputStream;
+
+struct scan_context
+{
+  usize cursor;
+  std::errc error;
+
+  scan_context() = default;
+  ~scan_context() = default;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, bool mut &value) -> void
+{
+  var str = std::atob(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, char mut &value) -> void
+{
+  var str = std::atoc(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, u8 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, u16 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, u32 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, u64 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, usize mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, i8 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, i16 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, i32 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, i64 mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, isize mut &value) -> void
+{
+  var str = std::atoi(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, f32 mut &value) -> void
+{
+  var str = std::atof(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, f64 mut &value) -> void
+{
+  var str = std::atof(is.data + ctx.cursor, is.end, value);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, typeof(0) mut &literal) -> void
+{
+  var tmp = int(0);
+  scan(is, ctx, tmp);
+  literal = cast(tmp);
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, typeof(0.0) mut &literal) -> void
+{
+  var tmp = float(0.0);
+  scan(is, ctx, tmp);
+  literal = cast(tmp);
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, std::string_view mut &str) -> void
+{
+  str = is;
+  ctx.cursor += str.len;
+}
+
+fn scan(std::string_view is, scan_context mut &ctx, std::string mut &str) -> void
+{
+  str = is;
+  ctx.cursor += str.len;
+}
+
+pub fn sscan<T>(String &str, T mut &value) -> usize
+{
+  using T;
+
+  var ctx = scan_context();
+
+  scan(std::string_view(str.data, str.len), ctx, value);
+
+  return ctx.cursor;
+}

@@ -19,21 +19,6 @@ pub struct span<T>
   pub usize len;
   pub T *data;
 
-  pub fn empty(this &) -> bool
-  {
-    return this.len == 0;
-  }
-
-  pub fn begin(this&) -> T*
-  { 
-    return this.data;
-  }
-  
-  pub fn end(this&) -> T*
-  { 
-    return this.data + this.len;
-  }
-  
   pub span(T *data, usize len)
     : len(len), data(data)
   {
@@ -49,6 +34,16 @@ pub struct span<T>
     return this.len == 0;
   }
 
+  pub fn begin(this&) -> T*
+  { 
+    return this.data;
+  }
+  
+  pub fn end(this&) -> T*
+  { 
+    return this.data + this.len;
+  }
+  
   pub fn [](this &, usize index) -> T&
   {
     assert(index < this.len);
@@ -73,6 +68,16 @@ pub struct mutable_span<T>
   pub usize len;
   pub T mut *data;
 
+  pub mutable_span(T mut *data, usize len)
+    : len(len), data(data)
+  {
+  }
+
+  pub mutable_span(T mut *beg, T mut *end)
+    : len(end - beg), data(beg)
+  {
+  }
+
   pub fn empty(this &) -> bool
   {
     return this.len == 0;
@@ -86,16 +91,6 @@ pub struct mutable_span<T>
   pub fn end(this &&)
   {
     return this.data + this.len;
-  }
-
-  pub mutable_span(T mut *data, usize len)
-    : len(len), data(data)
-  {
-  }
-
-  pub mutable_span(T mut *beg, T mut *end)
-    : len(end - beg), data(beg)
-  {
   }
 
   pub fn [](this &&, usize index)

@@ -572,6 +572,24 @@ pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
   return result;
 }
 
+pub fn atof(u8 *beg, u8 *end, f32 mut &value) -> strconv_result
+{
+  var result = strconv_result();
+
+  std::panic("not implemented");
+
+  return result;
+}
+
+pub fn atof(u8 *beg, u8 *end, f64 mut &value) -> strconv_result
+{
+  var result = strconv_result();
+
+  std::panic("not implemented");
+
+  return result;
+}
+
 pub fn atob(u8 *beg, u8 *end, bool mut &value) -> strconv_result
 {
   const true_strs = [ "1", "true", "True", "TRUE" ];
