@@ -1,0 +1,202 @@
+//
+// regex
+//
+
+import std.stdlib : assert;
+import std.string : String;
+import std.span : Span;
+import std.scan;
+import regex.parser;
+import regex.compiler;
+import regex.machine;
+
+pub enum errc : u32
+{
+  internal_error = 1,
+  bad_escape,              // bad escape sequence
+  bad_char_class,          // bad character class
+  bad_char_range,          // bad character class range
+  missing_bracket,         // missing closing ]
+  missing_paren,           // missing closing )
+  unexpected_paren,        // unexpected closing )
+  trailing_backslash,      // trailing \ at end of regexp
+  missing_repeat_argument, // repeat argument missing, e.g. "*"
+  invalid_digit,           // invalid digit
+  invalid_repeat_argument, // invalid argument e.g. emptymatch
+  invalid_repeat_size,     // invalid repetition argument
+  invalid_repeat_op,       // invalid repetition operator
+  invalid_utf8,            // invalid UTF-8 in regexp
+  invalid_named_capture,   // invalid named capture group
+
+  pub fn bool(errc code) -> bool
+  {
+    return cast<u32>(code) != 0;
+  }
+}
+
+pub enum options
+{
+  foldcase = 0x1,         // case-insensitive match
+  multiline = 0x2,        // treat ^ and $ as only matching beginning and end of line
+
+  pub fn |(options lhs, options rhs) -> options { return cast<options>(cast<usize>(lhs) | cast<usize>(rhs)); }
+  pub fn ^(options lhs, options rhs) -> options { return cast<options>(cast<usize>(lhs) & ~cast<usize>(rhs)); }
+  pub fn &(options lhs, options rhs) -> bool { return cast<usize>(lhs) & cast<usize>(rhs) == cast<usize>(rhs); }
+}
+
+pub enum opcode
+{
+  nop,                // no-op
+  match,              // found a match!
+  fork,               // fork
+  jump,               // jump
+  condition,          // empty-width special (^ $ ...)
+  select,             // next must be in [lo, hi]
+  selecti,            // next rune (case-folded) must be in [lo, hi]
+  capture,            // capturing parenthesis
+  fail,               // fail to match
+}
+
+pub enum condition
+{
+  begintext,          // \A - beginning of text
+  beginline,          // ^ - beginning of line
+  endline,            // $ - end of line
+  endtext,            // \z - end of text
+  wordboundary,       // \b - word boundary
+  nonwordboundary,    // \B - not \b
+}
+
+pub struct regex
+{
+  pub errc error;
+  pub std::vector<u32> program;
+
+  pub regex(String &pattern, options flags = cast(0))
+  {
+    var ast = std::vector<expr>();
+
+    this.error = parse(pattern, ast, flags);
+
+    if (!this.error)
+    {
+      this.error = compile(ast, program, flags);
+    }
+  }
+
+  pub regex(#std::string_literal pattern, #options flags = cast(0))
+  {
+    this.program = std::vector::from(#build(pattern, flags));
+  }
+
+  pub ~regex() = default;
+}
+
+fn build(std::string_literal pattern, options flags)
+{
+  var ast = std::vector<expr>();
+  assert(parse(pattern, ast, flags) == cast<errc>(0));
+
+  var program = std::vector<u32>();
+  assert(compile(ast, program, flags) == cast<errc>(0));
+
+  return [program.data .. program.data + program.len];
+}
+
+fn match<Args>(std::span<u32> program, std::string_view text) -> bool
+{
+  var vm = machine(text);
+
+  if (vm.execute(program))
+    return true;
+
+  return false;
+}
+
+fn match<Args>(std::span<u32> program, std::string_view text, Args mut & ...args) -> bool
+{
+  var captures = [text.end; 2 + 2*std::tuple_len<Args>];
+
+  var vm = machine(text);
+
+  if (vm.execute(program, captures))
+  {
+    #for(var mut &arg : args, const i = 2;; i += 2)
+    {
+      std::sscan(std::string_view(captures[i], captures[i+1]), arg);
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+fn find<Args>(std::span<u32> program, std::string_view text, Args mut & ...args) -> std::string_view
+{
+  var captures = [text.end; 2 + 2*std::tuple_len<Args>];
+
+  var vm = machine(text);
+
+  if (vm.execute(program, captures))
+  {
+    #for(var mut &arg : args, const i = 2;; i += 2)
+    {
+      std::sscan(std::string_view(captures[i], captures[i+1]), arg);
+    }
+  }
+
+  return std::string_view(captures[0], captures[1]);
+}
+
+pub fn create(String &pattern, options flags = cast(0)) -> regex
+{
+  return regex(pattern, flags);
+}
+
+pub fn create(#std::string_literal pattern, #options flags = cast(0)) -> regex
+{
+  return regex(pattern, flags);
+}
+
+pub fn match(regex &rex, String &text) -> bool
+{
+  assert(!rex.error, "invalid regex");
+
+  return match(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len));
+}
+
+pub fn match(#std::string_literal pattern, String &text) -> bool
+{
+  let program = #build(pattern, cast<options>(0));
+
+  return match(std::span(program.data, program.len), std::string_view(text.data, text.len));
+}
+
+pub fn match<Args>(regex &rex, String &text, Args mut & ...args) -> bool
+{
+  assert(!rex.error, "invalid regex");
+
+  return match(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), args...);
+}
+
+pub fn match<Args>(#std::string_literal pattern, String &text, Args mut & ...args) -> bool
+{
+  let program = #build(pattern, cast<options>(0));
+
+  return match(std::span(program.data, program.len), std::string_view(text.data, text.len), args...);
+}
+
+pub fn find<Args>(regex &rex, String &text, Args mut & ...args) -> std::string_view
+{
+  assert(!rex.error, "invalid regex");
+
+  return find(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), args...);
+}
+
+pub fn find<Args>(#std::string_literal pattern, String &text, Args mut & ...args) -> std::string_view
+{
+  let program = #build(pattern, cast<options>(0));
+
+  return find(std::span(program.data, program.len), std::string_view(text.data, text.len), args...);
+}

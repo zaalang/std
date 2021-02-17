@@ -541,6 +541,7 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
   {
     normalize(x.value);
 
+
     var K = 0;
     var z = get_cached_power10(rp, K);
 
@@ -553,10 +554,41 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
 
     x.value = x.value * z;
 
+    var exp = x.value.e;
+
     normalize(x.value);
 
-    x.value.f >>= 64 - std::F64::digits;
-    x.value.e += 64 - std::F64::digits;
+    const ulp_shift = 3;
+    const hidden_bit = 1 << (std::F64::digits - 1);
+
+    var order =  64 + x.value.e;
+    var error = (1 << ulp_shift) << (exp - x.value.e);
+
+    if (order >= -1021)
+      order = 53;
+    else if (order <= -1074)
+      order = 0;
+    else
+      order += 1074;
+
+    var prec = 64 - order;
+    var rounded = DiyFp(x.value.f >> prec, x.value.e + prec);
+
+    var precbits = (x.value.f & ((1 << prec) - 1)) * (1 << ulp_shift);
+    var halfbits = (1 << (prec - 1)) * (1 << ulp_shift);
+
+    if (precbits >= halfbits + error)
+    {
+      rounded.f += 1;
+
+      if (rounded.f & (hidden_bit << 1) != 0)
+      {
+        rounded.f >>= 1;
+        rounded.e += 1;
+      }
+    }
+
+    x.value = rounded;
   }
 
   x.ok = true;

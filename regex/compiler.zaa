@@ -1,0 +1,523 @@
+//
+// regex compile
+//
+
+import regex;
+import std.string : String;
+import std.vector;
+import std.unicode;
+
+using regex::errc;
+using regex::options;
+using regex::opcode;
+using regex::condition;
+using regex::expr;
+
+struct compile_context
+{
+  options flags;
+  std::vector<u32> mut &program;
+
+  compile_context(std::vector<u32> mut &program, options flags)
+    : flags(flags), program(&program)
+  {
+  }
+
+  ~compile_context() = default;
+}
+
+fn get_op(u32 bytecode) -> opcode
+{
+  return cast<opcode>(bytecode >> 2 & 0xF);
+}
+
+fn get_width(u32 bytecode) -> usize
+{
+  return cast<usize>(bytecode & 0x3) + 1;
+}
+
+fn get_out(u32 bytecode) -> usize
+{
+  return cast<usize>(bytecode >> 8);
+}
+
+fn get_fin(u32 bytecode) -> bool
+{
+  return cast<bool>(bytecode >> 6 & 0x1);
+}
+
+fn set_out(u32 mut &bytecode, usize out) -> void
+{
+  bytecode = encode(get_op(bytecode), get_width(bytecode), out, get_fin(bytecode));
+}
+
+fn set_fin(u32 mut &bytecode, bool fin) -> void
+{
+  bytecode = encode(get_op(bytecode), get_width(bytecode), get_out(bytecode), fin);
+}
+
+fn encode(opcode op, usize width, usize out = 0, bool fin = true) -> u32
+{
+  return cast<u32>(out) << 8 | cast<u32>(fin) << 6 | cast<u32>(op) << 2 | cast<u32>(width - 1);
+}
+
+fn emit_nop(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::nop, 1));
+}
+
+fn emit_match(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::match, 1));
+}
+
+fn emit_fork(compile_context mut &ctx, usize out, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::fork, 1, out: out, fin: false));
+}
+
+fn emit_jump(compile_context mut &ctx, usize out, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::jump, 1, out: out));
+}
+
+fn emit_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::jump, 1, out: 5));
+
+  bytecode.push_back(0);
+  bytecode.push_back(0);
+  bytecode.push_back(0);
+  bytecode.push_back(0);
+}
+
+fn emit_condition(compile_context mut &ctx, condition cc, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::condition, 2, out: bytecode.len + 2));
+  bytecode.push_back(cast<u32>(cc));
+}
+
+fn emit_select_byte(compile_context mut &ctx, u8 lo, u8 hi, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::select, 2, out: bytecode.len + 2));
+  bytecode.push_back(cast<u32>(hi) << 8 | cast<u32>(lo));
+}
+
+fn emit_selecti_byte(compile_context mut &ctx, u8 lo, u8 hi, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::selecti, 2, out: bytecode.len + 2));
+  bytecode.push_back(cast<u32>(std::to_lowercase(hi)) << 8 | cast<u32>(std::to_lowercase(lo)));
+}
+
+fn emit_select_rune(compile_context mut &ctx, char lo, char hi, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::select, 3, out: bytecode.len + 3));
+  bytecode.push_back(cast<u32>(lo));
+  bytecode.push_back(cast<u32>(hi));
+}
+
+fn emit_capture(compile_context mut &ctx, usize n, std::vector<u32> mut &bytecode) -> void
+{
+  bytecode.push_back(encode(opcode::capture, 2, out: bytecode.len + 2));
+  bytecode.push_back(cast<u32>(n));
+}
+
+fn emit_anychar(compile_context mut &ctx, var &any) -> void
+{
+  var n = ctx.program.len;
+
+  if (any.flags & options::multiline)
+  {
+    emit_select_byte(ctx, 0, 9, ctx.program);
+    emit_select_byte(ctx, 11, 127, ctx.program);
+    emit_select_rune(ctx, 128, 0x10FFFF, ctx.program);
+  }
+  else
+  {
+    emit_select_byte(ctx, 0, 127, ctx.program);
+    emit_select_rune(ctx, 128, 0x10FFFF, ctx.program);
+  }
+
+  for(var i = n; i < ctx.program.len - 3; i += get_width(ctx.program[i]))
+  {
+    set_fin(ctx.program[i], false);
+    set_out(ctx.program[i], ctx.program.len);
+  }
+}
+
+fn emit_literal(compile_context mut &ctx, var &lit) -> void
+{
+  if (lit.rune < 128)
+  {
+    if (lit.flags & options::foldcase)
+      emit_selecti_byte(ctx, cast<u8>(lit.rune), cast<u8>(lit.rune), ctx.program);
+    else
+      emit_select_byte(ctx, cast<u8>(lit.rune), cast<u8>(lit.rune), ctx.program);
+  }
+  else
+  {
+    var buf = [0; 8];
+    var str = std::ctoa(buf.data, buf.data + buf.len, lit.rune);
+
+    for(var i = 0; i < str.len; ++i)
+      emit_select_byte(ctx, buf[i], buf[i], ctx.program);
+  }
+}
+
+fn emit_klass(compile_context mut &ctx, var &cc) -> void
+{
+  var folded = 0;
+  var n = ctx.program.len;
+  var m = ctx.program.len;
+
+  for(var &range : cc.runes)
+  {
+    if (cc.flags & options::foldcase)
+    {
+      if (range.lo <= 'z' && range.hi >= 'A')
+      {
+        var a = std::max(range.lo, 'A');
+        var b = std::min(range.hi, 'Z');
+        if (a <= b)
+          folded |= ((1 << (b - a + 1)) - 1) << (a - 'A');
+
+        var c = std::max(range.lo, 'a');
+        var d = std::min(range.hi, 'z');
+        if (c <= d)
+          folded |= ((1 << (d - c + 1)) - 1) << (c - 'a');
+      }
+
+      if (('A' <= range.lo && range.hi <= 'Z') || ('a' <= range.lo && range.hi <= 'z'))
+        continue;
+    }
+
+    m = ctx.program.len;
+
+    if (range.hi < 128)
+      emit_select_byte(ctx, cast<u8>(range.lo), cast<u8>(range.hi), ctx.program);
+    else
+      emit_select_rune(ctx, range.lo, range.hi, ctx.program);
+  }
+
+  if (cc.flags & options::foldcase)
+  {
+    for(var lo = std::ctz(folded); lo < 26; lo = std::ctz(folded))
+    {
+      var hi = lo + std::ctz(~(folded >> lo));
+      m = ctx.program.len;
+      emit_selecti_byte(ctx, cast<u8>(lo + 97), cast<u8>(hi + 96), ctx.program);
+      folded = (folded >> hi) << hi;
+    }
+  }
+
+  for(var i = n; i < m; i += get_width(ctx.program[i]))
+  {
+    set_fin(ctx.program[i], false);
+    set_out(ctx.program[i], ctx.program.len);
+  }
+}
+
+fn emit_repeat(compile_context mut &ctx, var &rep, expr *first, expr *last) -> void
+{
+  var n = ctx.program.len;
+
+  for(var i = 0; i < rep.min; ++i)
+  {
+    n = ctx.program.len;
+    emit(ctx, first, last);
+  }
+
+  if (rep.max != ~0)
+  {
+    for(var i = 0; i < rep.max - rep.min; ++i)
+    {
+      emit_fork(ctx, 0xFFFFFF, ctx.program);
+
+      emit(ctx, first, last);
+    }
+
+    for(var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
+    {
+      if (get_out(ctx.program[i]) == 0xFFFFFF)
+        set_out(ctx.program[i], ctx.program.len);
+    }
+  }
+
+  if (rep.max == ~0)
+  { 
+    emit_fork(ctx, n, ctx.program);
+
+    if (rep.min == 0)
+    {
+      emit(ctx, first, last);
+
+      for(var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
+      {
+        if (get_out(ctx.program[i]) == ctx.program.len)
+          set_out(ctx.program[i], n);
+      }
+
+      set_out(ctx.program[n], ctx.program.len);
+    }
+  }
+}
+
+fn emit_alternate(compile_context mut &ctx, var &alt, expr *first1, expr *last1, expr *first2, expr *last2) -> void
+{
+  var n = ctx.program.len;
+
+  emit_fork(ctx, n, ctx.program);
+
+  emit(ctx, first1, last1);
+
+  var m = ctx.program.len;
+
+  set_out(ctx.program[n], ctx.program.len);
+
+  emit(ctx, first2, last2);
+
+  if (first1 == last1)
+  {
+    set_out(ctx.program[n], ctx.program.len);
+  }
+
+  for(var i = n + 1; i < m; i += get_width(ctx.program[i]))
+  {
+    if (get_out(ctx.program[i]) == m)
+      set_out(ctx.program[i], ctx.program.len);
+  }
+
+}
+
+fn emit_capture(compile_context mut &ctx, var &cap, expr *first, expr *last) -> void
+{
+  emit_capture(ctx, 2*cap.n, ctx.program);
+
+  emit(ctx, first, last);
+
+  emit_capture(ctx, 2*cap.n + 1, ctx.program);
+}
+
+fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
+{
+  for(var op = first; op != last; op += op.len)
+  {
+    if (op.kind == typeof(op.kind)::BeginLine)
+      emit_condition(ctx, condition::beginline, ctx.program);
+
+    if (op.kind == typeof(op.kind)::BeginText)
+      emit_condition(ctx, condition::begintext, ctx.program);
+
+    if (op.kind == typeof(op.kind)::EndLine)
+      emit_condition(ctx, condition::endline, ctx.program);
+
+    if (op.kind == typeof(op.kind)::EndText)
+      emit_condition(ctx, condition::endtext, ctx.program);
+
+    if (op.kind == typeof(op.kind)::WordBoundary)
+      emit_condition(ctx, condition::wordboundary, ctx.program);
+
+    if (op.kind == typeof(op.kind)::NonWordBoundary)
+      emit_condition(ctx, condition::nonwordboundary, ctx.program);
+
+    if (op.kind == typeof(op.kind)::AnyChar)
+      emit_anychar(ctx, op.AnyChar);
+
+    if (op.kind == typeof(op.kind)::Literal)
+      emit_literal(ctx, op.Literal);
+
+    if (op.kind == typeof(op.kind)::Klass)
+      emit_klass(ctx, op.Klass);
+
+    if (op.kind == typeof(op.kind)::Repeat)
+      emit_repeat(ctx, op.Repeat, op + 1, op + op.Repeat.len);
+
+    if (op.kind == typeof(op.kind)::Alternate)
+      emit_alternate(ctx, op.Alternate, op + 1, op + op.Alternate.lhs, op + op.Alternate.lhs, op + op.Alternate.len);
+
+    if (op.kind == typeof(op.kind)::Capture)
+      emit_capture(ctx, op.Capture, op + 1, op + op.Capture.len);
+  }
+}
+
+fn encode_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+{
+  while (var stack = std::vector<usize, N:16>::from([0]); !stack.empty)
+  {
+    var pc = stack.take_back();
+
+    while (true)
+    {
+      var op = get_op(bytecode[pc]);
+      var fin = get_fin(bytecode[pc]);
+      var out = get_out(bytecode[pc]);
+      var width = get_width(bytecode[pc]);
+
+      if (op == opcode::capture)
+      {
+        stack.push_back(out);
+      }
+
+      else if (op == opcode::fork)
+      {
+        stack.push_back(out);
+      }
+
+      else if (op == opcode::jump)
+      {
+        stack.push_back(out);
+      }
+
+      else if (op == opcode::condition)
+      {
+        stack.push_back(out);
+      }
+
+      else if (op == opcode::match)
+      {
+        bytecode[1] = 0xFFFF_FFFF;
+        bytecode[2] = 0xFFFF_FFFF;
+        bytecode[3] = 0xFFFF_FFFF;
+        bytecode[4] = 0xFFFF_FFFF;
+      }
+
+      else if (op == opcode::select || op == opcode::selecti)
+      {
+        var lo = 0;
+        var hi = 0;
+
+        if (width == 2)
+        {
+          lo = cast<usize>((bytecode[pc + 1] >> 0) & 0xFF);
+          hi = cast<usize>((bytecode[pc + 1] >> 8) & 0xFF);
+        }
+
+        if (width == 3)
+        {
+          lo = cast<usize>(bytecode[pc + 1]);
+          hi = cast<usize>(bytecode[pc + 2]);
+        }
+
+        var mask = [0; 4];
+
+        if (lo < 32)
+          mask[0] = (0xFFFFFFFF >> (31 + lo - std::min(hi, 31))) << lo;
+
+        if (lo < 64 && hi > 31)
+          mask[1] = (0xFFFFFFFF >> (31 + std::max(lo, 32) - std::min(hi, 63))) << (std::max(lo, 32) - 32);
+
+        if (lo < 96 && hi > 63)
+          mask[2] = (0xFFFFFFFF >> (31 + std::max(lo, 64) - std::min(hi, 95))) << (std::max(lo, 64) - 64);
+
+        if (lo < 128 && hi > 95)
+          mask[3] = (0xFFFFFFFF >> (31 + std::max(lo, 96) - std::min(hi, 127))) << (std::max(lo, 96) - 96);
+
+        if (hi > 127)
+          mask[3] |= 0x8000_0000;
+
+        if (op == opcode::selecti)
+          mask[2] |= (mask[3] & 0x7FFFFFE);
+
+        bytecode[1] |= mask[0];
+        bytecode[2] |= mask[1];
+        bytecode[3] |= mask[2];
+        bytecode[4] |= mask[3];
+      }
+
+      if (fin)
+        break;
+
+      pc += width;
+    }
+  }
+}
+
+pub fn compile(std::vector<expr> &regex, std::vector<u32> mut &program, options flags) -> errc
+{
+  var ctx = compile_context(program, flags);
+
+  emit_prefix(ctx, ctx.program);
+
+  emit(ctx, regex.data, regex.data + regex.len);
+
+  emit_match(ctx, ctx.program);
+
+  encode_prefix(ctx, ctx.program);
+
+  return cast<errc>(0);
+}
+
+pub fn dump(std::vector<u32> &program) -> void
+{
+  for(var index = 5; index < program.len; )
+  {
+    var op = get_op(program[index]);
+    var fin = get_fin(program[index]);
+    var out = get_out(program[index]);
+    var width = get_width(program[index]);
+
+    std::printf("{}{} ", index, fin ? '.' : '+');
+
+    if (op == opcode::nop)
+    {
+      std::printf("nop");
+    }
+
+    if (op == opcode::match)
+    {
+      std::printf("match");
+    }
+
+    if (op == opcode::fork)
+    {
+      std::printf("fork -> {}", out);
+    }
+
+    if (op == opcode::jump)
+    {
+      std::printf("jump -> {}", out);
+    }
+
+    if (op == opcode::condition)
+    {
+      var cc = cast<condition>(program[index + 1]);
+
+      std::printf("condition {} -> {}", cc, out);
+    }
+
+    if (op == opcode::select && width == 2)
+    {
+      var lo = cast<u8>((program[index + 1] >> 0) & 0xFF);
+      var hi = cast<u8>((program[index + 1] >> 8) & 0xFF);
+
+      std::printf("select [{}-{}] -> {}", lo, hi, out);
+    }
+
+    if (op == opcode::selecti && width == 2)
+    {
+      var lo = cast<u8>((program[index + 1] >> 0) & 0xFF);
+      var hi = cast<u8>((program[index + 1] >> 8) & 0xFF);
+
+      std::printf("select/i [{}-{}] -> {}", lo, hi, out);
+    }
+
+    if (op == opcode::select && width == 3)
+    {
+      var lo = program[index + 1];
+      var hi = program[index + 2];
+
+      std::printf("select [{}-{}] -> {}", lo, hi, out);
+    }
+
+    if (op == opcode::capture)
+    {
+      var n = program[index + 1];
+
+      std::printf("capture {} -> {}", n, out);
+    }
+
+    index += width;
+
+    std::printf("\n");
+  }
+}

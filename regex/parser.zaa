@@ -1,0 +1,946 @@
+//
+// regex parser
+//
+
+import regex;
+import std.string : String;
+import std.vector;
+import std.unicode;
+
+using regex::errc;
+using regex::options;
+
+pub union expr
+{
+  pub NoOp,
+  pub BeginText(simple),
+  pub BeginLine(simple),
+  pub EndLine(simple),
+  pub EndText(simple),
+  pub WordBoundary(simple),
+  pub NonWordBoundary(simple),
+  pub AnyChar(simple),
+  pub Literal(literal),
+  pub Klass(klass),
+  pub Repeat(repeater),
+  pub Alternate(alternate),
+  pub Capture(capture),
+
+  pub PseudoLeftParen((options, usize)),
+  pub PseudoVerticalBar(options),
+
+  pub expr(expr&&) = default;
+  pub fn =(expr mut &, expr &&) -> expr mut & = default;
+  pub ~expr() = default;
+}
+
+struct simple
+{
+  options flags;
+
+  simple(options flags)
+    : flags(flags)
+  {
+  }
+
+  simple(simple&&) = default;
+  ~simple() = default;
+}
+
+struct literal
+{
+  char rune;
+  options flags;
+
+  literal(char rune, options flags)
+    : rune(rune), flags(flags)
+  {
+  }
+
+  literal(literal&&) = default;
+  ~literal() = default;
+}
+
+struct klass
+{
+  struct range
+  {
+    char lo;
+    char hi;
+
+    range(char lo, char hi)
+      : lo(lo), hi(hi)
+    {
+    }
+
+    range(range&&) = default;
+    ~range() = default;
+  }
+
+  std::vector<range, N:4> runes;
+  options flags;
+
+  klass(options flags)
+    : flags(flags)
+  {
+  }
+
+  klass(klass&&) = default;
+  ~klass() = default;
+}
+
+struct repeater
+{
+  usize min;
+  usize max;
+  options flags;
+  usize len;
+
+  repeater(usize min, usize max, options flags)
+    : min(min), max(max), flags(flags)
+  {
+  }
+
+  repeater(repeater&&) = default;
+  ~repeater() = default;
+}
+
+struct alternate
+{
+  usize lhs;
+  options flags;
+  usize len;
+
+  alternate(options flags)
+    : flags(flags)
+  {
+  }
+
+  alternate(alternate&&) = default;
+  ~alternate() = default;
+}
+
+struct capture
+{
+  usize n;
+  options flags;
+  usize len;
+
+  capture(usize n, options flags)
+    : n(n), flags(flags)
+  {
+  }
+
+  capture(capture&&) = default;
+  ~capture() = default;
+}
+
+pub fn len(expr &expr) -> usize
+{
+  if (expr.kind == typeof(expr.kind)::NoOp)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::BeginLine)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::BeginText)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::EndLine)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::EndText)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::WordBoundary)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::NonWordBoundary)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::AnyChar)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::Literal)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::Klass)
+    return 1;
+
+  if (expr.kind == typeof(expr.kind)::Repeat)
+    return expr.Repeat.len;
+
+  if (expr.kind == typeof(expr.kind)::Alternate)
+    return expr.Alternate.len;
+
+  if (expr.kind == typeof(expr.kind)::Capture)
+    return expr.Capture.len;
+
+  std::panic("invalid expr");
+
+  return 0;
+}
+
+fn add_range(klass mut &cc, char lo, char hi) -> void
+{
+  var j = cc.runes.begin;
+  while (j != cc.runes.end && (*j).lo < lo)
+    ++j;
+
+  cc.runes.insert(j, klass::range(lo, hi));
+
+  for(var i = cc.runes.begin, j = i + 1; j != cc.runes.end; i = j++)
+  {
+    if ((*j).lo <= (*i).hi + 1)
+    {
+      (*i).hi = std::max((*i).hi, (*j).hi);
+      j = cc.runes.erase(j) - 1;
+    }
+  }
+}
+
+fn negate(klass mut &cc) -> void
+{
+  if (cc.flags & options::foldcase)
+  {
+    var upper = 0;
+    var lower = 0;
+
+    for(var &range : cc.runes)
+    {
+      if (range.lo <= 'z' && range.hi >= 'A')
+      {
+        var a = std::max(range.lo, 'A');
+        var b = std::min(range.hi, 'Z');
+        if (a <= b)
+          upper |= ((1 << (b - a + 1)) - 1) << (a - 'A');
+
+        var c = std::max(range.lo, 'a');
+        var d = std::min(range.hi, 'z');
+        if (c <= d)
+          lower |= ((1 << (d - c + 1)) - 1) << (c - 'a');
+      }
+    }
+
+    var folddn = lower & ~upper;
+    for(var lo = std::ctz(folddn); lo < 26; lo = std::ctz(folddn))
+    {
+      var hi = lo + std::ctz(~(folddn >> lo));
+      cc.add_range(cast<char>(lo + 65), cast<char>(hi + 64));
+      folddn = (folddn >> hi) << hi;
+    }
+
+    var foldup = upper & ~lower;
+    for(var lo = std::ctz(foldup); lo < 26; lo = std::ctz(foldup))
+    {
+      var hi = lo + std::ctz(~(foldup >> lo));
+      cc.add_range(cast<char>(lo + 97), cast<char>(hi + 96));
+      foldup = (foldup >> hi) << hi;
+    }
+
+    cc.flags ^= options::foldcase;
+  }
+
+  var next = 0;
+  var j = cc.runes.begin;
+
+  for(var range : cc.runes)
+  {
+    if (next + 1 <= range.lo)
+    {
+      (*j).lo = next;
+      (*j).hi = range.lo - 1;
+      ++j;
+    }
+
+    next = range.hi + 1;
+  }
+
+  cc.runes.erase(j, cc.runes.end);
+
+  if (next <= 0x10FFFF)
+  {
+    cc.runes.push_back(klass::range(next, 0x10FFFF));
+  }
+}
+
+fn is_marker(expr &op) -> bool
+{
+  return is_leftparen(op) || is_verticalbar(op);
+}
+
+fn is_leftparen(expr &op) -> bool
+{
+  return op.kind == typeof(op.kind)::PseudoLeftParen;
+}
+
+fn is_verticalbar(expr &op) -> bool
+{
+  return op.kind == typeof(op.kind)::PseudoVerticalBar;
+}
+
+fn maybe_empty(expr *first, expr *last) -> bool
+{
+  for(var op = first; op != last; op += op.len)
+  {
+    if (op.kind == typeof(op.kind)::AnyChar)
+      return false;
+
+    if (op.kind == typeof(op.kind)::Literal)
+      return false;
+
+    if (op.kind == typeof(op.kind)::Klass)
+      return false;
+
+    if (op.kind == typeof(op.kind)::Repeat)
+      if (op.Repeat.min != 0)
+        return false;
+
+    if (op.kind == typeof(op.kind)::Alternate)
+      if (!maybe_empty(op + 1, op + op.Alternate.lhs) && !maybe_empty(op + op.Alternate.lhs, op + op.Alternate.len))
+        return false;
+
+    if (op.kind == typeof(op.kind)::Capture)
+      if (!maybe_empty(op + 1, op + op.Capture.len))
+        return false;
+  }
+
+  return true;
+}
+
+struct parse_context
+{
+  std::vector<expr> mut &regex;
+  std::vector<usize, N:64> stack;
+  usize caps;
+
+  parse_context(std::vector<expr> mut &regex)
+    : regex(&regex)
+  {
+  }
+
+  ~parse_context() = default;
+}
+
+fn push(parse_context mut &ctx, expr &&expr) -> void
+{
+  ctx.regex.push_back(&&expr);
+  ctx.stack.push_back(ctx.regex.len - 1);
+}
+
+fn collapse(parse_context mut &ctx) -> void
+{
+  var j = ctx.stack.end;
+  while (j != ctx.stack.begin && !is_marker(ctx.regex[*(j-1)]))
+    --j;
+
+  ctx.stack.erase(j, ctx.stack.end);
+
+  while (!ctx.stack.empty && is_verticalbar(ctx.regex[ctx.stack.back]))
+  {
+    var alt = alternate(ctx.regex[ctx.stack.back].PseudoVerticalBar);
+
+    j = ctx.stack.end - 1;
+    while (j != ctx.stack.begin && !is_marker(ctx.regex[*(j-1)]))
+      --j;
+
+    std::rotate_right(ctx.regex.data + *j, ctx.regex.data + ctx.stack.back + 1);
+
+    alt.lhs = 1 + ctx.stack.back - *j;
+    alt.len = ctx.regex.len - *j;
+
+    ctx.regex[*j] = expr::Alternate(alt);
+
+    ctx.stack.erase(j, ctx.stack.end);
+  }
+}
+
+fn parse_int(var mut &s, var &end, var mut &v) -> errc
+{
+  if (s == end || !std::is_digit(*s))
+    return errc::invalid_digit;
+
+  if (std::atoi(s, end, v).error)
+    return errc::invalid_digit;
+
+  while (std::is_digit(*s))
+    ++s;
+
+  return cast<errc>(0);
+}
+
+fn parse_escape_char(var mut &s, var &end, var mut &ch) -> errc
+{
+  if (s == end)
+    return errc::trailing_backslash;
+
+  ch = *s++;
+
+  if (ch == 'a')
+    ch = '\a';
+
+  else if (ch == 'f')
+    ch = '\f';
+
+  else if (ch == 'n')
+    ch = '\n';
+
+  else if (ch == 'r')
+    ch = '\r';
+
+  else if (ch == 't')
+    ch = '\t';
+
+  else if (ch == 'v')
+    ch = '\v';
+
+  else if (ch == '.' || ch == '*' || ch == '+' || ch == '?' || ch == '-' || ch == ':' || ch == '^' || ch == '|' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '!' || ch == '\\' || ch == '_')
+    ;
+
+  else
+    return errc::bad_escape;
+
+  return cast<errc>(0);
+}
+
+fn parse_char(var mut &s, var &end, var mut &ch) -> errc
+{
+  ch = *s++;
+
+  if (ch == '\\')
+  {
+    if (var err = parse_escape_char(s, end, ch); err)
+      return err;
+  }
+
+  return cast<errc>(0);
+}
+
+fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
+{
+  if (s == end)
+    return errc::missing_bracket;
+
+  if (*s != ':')
+    return errc::bad_char_class;
+
+  var i = s;
+  for(++i; i != end && *i != ':'; ++i)
+    ;
+
+  var sv = std::string_view(s, i);
+
+  if (i == end || *++i != ']')
+    return errc::bad_char_class;
+
+  if (sv == ":alnum")
+  {
+    cc.add_range('0', '9');
+    cc.add_range('A', 'Z');
+    cc.add_range('a', 'z');
+    cc.flags ^= options::foldcase;
+  }
+  else if (sv == ":alpha")
+  {
+    cc.add_range('A', 'Z');
+    cc.add_range('a', 'z');
+    cc.flags ^= options::foldcase;
+  }
+  else if (sv == ":digit")
+  {
+    cc.add_range('0', '9');
+  }
+  else if (sv == ":lower")
+  {
+    cc.add_range('a', 'z');
+  }
+  else if (sv == ":upper")
+  {
+    cc.add_range('A', 'Z');
+  }
+  else if (sv == ":space")
+  {
+    cc.add_range('\r', '\r');
+    if (!(cc.flags & options::multiline))
+      cc.add_range('\n', '\n');
+    cc.add_range('\t', '\t');
+    cc.add_range('\f', '\f');
+    cc.add_range('\v', '\v');
+    cc.add_range(' ', ' ');
+  }
+  else if (sv == ":word")
+  {
+    cc.add_range('0', '9');
+    cc.add_range('A', 'Z');
+    cc.add_range('_', '_');
+    cc.add_range('a', 'z');
+    cc.flags ^= options::foldcase;
+  }
+  else if (sv == ":xdigit")
+  {
+    cc.add_range('0', '9');
+    cc.add_range('A', 'F');
+    cc.add_range('a', 'f');
+    cc.flags ^= options::foldcase;
+  }
+  else
+  {
+    return errc::bad_char_class;
+  }
+
+  s = ++i;
+
+  return cast<errc>(0);
+}
+
+fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
+{
+  if (s == end)
+    return errc::trailing_backslash;
+
+  if (*s == 'd')
+  {
+    cc.add_range('0', '9');
+  }
+
+  else if (*s == 'D')
+  {
+    cc.add_range(0, 9);
+    if (!(cc.flags & options::multiline))
+      cc.add_range('\n', '\n');
+    cc.add_range(11, 47);
+    cc.add_range(58, 0x10FFFF);
+    cc.flags ^= options::foldcase;
+  }
+
+  else if (*s == 's')
+  {
+    cc.add_range('\r', '\r');
+    if (!(cc.flags & options::multiline))
+      cc.add_range('\n', '\n');
+    cc.add_range('\t', '\t');
+    cc.add_range('\f', '\f');
+    cc.add_range('\v', '\v');
+    cc.add_range(' ', ' ');
+  }
+
+  else if (*s == 'S')
+  {
+    cc.add_range(0, 8);
+    cc.add_range(14, 31);
+    cc.add_range(33, 0x10FFFF);
+    cc.flags ^= options::foldcase;
+  }
+
+  else if (*s == 'w')
+  {
+    cc.add_range('a', 'z');
+    cc.add_range('A', 'Z');
+    cc.add_range('0', '9');
+    cc.add_range('_', '_');
+    cc.add_range(128, 0x10FFFF);
+    cc.flags ^= options::foldcase;
+  }
+
+  else if (*s == 'W')
+  {
+    cc.add_range(0, 9);
+    if (!(cc.flags & options::multiline))
+      cc.add_range('\n', '\n');
+    cc.add_range(11, 47);
+    cc.add_range(58, 64);
+    cc.add_range(91, 94);
+    cc.add_range(96, 96);
+  }
+
+  else
+  {
+    return errc::bad_char_class;
+  }
+
+  ++s;
+
+  return cast<errc>(0);
+}
+
+fn parse_class(var mut &s, var &end, var mut &cc) -> errc
+{
+  var invert = false;
+  if (s != end && *s == '^')
+  {
+    invert = true;
+
+    if (cc.flags & options::multiline)
+      cc.add_range('\n', '\n');
+
+    ++s;
+  }
+
+  for(; s != end && *s != ']'; )
+  {
+    var lo = *s++;
+
+    if (lo == '[')
+    {
+      if (var err = parse_named_class(s, end, cc); !err)
+        continue;
+    }
+
+    if (lo == '\\')
+    {
+      if (var err = parse_escape_class(s, end, cc); !err)
+        continue;
+
+      if (var err = parse_escape_char(s, end, lo); err)
+        return err;
+    }
+
+    var hi = lo;
+
+    if (s != end && *s == '-' && (s.super+1 != end && *(s.super+1) != cast(']')))
+    {
+      ++s;
+
+      if (var err = parse_char(s, end, hi); err)
+        return err;
+
+      if (hi < lo)
+        return errc::bad_char_range;
+    }
+
+    cc.add_range(lo, hi);
+  }
+
+  if (s == end)
+    return errc::missing_bracket;
+
+  ++s;
+
+  if (invert)
+  {
+    negate(cc);
+  }
+
+  if (cc.runes.empty)
+    return errc::bad_char_range;
+
+  return cast<errc>(0);
+}
+
+pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast(0)) -> errc
+{
+  var ctx = parse_context(regex);
+
+  for(var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
+  {
+    var s = std::next(ch);
+
+    if (*ch == '^')
+    {
+      if (flags & options::multiline)
+        ctx.push(expr::BeginLine(flags));
+      else
+        ctx.push(expr::BeginText(flags));
+    }
+    else if (*ch == '$')
+    {
+      if (flags & options::multiline)
+        ctx.push(expr::EndLine(flags));
+      else
+        ctx.push(expr::EndText(flags));
+    }
+    else if (*ch == '.')
+    {
+      ctx.push(expr::AnyChar(flags));
+    }
+    else if (*ch == '[')
+    {
+      var cc = klass(flags);
+
+      if (var err = parse_class(s, end, cc); err)
+        return err;
+
+      ctx.push(expr::Klass(cc));
+    }
+    else if (*ch == '*' || *ch == '+' || *ch == '?')
+    {
+      var rep = repeater(0, ~0, flags);
+
+      if (*ch == '+')
+        rep.min = 1;
+
+      if (*ch == '?')
+        rep.max = 1;
+
+      if (ctx.stack.empty || is_marker(ctx.regex[ctx.stack.back]))
+        return errc::missing_repeat_argument;
+
+      if (maybe_empty(ctx.regex.data + ctx.stack.back, ctx.regex.data + ctx.regex.len))
+        return errc::invalid_repeat_argument;
+
+      rep.len = ctx.regex.len - ctx.stack.back + 1;
+
+      ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
+    }
+    else if (*ch == '{')
+    {
+      var min = 0;
+      var max = ~0;
+
+      parse_int(s, end, min);
+
+      if (s != end && *s == ',')
+      {
+        parse_int(++s, end, max);
+      }
+      else
+      {
+        max = min;
+      }
+
+      if (s != end && *s == '}')
+      {
+        var rep = repeater(min, max, flags);
+
+        if (ctx.stack.empty || is_marker(ctx.regex[ctx.stack.back]))
+          return errc::missing_repeat_argument;
+
+        if (maybe_empty(ctx.regex.data + ctx.stack.back, ctx.regex.data + ctx.regex.len))
+          return errc::invalid_repeat_argument;
+
+        rep.len = ctx.regex.len - ctx.stack.back + 1;
+
+        ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
+
+        ++s;
+      }
+      else
+      {
+        ctx.push(expr::Literal('{', flags));
+      }
+    }
+    else if (*ch == '(')
+    {
+      if (s != end && *s == '?')
+      {
+        var newflags = flags;
+
+        for(++s; s != end && *s != ':' && *s != ')'; ++s)
+        {
+          var sign = 0;
+
+          if (*s == '-')
+          {
+            sign = -1;
+            ++s;
+          }
+
+          if (s != end && *s == 'i')
+          {
+            if (sign < 0)
+              newflags ^= options::foldcase;
+            else
+              newflags |= options::foldcase;
+          }
+
+          if (s != end && *s == 'm')
+          {
+            if (sign < 0)
+              newflags ^= options::multiline;
+            else
+              newflags |= options::multiline;
+          }
+        }
+
+        if (s == end)
+          return errc::missing_bracket;
+
+        if (*s == ':')
+        {
+          ctx.push(expr::PseudoLeftParen(flags, 0));
+        }
+
+        flags = newflags;
+
+        ++s;
+      }
+      else
+      {
+        ctx.push(expr::PseudoLeftParen(flags, ++ctx.caps));
+      }
+    }
+    else if (*ch == ')')
+    {
+      collapse(ctx);
+
+      if (ctx.stack.empty || !is_leftparen(ctx.regex[ctx.stack.back]))
+        return errc::unexpected_paren;
+
+      flags = ctx.regex[ctx.stack.back].PseudoLeftParen.0;
+
+      if (var n = ctx.regex[ctx.stack.back].PseudoLeftParen.1; n != 0)
+      {
+        var cap = capture(n, flags);
+
+        cap.len = ctx.regex.len - ctx.stack.back;
+
+        ctx.regex[ctx.stack.back] = expr::Capture(cap);
+      }
+      else
+      {
+        ctx.regex[ctx.stack.back] = expr::NoOp;
+      }
+    }
+    else if (*ch == '|')
+    {
+      ctx.push(expr::PseudoVerticalBar(flags));
+    }
+    else if (*ch == '\\')
+    {
+      if (s == end)
+        return errc::trailing_backslash;
+
+      if (*s == 'A' || *s == 'z' || *s == 'b' || *s == 'B')
+      {
+        if (*s == 'A')
+          ctx.push(expr::BeginText(flags));
+
+        if (*s == 'z')
+          ctx.push(expr::EndText(flags));
+
+        if (*s == 'b')
+          ctx.push(expr::WordBoundary(flags));
+
+        if (*s == 'B')
+          ctx.push(expr::NonWordBoundary(flags));
+
+        ++s;
+      }
+      else if (*s == 'd' || *s == 'D' || *s == 's' || *s == 'S' || *s == 'w' || *s == 'W')
+      {
+        var cc = klass(flags);
+
+        if (var err = parse_escape_class(s, end, cc); err)
+          return err;
+
+        ctx.push(expr::Klass(cc));
+      }
+      else
+      {
+        var lit = 0;
+
+        if (var err = parse_escape_char(s, end, lit); err)
+          return err;
+
+        ctx.push(expr::Literal(lit, flags));
+      }
+    }
+    else
+    {
+      ctx.push(expr::Literal(*ch, flags));
+    }
+
+    ch = s;
+  }
+
+  collapse(ctx);
+
+  if (ctx.stack.len != 0)
+    return errc::missing_paren;
+
+  return cast<errc>(0);
+}
+
+fn dump(expr *first, expr *last) -> void
+{
+  for(var expr = first; expr != last; expr += expr.len)
+  {
+    if (expr.kind == typeof(expr.kind)::NoOp)
+    {
+      std::printf("{{nop}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::BeginLine)
+    {
+      std::printf("{{beginline}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::BeginText)
+    {
+      std::printf("{{begintext}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::EndLine)
+    {
+      std::printf("{{endline}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::EndText)
+    {
+      std::printf("{{endtext}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::WordBoundary)
+    {
+      std::printf("{{wordboundary}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::NonWordBoundary)
+    {
+      std::printf("{{nonwordboundary}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::AnyChar)
+    {
+      std::printf("{{any}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::Literal)
+    {
+      std::printf("{{lit:{}}}", expr.Literal.rune);
+    }
+
+    if (expr.kind == typeof(expr.kind)::Klass)
+    {
+      std::printf("{{cc:");
+
+      for(var &range : expr.Klass.runes)
+        std::printf(" [{}-{}]", cast<u32>(range.lo), cast<u32>(range.hi));
+
+      std::printf("}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::Repeat)
+    {
+      std::printf("{{rep({},", expr.Repeat.min);
+      if (expr.Repeat.max != ~0)
+        std::printf("{}", expr.Repeat.max);
+      std::printf("):");
+      dump(expr + 1, expr + expr.Repeat.len);
+      std::printf("}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::Alternate)
+    {
+      std::printf("{{alt:");
+      dump(expr + 1, expr + expr.Alternate.lhs);
+      std::printf(",");
+      dump(expr + expr.Alternate.lhs, expr + expr.Alternate.len);
+      std::printf("}}");
+    }
+
+    if (expr.kind == typeof(expr.kind)::Capture)
+    {
+      std::printf("{{cap({}):", expr.Capture.n);
+      dump(expr + 1, expr + expr.Capture.len);
+      std::printf("}}");
+    }
+  }
+}
+
+pub fn dump(std::vector<expr> &regex) -> void
+{
+  dump(&*regex.begin, &*regex.end);
+
+  std::printf("\n");
+}

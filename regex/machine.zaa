@@ -1,0 +1,314 @@
+//
+// regex machine
+//
+
+import regex;
+import std.string : String;
+import std.span : Span;
+import std.vector;
+import std.unicode;
+import std.algorithm;
+import std.bits.utf as utf;
+
+using regex::errc;
+using regex::options;
+using regex::opcode;
+using regex::condition;
+
+pub enum instruction
+{
+  nop          = cast<u32>(opcode::nop) << 2,
+  match        = cast<u32>(opcode::match) << 2,
+  fork         = cast<u32>(opcode::fork) << 2,
+  jump         = cast<u32>(opcode::jump) << 2,
+  condition    = cast<u32>(opcode::condition) << 2 | 1,
+  select_byte  = cast<u32>(opcode::select) << 2 | 1,
+  selecti_byte = cast<u32>(opcode::selecti) << 2 | 1,
+  select_rune  = cast<u32>(opcode::select) << 2 | 2,
+  capture      = cast<u32>(opcode::capture) << 2 | 1,
+}
+
+struct thread
+{
+  u32 *pc;
+  u32 state;
+  char codepoint;
+  std::vector<u8*, N:16> captures;
+
+  thread(u32 *pc)
+    : pc(pc)
+  {
+  }
+
+  thread(thread&) = default;
+  ~thread() = default;
+}
+
+pub struct machine
+{
+  std::string_view text;
+  std::vector<thread, N:64> threads;
+
+  pub machine(std::string_view text)
+    : text(text)
+  {
+  }
+
+  pub ~machine() = default;
+}
+
+fn get_op(u32 bytecode) -> instruction
+{
+  return cast<instruction>(bytecode & 0x3F);
+}
+
+fn get_width(u32 bytecode) -> usize
+{
+  return cast<usize>(bytecode & 0x3) + 1;
+}
+
+fn get_out(u32 bytecode) -> usize
+{
+  return cast<usize>(bytecode >> 8);
+}
+
+fn get_fin(u32 bytecode) -> bool
+{
+  return cast<bool>(bytecode >> 6 & 0x1);
+}
+
+fn is_anchored_start(Span<u32> &program) -> bool
+{
+  return get_op(program[0]) == instruction::condition && cast<condition>(program[1]) == condition::begintext;
+}
+
+fn match_condition(machine mut &vm, u8 *ch, condition cc) -> bool
+{
+  if (cc == condition::begintext && ch == vm.text.begin)
+    return true;
+
+  if (cc == condition::beginline && (ch == vm.text.begin || *(ch - 1) == cast('\n')))
+    return true;
+
+  if (cc == condition::endline && (ch == vm.text.end || *ch == cast('\n')))
+    return true;
+
+  if (cc == condition::endtext && ch == vm.text.end)
+    return true;
+
+  if (cc == condition::wordboundary || cc == condition::nonwordboundary)
+  {
+    fn is_wordchar(char ch) -> bool
+    {
+      return 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || '0' <= ch && ch <= '9' || ch == '_';
+    }
+
+    var prev = (ch != vm.text.begin) ? cast<char>(*(ch - 1)) : '\0';
+    var next = (ch != vm.text.end) ? cast<char>(*ch) : '\0';
+
+    if (cc == condition::wordboundary && is_wordchar(prev) != is_wordchar(next))
+      return true;
+
+    if (cc == condition::nonwordboundary && is_wordchar(prev) == is_wordchar(next))
+      return true;
+  }
+
+  return false;
+}
+
+fn match_prefix(machine mut &vm, u8 *ch, std::span<u32> program) -> bool
+{
+  var i = std::min(cast<usize>(*ch), 127);
+
+  if (program[1 + (i >> 5)] & (1 << (i & 0x1F)) != 0)
+    return true;
+
+  return false;
+}
+
+fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captures) -> bool
+{
+  var matched = false;
+  var anchored_to_start = is_anchored_start(program);
+
+  for(var ch = vm.text.begin;; ++ch)
+  {
+    if (!matched && (!anchored_to_start || ch == vm.text.begin))
+    {
+      if (vm.threads.empty)
+      {
+        for(var end = vm.text.end; ch != end; ++ch)
+        {
+          if (match_prefix(vm, ch, program))
+            break;
+        }
+      }
+
+      vm.threads.push_back(program.data);
+      vm.threads.back.captures.push_back(ch);
+      vm.threads.back.captures.push_back(ch);
+    }
+
+    for(var it = vm.threads.begin; it != vm.threads.end; ++it)
+    {
+      var eaten = false;
+      var mut &thread = *it;
+
+      while (thread.state != utf::REJECT)
+      {
+        var op = get_op(*thread.pc);
+        var fin = get_fin(*thread.pc);
+        var out = get_out(*thread.pc);
+        var width = get_width(*thread.pc);
+
+        if (op == instruction::match)
+        {
+          if (captures.empty)
+            return true;
+
+          thread.captures[1] = ch;
+          std::copy(captures.begin, captures.end, thread.captures.begin, thread.captures.end);
+          std::fill(captures.begin + thread.captures.len, captures.end, vm.text.end);
+
+          for(var mut &thread : vm.threads)
+          {
+            if (captures[0] < thread.captures[0])
+              thread.state = utf::REJECT;
+          }
+
+          matched = true;
+        }
+
+        else if (op == instruction::capture)
+        {
+          var n = cast<usize>(*(thread.pc + 1));
+
+          if (n < captures.len)
+          {
+            if (thread.captures.len < n + 1)
+            {
+              thread.captures.reserve(n + 1);
+              while (thread.captures.len < n + 1)
+                thread.captures.push_back(vm.text.end);
+            }
+
+            thread.captures[n] = ch;
+          }
+
+          thread.pc = program.data + out;
+          continue;
+        }
+
+        else if (op == instruction::fork)
+        {
+          var i = it - vm.threads.begin;
+          vm.threads.push_back(program.data + out);
+          vm.threads.back.captures = vm.threads[i].captures;
+          it = vm.threads.begin + i;
+          &thread = &*it;
+        }
+
+        else if (op == instruction::jump)
+        {
+          thread.pc = program.data + out;
+          continue;
+        }
+
+        else if (op == instruction::condition)
+        {
+          var cc = cast<condition>(*(thread.pc + 1));
+
+          if (match_condition(vm, ch, cc))
+          {
+            thread.pc = program.data + out;
+            continue;
+          }
+        }
+
+        else if (op == instruction::select_byte)
+        {
+          if (ch != vm.text.end)
+          {
+            var ch = *ch;
+            var lo = cast<u8>((*(thread.pc + 1) >> 0) & 0xFF);
+            var hi = cast<u8>((*(thread.pc + 1) >> 8) & 0xFF);
+
+            if (lo <= ch && ch <= hi)
+            {
+              thread.pc = program.data + out;
+              break;
+            }
+          }
+        }
+
+        else if (op == instruction::selecti_byte)
+        {
+          if (ch != vm.text.end)
+          {
+            var ch = std::to_lowercase(*ch);
+            var lo = cast<u8>((*(thread.pc + 1) >> 0) & 0xFF);
+            var hi = cast<u8>((*(thread.pc + 1) >> 8) & 0xFF);
+
+            if (lo <= ch && ch <= hi)
+            {
+              thread.pc = program.data + out;
+              break;
+            }
+          }
+        }
+
+        else if (op == instruction::select_rune)
+        {
+          if (ch != vm.text.end)
+          {
+            if (!eaten)
+            {
+              if (utf::decode(thread.state, thread.codepoint, *ch) != 0)
+                break;
+
+              eaten = true;
+            }
+
+            var lo = cast<char>(*(thread.pc + 1));
+            var hi = cast<char>(*(thread.pc + 2));
+
+            if (lo <= thread.codepoint && thread.codepoint <= hi)
+            {
+              thread.pc = program.data + out;
+              break;
+            }
+          }
+        }
+
+        if (fin)
+        {
+          thread.state = utf::REJECT;
+          break;
+        }
+
+        thread.pc += width;
+      }
+    }
+
+    if (vm.threads.empty)
+      break;
+
+    if (ch == vm.text.end)
+      break;
+
+    std::unordered_erase_if(vm.threads, fn(thread &t) { return t.state == utf::REJECT; });
+  }
+
+  return matched;
+}
+
+pub fn execute(machine mut &vm, Span<u32> &program) -> bool
+{
+  return execute(vm, std::span(program.data, program.len), std::mutable_span<u8*>(null, 0));
+}
+
+pub fn execute(machine mut &vm, Span<u32> &program, Span<u8*> mut &captures) -> bool
+{
+  return execute(vm, std::span(program.data, program.len), std::mutable_span(captures.data, captures.len));
+}
+
