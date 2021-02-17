@@ -572,12 +572,65 @@ pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
   return result;
 }
 
+fn atof_special<T>(u8 *beg, u8 *end, T mut &value) -> usize
+{
+  const inf_strs = [ "infinity", "INFINITY", "inf", "Inf", "INF" ];
+  const nan_strs = [ "NaN", "NAN", "nan" ];
+
+  for(var &str : inf_strs)
+  {
+    if (end - beg < str.len)
+      continue;
+
+    if (std::span(beg, str.len) == str)
+    {
+      value = __inf();
+      return str.len;
+    }
+  }
+
+  for(var &str : nan_strs)
+  {
+    if (end - beg < str.len)
+      break;
+
+    if (std::span(beg, str.len) == str)
+    {
+      value = __nan();
+      return str.len;
+    }
+  }
+
+  return 0;
+}
+
 pub fn atof(u8 *beg, u8 *end, f32 mut &value) -> strconv_result
 {
   var result = strconv_result();
 
-  std::panic("not implemented");
+  result.ptr = beg;
 
+  var ch = beg;
+  if (ch != end && *ch == cast('-'))
+    ++ch;
+
+  var len = atof_special(ch, end, value);
+
+  if (len == 0)
+  {
+    len = flt::scan(ch, end, value);
+
+    if (len == 0)
+      result.error = std::errc::invalid_argument;
+  }
+
+  if (ch != beg) // negative
+  {
+    len += 1;
+    value = -value;
+  }
+
+  result.len = len;
   return result;
 }
 
@@ -585,8 +638,29 @@ pub fn atof(u8 *beg, u8 *end, f64 mut &value) -> strconv_result
 {
   var result = strconv_result();
 
-  std::panic("not implemented");
+  result.ptr = beg;
 
+  var ch = beg;
+  if (ch != end && *ch == cast('-'))
+    ++ch;
+
+  var len = atof_special(ch, end, value);
+
+  if (len == 0)
+  {
+    len = flt::scan(ch, end, value);
+
+    if (len == 0)
+      result.error = std::errc::invalid_argument;
+  }
+
+  if (ch != beg) // negative
+  {
+    len += 1;
+    value = -value;
+  }
+
+  result.len = len;
   return result;
 }
 

@@ -287,7 +287,7 @@ fn flatten(std::string_literal str) -> std::string_literal
   return str;
 }
 
-const fn parse_args<Args>(std::string_literal format) -> Arguments<std::tuple_len<Args>>
+fn parse_args<Args>(std::string_literal format) -> Arguments<std::tuple_len<Args>>
 {
   var args = Arguments<std::tuple_len<Args>>();
 
@@ -362,7 +362,7 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_view &piece
 pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args) throws -> usize
 { 
   var ctx = fmt_context();
-  let spec = parse_args<Args>(format);
+  let spec = #parse_args<Args>(format);
 
   #for(const k = 0; k < std::tuple_len<Args>; ++k)
   {

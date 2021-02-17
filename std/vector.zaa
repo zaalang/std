@@ -124,11 +124,25 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return span(this.data + range.0, this.data + range.1);
   }
 
+  pub fn [](this &, (usize, usize, void) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+
+    return span(this.data + range.0, this.data + range.1 + 1);
+  }
+
   pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return mutable_span(this.data + range.0, this.data + range.1);
+  }
+
+  pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<T>
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+
+    return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
   pub struct iterator
@@ -361,7 +375,16 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     erase(this, this._data + this._len - 1, 1);
   }
-  
+
+  pub fn take_back(this mut &) -> T
+  {
+    var result = std::move(this.back);
+
+    pop_back(this);
+
+    return result;
+  }
+
   pub fn erase(this mut &, Iterator position) -> iterator
   {
     assert(this._data <= position.cursor && position.cursor < this._data + this._len);

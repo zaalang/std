@@ -24,6 +24,16 @@ struct DiyFp
   ~DiyFp() = default;
 }
 
+struct ParsedFp
+{
+  bool ok;
+  DiyFp value;
+
+  ParsedFp() = default;
+  ParsedFp(ParsedFp&) = default;
+  ~ParsedFp() = default;
+}
+
 struct BoundedFp
 {
   DiyFp value;
@@ -34,18 +44,15 @@ struct BoundedFp
   BoundedFp(BoundedFp&) = default;
   ~BoundedFp() = default;
 }
-  
+
 fn compute_bounded_fp<T>(T value) -> BoundedFp
 {
-  using std::F32;
-  using std::F64;
-  
-  const mantisa_bits = F64::digits - 1;
+  const mantisa_bits = std::F64::digits - 1;
   const exponent_bits = 64 - mantisa_bits - 1;
   const significand_mask = u64(1 << mantisa_bits) - 1;
   const exponent_mask = (~u64(0) >> 1) & ~significand_mask;
-  const exponent_bias = (1 << exponent_bits) - F64::max_exponent + mantisa_bits - 1;
-  const min_normal_e = F32::min_exponent - F64::digits;
+  const exponent_bias = (1 << exponent_bits) - std::F64::max_exponent + mantisa_bits - 1;
+  const min_normal_e = std::F32::min_exponent - std::F64::digits;
 
   var result = BoundedFp();
   
@@ -66,7 +73,7 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
   
   #if (std::is_same<T, f32>)
   {
-    var half_ulp = 1 << (F64::digits - F32::digits - 1);
+    var half_ulp = 1 << (std::F64::digits - std::F32::digits - 1);
     
     if (min_normal_e > result.value.e) 
       half_ulp <<= min_normal_e - result.value.e;
@@ -118,17 +125,59 @@ fn normalize(DiyFp mut &fp) -> void
 
 fn *(DiyFp &lhs, DiyFp &rhs) -> DiyFp
 { 
-  var a = lhs.f >> 32;
-  var b = lhs.f & 0xFFFFFFFF;
-  var c = rhs.f >> 32;
-  var d = rhs.f & 0xFFFFFFFF;
-  var ac = a * c;
-  var bc = b * c;
-  var ad = a * d;
-  var bd = b * d;
-  var mid = (bd >> 32) + (ad & 0xFFFFFFFF) + (bc & 0xFFFFFFFF) + (1 << 31);
+  var p = std::mul_with_carry(lhs.f, rhs.f);
 
-  return DiyFp(ac + (ad >> 32) + (bc >> 32) + (mid >> 32), lhs.e + rhs.e + 64);
+  if (p.0 & (1 << 63) != 0)
+      p.1 += 1;
+
+  return DiyFp(p.1, lhs.e + rhs.e + 64);
+}
+
+fn f32(DiyFp fp) -> f32
+{
+  const mantisa_bits = std::F32::digits - 1;
+  const exponent_bits = 32 - mantisa_bits - 1;
+  const significand_mask = u64(1 << mantisa_bits) - 1;
+  const exponent_bias = (1 << exponent_bits) - std::F32::max_exponent + mantisa_bits - 1;
+  const denormal_exponent = -exponent_bias + 1;
+  const max_exponent = -exponent_bias + (1 << exponent_bits) - 1;
+  const hidden_bit = 1 << mantisa_bits;
+
+  fp.f >>= std::F64::digits - std::F32::digits;
+  fp.e += std::F64::digits - std::F32::digits;
+
+  if (fp.e < denormal_exponent)
+    return 0.0;
+
+  if (fp.e >= max_exponent)
+    return __inf;
+
+  var biased_e = (fp.e == denormal_exponent && (fp.f & hidden_bit) == 0) ? 0 : cast<u32>(fp.e + exponent_bias);
+  var u = cast<u32>(fp.f & significand_mask) | (biased_e << mantisa_bits);
+
+  return std::bit_cast<f32>(u);
+}
+
+fn f64(DiyFp &fp) -> f64
+{
+  const mantisa_bits = std::F64::digits - 1;
+  const exponent_bits = 64 - mantisa_bits - 1;
+  const significand_mask = u64(1 << mantisa_bits) - 1;
+  const exponent_bias = (1 << exponent_bits) - std::F64::max_exponent + mantisa_bits - 1;
+  const denormal_exponent = -exponent_bias + 1;
+  const max_exponent = -exponent_bias + (1 << exponent_bits) - 1;
+  const hidden_bit = 1 << mantisa_bits;
+
+  if (fp.e < denormal_exponent)
+    return 0.0;
+
+  if (fp.e >= max_exponent)
+    return __inf;
+
+  var biased_e = (fp.e == denormal_exponent && (fp.f & hidden_bit) == 0) ? 0 : cast<u64>(fp.e + exponent_bias);
+  var u = (fp.f & significand_mask) | (biased_e << mantisa_bits);
+
+  return std::bit_cast<f64>(u);
 }
 
 fn pow10(int index) -> u64
@@ -188,13 +237,22 @@ fn cached_power(usize index) -> DiyFp
   return DiyFp(Cached_Significands[index], Cached_Exponents[index]);
 }
 
-fn get_cached_power(int e, int mut &K) -> DiyFp
+fn get_cached_power2(int e, int mut &K) -> DiyFp
 {
   var k = cast<usize>((cast<i64>(-61 - e) * 0x4d104d42 + (1 << 32) - 1) >> 32 + 347);
 
   var index = (k >> 3) + 1;
-  
+
   K = -(-348 + cast(index << 3));
+
+  return cached_power(index);
+}
+
+fn get_cached_power10(int exp, int mut &K) -> DiyFp
+{
+  var index = (cast<usize>(exp + 348) >> 3);
+
+  K = -348 + cast(index << 3);
 
   return cached_power(index);
 }
@@ -234,7 +292,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
     fp.lower.e = fp.upper.e;
   }
 
-  var cached_pow = get_cached_power(fp.upper.e, K);
+  var cached_pow = get_cached_power2(fp.upper.e, K);
 
   fp.value = fp.value * cached_pow;
   fp.lower = fp.lower * cached_pow;
@@ -379,4 +437,155 @@ pub fn grisu<T>(u8 mut *beg, u8 mut *end, T value, int mut &K, usize mut &len) -
   {
     fallback_digits(beg, end, fp, K, len);
   }
+}
+
+fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
+{
+  var x = ParsedFp();
+
+  var k = 0;
+  var rp = 0;
+  var dc = 0;
+  var nz = 0;
+  var gotdig = false;
+  var gotdot = false;
+
+  if (ch != end && *ch == cast('0'))
+  {
+    gotdig = true;
+    for(++ch; ch != end && *ch == cast('0'); ++ch)
+      ;
+
+    if (ch != end && *ch == cast('.'))
+    {
+      gotdot = true;
+      for(++ch; ch != end && *ch == cast('0'); ++ch)
+        rp -= 1;
+    }
+  }
+
+  for(; ch != end; ++ch)
+  {
+    if (*ch == cast('.'))
+    {
+      if (!gotdig || gotdot)
+        break;
+
+      rp = dc;
+      gotdot = true;
+      continue;
+    }
+
+    if (cast('0') <= *ch && *ch <= cast('9'))
+    {
+      dc += 1;
+      gotdig = true;
+
+      if (k < 19)
+      {
+        x.value.f = x.value.f * 10 + cast<u64>(*ch - cast('0'));
+
+        k += 1;
+      }
+
+      if (*ch != cast('0'))
+        nz = dc;
+
+      continue;
+    }
+
+    break;
+  }
+
+  if (!gotdot)
+    rp = dc;
+
+  if (!gotdig)
+    return x;
+
+  if (ch != end && (*ch == cast('e') || *ch == cast('E')))
+  {
+    ++ch;
+
+    var e10 = 0;
+    var sign = 1;
+    if (ch != end && (*ch == cast('+') || *ch == cast('-')))
+    {
+      if (*ch == cast('-'))
+        sign = -1;
+
+      ++ch;
+    }
+
+    if (ch == end || !(cast('0') <= *ch && *ch <= cast('9')))
+      return x;
+
+    for(; ch != end && (cast('0') <= *ch && *ch <= cast('9')); ++ch)
+    {
+      if (x.value.e < 10000)
+        e10 = e10 * 10 + cast<int>(*ch -  cast('0'));
+    }
+
+    rp += sign * e10;
+  }
+
+  rp -= k;
+
+  if (rp < -348)
+    rp = -348;
+
+  if (rp > 308)
+    rp = 308;
+
+  if (x.value.f != 0)
+  {
+    normalize(x.value);
+
+    var K = 0;
+    var z = get_cached_power10(rp, K);
+
+    if (K != rp)
+    {
+      var y = DiyFp(pow10(rp - K), 0);
+      normalize(y);
+      x.value = x.value * y;
+    }
+
+    x.value = x.value * z;
+
+    normalize(x.value);
+
+    x.value.f >>= 64 - std::F64::digits;
+    x.value.e += 64 - std::F64::digits;
+  }
+
+  x.ok = true;
+
+  return x;
+}
+
+pub fn scan<T>(u8 *beg, u8 *end, T mut &value) -> usize
+{
+  value = 0.0;
+  var ch = beg;
+
+  var fp = parse_decfloat(ch, end);
+
+  if (!fp.ok)
+    return 0;
+
+  if (fp.value.f == 0)
+    return ch - beg;
+
+  #if (std::is_same<T, f32>)
+  {
+    value = f32(fp.value);
+  }
+
+  #if (std::is_same<T, f64>)
+  {
+    value = f64(fp.value);
+  }
+
+  return ch - beg;
 }

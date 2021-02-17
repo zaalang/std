@@ -58,6 +58,13 @@ pub struct span<T>
     return span(this.data + range.0, this.data + range.1);
   }
 
+  pub fn [](this &, (usize, usize, void) range) -> span
+  {
+    assert(range.0 <= range.1 && range.0 < this.len && range.1 + 1 <= this.len);
+
+    return span(this.data + range.0, this.data + range.1 + 1);
+  }
+
   pub span(span &that) = default;
   pub fn =(this mut &, span &that) -> span mut & = default;
   pub ~span() = default;
@@ -107,11 +114,25 @@ pub struct mutable_span<T>
     return span(this.data + range.0, this.data + range.1);
   }
 
+  pub fn [](this &, (usize, usize, void) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+
+    return span(this.data + range.0, this.data + range.1 + 1);
+  }
+
   pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return mutable_span(this.data + range.0, this.data + range.1);
+  }
+
+  pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<T>
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+
+    return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
   pub mutable_span(mutable_span &that) = default;

@@ -6,6 +6,7 @@ import std.alloc;
 import std.stdlib;
 
 pub fn bit_cast<T, U>(U &value) -> T
+  where sizeof<T> == sizeof<U>
 {
   var result = T(void);
 

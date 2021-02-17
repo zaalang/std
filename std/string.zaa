@@ -46,6 +46,13 @@ pub struct string_view : std::span<u8>
     return string_view(this.data + range.0, this.data + range.1);
   }
 
+  pub fn [](this&, (usize, usize, void) range) -> string_view
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+
+    return string_view(this.data + range.0, this.data + range.1 + 1);
+  }
+
   pub struct char_iterator : u8 *
   {
     pub char_iterator(char_iterator&) = default;
@@ -441,6 +448,13 @@ pub struct string<Allocator = std::allocator, N = 24>
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return string_view(this.data + range.0, this.data + range.1);
+  }
+
+  pub fn [](this &, (usize, usize, void) range) -> string_view
+  {
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+
+    return string_view(this.data + range.0, this.data + range.1 + 1);
   }
 
   pub fn begin(this &&)
