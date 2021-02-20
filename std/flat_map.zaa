@@ -112,39 +112,20 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn lower_bound<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    //return std::lower_bound(&&this._tree, key, fn [&](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
-
-    struct C
-    {
-      Cmp &cmp;
-
-      C(Cmp &cmp)
-        : cmp(&cmp)
-      {
-      }
-
-      fn ()(this &, var &lhs, Key &rhs) -> bool
-      {
-        return this.cmp(lhs.key, rhs);
-      }
-
-      ~C() = default;
-    }
-
-    return std::lower_bound(&&this._tree, key, C(this.cmp));
+    return std::lower_bound(&&this._tree, key, fn [this](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
   }
 
-//  pub fn upper_bound<Key>(this &&, Key &key)
-//    match (Key key) { K(key); }
-//  {
-//    return std::upper_bound(&&this._tree, key, fn [&](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
-//  }
-//
-//  pub fn equal_range<Key>(this &&, Key &key)
-//    match (Key key) { K(key); }
-//  {
-//    return std::equal_range(&&this._tree, key, fn [&](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
-//  }
+  pub fn upper_bound<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    return std::upper_bound(&&this._tree, key, fn [this](Key &lhs, var &rhs) { return this.cmp(lhs, rhs.key); });
+  }
+
+  pub fn equal_range<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    return std::iterator_pair(lower_bound(&&this, key), upper_bound(&&this, key));
+  }
 
   pub fn find<Key>(this &&, Key &key)
     match (Key key) { K(key); }

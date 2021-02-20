@@ -149,10 +149,10 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
       vm.threads.back.captures.push_back(ch);
     }
 
-    for(var it = vm.threads.begin; it != vm.threads.end; ++it)
+    for(var i = 0; i < vm.threads.len; ++i)
     {
       var eaten = false;
-      var mut &thread = *it;
+      var mut &thread = vm.threads[i];
 
       while (thread.state != utf::REJECT)
       {
@@ -201,11 +201,9 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
 
         else if (op == instruction::fork)
         {
-          var i = it - vm.threads.begin;
           vm.threads.push_back(program.data + out);
           vm.threads.back.captures = vm.threads[i].captures;
-          it = vm.threads.begin + i;
-          &thread = &*it;
+          &thread = &vm.threads[i];
         }
 
         else if (op == instruction::jump)

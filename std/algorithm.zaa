@@ -186,7 +186,7 @@ pub const fn max<Args>(Args & ...args)
 pub const less = fn (var &x, var &y) -> bool { return x < y; };
 pub const greater = fn (var &x, var &y) -> bool { return x > y; };
 
-pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> I
+pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 {
   var result = first;
 
@@ -202,12 +202,12 @@ pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> I
   return result;
 }
 
-pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = less)
+pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 {
   return min_element(range.begin, range.end, cmp);
 }
 
-pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> I
+pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 {
   var result = first;
 
@@ -223,12 +223,12 @@ pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> I
   return result;
 }
 
-pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = less)
+pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 {
   return max_element(range.begin, range.end, cmp);
 }
 
-pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> void
+pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
   where __is_match<RandomAccessIterator, I> && requires (I i, I j, Cmp &cmp) { cmp(*i, *j); swap(*i, *j); }
 {
   for(var i = first; i != last; ++i)
@@ -241,13 +241,13 @@ pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = less) -> void
   }
 }
 
-pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = less) -> void
+pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
   where requires (typeof(range) mut &range, Cmp &cmp) { sort(range.begin, range.end, cmp); }
 {
   sort(range.begin, range.end, cmp);
 }
 
-pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> I
+pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); }
 {
   var count = std::distance(first, last);
@@ -271,14 +271,14 @@ pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return first;
 }
 
-pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
+pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
   where requires (typeof(range) &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
 {
   return lower_bound((&&range).begin, (&&range).end, value, cmp);
 }
 
-pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> I
+pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(value, *i); }
 {
   var count = std::distance(first, last);
@@ -302,27 +302,27 @@ pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return first;
 }
 
-pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
+pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
   where requires (typeof(range) &range, Value &value, Cmp &cmp) { upper_bound(range.begin, range.end, value, cmp); }
 {
   return upper_bound((&&range).begin, (&&range).end, value, cmp);
 }
 
-pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> std::iterator_pair<I, I>
+pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> std::iterator_pair<I, I>
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); cmp(value, *i); }
 {
   return std::iterator_pair(lower_bound(first, last, value, cmp), upper_bound(first, last, value, cmp));
 }
 
-pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
+pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) &range, Value &value, Cmp &cmp) { equal_range(range.begin, range.end, value, cmp); }
 {
   return equal_range((&&range).begin, (&&range).end, value, cmp);
 }
 
-pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = less) -> I
+pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); }
 {
   var j = lower_bound(first, last, value, cmp);
@@ -333,7 +333,7 @@ pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp
   return j;
 }
 
-pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = less)
+pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
   where requires (typeof(range) &range, Value &value, Cmp &cmp) { binary_search(range.begin, range.end, value, cmp); }
 {
