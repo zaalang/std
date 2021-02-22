@@ -143,6 +143,7 @@ fn f32(DiyFp fp) -> f32
   const max_exponent = -exponent_bias + (1 << exponent_bits) - 1;
   const hidden_bit = 1 << mantisa_bits;
 
+  fp.f += 1 << (std::F64::digits - std::F32::digits - 1);
   fp.f >>= std::F64::digits - std::F32::digits;
   fp.e += std::F64::digits - std::F32::digits;
 
