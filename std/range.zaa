@@ -30,14 +30,14 @@ pub struct iterator_pair<I, J>
   pub fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
   pub ~iterator_pair() = default;
 
-  pub fn begin(this &&)
+  pub fn begin(this &)
   {
-    return &this.first;
+    return this.first;
   }
 
-  pub fn end(this &&)
+  pub fn end(this &)
   {
-    return &this.second;
+    return this.second;
   }
 }
 
@@ -45,6 +45,20 @@ pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
   where __is_same<T, u8>
 {
   return std::span<u8>(str.data, str.len);
+}
+
+pub fn is_range<T>(var &range) -> bool
+{
+  return __is_match<Range<T>, typeof(range)>;
+}
+
+pub const fn is_all_ranges<Ranges, T>() -> bool
+{
+  #for(const k = 0; k < __tuple_len<Ranges>; ++k)
+    if (!__is_match<Range<T>, typeof(Ranges::k)>())
+      return false;
+
+  return true;
 }
 
 pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
@@ -126,7 +140,7 @@ pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_it
 
     pub filter_iterator() = default;
     pub filter_iterator(filter_iterator &&) = default;
-    pub fn =(filter_iterator mut &, filter_iterator &) -> filter_iterator mut & = default;
+    pub fn =(filter_iterator mut &lhs, filter_iterator &&rhs) -> filter_iterator mut & = default;
     pub ~filter_iterator() = default;
 
     pub fn *(filter_iterator &&this)
@@ -202,7 +216,7 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
 
     pub transform_iterator() = default;
     pub transform_iterator(transform_iterator &&) = default;
-    pub fn =(transform_iterator mut &, transform_iterator &) -> transform_iterator mut & = default;
+    pub fn =(transform_iterator mut &lhs, transform_iterator &&rhs) -> transform_iterator mut & = default;
     pub ~transform_iterator() = default;
 
     pub fn *(transform_iterator &&this)
@@ -243,10 +257,143 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
     return lhs.base - rhs.base;
   }
 
+  pub fn +<I>(transform_iterator<I> &lhs, usize rhs) -> transform_iterator<I>
+    where requires (I i, usize j) { i + j; }
+  {
+    return transform_iterator<I>(lhs.base + rhs, lhs.func);
+  }
+
   Func _func;
 }
 
 pub fn transform<T, Func>(Range<T> &&range, Func &&func)
 {
   return transform_view((&&range).begin, (&&range).end, &&func);
+}
+
+pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
+{
+  pub zip_view(I beg, J end)
+    : super(zip_iterator(beg, end), zip_sentinal())
+  {
+  }
+
+  pub ~zip_view() = default;
+
+  pub struct zip_iterator
+  {
+    pub I base;
+
+    zip_iterator(I &&base, J &&end)
+      : base(&&base), end(&&end)
+    {
+    }
+
+    pub zip_iterator() = default;
+    pub zip_iterator(zip_iterator &&) = default;
+    pub fn =(zip_iterator mut &lhs, zip_iterator &&rhs) -> zip_iterator mut & = default;
+    pub ~zip_iterator() = default;
+
+    pub fn *(zip_iterator &&this)
+    {
+      fn deref(I && ...is)
+      {
+        return std::tuple((&&*is)...);
+      }
+
+      return deref(this.base...);
+    }
+
+    pub fn ++(zip_iterator mut &this) -> zip_iterator mut &
+    {
+      #for(var mut &i : this.base)
+        ++i;
+
+      return &this;
+    }
+
+    pub fn --(zip_iterator mut &this) -> zip_iterator mut &
+      where is_random_access()
+    {
+      #for(var mut &i : this.base)
+        --i;
+
+      return &this;
+    }
+
+    pub fn ==(zip_iterator &this, zip_sentinal &) -> bool
+    {
+      #for(const i = 0; i < __tuple_len<I>; ++i)
+        if (this.base.i == this.end.i)
+          return true;
+
+      return false;
+    }
+
+    pub fn ==(zip_iterator &lhs, zip_iterator &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+
+    J end;
+  }
+
+  pub struct zip_sentinal
+  {
+    pub zip_sentinal() = default;
+    pub zip_sentinal(zip_sentinal &&) = default;
+    pub fn =(zip_sentinal mut &lhs, zip_sentinal &&rhs) -> zip_sentinal mut & = default;
+    pub ~zip_sentinal() = default;
+  }
+
+  pub fn -(zip_iterator &lhs, zip_iterator &rhs) -> usize
+    where is_random_access()
+  {
+    return lhs.base.0 - rhs.base.0;
+  }
+
+  pub fn -(zip_sentinal &lhs, zip_iterator &rhs) -> usize
+    where is_random_access()
+  {
+    var len = rhs.end.0 - rhs.base.0;
+
+    #for(const i = 1; i < __tuple_len<I>; ++i)
+      if (var dist = rhs.end.i - rhs.base.i; dist < len)
+        len = dist;
+
+    return len;
+  }
+
+  pub fn -(zip_iterator lhs, usize rhs) -> zip_iterator
+    where is_random_access()
+  {
+    #for(var mut &i : lhs.base)
+      i -= rhs;
+
+    return lhs;
+  }
+
+  pub fn +(zip_iterator lhs, usize rhs) -> zip_iterator
+    where is_random_access()
+  {
+    #for(var mut &i : lhs.base)
+      i += rhs;
+
+    return lhs;
+  }
+
+  pub fn is_random_access() -> bool
+  {
+    #for(const i = 0; i < __tuple_len<I>; ++i)
+      if (!__is_match<RandomAccessIterator, typeof(I::i)>())
+        return false;
+
+    return true;
+  }
+}
+
+pub fn zip(var && ...ranges)
+  where is_all_ranges<typeof(ranges)>
+{
+  return zip_view(std::tuple(((&&ranges).begin)...), std::tuple(((&&ranges).end)...));
 }

@@ -16,13 +16,13 @@ pub concept Span<U>
 
 pub struct span<T>
 {
-  pub usize len;
-  pub T *data;
+pub usize len;
+pub T *data;
 
-  pub span(T *data, usize len)
-    : len(len), data(data)
-  {
-  }
+pub span(T *data, usize len)
+  : len(len), data(data)
+{
+}
 
   pub span(T *beg, T *end)
     : len(end - beg), data(beg)

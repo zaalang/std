@@ -229,7 +229,7 @@ pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 }
 
 pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
-  where __is_match<RandomAccessIterator, I> && requires (I i, I j, Cmp &cmp) { cmp(*i, *j); swap(*i, *j); }
+  where __is_match<RandomAccessIterator, I> && requires (I i, I j, Cmp &cmp) { cmp(*i, *j); *i = *j; }
 {
   for(var i = first; i != last; ++i)
   {

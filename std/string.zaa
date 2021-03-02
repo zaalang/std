@@ -22,6 +22,26 @@ pub concept String
 
 pub using string_literal = typeof("");
 
+pub struct string_ref : std::span<u8>
+{
+  pub string_ref(u8 *data, usize len)
+    : super(data, len)
+  {
+  }
+
+  pub fn String(this &) -> std::string_view
+  {
+    return std::string_view(this.data, this.len);
+  }
+
+  pub fn string_ref(string_ref &that) -> std::string_view
+  {
+    return std::string_view(that.data, that.len);
+  }
+
+  pub ~string_ref() = default;
+}
+
 pub struct string_view : std::span<u8>
 {
   pub string_view(u8 *data, usize len)
@@ -59,9 +79,9 @@ pub struct string_view : std::span<u8>
     pub fn =(char_iterator mut &this, char_iterator &that) -> char_iterator mut & = default;
     pub ~char_iterator() = default;
 
-    pub fn *(char_iterator &this) -> char
+    pub fn *(char_iterator &this) -> char &
     {
-      return this.codepoint;
+      return &this.codepoint;
     }
 
     pub fn ++(char_iterator mut &this) -> char_iterator mut &
@@ -127,9 +147,9 @@ pub struct string_view : std::span<u8>
     pub fn =(line_iterator mut &this, line_iterator &that) -> line_iterator mut & = default;
     pub ~line_iterator() = default;
 
-    pub fn *(line_iterator &this) -> string_view
+    pub fn *(line_iterator &this) -> string_ref
     {
-      return string_view(this.super, this.m);
+      return string_ref(this.super, this.m);
     }
 
     pub fn ++(line_iterator mut &this) -> line_iterator mut &
@@ -182,9 +202,9 @@ pub struct string_view : std::span<u8>
     pub fn =(word_iterator mut &this, word_iterator &that) -> word_iterator mut & = default;
     pub ~word_iterator() = default;
 
-    pub fn *(word_iterator &this) -> string_view
+    pub fn *(word_iterator &this) -> string_ref
     {
-      return string_view(this.super, this.n);
+      return string_ref(this.super, this.n);
     }
 
     pub fn ++(word_iterator mut &this) -> word_iterator mut &
@@ -229,9 +249,9 @@ pub struct string_view : std::span<u8>
     pub fn =(split_iterator mut &this, split_iterator &that) -> split_iterator mut & = default;
     pub ~split_iterator() = default;
 
-    pub fn *(split_iterator &this) -> string_view
+    pub fn *(split_iterator &this) -> string_ref
     {
-      return string_view(this.super, this.m);
+      return string_ref(this.super, this.m);
     }
 
     pub fn ++(split_iterator mut &this) -> split_iterator mut &
@@ -596,22 +616,16 @@ pub struct string<Allocator = std::allocator, N = 24>
 
 pub fn sprint(string mut &str, var & ...args) -> usize
 {
-  str.clear();
-
   return str.append(args...);
 }
 
 pub fn sprintf(string mut &str, String &format, var & ...args) -> usize
 {
-  str.clear();
-
   return str.appendf(format, args...);
 }
 
 pub fn sprintf(string mut &str, #string_literal format, var & ...args) -> usize
 {
-  str.clear();
-
   return str.appendf(format, args...);
 }
 

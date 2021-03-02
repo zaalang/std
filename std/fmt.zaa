@@ -151,6 +151,11 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &str) thr
   ctx.written += os.write(str.data, str.len);
 }
 
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_ref &str) throws -> void
+{
+  ctx.written += os.write(str.data, str.len);
+}
+
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view &str) throws -> void
 {
   ctx.written += os.write(str.data, str.len);

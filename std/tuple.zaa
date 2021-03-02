@@ -76,3 +76,45 @@ pub const fn is_all_same<T>() -> bool
 
   return true;
 }
+
+pub fn tuple_tail<T>(T &&tuple)
+  where __tuple_len<T> != 0
+{
+  fn tail<U, V>(U &&, V && ...v)
+  {
+    return v;
+  }
+
+  return std::tuple(&&tail(&&tuple...)...);
+}
+
+//fn tuple_cat<U, V>(U &&u, V &&v) -> (U..., V...)
+//{
+//  return std::tuple(&&u..., &&v...);
+//}
+
+pub fn tuple_cat<Ts>(Ts && ...tuples)
+{
+  fn concat<U, V>(U &&u, V &&v)
+  {
+    fn tie<V>(V && ...v)
+    {
+      return v;
+    }
+
+    fn tail<U, V>(U &&, V && ...v)
+    {
+      return v;
+    }
+
+    #if (__tuple_len<V> == 1)
+      return tie(&&u..., &&v.0...);
+    #else
+      return concat(tie(&&u..., &&v.0...), tail(&&v...));
+  }
+
+  #if (__tuple_len<Ts> == 0)
+    return std::tuple();
+  #else
+    return std::tuple(&&concat(std::tuple(), tuples)...);
+}

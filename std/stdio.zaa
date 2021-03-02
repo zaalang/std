@@ -9,6 +9,7 @@ import std.fmt;
 
 using std::fd;
 using std::String;
+using std::OutputStream;
 
 pub struct file
 {
@@ -237,6 +238,78 @@ pub fn stdout -> StdOut mut &
   return &instance;
 }
 
+
+pub struct StdErr
+{
+  pub fn write(this mut &, u8 *data, usize len) -> usize
+  {
+    try
+    {
+      return fd(STDERR).write(data, len);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn print(this mut &, var & ...args) -> usize
+  {
+    try
+    {
+      return std::print_to(this, args..., '\n');
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn printf(this mut &, String &format, var & ...args) -> usize
+  {
+    try
+    {
+      return std::format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
+  {
+    try
+    {
+      return std::format_to(this, format, args...);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn flush(this mut &) -> void
+  {
+  }
+
+  StdErr() = default;
+  StdErr(StdErr&) = default;
+  ~StdErr() = default;
+}
+
+pub fn stderr_raw -> file
+{
+  return file(fd(STDERR));
+}
+
+pub fn stderr -> StdErr mut &
+{
+  static instance = #StdErr();
+
+  return &instance;
+}
+
 pub fn print(var & ...args) -> usize
 {
   return stdout.print(args...);
@@ -250,4 +323,19 @@ pub fn printf(String &format, var & ...args) -> usize
 pub fn printf(#std::string_literal format, var & ...args) -> usize
 {
   return stdout.printf(format, args...);
+}
+
+pub fn fprint(OutputStream mut &os, var & ...args) -> usize
+{
+  return os.print(args...);
+}
+
+pub fn fprintf(OutputStream mut &os, String &format, var & ...args) -> usize
+{
+  return os.printf(format, args...);
+}
+
+pub fn fprintf(OutputStream mut &os, #std::string_literal format, var & ...args) -> usize
+{
+  return os.printf(format, args...);
 }
