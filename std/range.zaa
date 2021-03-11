@@ -55,7 +55,7 @@ pub fn is_range<T>(var &range) -> bool
 pub const fn is_all_ranges<Ranges, T>() -> bool
 {
   #for(const k = 0; k < __tuple_len<Ranges>; ++k)
-    if (!__is_match<Range<T>, typeof(Ranges::k)>())
+    if (!__is_match<Range<T>, typeof(Ranges::#k)>())
       return false;
 
   return true;
@@ -324,7 +324,7 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
     pub fn ==(zip_iterator &this, zip_sentinal &) -> bool
     {
       #for(const i = 0; i < __tuple_len<I>; ++i)
-        if (this.base.i == this.end.i)
+        if (this.base.#i == this.end.#i)
           return true;
 
       return false;
@@ -358,7 +358,7 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
     var len = rhs.end.0 - rhs.base.0;
 
     #for(const i = 1; i < __tuple_len<I>; ++i)
-      if (var dist = rhs.end.i - rhs.base.i; dist < len)
+      if (var dist = rhs.end.#i - rhs.base.#i; dist < len)
         len = dist;
 
     return len;
@@ -385,7 +385,7 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
   pub fn is_random_access() -> bool
   {
     #for(const i = 0; i < __tuple_len<I>; ++i)
-      if (!__is_match<RandomAccessIterator, typeof(I::i)>())
+      if (!__is_match<RandomAccessIterator, typeof(I::#i)>())
         return false;
 
     return true;

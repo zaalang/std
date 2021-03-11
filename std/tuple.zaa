@@ -31,7 +31,7 @@ pub const fn is_any_rvalue<T>() -> bool
   where __is_tuple<T>
 {
   #for(const k = 0; k < __tuple_len<T>; ++k)
-    if (__is_rvalue<typeof(T::k)>())
+    if (__is_rvalue<typeof(T::#k)>())
       return true;
 
   return false;
@@ -41,7 +41,7 @@ pub const fn is_all_rvalue<T>() -> bool
   where __is_tuple<T>
 {
   #for(const k = 0; k < __tuple_len<T>; ++k)
-    if (!__is_rvalue<typeof(T::k)>())
+    if (!__is_rvalue<typeof(T::#k)>())
       return false;
 
   return true;
@@ -51,7 +51,7 @@ pub const fn is_any_const<T>() -> bool
   where __is_tuple<T>
 {
   #for(const k = 0; k < __tuple_len<T>; ++k)
-    if (__is_const<typeof(T::k)>())
+    if (__is_const<typeof(T::#k)>())
       return true;
 
   return false;
@@ -61,7 +61,7 @@ pub const fn is_all_const<T>() -> bool
   where __is_tuple<T>
 {
   #for(const k = 0; k < __tuple_len<T>; ++k)
-    if (!__is_const<typeof(T::k)>())
+    if (!__is_const<typeof(T::#k)>())
       return false;
 
   return true;
@@ -71,7 +71,7 @@ pub const fn is_all_same<T>() -> bool
   where __is_tuple<T>
 {
   #for(const k = 1; k < __tuple_len<T>; ++k)
-    if (!__is_same<typeof(T::k), typeof(T::0)>())
+    if (!__is_same<typeof(T::#k), typeof(T::0)>())
       return false;
 
   return true;

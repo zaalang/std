@@ -191,7 +191,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, (T...) &tuple) throws -> v
     #if (k != 0)
       fmt(os, ctx, ", ");
 
-    fmt(os, ctx, tuple.k);
+    fmt(os, ctx, tuple.#k);
   }
 
   fmt(os, ctx, ')');
@@ -219,7 +219,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   #if (__is_enum<T>)
   {
     #for(const k : std::meta::enumerators_of<T>)
-      if (object == T::k)
+      if (object == T::#k)
         fmt(os, ctx, std::meta::name_of(k));
   }
 
@@ -232,7 +232,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 
     #for(const i = 1; i != std::meta::fields_of<T>.len; ++i)
       if (object.kind == cast(i))
-        fmt(os, ctx, object.i);
+        fmt(os, ctx, object.#i);
 
     fmt(os, ctx, " }");
   }
@@ -249,7 +249,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 
       fmt(os, ctx, std::meta::name_of(k));
       fmt(os, ctx, ": ");
-      fmt(os, ctx, object.k);
+      fmt(os, ctx, object.#k);
     }
 
     fmt(os, ctx, " }");

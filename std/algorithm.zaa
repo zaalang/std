@@ -161,10 +161,11 @@ pub const fn min<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
 {
   var &result = args.0;
+
   #for(const k = 1; k < __tuple_len<Args>; ++k)
   {
-    if (args.k < result)
-      &result = &args.k;
+    if (args.#k < result)
+      &result = &args.#k;
   }
 
   return &result;
@@ -174,10 +175,11 @@ pub const fn max<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
 {
   var &result = args.0;
+
   #for(const k = 1; k < __tuple_len<Args>; ++k)
   {
-    if (result < args.k)
-      &result = &args.k;
+    if (result < args.#k)
+      &result = &args.#k;
   }
 
   return &result;
