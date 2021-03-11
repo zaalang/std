@@ -137,46 +137,32 @@ struct capture
 
 pub fn len(expr &expr) -> usize
 {
-  if (expr.kind == typeof(expr.kind)::NoOp)
-    return 1;
+  switch (expr)
+  {
+    case NoOp:
+    case BeginLine:
+    case BeginText:
+    case EndLine:
+    case EndText:
+    case WordBoundary:
+    case NonWordBoundary:
+    case AnyChar:
+    case Literal:
+    case Klass:
+      return 1;
 
-  if (expr.kind == typeof(expr.kind)::BeginLine)
-    return 1;
+    case Repeat(repeat):
+      return repeat.len;
 
-  if (expr.kind == typeof(expr.kind)::BeginText)
-    return 1;
+    case Alternate(alternate):
+      return alternate.len;
 
-  if (expr.kind == typeof(expr.kind)::EndLine)
-    return 1;
+    case Capture(capture):
+      return capture.len;
 
-  if (expr.kind == typeof(expr.kind)::EndText)
-    return 1;
-
-  if (expr.kind == typeof(expr.kind)::WordBoundary)
-    return 1;
-
-  if (expr.kind == typeof(expr.kind)::NonWordBoundary)
-    return 1;
-
-  if (expr.kind == typeof(expr.kind)::AnyChar)
-    return 1;
-
-  if (expr.kind == typeof(expr.kind)::Literal)
-    return 1;
-
-  if (expr.kind == typeof(expr.kind)::Klass)
-    return 1;
-
-  if (expr.kind == typeof(expr.kind)::Repeat)
-    return expr.Repeat.len;
-
-  if (expr.kind == typeof(expr.kind)::Alternate)
-    return expr.Alternate.len;
-
-  if (expr.kind == typeof(expr.kind)::Capture)
-    return expr.Capture.len;
-
-  std::panic("invalid expr");
+    else:
+      std::panic("invalid expr");
+  }
 
   return 0;
 }
@@ -283,26 +269,29 @@ fn maybe_empty(expr *first, expr *last) -> bool
 {
   for(var op = first; op != last; op += op.len)
   {
-    if (op.kind == typeof(op.kind)::AnyChar)
-      return false;
-
-    if (op.kind == typeof(op.kind)::Literal)
-      return false;
-
-    if (op.kind == typeof(op.kind)::Klass)
-      return false;
-
-    if (op.kind == typeof(op.kind)::Repeat)
-      if (op.Repeat.min != 0)
+    switch (op)
+    {
+      case AnyChar:
         return false;
 
-    if (op.kind == typeof(op.kind)::Alternate)
-      if (!maybe_empty(op + 1, op + op.Alternate.lhs) && !maybe_empty(op + op.Alternate.lhs, op + op.Alternate.len))
+      case Literal:
         return false;
 
-    if (op.kind == typeof(op.kind)::Capture)
-      if (!maybe_empty(op + 1, op + op.Capture.len))
+      case Klass:
         return false;
+
+      case Repeat(repeat):
+        if (repeat.min != 0)
+          return false;
+
+      case Alternate(alternate):
+        if (!maybe_empty(op + 1, op + alternate.lhs) && !maybe_empty(op + alternate.lhs, op + alternate.len))
+          return false;
+
+      case Capture(capture):
+        if (!maybe_empty(op + 1, op + capture.len))
+          return false;
+    }
   }
 
   return true;
@@ -376,29 +365,33 @@ fn parse_escape_char(var mut &s, var &end, var mut &ch) -> errc
 
   ch = *s++;
 
-  if (ch == 'a')
-    ch = '\a';
+  switch (ch)
+  {
+    case 'a':
+      ch = '\a';
 
-  else if (ch == 'f')
-    ch = '\f';
+    case 'f':
+      ch = '\f';
 
-  else if (ch == 'n')
-    ch = '\n';
+    case 'n':
+      ch = '\n';
 
-  else if (ch == 'r')
-    ch = '\r';
+    case 'r':
+      ch = '\r';
 
-  else if (ch == 't')
-    ch = '\t';
+    case 't':
+      ch = '\t';
 
-  else if (ch == 'v')
-    ch = '\v';
+    case 'v':
+      ch = '\v';
 
-  else if (ch == '.' || ch == '*' || ch == '+' || ch == '?' || ch == '-' || ch == ':' || ch == '^' || ch == '|' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '!' || ch == '\\' || ch == '_')
-    ;
+    case '.': case '*': case '+': case '?': case '-': case ':': case '^': case '|':
+    case '(': case ')': case '[': case ']': case '!': case '\\': case '_':
+      ;
 
-  else
-    return errc::bad_escape;
+    else:
+      return errc::bad_escape;
+  }
 
   return cast<errc>(0);
 }
@@ -498,64 +491,53 @@ fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
   if (s == end)
     return errc::trailing_backslash;
 
-  if (*s == 'd')
+  switch (*s)
   {
-    cc.add_range('0', '9');
-  }
+    case 'd':
+      cc.add_range('0', '9');
 
-  else if (*s == 'D')
-  {
-    cc.add_range(0, 9);
-    if (!(cc.flags & options::multiline))
-      cc.add_range('\n', '\n');
-    cc.add_range(11, 47);
-    cc.add_range(58, 0x10FFFF);
-    cc.flags ^= options::foldcase;
-  }
+    case 'D':
+      cc.add_range(0, 9);
+      if (!(cc.flags & options::multiline))
+        cc.add_range('\n', '\n');
+      cc.add_range(11, 47);
+      cc.add_range(58, 0x10FFFF);
+      cc.flags ^= options::foldcase;
 
-  else if (*s == 's')
-  {
-    cc.add_range('\r', '\r');
-    if (!(cc.flags & options::multiline))
-      cc.add_range('\n', '\n');
-    cc.add_range('\t', '\t');
-    cc.add_range('\f', '\f');
-    cc.add_range('\v', '\v');
-    cc.add_range(' ', ' ');
-  }
+    case 's':
+      cc.add_range('\r', '\r');
+      if (!(cc.flags & options::multiline))
+        cc.add_range('\n', '\n');
+      cc.add_range('\t', '\t');
+      cc.add_range('\f', '\f');
+      cc.add_range('\v', '\v');
+      cc.add_range(' ', ' ');
 
-  else if (*s == 'S')
-  {
-    cc.add_range(0, 8);
-    cc.add_range(14, 31);
-    cc.add_range(33, 0x10FFFF);
-    cc.flags ^= options::foldcase;
-  }
+    case 'S':
+      cc.add_range(0, 8);
+      cc.add_range(14, 31);
+      cc.add_range(33, 0x10FFFF);
+      cc.flags ^= options::foldcase;
 
-  else if (*s == 'w')
-  {
-    cc.add_range('a', 'z');
-    cc.add_range('A', 'Z');
-    cc.add_range('0', '9');
-    cc.add_range('_', '_');
-    cc.add_range(128, 0x10FFFF);
-    cc.flags ^= options::foldcase;
-  }
+    case 'w':
+      cc.add_range('a', 'z');
+      cc.add_range('A', 'Z');
+      cc.add_range('0', '9');
+      cc.add_range('_', '_');
+      cc.add_range(128, 0x10FFFF);
+      cc.flags ^= options::foldcase;
 
-  else if (*s == 'W')
-  {
-    cc.add_range(0, 9);
-    if (!(cc.flags & options::multiline))
-      cc.add_range('\n', '\n');
-    cc.add_range(11, 47);
-    cc.add_range(58, 64);
-    cc.add_range(91, 94);
-    cc.add_range(96, 96);
-  }
+    case 'W':
+      cc.add_range(0, 9);
+      if (!(cc.flags & options::multiline))
+        cc.add_range('\n', '\n');
+      cc.add_range(11, 47);
+      cc.add_range(58, 64);
+      cc.add_range(91, 94);
+      cc.add_range(96, 96);
 
-  else
-  {
-    return errc::bad_char_class;
+    else:
+      return errc::bad_char_class;
   }
 
   ++s;
@@ -635,72 +617,41 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
   {
     var s = std::next(ch);
 
-    if (*ch == '^')
+    switch (*ch)
     {
-      if (flags & options::multiline)
-        ctx.push(expr::BeginLine(flags));
-      else
-        ctx.push(expr::BeginText(flags));
-    }
-    else if (*ch == '$')
-    {
-      if (flags & options::multiline)
-        ctx.push(expr::EndLine(flags));
-      else
-        ctx.push(expr::EndText(flags));
-    }
-    else if (*ch == '.')
-    {
-      ctx.push(expr::AnyChar(flags));
-    }
-    else if (*ch == '[')
-    {
-      var cc = klass(flags);
+      case '^':
+        if (flags & options::multiline)
+          ctx.push(expr::BeginLine(flags));
+        else
+          ctx.push(expr::BeginText(flags));
 
-      if (var err = parse_class(s, end, cc); err)
-        return err;
+      case '$':
+        if (flags & options::multiline)
+          ctx.push(expr::EndLine(flags));
+        else
+          ctx.push(expr::EndText(flags));
 
-      ctx.push(expr::Klass(cc));
-    }
-    else if (*ch == '*' || *ch == '+' || *ch == '?')
-    {
-      var rep = repeater(0, ~0, flags);
+      case '.':
+        ctx.push(expr::AnyChar(flags));
 
-      if (*ch == '+')
-        rep.min = 1;
+      case '[':
+        var cc = klass(flags);
 
-      if (*ch == '?')
-        rep.max = 1;
+        if (var err = parse_class(s, end, cc); err)
+          return err;
 
-      if (ctx.stack.empty || is_marker(ctx.regex[ctx.stack.back]))
-        return errc::missing_repeat_argument;
+        ctx.push(expr::Klass(cc));
 
-      if (maybe_empty(ctx.regex.data + ctx.stack.back, ctx.regex.data + ctx.regex.len))
-        return errc::invalid_repeat_argument;
+      case '*':
+      case '+':
+      case '?':
+        var rep = repeater(0, ~0, flags);
 
-      rep.len = ctx.regex.len - ctx.stack.back + 1;
+        if (*ch == '+')
+          rep.min = 1;
 
-      ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
-    }
-    else if (*ch == '{')
-    {
-      var min = 0;
-      var max = ~0;
-
-      parse_int(s, end, min);
-
-      if (s != end && *s == ',')
-      {
-        parse_int(++s, end, max);
-      }
-      else
-      {
-        max = min;
-      }
-
-      if (s != end && *s == '}')
-      {
-        var rep = repeater(min, max, flags);
+        if (*ch == '?')
+          rep.max = 1;
 
         if (ctx.stack.empty || is_marker(ctx.regex[ctx.stack.back]))
           return errc::missing_repeat_argument;
@@ -712,132 +663,156 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
 
         ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
 
-        ++s;
-      }
-      else
-      {
-        ctx.push(expr::Literal('{', flags));
-      }
-    }
-    else if (*ch == '(')
-    {
-      if (s != end && *s == '?')
-      {
-        var newflags = flags;
+      case '{':
+        var min = 0;
+        var max = ~0;
 
-        for(++s; s != end && *s != ':' && *s != ')'; ++s)
+        parse_int(s, end, min);
+
+        if (s != end && *s == ',')
         {
-          var sign = 0;
-
-          if (*s == '-')
-          {
-            sign = -1;
-            ++s;
-          }
-
-          if (s != end && *s == 'i')
-          {
-            if (sign < 0)
-              newflags ^= options::foldcase;
-            else
-              newflags |= options::foldcase;
-          }
-
-          if (s != end && *s == 'm')
-          {
-            if (sign < 0)
-              newflags ^= options::multiline;
-            else
-              newflags |= options::multiline;
-          }
+          parse_int(++s, end, max);
+        }
+        else
+        {
+          max = min;
         }
 
+        if (s != end && *s == '}')
+        {
+          var rep = repeater(min, max, flags);
+
+          if (ctx.stack.empty || is_marker(ctx.regex[ctx.stack.back]))
+            return errc::missing_repeat_argument;
+
+          if (maybe_empty(ctx.regex.data + ctx.stack.back, ctx.regex.data + ctx.regex.len))
+            return errc::invalid_repeat_argument;
+
+          rep.len = ctx.regex.len - ctx.stack.back + 1;
+
+          ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
+
+          ++s;
+        }
+        else
+        {
+          ctx.push(expr::Literal('{', flags));
+        }
+
+      case '(':
+        if (s != end && *s == '?')
+        {
+          var newflags = flags;
+
+          for(++s; s != end && *s != ':' && *s != ')'; ++s)
+          {
+            var sign = 0;
+
+            if (*s == '-')
+            {
+              sign = -1;
+              ++s;
+            }
+
+            if (s != end && *s == 'i')
+            {
+              if (sign < 0)
+                newflags ^= options::foldcase;
+              else
+                newflags |= options::foldcase;
+            }
+
+            if (s != end && *s == 'm')
+            {
+              if (sign < 0)
+                newflags ^= options::multiline;
+              else
+                newflags |= options::multiline;
+            }
+          }
+
+          if (s == end)
+            return errc::missing_bracket;
+
+          if (*s == ':')
+          {
+            ctx.push(expr::PseudoLeftParen(flags, 0));
+          }
+
+          flags = newflags;
+
+          ++s;
+        }
+        else
+        {
+          ctx.push(expr::PseudoLeftParen(flags, ++ctx.caps));
+        }
+
+      case ')':
+        collapse(ctx);
+
+        if (ctx.stack.empty || !is_leftparen(ctx.regex[ctx.stack.back]))
+          return errc::unexpected_paren;
+
+        flags = ctx.regex[ctx.stack.back].PseudoLeftParen.0;
+
+        if (var n = ctx.regex[ctx.stack.back].PseudoLeftParen.1; n != 0)
+        {
+          var cap = capture(n, flags);
+
+          cap.len = ctx.regex.len - ctx.stack.back;
+
+          ctx.regex[ctx.stack.back] = expr::Capture(cap);
+        }
+        else
+        {
+          ctx.regex[ctx.stack.back] = expr::NoOp;
+        }
+
+      case '|':
+        ctx.push(expr::PseudoVerticalBar(flags));
+
+      case '\\':
         if (s == end)
-          return errc::missing_bracket;
+          return errc::trailing_backslash;
 
-        if (*s == ':')
+        if (*s == 'A' || *s == 'z' || *s == 'b' || *s == 'B')
         {
-          ctx.push(expr::PseudoLeftParen(flags, 0));
+          if (*s == 'A')
+            ctx.push(expr::BeginText(flags));
+
+          if (*s == 'z')
+            ctx.push(expr::EndText(flags));
+
+          if (*s == 'b')
+            ctx.push(expr::WordBoundary(flags));
+
+          if (*s == 'B')
+            ctx.push(expr::NonWordBoundary(flags));
+
+          ++s;
+        }
+        else if (*s == 'd' || *s == 'D' || *s == 's' || *s == 'S' || *s == 'w' || *s == 'W')
+        {
+          var cc = klass(flags);
+
+          if (var err = parse_escape_class(s, end, cc); err)
+            return err;
+
+          ctx.push(expr::Klass(cc));
+        }
+        else
+        {
+          var lit = 0;
+
+          if (var err = parse_escape_char(s, end, lit); err)
+            return err;
+
+          ctx.push(expr::Literal(lit, flags));
         }
 
-        flags = newflags;
-
-        ++s;
-      }
-      else
-      {
-        ctx.push(expr::PseudoLeftParen(flags, ++ctx.caps));
-      }
-    }
-    else if (*ch == ')')
-    {
-      collapse(ctx);
-
-      if (ctx.stack.empty || !is_leftparen(ctx.regex[ctx.stack.back]))
-        return errc::unexpected_paren;
-
-      flags = ctx.regex[ctx.stack.back].PseudoLeftParen.0;
-
-      if (var n = ctx.regex[ctx.stack.back].PseudoLeftParen.1; n != 0)
-      {
-        var cap = capture(n, flags);
-
-        cap.len = ctx.regex.len - ctx.stack.back;
-
-        ctx.regex[ctx.stack.back] = expr::Capture(cap);
-      }
-      else
-      {
-        ctx.regex[ctx.stack.back] = expr::NoOp;
-      }
-    }
-    else if (*ch == '|')
-    {
-      ctx.push(expr::PseudoVerticalBar(flags));
-    }
-    else if (*ch == '\\')
-    {
-      if (s == end)
-        return errc::trailing_backslash;
-
-      if (*s == 'A' || *s == 'z' || *s == 'b' || *s == 'B')
-      {
-        if (*s == 'A')
-          ctx.push(expr::BeginText(flags));
-
-        if (*s == 'z')
-          ctx.push(expr::EndText(flags));
-
-        if (*s == 'b')
-          ctx.push(expr::WordBoundary(flags));
-
-        if (*s == 'B')
-          ctx.push(expr::NonWordBoundary(flags));
-
-        ++s;
-      }
-      else if (*s == 'd' || *s == 'D' || *s == 's' || *s == 'S' || *s == 'w' || *s == 'W')
-      {
-        var cc = klass(flags);
-
-        if (var err = parse_escape_class(s, end, cc); err)
-          return err;
-
-        ctx.push(expr::Klass(cc));
-      }
-      else
-      {
-        var lit = 0;
-
-        if (var err = parse_escape_char(s, end, lit); err)
-          return err;
-
-        ctx.push(expr::Literal(lit, flags));
-      }
-    }
-    else
-    {
-      ctx.push(expr::Literal(*ch, flags));
+      else:
+        ctx.push(expr::Literal(*ch, flags));
     }
 
     ch = s;
@@ -855,85 +830,63 @@ fn dump(expr *first, expr *last) -> void
 {
   for(var expr = first; expr != last; expr += expr.len)
   {
-    if (expr.kind == typeof(expr.kind)::NoOp)
+    switch (expr)
     {
-      std::printf("{{nop}}");
-    }
+      case NoOp:
+        std::printf("{{nop}}");
 
-    if (expr.kind == typeof(expr.kind)::BeginLine)
-    {
-      std::printf("{{beginline}}");
-    }
+      case BeginLine:
+        std::printf("{{beginline}}");
 
-    if (expr.kind == typeof(expr.kind)::BeginText)
-    {
-      std::printf("{{begintext}}");
-    }
+      case BeginText:
+        std::printf("{{begintext}}");
 
-    if (expr.kind == typeof(expr.kind)::EndLine)
-    {
-      std::printf("{{endline}}");
-    }
+      case EndLine:
+        std::printf("{{endline}}");
 
-    if (expr.kind == typeof(expr.kind)::EndText)
-    {
-      std::printf("{{endtext}}");
-    }
+      case EndText:
+        std::printf("{{endtext}}");
 
-    if (expr.kind == typeof(expr.kind)::WordBoundary)
-    {
-      std::printf("{{wordboundary}}");
-    }
+      case WordBoundary:
+        std::printf("{{wordboundary}}");
 
-    if (expr.kind == typeof(expr.kind)::NonWordBoundary)
-    {
-      std::printf("{{nonwordboundary}}");
-    }
+      case NonWordBoundary:
+        std::printf("{{nonwordboundary}}");
 
-    if (expr.kind == typeof(expr.kind)::AnyChar)
-    {
-      std::printf("{{any}}");
-    }
+      case AnyChar:
+        std::printf("{{any}}");
 
-    if (expr.kind == typeof(expr.kind)::Literal)
-    {
-      std::printf("{{lit:{}}}", expr.Literal.rune);
-    }
+      case Literal(literal):
+        std::printf("{{lit:{}}}", literal.rune);
 
-    if (expr.kind == typeof(expr.kind)::Klass)
-    {
-      std::printf("{{cc:");
+      case Klass(klass):
+        std::printf("{{cc:");
+        for(var &range : klass.runes)
+          std::printf(" [{}-{}]", cast<u32>(range.lo), cast<u32>(range.hi));
+        std::printf("}}");
 
-      for(var &range : expr.Klass.runes)
-        std::printf(" [{}-{}]", cast<u32>(range.lo), cast<u32>(range.hi));
+      case Repeat(repeat):
+        std::printf("{{rep({},", repeat.min);
+        if (repeat.max != ~0)
+          std::printf("{}", repeat.max);
+        std::printf("):");
+        dump(expr + 1, expr + repeat.len);
+        std::printf("}}");
 
-      std::printf("}}");
-    }
+      case Alternate(alternate):
+        std::printf("{{alt:");
+        dump(expr + 1, expr + alternate.lhs);
+        std::printf(",");
+        dump(expr + alternate.lhs, expr + alternate.len);
+        std::printf("}}");
 
-    if (expr.kind == typeof(expr.kind)::Repeat)
-    {
-      std::printf("{{rep({},", expr.Repeat.min);
-      if (expr.Repeat.max != ~0)
-        std::printf("{}", expr.Repeat.max);
-      std::printf("):");
-      dump(expr + 1, expr + expr.Repeat.len);
-      std::printf("}}");
-    }
+      case Capture(capture):
+        std::printf("{{cap({}):", capture.n);
+        dump(expr + 1, expr + capture.len);
+        std::printf("}}");
 
-    if (expr.kind == typeof(expr.kind)::Alternate)
-    {
-      std::printf("{{alt:");
-      dump(expr + 1, expr + expr.Alternate.lhs);
-      std::printf(",");
-      dump(expr + expr.Alternate.lhs, expr + expr.Alternate.len);
-      std::printf("}}");
-    }
-
-    if (expr.kind == typeof(expr.kind)::Capture)
-    {
-      std::printf("{{cap({}):", expr.Capture.n);
-      dump(expr + 1, expr + expr.Capture.len);
-      std::printf("}}");
+      else:
+        std::printf("{{unknown}}");
     }
   }
 }

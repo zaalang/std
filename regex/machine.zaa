@@ -84,33 +84,40 @@ fn is_anchored_start(Span<u32> &program) -> bool
 
 fn match_condition(machine mut &vm, u8 *ch, condition cc) -> bool
 {
-  if (cc == condition::begintext && ch == vm.text.begin)
-    return true;
-
-  if (cc == condition::beginline && (ch == vm.text.begin || *(ch - 1) == cast('\n')))
-    return true;
-
-  if (cc == condition::endline && (ch == vm.text.end || *ch == cast('\n')))
-    return true;
-
-  if (cc == condition::endtext && ch == vm.text.end)
-    return true;
-
-  if (cc == condition::wordboundary || cc == condition::nonwordboundary)
+  switch (cc)
   {
-    fn is_wordchar(char ch) -> bool
-    {
-      return 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || '0' <= ch && ch <= '9' || ch == '_';
-    }
+    case condition::begintext:
+      if (ch == vm.text.begin)
+        return true;
 
-    var prev = (ch != vm.text.begin) ? cast<char>(*(ch - 1)) : '\0';
-    var next = (ch != vm.text.end) ? cast<char>(*ch) : '\0';
+    case condition::beginline:
+      if (ch == vm.text.begin || *(ch - 1) == cast('\n'))
+        return true;
 
-    if (cc == condition::wordboundary && is_wordchar(prev) != is_wordchar(next))
-      return true;
+    case condition::endline:
+      if (ch == vm.text.end || *ch == cast('\n'))
+        return true;
 
-    if (cc == condition::nonwordboundary && is_wordchar(prev) == is_wordchar(next))
-      return true;
+    case condition::endtext:
+      if (ch == vm.text.end)
+        return true;
+
+    case condition::wordboundary:
+    case condition::nonwordboundary:
+
+      fn is_wordchar(char ch) -> bool
+      {
+        return 'A' <= ch && ch <= 'Z' || 'a' <= ch && ch <= 'z' || '0' <= ch && ch <= '9' || ch == '_';
+      }
+
+      var prev = (ch != vm.text.begin) ? cast<char>(*(ch - 1)) : '\0';
+      var next = (ch != vm.text.end) ? cast<char>(*ch) : '\0';
+
+      if (cc == condition::wordboundary && is_wordchar(prev) != is_wordchar(next))
+        return true;
+
+      if (cc == condition::nonwordboundary && is_wordchar(prev) == is_wordchar(next))
+        return true;
   }
 
   return false;
@@ -161,121 +168,116 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
         var out = get_out(*thread.pc);
         var width = get_width(*thread.pc);
 
-        if (op == instruction::match)
+        switch (op)
         {
-          if (captures.empty)
-            return true;
+          case instruction::match:
 
-          thread.captures[1] = ch;
-          std::copy(captures.begin, captures.end, thread.captures.begin, thread.captures.end);
-          std::fill(captures.begin + thread.captures.len, captures.end, vm.text.end);
+            if (captures.empty)
+              return true;
 
-          for(var mut &thread : vm.threads)
-          {
-            if (captures[0] < thread.captures[0])
-              thread.state = utf::REJECT;
-          }
+            thread.captures[1] = ch;
+            std::copy(captures.begin, captures.end, thread.captures.begin, thread.captures.end);
+            std::fill(captures.begin + thread.captures.len, captures.end, vm.text.end);
 
-          matched = true;
-        }
-
-        else if (op == instruction::capture)
-        {
-          var n = cast<usize>(*(thread.pc + 1));
-
-          if (n < captures.len)
-          {
-            if (thread.captures.len < n + 1)
+            for(var mut &thread : vm.threads)
             {
-              thread.captures.reserve(n + 1);
-              while (thread.captures.len < n + 1)
-                thread.captures.push_back(vm.text.end);
+              if (captures[0] < thread.captures[0])
+                thread.state = utf::REJECT;
             }
 
-            thread.captures[n] = ch;
-          }
+            matched = true;
 
-          thread.pc = program.data + out;
-          continue;
-        }
+          case instruction::capture:
 
-        else if (op == instruction::fork)
-        {
-          vm.threads.push_back(program.data + out);
-          vm.threads.back.captures = vm.threads[i].captures;
-          &thread = &vm.threads[i];
-        }
+            var n = cast<usize>(*(thread.pc + 1));
 
-        else if (op == instruction::jump)
-        {
-          thread.pc = program.data + out;
-          continue;
-        }
+            if (n < captures.len)
+            {
+              if (thread.captures.len < n + 1)
+              {
+                thread.captures.reserve(n + 1);
+                while (thread.captures.len < n + 1)
+                  thread.captures.push_back(vm.text.end);
+              }
 
-        else if (op == instruction::condition)
-        {
-          var cc = cast<condition>(*(thread.pc + 1));
+              thread.captures[n] = ch;
+            }
 
-          if (match_condition(vm, ch, cc))
-          {
             thread.pc = program.data + out;
             continue;
-          }
-        }
 
-        else if (op == instruction::select_byte)
-        {
-          if (ch != vm.text.end)
-          {
-            var ch = *ch;
-            var lo = cast<u8>((*(thread.pc + 1) >> 0) & 0xFF);
-            var hi = cast<u8>((*(thread.pc + 1) >> 8) & 0xFF);
+          case instruction::fork:
 
-            if (lo <= ch && ch <= hi)
+            vm.threads.push_back(program.data + out);
+            vm.threads.back.captures = vm.threads[i].captures;
+            &thread = &vm.threads[i];
+
+          case instruction::jump:
+
+            thread.pc = program.data + out;
+            continue;
+
+          case instruction::condition:
+
+            var cc = cast<condition>(*(thread.pc + 1));
+
+            if (match_condition(vm, ch, cc))
             {
               thread.pc = program.data + out;
-              break;
+              continue;
             }
-          }
-        }
 
-        else if (op == instruction::selecti_byte)
-        {
-          if (ch != vm.text.end)
-          {
-            var ch = std::to_lowercase(*ch);
-            var lo = cast<u8>((*(thread.pc + 1) >> 0) & 0xFF);
-            var hi = cast<u8>((*(thread.pc + 1) >> 8) & 0xFF);
+          case instruction::select_byte:
 
-            if (lo <= ch && ch <= hi)
+            if (ch != vm.text.end)
             {
-              thread.pc = program.data + out;
-              break;
-            }
-          }
-        }
+              var ch = *ch;
+              var lo = cast<u8>((*(thread.pc + 1) >> 0) & 0xFF);
+              var hi = cast<u8>((*(thread.pc + 1) >> 8) & 0xFF);
 
-        else if (op == instruction::select_rune)
-        {
-          if (ch != vm.text.end)
-          {
-            if (!eaten)
-            {
-              if (utf::decode(thread.state, thread.codepoint, *ch) != 0)
+              if (lo <= ch && ch <= hi)
+              {
+                thread.pc = program.data + out;
                 break;
-
-              eaten = true;
+              }
             }
 
-            var lo = cast<char>(*(thread.pc + 1));
-            var hi = cast<char>(*(thread.pc + 2));
+          case instruction::selecti_byte:
 
-            if (lo <= thread.codepoint && thread.codepoint <= hi)
+            if (ch != vm.text.end)
             {
-              thread.pc = program.data + out;
-              break;
+              var ch = std::to_lowercase(*ch);
+              var lo = cast<u8>((*(thread.pc + 1) >> 0) & 0xFF);
+              var hi = cast<u8>((*(thread.pc + 1) >> 8) & 0xFF);
+
+              if (lo <= ch && ch <= hi)
+              {
+                thread.pc = program.data + out;
+                break;
+              }
             }
-          }
+
+          case instruction::select_rune:
+
+            if (ch != vm.text.end)
+            {
+              if (!eaten)
+              {
+                if (utf::decode(thread.state, thread.codepoint, *ch) != 0)
+                  break;
+
+                eaten = true;
+              }
+
+              var lo = cast<char>(*(thread.pc + 1));
+              var hi = cast<char>(*(thread.pc + 2));
+
+              if (lo <= thread.codepoint && thread.codepoint <= hi)
+              {
+                thread.pc = program.data + out;
+                break;
+              }
+            }
         }
 
         if (fin)

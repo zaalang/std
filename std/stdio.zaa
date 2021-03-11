@@ -238,7 +238,6 @@ pub fn stdout -> StdOut mut &
   return &instance;
 }
 
-
 pub struct StdErr
 {
   pub fn write(this mut &, u8 *data, usize len) -> usize
@@ -325,17 +324,47 @@ pub fn printf(#std::string_literal format, var & ...args) -> usize
   return stdout.printf(format, args...);
 }
 
-pub fn fprint(OutputStream mut &os, var & ...args) -> usize
+pub fn fprint(StdOut mut &os, var & ...args) -> usize
 {
   return os.print(args...);
 }
 
-pub fn fprintf(OutputStream mut &os, String &format, var & ...args) -> usize
+pub fn fprintf(StdOut mut &os, String &format, var & ...args) -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprintf(OutputStream mut &os, #std::string_literal format, var & ...args) -> usize
+pub fn fprintf(StdOut mut &os, #std::string_literal format, var & ...args) -> usize
+{
+  return os.printf(format, args...);
+}
+
+pub fn fprint(StdErr mut &os, var & ...args) -> usize
+{
+  return os.print(args...);
+}
+
+pub fn fprintf(StdErr mut &os, String &format, var & ...args) -> usize
+{
+  return os.printf(format, args...);
+}
+
+pub fn fprintf(StdErr mut &os, #std::string_literal format, var & ...args) -> usize
+{
+  return os.printf(format, args...);
+}
+
+pub fn fprint(file mut &os, var & ...args) throws -> usize
+{
+  return os.print(args...);
+}
+
+pub fn fprintf(file mut &os, String &format, var & ...args) throws -> usize
+{
+  return os.printf(format, args...);
+}
+
+pub fn fprintf(file mut &os, #std::string_literal format, var & ...args) throws -> usize
 {
   return os.printf(format, args...);
 }

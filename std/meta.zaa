@@ -1,0 +1,84 @@
+//
+// std meta
+//
+
+import std.stdio : assert;
+
+pub struct meta
+{
+  pub using declid = typeof(__decl__);
+
+  pub enum DeclKind : u64
+  {
+    TranslationUnit,
+    Module,
+    Function,
+    DeclScoped,
+    DeclRef,
+    TypeOf,
+    Import,
+    Using,
+    TypeAlias,
+    TypeArg,
+    VoidVar,
+    StmtVar,
+    ParmVar,
+    Struct,
+    Lambda,
+    ThisVar,
+    FieldVar,
+    RangeVar,
+    ErrorVar,
+    LambdaVar,
+    Initialiser,
+    Case,
+    CaseVar,
+    Concept,
+    Requires,
+    Enum,
+    EnumConstant,
+    Union,
+    Run,
+    If,
+  }
+
+  pub const fn kind_of(declid decl)
+  {
+    return cast<DeclKind>(__decl_kind(decl));
+  }
+
+  pub const fn name_of(declid decl)
+  {
+    return __decl_name(decl);
+  }
+
+  pub const fn parent_of(declid decl)
+  {
+    return __decl_parent(decl);
+  }
+
+  pub const fn children_of(declid decl, u64 filter = 0)
+  {
+    return __decl_children(decl, filter);
+  }
+
+  pub const fn fields_of<T>()
+  {
+    return __type_fields<T>();
+  }
+
+  pub const fn enumerators_of<T>()
+  {
+    return __type_enumerators<T>();
+  }
+
+  pub const fn is_public(declid decl) -> bool
+  {
+    return __decl_flags(decl) & 0x01 == 0x01;
+  }
+
+  pub const fn is_enumerator(declid decl) -> bool
+  {
+    return kind_of(decl) == DeclKind::EnumConstant;
+  }
+}

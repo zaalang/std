@@ -5,7 +5,7 @@
 import std.memory;
 import std.stdlib : assert;
 import std.algorithm : swap;
-import std.tuple : tuple;
+import std.tuple;
 import std.pair;
 
 enum Color
@@ -213,11 +213,11 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
           }
         }
 
-        return tuple(x, y);
+        return std::tuple(x, y);
       }
     }
 
-    return tuple(y, y);
+    return std::tuple(y, y);
   }
 
   pub fn clear(this mut &) -> void
@@ -367,10 +367,10 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       else if (this.cmp(cast<Node*>(y).value.key, key))
         x = x.right;
       else
-        return tuple(y, null);
+        return std::tuple(y, null);
     }
 
-    return tuple(null, y);
+    return std::tuple(null, y);
   }
 
   pub fn find_insert_position_multi<Key>(this mut &, Key &key) -> (Link mut *, Link mut *)
@@ -388,7 +388,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
         x = x.right;
     }
 
-    return tuple(null, y);
+    return std::tuple(null, y);
   }
 
   Link _root;

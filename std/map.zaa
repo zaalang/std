@@ -6,7 +6,7 @@ import std.memory;
 import std.stdlib : assert;
 import std.algorithm : swap;
 import std.range : Sentinal, Range;
-import std.tuple : tuple;
+import std.tuple;
 import std.type : as_const;
 import std.bits.tree as Tree;
 
@@ -263,7 +263,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       pos.0 = this._tree.insert(pos.1, &&value);
     }
 
-    return tuple(iterator(pos.0), !!pos.1);
+    return std::tuple(iterator(pos.0), !!pos.1);
   }
 
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
@@ -276,7 +276,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       pos.0 = this._tree.insert(pos.1, &&key, &&args...);
     }
 
-    return tuple(iterator(pos.0), !!pos.1);
+    return std::tuple(iterator(pos.0), !!pos.1);
   }
 
   pub fn insert(this mut &, Range<value_type> &&other) -> void

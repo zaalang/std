@@ -286,7 +286,6 @@ fn emit_alternate(compile_context mut &ctx, var &alt, expr *first1, expr *last1,
     if (get_out(ctx.program[i]) == m)
       set_out(ctx.program[i], ctx.program.len);
   }
-
 }
 
 fn emit_capture(compile_context mut &ctx, var &cap, expr *first, expr *last) -> void
@@ -302,41 +301,44 @@ fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
 {
   for(var op = first; op != last; op += op.len)
   {
-    if (op.kind == typeof(op.kind)::BeginLine)
-      emit_condition(ctx, condition::beginline, ctx.program);
+    switch (op)
+    {
+      case BeginLine:
+        emit_condition(ctx, condition::beginline, ctx.program);
 
-    if (op.kind == typeof(op.kind)::BeginText)
-      emit_condition(ctx, condition::begintext, ctx.program);
+      case BeginText:
+        emit_condition(ctx, condition::begintext, ctx.program);
 
-    if (op.kind == typeof(op.kind)::EndLine)
-      emit_condition(ctx, condition::endline, ctx.program);
+      case EndLine:
+        emit_condition(ctx, condition::endline, ctx.program);
 
-    if (op.kind == typeof(op.kind)::EndText)
-      emit_condition(ctx, condition::endtext, ctx.program);
+      case EndText:
+        emit_condition(ctx, condition::endtext, ctx.program);
 
-    if (op.kind == typeof(op.kind)::WordBoundary)
-      emit_condition(ctx, condition::wordboundary, ctx.program);
+      case WordBoundary:
+        emit_condition(ctx, condition::wordboundary, ctx.program);
 
-    if (op.kind == typeof(op.kind)::NonWordBoundary)
-      emit_condition(ctx, condition::nonwordboundary, ctx.program);
+      case NonWordBoundary:
+        emit_condition(ctx, condition::nonwordboundary, ctx.program);
 
-    if (op.kind == typeof(op.kind)::AnyChar)
-      emit_anychar(ctx, op.AnyChar);
+      case AnyChar:
+        emit_anychar(ctx, op.AnyChar);
 
-    if (op.kind == typeof(op.kind)::Literal)
-      emit_literal(ctx, op.Literal);
+      case Literal:
+        emit_literal(ctx, op.Literal);
 
-    if (op.kind == typeof(op.kind)::Klass)
-      emit_klass(ctx, op.Klass);
+      case Klass:
+        emit_klass(ctx, op.Klass);
 
-    if (op.kind == typeof(op.kind)::Repeat)
-      emit_repeat(ctx, op.Repeat, op + 1, op + op.Repeat.len);
+      case Repeat(repeat):
+        emit_repeat(ctx, repeat, op + 1, op + repeat.len);
 
-    if (op.kind == typeof(op.kind)::Alternate)
-      emit_alternate(ctx, op.Alternate, op + 1, op + op.Alternate.lhs, op + op.Alternate.lhs, op + op.Alternate.len);
+      case Alternate(alternate):
+        emit_alternate(ctx, alternate, op + 1, op + alternate.lhs, op + alternate.lhs, op + alternate.len);
 
-    if (op.kind == typeof(op.kind)::Capture)
-      emit_capture(ctx, op.Capture, op + 1, op + op.Capture.len);
+      case Capture(capture):
+        emit_capture(ctx, capture, op + 1, op + capture.len);
+    }
   }
 }
 
@@ -353,75 +355,67 @@ fn encode_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> vo
       var out = get_out(bytecode[pc]);
       var width = get_width(bytecode[pc]);
 
-      if (op == opcode::capture)
+      switch (op)
       {
-        stack.push_back(out);
-      }
+        case opcode::capture:
+          stack.push_back(out);
 
-      else if (op == opcode::fork)
-      {
-        stack.push_back(out);
-      }
+        case opcode::fork:
+          stack.push_back(out);
 
-      else if (op == opcode::jump)
-      {
-        stack.push_back(out);
-      }
+        case opcode::jump:
+          stack.push_back(out);
 
-      else if (op == opcode::condition)
-      {
-        stack.push_back(out);
-      }
+        case opcode::condition:
+          stack.push_back(out);
 
-      else if (op == opcode::match)
-      {
-        bytecode[1] = 0xFFFF_FFFF;
-        bytecode[2] = 0xFFFF_FFFF;
-        bytecode[3] = 0xFFFF_FFFF;
-        bytecode[4] = 0xFFFF_FFFF;
-      }
+        case opcode::match:
+          bytecode[1] = 0xFFFF_FFFF;
+          bytecode[2] = 0xFFFF_FFFF;
+          bytecode[3] = 0xFFFF_FFFF;
+          bytecode[4] = 0xFFFF_FFFF;
 
-      else if (op == opcode::select || op == opcode::selecti)
-      {
-        var lo = 0;
-        var hi = 0;
+        case opcode::select:
+        case opcode::selecti:
+          var lo = 0;
+          var hi = 0;
 
-        if (width == 2)
-        {
-          lo = cast<usize>((bytecode[pc + 1] >> 0) & 0xFF);
-          hi = cast<usize>((bytecode[pc + 1] >> 8) & 0xFF);
-        }
+          if (width == 2)
+          {
+            lo = cast<usize>((bytecode[pc + 1] >> 0) & 0xFF);
+            hi = cast<usize>((bytecode[pc + 1] >> 8) & 0xFF);
+          }
 
-        if (width == 3)
-        {
-          lo = cast<usize>(bytecode[pc + 1]);
-          hi = cast<usize>(bytecode[pc + 2]);
-        }
+          if (width == 3)
+          {
+            lo = cast<usize>(bytecode[pc + 1]);
+            hi = cast<usize>(bytecode[pc + 2]);
+          }
 
-        var mask = [0; 4];
+          var mask = [0; 4];
 
-        if (lo < 32)
-          mask[0] = (0xFFFFFFFF >> (31 + lo - std::min(hi, 31))) << lo;
+          if (lo < 32)
+            mask[0] = (0xFFFFFFFF >> (31 + lo - std::min(hi, 31))) << lo;
 
-        if (lo < 64 && hi > 31)
-          mask[1] = (0xFFFFFFFF >> (31 + std::max(lo, 32) - std::min(hi, 63))) << (std::max(lo, 32) - 32);
+          if (lo < 64 && hi > 31)
+            mask[1] = (0xFFFFFFFF >> (31 + std::max(lo, 32) - std::min(hi, 63))) << (std::max(lo, 32) - 32);
 
-        if (lo < 96 && hi > 63)
-          mask[2] = (0xFFFFFFFF >> (31 + std::max(lo, 64) - std::min(hi, 95))) << (std::max(lo, 64) - 64);
+          if (lo < 96 && hi > 63)
+            mask[2] = (0xFFFFFFFF >> (31 + std::max(lo, 64) - std::min(hi, 95))) << (std::max(lo, 64) - 64);
 
-        if (lo < 128 && hi > 95)
-          mask[3] = (0xFFFFFFFF >> (31 + std::max(lo, 96) - std::min(hi, 127))) << (std::max(lo, 96) - 96);
+          if (lo < 128 && hi > 95)
+            mask[3] = (0xFFFFFFFF >> (31 + std::max(lo, 96) - std::min(hi, 127))) << (std::max(lo, 96) - 96);
 
-        if (hi > 127)
-          mask[3] |= 0x8000_0000;
+          if (hi > 127)
+            mask[3] |= 0x8000_0000;
 
-        if (op == opcode::selecti)
-          mask[2] |= (mask[3] & 0x7FFFFFE);
+          if (op == opcode::selecti)
+            mask[2] |= (mask[3] & 0x7FFFFFE);
 
-        bytecode[1] |= mask[0];
-        bytecode[2] |= mask[1];
-        bytecode[3] |= mask[2];
-        bytecode[4] |= mask[3];
+          bytecode[1] |= mask[0];
+          bytecode[2] |= mask[1];
+          bytecode[3] |= mask[2];
+          bytecode[4] |= mask[3];
       }
 
       if (fin)
