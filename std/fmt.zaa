@@ -266,15 +266,20 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0.0) literal) throws -
   fmt(os, ctx, cast<float>(literal));
 }
 
+fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+{
+  using T;
+
+  fmt(os, ctx, object);
+}
+
 pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
 {
   var ctx = fmt_context();
 
   #for(var &arg : args)
   {
-    using typeof(arg);
-
-    fmt(os, ctx, arg);
+    fmt_to(os, ctx, arg);
   }
 
   return ctx.written;
@@ -411,11 +416,9 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
 
   #for(const k = 0; k < std::tuple_len<Args>; ++k)
   {
-    using typeof(arg);
-
     fmt_piece(os, ctx, spec.pieces[k]);
 
-    fmt(os, ctx, args.k);
+    fmt_to(os, ctx, args.#k);
   }
 
   fmt_piece(os, ctx, spec.pieces[args.len]);
@@ -453,7 +456,7 @@ pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) thr
 
         if (spec.ok)
         {
-          fmt(os, ctx, arg);
+          fmt_to(os, ctx, arg);
 
           ch += 1;
         }
