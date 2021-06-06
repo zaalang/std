@@ -187,6 +187,7 @@ pub const fn max<Args>(Args & ...args)
 
 pub const less = fn (var &x, var &y) -> bool { return x < y; };
 pub const greater = fn (var &x, var &y) -> bool { return x > y; };
+pub const equal_to = fn (var &x, var &y) -> bool { return x == y; };
 
 pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 {

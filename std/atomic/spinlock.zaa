@@ -1,0 +1,36 @@
+//
+// spinlock
+//
+
+import std.atomic;
+
+pub struct spin_lock
+{
+  u32 state;
+
+  pub fn lock(this mut &) -> void
+  {
+    for(;;)
+    {
+      if (std::atomic_xchg(&this.state, 1, std::memory_order::acquire) == 0)
+        break;
+
+      while (std::atomic_load(&this.state, std::memory_order::relaxed) != 0)
+        __relax();
+    }
+  }
+
+  pub fn try_lock(this mut &) -> bool
+  {
+    return (std::atomic_xchg(&this.state, 1, std::memory_order::acquire) == 0);
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    std::atomic_store(&this.state, 0, std::memory_order::release);
+  }
+
+  pub spin_lock() = default;
+  pub spin_lock(#spin_lock&) = default;
+  pub ~spin_lock() = default;
+}

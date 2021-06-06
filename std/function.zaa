@@ -1,0 +1,28 @@
+//
+// std.function
+//
+
+pub struct delegate<R(V), N = 24>
+{
+  u64[(N+7)/8] storage;
+  R(void*, V mut &) *_fx;
+
+  pub fn ()(this&, V ...v) -> R
+  {
+    return this._fx(cast<void*>(this.storage.data), v);
+  }
+
+  pub delegate<Y>(Y &fx)
+  {
+    std::assert(__is_trivial_destroy<Y>, "delegate must be trivial destroy");
+    std::assert(sizeof<Y> <= sizeof(storage), "delegate too large for storage");
+
+    cast<Y mut &>(storage) = fx;
+    _fx = fn(void *data, V mut &v) -> R { return cast<Y*>(data)(v...); };
+  }
+
+  pub delegate() = default;
+  pub delegate(delegate&) = default;
+  pub fn =(delegate mut &, delegate &) -> delegate mut & = default;
+  pub ~delegate() = default;
+}

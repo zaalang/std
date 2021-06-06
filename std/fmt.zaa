@@ -197,19 +197,19 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, (T...) &tuple) throws -> v
   fmt(os, ctx, ')');
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws -> void
 {
   fmt(os, ctx, loc.file_name);
   fmt(os, ctx, ":");
   fmt(os, ctx, loc.lineno);
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
 {
   fmt(os, ctx, "null");
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
 {
   fmt(os, ctx, "void");
 }
@@ -237,7 +237,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
     fmt(os, ctx, " }");
   }
 
-  #if (__is_struct<T>)
+  #if (__is_struct<T> || __is_vtable<T>)
   {
     fmt(os, ctx, std::meta::name_of(__type_decl<T>));
     fmt(os, ctx, " { ");

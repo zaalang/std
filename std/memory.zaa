@@ -59,3 +59,18 @@ pub fn memcmp(void *lhs, void *rhs, usize size) -> int
 
   return n != 0 ? cast<int>(*l) - cast<int>(*r) : 0;
 }
+
+pub fn is_aligned<T>(T value, usize alignment) -> bool
+{
+  return cast<uintptr>(value) & (alignment - 1) == 0;
+}
+
+pub fn align_up<T>(T value, usize alignment) -> T
+{
+  return cast<T>((cast<uintptr>(value) + alignment - 1) & -alignment);
+}
+
+pub fn align_down<T>(T value, usize alignment) -> T
+{
+  return cast<T>(cast<uintptr>(value) & -alignment);
+}

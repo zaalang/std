@@ -1,0 +1,62 @@
+//
+// std atomic
+//
+
+pub import std.atomic.spinlock;
+pub import std.atomic.ticketlock;
+pub import std.atomic.lockguard;
+
+pub enum memory_order
+{
+  relaxed = 2,
+  consume = 3,
+  acquire = 4,
+  release = 5,
+  acq_rel = 6,
+  seq_cst = 7,
+}
+
+pub fn volatile_load<T>(T *x) -> T
+{
+  return __atomic_load(x, 0);
+}
+
+pub fn volatile_store<T>(T mut *x, T y) -> void
+{
+  return __atomic_store(x, y, 0);
+}
+
+pub fn atomic_load<T>(T *x, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_load(x, cast(order));
+}
+
+pub fn atomic_store<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> void
+{
+  __atomic_store(x, y, cast(order));
+}
+
+pub fn atomic_add<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_fetch_add(x, y, cast(order));
+}
+
+pub fn atomic_sub<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_fetch_sub(x, y, cast(order));
+}
+
+pub fn atomic_xchg<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_xchg(x, y, cast(order));
+}
+
+pub fn atomic_cmpxchg_weak<T>(T mut *x, T y, T z, #memory_order success = #memory_order::seq_cst, #memory_order failure = #memory_order::seq_cst) -> bool
+{
+  return __atomic_cmpxchg(x, y, z, 1, cast(success), cast(failure));
+}
+
+pub fn atomic_cmpxchg_strong<T>(T mut *x, T y, T z, #memory_order success = #memory_order::seq_cst, #memory_order failure = #memory_order::seq_cst) -> bool
+{
+  return __atomic_cmpxchg(x, y, z, 0, cast(success), cast(failure));
+}

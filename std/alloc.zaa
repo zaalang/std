@@ -4,13 +4,15 @@
 
 import std.stdlib;
 
-struct mem_result
+pub struct mem_result
 {
-  u32 errno;
-  usize size;
-  void mut *addr;
+  pub u32 errno;
+  pub usize size;
+  pub void mut *addr;
 
-  ~mem_result() = default;
+  pub mem_result() = default;
+  pub mem_result(mem_result&) = default;
+  pub ~mem_result() = default;
 }
 
 extern fn mem_alloc(usize size) -> mem_result;

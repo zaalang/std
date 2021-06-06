@@ -27,6 +27,11 @@ pub fn tie<T>(T&& ...elements)
   return elements;
 }
 
+pub fn fwd_as_tuple<T>(T&& ...elements)
+{
+  return elements;
+}
+
 pub const fn is_any_rvalue<T>() -> bool
   where __is_tuple<T>
 {

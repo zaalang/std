@@ -16,13 +16,13 @@ pub concept Span<U>
 
 pub struct span<T>
 {
-pub usize len;
-pub T *data;
+  pub usize len;
+  pub T *data;
 
-pub span(T *data, usize len)
-  : len(len), data(data)
-{
-}
+  pub span(T *data, usize len)
+    : len(len), data(data)
+  {
+  }
 
   pub span(T *beg, T *end)
     : len(end - beg), data(beg)
@@ -65,6 +65,14 @@ pub span(T *data, usize len)
     return span(this.data + range.0, this.data + range.1 + 1);
   }
 
+  pub fn =(this mut &, mutable_span<T> &that) -> span mut &
+  {
+    this.len = that.len;
+    this.data = that.data;
+    return &this;
+  }
+
+  pub span() = default;
   pub span(span &that) = default;
   pub fn =(this mut &, span &that) -> span mut & = default;
   pub ~span() = default;
@@ -135,6 +143,7 @@ pub struct mutable_span<T>
     return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
+  pub mutable_span() = default;
   pub mutable_span(mutable_span &that) = default;
   pub fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
   pub ~mutable_span() = default;

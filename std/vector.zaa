@@ -15,7 +15,10 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     : _allocator(allocator),
       _smallbuffer(void)
   {
-    init(this);
+    #if (N != 0)
+    {
+      init(this);
+    }
   }
 
   pub vector<M>(vector<T, Allocator, M> &&other, Allocator &allocator = Allocator())
@@ -81,8 +84,8 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     clear(this);
 
-    if (this._data != cast(this._smallbuffer.data))
-      this._allocator.free(this._data, this._capacity * sizeof<T>);
+    if (_data && _data != cast(_smallbuffer.data))
+      _allocator.free(_data, _capacity * sizeof<T>);
   }
 
   pub fn len(this &) -> usize
@@ -434,7 +437,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
       destruct(this, data, data + this._len);
 
-      if (data != cast(this._smallbuffer.data))
+      if (data && data != cast(this._smallbuffer.data))
         this._allocator.free(data, capacity * sizeof<T>);
     }
   }
@@ -541,23 +544,23 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   fn insert<Args>(this mut &, T *position, Args && ...args) -> T mut *
   {
-    var item = ensure_space(this, position, 1);
+    var slot = ensure_space(this, position, 1);
 
-    new<T>(item)(&&args..., allocator?: this.allocator);
+    new<T>(slot)(&&args..., allocator?: this.allocator);
     
-    return item;
+    return slot;
   }
 
   fn insert<I>(this mut &, T *position, I first, Sentinal<I> last, usize count) -> T mut *
   {
-    var item = ensure_space(this, position, count);
+    var slot = ensure_space(this, position, count);
 
-    for(var it = item; first != last; ++it, ++first)
+    for(var it = slot; first != last; ++it, ++first)
     {
       new<T>(it)(*first, allocator?: this.allocator);
     }
 
-    return item;
+    return slot;
   }
 
   fn erase(this mut &, T *first, usize count) -> T mut *
@@ -634,6 +637,8 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     }
   }
 
+  pub vector(#vector&) = default;
+
   usize _len;
   T mut *_data;
 
@@ -653,7 +658,7 @@ pub fn erase_if<T, Pred>(vector<T> mut &range, Pred &pred) -> usize
   return n - range.len;
 }
 
-pub fn unordered_erase_if<T, Pred>(std::vector<T> mut &range, Pred &pred) -> usize
+pub fn unordered_erase_if<T, Pred>(vector<T> mut &range, Pred &pred) -> usize
   where requires (T i, Pred &pred) { pred(i); }
 {
   var n = range.len;
@@ -668,4 +673,9 @@ pub fn unordered_erase_if<T, Pred>(std::vector<T> mut &range, Pred &pred) -> usi
   }
 
   return n - range.len;
+}
+
+pub fn hash<T>(var &hasher, vector<T> &vec) -> usize
+{
+  return hasher.combine_contiguous(vec.data, vec.len);
 }

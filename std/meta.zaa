@@ -24,6 +24,7 @@ pub struct meta
     StmtVar,
     ParmVar,
     Struct,
+    VTable,
     Lambda,
     ThisVar,
     FieldVar,

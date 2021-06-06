@@ -1,0 +1,28 @@
+//
+// ticketlock
+//
+
+import std.atomic;
+
+pub struct ticketed_spin_lock
+{
+  u32 next;
+  u32 serving;
+
+  pub fn lock(this mut &) -> void
+  {
+    var ticket = std::atomic_add(&this.next, 1, std::memory_order::relaxed);
+
+    while (std::atomic_load(&this.serving, std::memory_order::acquire) != ticket)
+      __relax();
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    std::atomic_add(&this.serving, 1, std::memory_order::release);
+  }
+
+  pub ticketed_spin_lock() = default;
+  pub ticketed_spin_lock(#ticketed_spin_lock&) = default;
+  pub ~ticketed_spin_lock() = default;
+}

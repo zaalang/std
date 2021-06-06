@@ -479,3 +479,8 @@ pub struct list<T, Allocator = std::allocator>
 
   Allocator _allocator;
 }
+
+pub fn hash<T>(var &hasher, list<T> &lst) -> usize
+{
+  return hasher.combine_range(lst.begin, lst.end);
+}

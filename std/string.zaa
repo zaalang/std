@@ -614,6 +614,11 @@ pub struct string<Allocator = std::allocator, N = 24>
   Allocator _allocator;
 }
 
+pub fn hash(var &hasher, String &str) -> usize
+{
+  return hasher.combine_contiguous(str.data, str.len);
+}
+
 pub fn sprint(string mut &str, var & ...args) -> usize
 {
   return str.append(args...);

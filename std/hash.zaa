@@ -1,0 +1,186 @@
+//
+// std.hash
+//
+
+import std.memory;
+
+pub struct hash
+{
+  pub fn ()<T>(this&, T &item) -> usize
+  {
+    using T;
+
+    return hash(this, item);
+  }
+
+  pub fn combine<Items>(hash &hash, Items & ...items) -> usize
+  {
+    var seed = 0;
+
+    #for(var &item : items)
+      mix(seed, hash(item));
+
+    return seed;
+  }
+
+  pub fn combine_range<I, J>(hash &hash, I first, J last) -> usize
+  {
+    var seed = 0;
+
+    for( ; first != last; ++first)
+      mix(seed, hash(*first));
+
+    return seed;
+  }
+
+  pub fn combine_contiguous<T>(hash &hash, T *first, usize count) -> usize
+  {
+    var seed = 0;
+
+    #if (__is_builtin<T>)
+    {
+      var data = cast<u8*>(first);
+      var len = count * sizeof<T>;
+
+      for( ; len >= 8; data += 8, len -= 8)
+        mix(seed, hash(*cast<usize*>(data)));
+
+      for( ; len != 0; data += 1, len -= 1)
+        mix(seed, hash(*data));
+    }
+    else
+    {
+      for( ; count != 0; ++first, --count)
+        mix(seed, hash(*first));
+    }
+
+    return seed;
+  }
+
+  fn mix(usize mut &seed, usize hash) -> usize
+  {
+    seed ^= __add_with_carry(seed >> 2, __add_with_carry(seed << 6, __add_with_carry(hash, 0x9e3779b9).0).0).0;
+
+    return seed;
+  }
+
+  pub hash() = default;
+  pub hash(hash&) = default;
+  pub ~hash() = default;
+}
+
+pub fn hash(hash &hash, bool item) -> usize
+{
+  return cast<usize>(item);
+}
+
+pub fn hash(hash &hash, char item) -> usize
+{
+  return cast<usize>(item);
+}
+
+pub fn hash(hash &hash, u8 item) -> usize
+{
+  return hash(cast<usize>(item));
+}
+
+pub fn hash(hash &hash, u16 item) -> usize
+{
+  return cast<usize>(item);
+}
+
+pub fn hash(hash &hash, u32 item) -> usize
+{
+  return cast<usize>(item);
+}
+
+pub fn hash(hash &hash, u64 item) -> usize
+{
+  return cast<usize>(item);
+}
+
+pub fn hash(hash &hash, usize item) -> usize
+{
+  return item;
+}
+
+pub fn hash(hash &hash, i8 item) -> usize
+{
+  return cast<usize>(std::bit_cast<u8>(item));
+}
+
+pub fn hash(hash &hash, i16 item) -> usize
+{
+  return cast<usize>(std::bit_cast<u16>(item));
+}
+
+pub fn hash(hash &hash, i32 item) -> usize
+{
+  return cast<usize>(std::bit_cast<u32>(item));
+}
+
+pub fn hash(hash &hash, i64 item) -> usize
+{
+  return cast<usize>(std::bit_cast<u64>(item));
+}
+
+pub fn hash(hash &hash, isize item) -> usize
+{
+  return std::bit_cast<usize>(item);
+}
+
+pub fn hash(hash &hash, f32 item) -> usize
+{
+  return cast<usize>(std::bit_cast<u32>(item));
+}
+
+pub fn hash(hash &hash, f64 item) -> usize
+{
+  return std::bit_cast<usize>(item);
+}
+
+pub fn hash(hash &hash, void *pointer) -> usize
+{
+  return cast<uintptr>(pointer);
+}
+
+pub fn hash(hash &hasher, std::string_literal &str) -> usize
+{
+  return hash.combine_contiguous(str.data, str.len);
+}
+
+pub fn hash<T, N>(hash &hash, T[N] &array) -> usize
+{
+  return hash.combine_contiguous(array.data, array.len);
+}
+
+pub fn hash<T>(hash &hash, (T...) &tuple) -> usize
+{
+  return hash.combine(tuple...);
+}
+
+pub fn hash(hash &hash, null &) -> usize
+{
+  return 0;
+}
+
+pub fn hash(hash &hash, void &) -> usize
+{
+  return 0;
+}
+
+pub fn hash<T>(hash &hash, T &enumerator) -> usize
+  where __is_enum<T>
+{
+  return hash(cast<usize>(enumerator));
+}
+
+pub fn hash(hash &hash, typeof(0) literal) -> usize
+{
+  return hash(cast<int>(literal));
+}
+
+pub fn hash(hash &hash, typeof(0.0) literal) -> usize
+{
+  return hash(cast<float>(literal));
+}

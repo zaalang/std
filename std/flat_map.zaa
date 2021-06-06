@@ -192,6 +192,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   pub fn insert<I>(this mut &, I first, Sentinal<I> last) -> void
+    where requires (I i) { value_type(*i); }
   {
     while (first != last)
     {
@@ -236,6 +237,8 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     this._tree.clear();
   }
+
+  pub flat_map(#flat_map&) = default;
 
   using tree_type = std::vector<value_type, Allocator>;
   pub using value_type = std::key_value_pair<K, T, Allocator>;

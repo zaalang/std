@@ -298,6 +298,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   pub fn insert<I>(this mut &, I first, Sentinal<I> last) -> void
+    where requires (I i) { value_type(*i); }
   {
     while (first != last)
     {
