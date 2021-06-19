@@ -4,7 +4,7 @@
 
 import std.atomic;
 
-pub struct ticketed_spin_lock
+pub struct ticket_lock
 {
   u32 next;
   u32 serving;
@@ -22,7 +22,81 @@ pub struct ticketed_spin_lock
     std::atomic_add(&this.serving, 1, std::memory_order::release);
   }
 
-  pub ticketed_spin_lock() = default;
-  pub ticketed_spin_lock(#ticketed_spin_lock&) = default;
-  pub ~ticketed_spin_lock() = default;
+  pub ticket_lock() = default;
+  pub ticket_lock(#ticket_lock&) = default;
+  pub ~ticket_lock() = default;
 }
+
+pub struct shared_ticket_lock
+{
+  u32 next;
+  u32 read;
+  u32 write;
+  u32 upgrade;
+
+  pub fn lock(this mut &) -> void
+  {
+    var ticket = std::atomic_add(&this.next, 1, std::memory_order::relaxed);
+
+    while (std::atomic_load(&this.write, std::memory_order::acquire) != ticket)
+      __relax();
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    std::atomic_add(&this.read, 1, std::memory_order::release);
+    std::atomic_add(&this.write, 1, std::memory_order::release);
+  }
+
+  pub fn lock_shared(this mut &) -> void
+  {
+    var ticket = std::atomic_add(&this.next, 1, std::memory_order::relaxed);
+
+    while (std::atomic_load(&this.read, std::memory_order::acquire) != ticket)
+      __relax();
+
+    std::atomic_add(&this.read, 1, std::memory_order::release);
+  }
+
+  pub fn unlock_shared(this mut &) -> void
+  {
+    std::atomic_add(&this.write, 1, std::memory_order::release);
+  }
+
+  pub fn lock_upgrade(this mut &) -> void
+  {
+    var ticket = std::atomic_add(&this.next, 1, std::memory_order::relaxed);
+
+    while (std::atomic_load(&this.read, std::memory_order::acquire) != ticket)
+      __relax();
+
+    this.upgrade = ticket;
+  }
+
+  pub fn unlock_upgrade_and_lock(this mut &) -> void
+  {
+    while (std::atomic_load(&this.write, std::memory_order::acquire) != this.upgrade)
+      __relax();
+  }
+
+  pub fn unlock_upgrade_and_lock_shared(this mut &) -> void
+  {
+    std::atomic_add(&this.read, 1, std::memory_order::release);
+  }
+
+  pub fn unlock_upgrade(this mut &) -> void
+  {
+    std::atomic_add(&this.read, 1, std::memory_order::release);
+    std::atomic_add(&this.write, 1, std::memory_order::release);
+  }
+
+  pub fn unlock_and_lock_upgrade(this mut &) -> void
+  {
+    this.upgrade = std::volatile_load(&this.write);
+  }
+
+  pub shared_ticket_lock() = default;
+  pub shared_ticket_lock(#shared_ticket_lock&) = default;
+  pub ~shared_ticket_lock() = default;
+}
+

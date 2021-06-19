@@ -34,3 +34,4 @@ pub struct spin_lock
   pub spin_lock(#spin_lock&) = default;
   pub ~spin_lock() = default;
 }
+

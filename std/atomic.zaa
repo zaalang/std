@@ -46,6 +46,26 @@ pub fn atomic_sub<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst
   return __atomic_fetch_sub(x, y, cast(order));
 }
 
+pub fn atomic_and<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_fetch_and(x, y, cast(order));
+}
+
+pub fn atomic_or<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_fetch_or(x, y, cast(order));
+}
+
+pub fn atomic_xor<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_fetch_xor(x, y, cast(order));
+}
+
+pub fn atomic_nand<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
+{
+  return __atomic_fetch_nand(x, y, cast(order));
+}
+
 pub fn atomic_xchg<T>(T mut *x, T y, #memory_order order = #memory_order::seq_cst) -> T
 {
   return __atomic_xchg(x, y, cast(order));

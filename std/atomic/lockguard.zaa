@@ -24,3 +24,57 @@ pub struct lock_guard<T>
       locks.#i.unlock();
   }
 }
+
+pub struct lock_shared_guard<T>
+{
+  typeof(std::fwd_as_tuple(std::declval<T>...)) locks;
+
+  pub lock_shared_guard(T mut & ...locks, #bool adopt = false)
+    : locks(locks)
+  {
+    #if (!adopt)
+    {
+      #for(var mut &lock : locks)
+        lock.lock_shared();
+    }
+  }
+
+  pub ~lock_shared_guard()
+  {
+    #for(const i = cast<int>(locks.len) - 1; i >= 0; --i)
+      locks.#i.unlock_shared();
+  }
+}
+
+pub struct lock_upgrade_guard<T>
+{
+  typeof(std::fwd_as_tuple(std::declval<T>...)) locks;
+
+  pub lock_upgrade_guard(T mut & ...locks, #bool adopt = false)
+    : locks(locks)
+  {
+    #if (!adopt)
+    {
+      #for(var mut &lock : locks)
+        lock.lock_upgrade();
+    }
+  }
+
+  pub fn lock(this mut &) -> void
+  {
+    #for(var mut &lock : this.locks)
+      lock.unlock_upgrade_and_lock();
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    #for(var mut &lock : this.locks)
+      lock.unlock_and_lock_upgrade();
+  }
+
+  pub ~lock_upgrade_guard()
+  {
+    #for(const i = cast<int>(locks.len) - 1; i >= 0; --i)
+      locks.#i.unlock_upgrade();
+  }
+}
