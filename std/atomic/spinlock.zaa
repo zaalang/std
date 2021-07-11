@@ -22,7 +22,7 @@ pub struct spin_lock
 
   pub fn try_lock(this mut &) -> bool
   {
-    return (std::atomic_xchg(&this.state, 1, std::memory_order::acquire) == 0);
+    return std::atomic_xchg(&this.state, 1, std::memory_order::acquire) == 0;
   }
 
   pub fn unlock(this mut &) -> void

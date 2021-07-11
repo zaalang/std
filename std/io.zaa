@@ -200,7 +200,7 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
 
   pub fn lines(this mut &) throws -> std::iterator_pair<line_iterator, end_iterator>
   {
-    return std::iterator_pair(++line_iterator(this), end_iterator);
+    return std::iterator_pair(++line_iterator(this), end_iterator());
   }
 
   usize _head;

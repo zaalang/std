@@ -80,3 +80,8 @@ pub fn atomic_cmpxchg_strong<T>(T mut *x, T y, T z, #memory_order success = #mem
 {
   return __atomic_cmpxchg(x, y, z, 0, cast(success), cast(failure));
 }
+
+pub fn atomic_thread_fence(#memory_order order = #memory_order::acq_rel) -> void
+{
+  __atomic_thread_fence(cast(order));
+}

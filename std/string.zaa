@@ -327,34 +327,35 @@ pub struct string_view : std::span<u8>
 
   pub fn lines(this &) -> std::iterator_pair<line_iterator, end_iterator>
   {
-    return std::iterator_pair(++line_iterator(this.begin, this.end), end_iterator);
+    return std::iterator_pair(++line_iterator(this.begin, this.end), end_iterator());
   }
 
   pub fn words(this &, String &delimiters = " \r\n\t") -> std::iterator_pair<word_iterator, end_iterator>
   {
-    return std::iterator_pair(++word_iterator(this.begin, this.end, delimiters), end_iterator);
+    return std::iterator_pair(++word_iterator(this.begin, this.end, delimiters), end_iterator());
   }
 
   pub fn split(this &, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
   {
-    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~0), end_iterator);
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~0), end_iterator());
   }
 
   pub fn split_after(this &, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
   {
-    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~0), end_iterator);
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~0), end_iterator());
   }
 
   pub fn split_n(this &, usize n, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
   {
-    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, n + 1), end_iterator);
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, false, n + 1), end_iterator());
   }
 
   pub fn split_after_n(this &, usize n, String &seperator) -> std::iterator_pair<split_iterator, end_iterator>
   {
-    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator);
+    return std::iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator());
   }
 
+  pub string_view() = default;
   pub string_view(string_view &that) = default;
   pub ~string_view() = default;
 }

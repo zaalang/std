@@ -425,7 +425,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     }
   }
 
-  fn find_or_prepare_insert(this mut &, K &key) -> (usize, bool)
+  fn find_or_prepare_insert<Key>(this mut &, Key &key) -> (usize, bool)
   {
     if (this.empty)
       resize(this, 1);

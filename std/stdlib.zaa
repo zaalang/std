@@ -6,6 +6,7 @@ import std.stdio;
 import std.error;
 import std.string : String;
 
+#[noreturn]
 pub extern fn exit(u32) -> void;
 
 pub fn move<T>(T mut &v) -> T&&
@@ -13,6 +14,7 @@ pub fn move<T>(T mut &v) -> T&&
   return &v;
 }
 
+#[noreturn]
 pub fn abort(var & ...args) -> void
 {
   if (args.len != 0)
@@ -21,6 +23,7 @@ pub fn abort(var & ...args) -> void
   exit(1);
 }
 
+#[noreturn]
 pub fn panic(var & ...args) -> void
 {
   if (args.len != 0)
