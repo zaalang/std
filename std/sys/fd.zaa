@@ -30,6 +30,7 @@ pub struct iovec
 
   pub iovec() = default;
   pub iovec(iovec&) = default;
+  pub fn =(iovec mut &, iovec &) -> iovec mut & = default;
   pub ~iovec() = default;
 }
 
@@ -40,6 +41,7 @@ pub struct ciovec
 
   pub ciovec() = default;
   pub ciovec(ciovec&) = default;
+  pub fn =(ciovec mut &, ciovec &) -> ciovec mut & = default;
   pub ~ciovec() = default;
 }
 
@@ -66,8 +68,8 @@ struct fd_result
 
 extern fn fd_open(uintptr &fd, string path, u32 oflags, u64 rights, u32 fdflags) -> u32;
 extern fn fd_stat(uintptr fd, filestat *fs) -> u32;
-extern fn fd_readv(uintptr fd, iovec *iovs, usize n) -> fd_result;
-extern fn fd_preadv(uintptr fd, iovec *iovs, usize n, u64 offset) -> fd_result;
+extern fn fd_readv(uintptr fd, iovec mut *iovs, usize n) -> fd_result;
+extern fn fd_preadv(uintptr fd, iovec mut *iovs, usize n, u64 offset) -> fd_result;
 extern fn fd_writev(uintptr fd, ciovec *iovs, usize n) -> fd_result;
 extern fn fd_pwritev(uintptr fd, ciovec *iovs, usize n, u64 offset) -> fd_result;
 extern fn fd_close(uintptr fd) -> u32;

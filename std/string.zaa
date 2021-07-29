@@ -900,3 +900,10 @@ pub fn trim(String &str) -> string_view
 {
   return trim_right(trim_left(str));
 }
+
+pub fn format(#string_literal format, var & ...args) -> string
+{
+  var str = string();
+  str.appendf(format, args...);
+  return str;
+}

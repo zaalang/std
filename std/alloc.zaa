@@ -44,4 +44,15 @@ pub struct allocator
   {
     return true;
   }
+
+  pub fn new<T>(var && ...args) -> T mut *
+  {
+    return new<T>(allocator().allocate(sizeof<T>, alignof<T>))(&&args...);
+  }
+
+  pub fn delete<T>(T mut *ptr) -> void
+  {
+    T::~T(*ptr);
+    allocator().free(ptr, sizeof<T>);
+  }
 }

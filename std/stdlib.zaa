@@ -6,6 +6,12 @@ import std.stdio;
 import std.error;
 import std.string : String;
 
+#if (__cfg("zaa.build.checked"))
+  const checked_assert = true;
+#else
+  const checked_assert = false;
+#end
+
 #[noreturn]
 pub extern fn exit(u32) -> void;
 
@@ -32,11 +38,13 @@ pub fn panic(var & ...args) -> void
   exit(1);
 }
 
+#[conditional(checked_assert)]
 pub fn assert(var *condition, String &msg = "", var &loc = std::source_location(__site__)) -> void
 {
   assert(condition != null, msg, loc: loc);
 }
 
+#[conditional(checked_assert)]
 pub fn assert(bool condition, String &msg = "", var &loc = std::source_location(__site__)) -> void
 {
   if (!condition)

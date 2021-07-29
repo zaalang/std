@@ -46,14 +46,17 @@ pub enum errc : u32
 {
   not_permitted = 1,
   file_not_found = 2,
+  no_such_device = 6,
   bad_address = 14,
   device_busy = 16,
-  file_already_exists = 17,
+  already_exists = 17,
   not_a_directory = 20,
   invalid_argument = 22,
+  resource_exhausted = 24,
   result_out_of_range = 34,
   timed_out = 60,
   value_too_large = 75,
+  operation_cancelled = 125,
   line_too_long = 175,
 
   pub fn bool(errc code) -> bool

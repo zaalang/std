@@ -13,9 +13,9 @@ import std.meta;
 using std::String;
 using std::OutputStream;
 
-struct fmt_context
+pub struct fmt_context
 {
-  usize written;
+  pub usize written;
 
   fmt_context() = default;
   ~fmt_context() = default;
