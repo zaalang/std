@@ -246,3 +246,24 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   Cmp cmp;
   tree_type _tree;
 }
+
+pub fn hash<K, T>(var &hasher, flat_map<K, T> &map) -> usize
+{
+  return hasher.combine_contiguous(map.data, map.len);
+}
+
+pub fn erase_if<K, T, Pred>(flat_map<K, T> mut &map, Pred &pred) -> usize
+{
+  var n = map.len;
+  var first = map.begin;
+
+  for (; first != map.end; )
+  {
+    if (pred(*first))
+      first = map.erase(first);
+    else
+      ++first;
+  }
+
+  return n - map.len;
+}

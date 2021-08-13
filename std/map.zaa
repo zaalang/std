@@ -371,3 +371,24 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   tree_type _tree;
 }
+
+pub fn hash<K, T>(var &hasher, map<K, T> &map) -> usize
+{
+  return hasher.combine_range(map.begin, map.end);
+}
+
+pub fn erase_if<K, T, Pred>(map<K, T> mut &map, Pred &pred) -> usize
+{
+  var n = map.len;
+  var first = map.begin;
+
+  for (; first != map.end; )
+  {
+    if (pred(*first))
+      first = map.erase(first);
+    else
+      ++first;
+  }
+
+  return n - map.len;
+}

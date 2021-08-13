@@ -484,3 +484,19 @@ pub fn hash<T>(var &hasher, list<T> &lst) -> usize
 {
   return hasher.combine_range(lst.begin, lst.end);
 }
+
+pub fn erase_if<T, Pred>(list<T> mut &lst, Pred &pred) -> usize
+{
+  var n = lst.len;
+  var first = lst.begin;
+
+  for (; first != lst.end; )
+  {
+    if (pred(*first))
+      first = lst.erase(first);
+    else
+      ++first;
+  }
+
+  return n - lst.len;
+}

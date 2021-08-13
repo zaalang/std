@@ -34,11 +34,7 @@ pub struct string_ref : std::span<u8>
     return std::string_view(this.data, this.len);
   }
 
-  pub fn string_ref(string_ref &that) -> std::string_view
-  {
-    return std::string_view(that.data, that.len);
-  }
-
+  pub string_ref(string_ref &that) = default;
   pub ~string_ref() = default;
 }
 
@@ -54,7 +50,7 @@ pub struct string_view : std::span<u8>
   {
   }
 
-  pub string_view(string_literal &str)
+  pub string_view(String &&str)
     : super(str.data, str.len)
   {
   }

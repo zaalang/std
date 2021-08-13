@@ -648,6 +648,11 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   Allocator _allocator;
 }
 
+pub fn hash<T>(var &hasher, vector<T> &vec) -> usize
+{
+  return hasher.combine_contiguous(vec.data, vec.len);
+}
+
 pub fn erase_if<T, Pred>(vector<T> mut &range, Pred &pred) -> usize
   where requires (T i, Pred &pred) { pred(i); }
 {
@@ -675,7 +680,3 @@ pub fn unordered_erase_if<T, Pred>(vector<T> mut &range, Pred &pred) -> usize
   return n - range.len;
 }
 
-pub fn hash<T>(var &hasher, vector<T> &vec) -> usize
-{
-  return hasher.combine_contiguous(vec.data, vec.len);
-}

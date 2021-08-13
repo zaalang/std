@@ -229,3 +229,8 @@ pub struct array<T, N> : T[N]
       return iterator(item);
   }
 }
+
+pub fn hash<T, N>(var &hasher, array<T, N> &array) -> usize
+{
+  return hasher.combine_contiguous(array.data, array.len);
+}

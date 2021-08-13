@@ -46,6 +46,7 @@ pub enum errc : u32
 {
   not_permitted = 1,
   file_not_found = 2,
+  io_error = 5,
   no_such_device = 6,
   bad_address = 14,
   device_busy = 16,
@@ -57,6 +58,7 @@ pub enum errc : u32
   timed_out = 60,
   value_too_large = 75,
   operation_cancelled = 125,
+  not_supported = 134,
   line_too_long = 175,
 
   pub fn bool(errc code) -> bool
