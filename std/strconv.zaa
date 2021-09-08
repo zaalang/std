@@ -9,16 +9,16 @@ import std.algorithm;
 import std.bits.utf as utf;
 import std.bits.float as flt;
 
-struct strconv_result
+pub struct strconv_result
 {
-  usize len;
-  u8 *ptr;
-  std::errc error;
+  pub usize len;
+  pub u8 *ptr;
+  pub std::errc error;
 
-  strconv_result() = default;
-  strconv_result(strconv_result&) = default;
-  fn =(strconv_result mut &, strconv_result&) -> strconv_result mut & = default;
-  ~strconv_result() = default;
+  pub strconv_result() = default;
+  pub strconv_result(strconv_result&) = default;
+  pub fn =(strconv_result mut &, strconv_result&) -> strconv_result mut & = default;
+  pub ~strconv_result() = default;
 }
 
 const digits = "0123456789abcdefghijklmnopqrstuvwxyz";

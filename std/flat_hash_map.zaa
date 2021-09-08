@@ -548,4 +548,3 @@ pub fn erase_if<K, T, Pred>(flat_hash_map<K, T> mut &map, Pred &pred) -> usize
 
   return n - map.len;
 }
-

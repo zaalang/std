@@ -16,7 +16,7 @@ pub struct mem_result
 }
 
 extern fn mem_alloc(usize size) -> mem_result;
-extern fn mem_free(void *addr) -> void;
+extern fn mem_free(void *addr, usize size) -> void;
 
 pub struct allocator
 {
@@ -37,7 +37,7 @@ pub struct allocator
 
   pub fn free(this mut &, void *addr, usize size) -> void
   {
-    mem_free(addr);
+    mem_free(addr, size);
   }
 
   pub fn ==(this &, allocator &) -> bool

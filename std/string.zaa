@@ -353,6 +353,7 @@ pub struct string_view : std::span<u8>
 
   pub string_view() = default;
   pub string_view(string_view &that) = default;
+  pub fn =(this mut &, string_view &that) -> string_view mut & = default;
   pub ~string_view() = default;
 }
 
@@ -862,6 +863,41 @@ pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
   }
 
   return haystack.end;
+}
+
+pub fn skip(String &str, usize n) -> string_view
+{
+  var i = str.chars.begin;
+
+  for(; i != str.end; ++i)
+  {
+    if (n == 0)
+      break;
+
+    --n;
+  }
+
+  return string_view(i, str.end);
+}
+
+pub fn take(String &str, usize n) -> string_view
+{
+  var i = str.chars.begin;
+
+  for(; i != str.end; ++i)
+  {
+    if (n == 0)
+      break;
+
+    --n;
+  }
+
+  return string_view(str.begin, i);
+}
+
+pub fn substr(String &str, usize i, usize n) -> string_view
+{
+  return str.skip(i).take(n);
 }
 
 pub fn trim_left(String &str) -> string_view
