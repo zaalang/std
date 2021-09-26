@@ -13,7 +13,7 @@ import std.string : String;
 #end
 
 #[noreturn]
-pub extern fn exit(u32) -> void;
+pub extern fn exit(i32) -> void;
 
 pub fn move<T>(T mut &v) -> T&&
 {

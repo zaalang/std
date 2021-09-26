@@ -933,6 +933,26 @@ pub fn trim(String &str) -> string_view
   return trim_right(trim_left(str));
 }
 
+pub fn starts_with(String &haystack, String &needle) -> bool
+{
+  return haystack.take(needle.len) == needle;
+}
+
+pub fn starts_with(String &haystack, char needle) -> bool
+{
+  return !haystack.empty && *haystack.chars.begin == needle;
+}
+
+pub fn ends_with(String &haystack, String &needle) -> bool
+{
+  return haystack.len >= needle.len && haystack.substr(haystack.len - needle.len, needle.len) == needle;
+}
+
+pub fn ends_with(String &haystack, char needle) -> bool
+{
+  return !haystack.empty && *std::prev(haystack.chars.end) == needle;
+}
+
 pub fn format(#string_literal format, var & ...args) -> string
 {
   var str = string();
