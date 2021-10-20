@@ -6,7 +6,7 @@ pub using max_align_t = u64;
 
 pub using void_t<...T> = void;
 pub using identity_t<T> = T;
-pub extern fn declval<T>() -> T&&;
+pub extern fn declval<T>() -> T;
 
 pub const fn is_same<T, U>() -> bool
 {
@@ -123,3 +123,21 @@ pub struct remove_pointer_t<T>
 }
 
 pub using remove_pointer<T> = remove_pointer_t<T>::type;
+
+pub struct add_reference_t<T>
+{
+  pub using type = T mut &;
+}
+
+pub using add_reference<T> = add_reference_t<T>::type;
+
+pub struct remove_reference_t<T>
+{
+  #if __is_reference<T>
+    pub using type = typeof(*declval<T>);
+  #else
+    pub using type = T;
+  #end
+}
+
+pub using remove_reference<T> = remove_reference_t<T>::type;

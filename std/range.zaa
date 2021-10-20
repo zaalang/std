@@ -30,15 +30,23 @@ pub struct iterator_pair<I, J>
   pub fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
   pub ~iterator_pair() = default;
 
-  pub fn begin(this &)
+  pub fn begin(this &&)
   {
-    return this.first;
+    return (&&this).first;
   }
 
-  pub fn end(this &)
+  pub fn end(this &&)
   {
-    return this.second;
+    return (&&this).second;
   }
+}
+
+pub fn Range<T, N>(T[N] &&array)
+{
+  #if (__is_rvalue<typeof(array)>)
+    return std::iterator_pair(std::move_iterator(array.begin), std::move_iterator(array.end));
+
+  return std::iterator_pair((&&array).begin, (&&array).end);
 }
 
 pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
@@ -61,12 +69,12 @@ pub const fn is_all_ranges<Ranges, T>() -> bool
   return true;
 }
 
-pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
+pub fn move<T>(std::mutable_span<T> mut &range)
 {
   return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
 
-pub fn move<T>(std::mutable_span<T> mut &range)
+pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
 {
   return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
@@ -396,4 +404,10 @@ pub fn zip(var && ...ranges)
   where is_all_ranges<typeof(ranges)>
 {
   return zip_view(std::tuple(((&&ranges).begin)...), std::tuple(((&&ranges).end)...));
+}
+
+pub fn fill<T>(Range<T> mut &range, T &value) -> void
+{
+  for(var mut &element : range)
+    element = value;
 }

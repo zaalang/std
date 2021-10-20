@@ -426,36 +426,6 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string &str) throws -> v
   fmt(os, ctx, std::string_view(str.data, str.len));
 }
 
-fn fmt<T, N>(OutputStream mut &os, fmt_context mut &ctx, T[N] &array) throws -> void
-{
-  put(os, ctx, "[");
-
-  for(var k = 0; k < array.len; ++k)
-  {
-    if (k != 0)
-      put(os, ctx, ", ");
-
-    fmt(os, ctx, array[k]);
-  }
-
-  put(os, ctx, "]");
-}
-
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, (T...) &tuple) throws -> void
-{
-  put(os, ctx, "(");
-
-  #for(const k = 0; k != __tuple_len<T>; ++k)
-  {
-    #if (k != 0)
-      put(os, ctx, ", ");
-
-    fmt(os, ctx, tuple.#k);
-  }
-
-  put(os, ctx, ")");
-}
-
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws -> void
 {
   ctx.written += format_to(os, "{}:{}", loc.file_name, loc.lineno);
@@ -469,6 +439,36 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
 {
   fmt(os, ctx, "void");
+}
+
+fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws -> void
+{
+  put(os, ctx, "[");
+
+  for(var k = 0; k < array.len; ++k)
+  {
+    if (k != 0)
+      put(os, ctx, ", ");
+
+    fmt_to(os, ctx, array[k]);
+  }
+
+  put(os, ctx, "]");
+}
+
+fn fmt_tuple<T>(OutputStream mut &os, fmt_context mut &ctx, T &tuple) throws -> void
+{
+  put(os, ctx, "(");
+
+  #for(const k = 0; k != __tuple_len<T>; ++k)
+  {
+    #if (k != 0)
+      put(os, ctx, ", ");
+
+    fmt_to(os, ctx, tuple.#k);
+  }
+
+  put(os, ctx, ")");
 }
 
 fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
@@ -488,7 +488,7 @@ fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> 
 
       var str = std::string_literal();
 
-      #for(const k : std::meta::enumerators_of<T>)
+      #for(const k : std::meta::enumerators_of($T))
         if (object == T::#k)
           str = std::meta::name_of(k);
 
@@ -517,11 +517,11 @@ fn fmt_union<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws ->
   dtx.spec.width = spec::auto;
   dtx.spec.precision = spec::auto;
 
-  dtx.written += print_to(os, std::meta::name_of(__type_decl<T>), " { ", object.kind, ": ");
+  dtx.written += print_to(os, std::meta::name_of(std::meta::declid($T)), " { ", object.kind, ": ");
 
-  #for(const k = 1; k != std::meta::fields_of<T>.len; ++k)
+  #for(const k = 1; k != std::meta::fields_of($T).len; ++k)
     if (object.kind == cast(k))
-      fmt(os, dtx, object.#k);
+      fmt_to(os, dtx, object.#k);
 
   put(os, dtx, " }");
 
@@ -535,16 +535,16 @@ fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -
   dtx.spec.width = spec::auto;
   dtx.spec.precision = spec::auto;
 
-  dtx.written += print_to(os, std::meta::name_of(__type_decl<T>), " { ");
+  dtx.written += print_to(os, std::meta::name_of(std::meta::declid($T)), " { ");
 
-  #for(const i = 0, const k : std::meta::fields_of<T>; true; ++i)
+  #for(const i = 0, const k : std::meta::fields_of($T); true; ++i)
   {
     #if (i != 0)
       put(os, dtx, ", ");
 
     dtx.written += print_to(os, std::meta::name_of(k), ": ");
 
-    fmt(os, dtx, object.#k);
+    fmt_to(os, dtx, object.#k);
   }
 
   put(os, dtx, " }");
@@ -554,6 +554,16 @@ fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -
 
 fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 {
+  #if (__is_array<T>)
+  {
+    fmt_array(os, ctx, object);
+  }
+
+  #if (__is_tuple<T>)
+  {
+    fmt_tuple(os, ctx, object);
+  }
+
   #if (__is_enum<T>)
   {
     fmt_enum(os, ctx, object);
@@ -570,6 +580,22 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   }
 }
 
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::declid declid) throws -> void
+{
+  if (declid)
+    fmt(os, ctx, std::meta::name_of(declid));
+  else
+    fmt(os, ctx, 0);
+}
+
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::typeid typeid) throws -> void
+{
+  if (typeid)
+    fmt(os, ctx, std::meta::name_of(typeid));
+  else
+    fmt(os, ctx, 0);
+}
+
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0) literal) throws -> void
 {
   fmt(os, ctx, cast<int>(literal));
@@ -580,7 +606,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0.0) literal) throws -
   fmt(os, ctx, cast<float>(literal));
 }
 
-fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 {
   using T;
 

@@ -63,7 +63,7 @@ pub enum errc : u32
   not_supported = 134,
   line_too_long = 175,
 
-  pub fn bool(errc code) -> bool
+  pub const fn bool(errc code) -> bool
   {
     return cast<u32>(code) != 0;
   }

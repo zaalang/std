@@ -13,7 +13,7 @@ pub struct hash
     return hash(this, item);
   }
 
-  pub fn combine<Items>(hash &hash, Items & ...items) -> usize
+  pub fn combine(hash &hash, var & ...items) -> usize
   {
     var seed = 0;
 
@@ -169,12 +169,6 @@ pub fn hash(hash &hash, void &) -> usize
   return 0;
 }
 
-pub fn hash<T>(hash &hash, T &enumerator) -> usize
-  where __is_enum<T>
-{
-  return hash(cast<usize>(enumerator));
-}
-
 pub fn hash(hash &hash, typeof(0) literal) -> usize
 {
   return hash(cast<int>(literal));
@@ -183,4 +177,23 @@ pub fn hash(hash &hash, typeof(0) literal) -> usize
 pub fn hash(hash &hash, typeof(0.0) literal) -> usize
 {
   return hash(cast<float>(literal));
+}
+
+pub fn hash<T>(var &hasher, T &object) -> usize
+  where __is_enum<T>
+{
+  return hasher(cast<typeof(T::super)>(object));
+}
+
+pub fn hash<T>(var &hasher, T &object) -> usize
+  where __is_struct<T>
+{
+  var seed = 0;
+
+  #for(const k : std::meta::fields_of($T))
+  {
+    seed = hasher.combine(seed, object.#k);
+  }
+
+  return seed;
 }

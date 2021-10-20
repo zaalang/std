@@ -183,11 +183,6 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return this.merge(other);
     }
 
-    #if (__is_rvalue<typeof(other)> && __is_array<typeof(other)>)
-    {
-      return this.insert(std::move_iterator(other.begin), std::move_iterator(other.end));
-    }
-
     return this.insert((&&other).begin, (&&other).end);
   }
 

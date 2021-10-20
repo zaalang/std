@@ -298,6 +298,11 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return iter(&&this, this._data + this._len);
   }
 
+  pub fn as_literal(this &)
+  {
+    return [ this.data .. this.data + this.len ];
+  }
+
   pub fn front(this &&)
   {
     assert(!this.empty);
@@ -340,11 +345,6 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     {
       if (this.empty)
         return iterator(this.take(other));
-    }
-
-    #if (__is_rvalue<typeof(other)> && __is_array<typeof(other)>)
-    {
-      return iterator(insert(this, position.cursor, std::move_iterator(other.begin), std::move_iterator(other.end), other.len));
     }
 
     return iterator(insert(this, position.cursor, (&&other).begin, (&&other).end, other.len));

@@ -234,3 +234,8 @@ pub fn hash<T, N>(var &hasher, array<T, N> &array) -> usize
 {
   return hasher.combine_contiguous(array.data, array.len);
 }
+
+pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::array<T, N> &array) throws -> void
+{
+  std::fmt_to(os, ctx, array.super);
+}

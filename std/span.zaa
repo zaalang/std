@@ -149,8 +149,32 @@ pub struct mutable_span<T>
   pub ~mutable_span() = default;
 }
 
+pub fn Span<T, N>(T[N] &array) -> span<T>
+{
+  return std::span(array.begin, array.end);
+}
+
+pub fn Span<T, N>(T[N] mut &array) -> mutable_span<T>
+{
+  return std::mutable_span(array.begin, array.end);
+}
+
 pub fn Span<T = u8>(typeof("") &str) -> span<T>
   where __is_same<T, u8>
 {
   return span<u8>(str.data, str.len);
+}
+
+pub fn subspan<T>(Span<T> &span, usize offset, usize count) -> span<T>
+{
+  assert(offset <= span.len && count <= span.len - offset);
+
+  return std::span(span.data + offset, span.data + offset + count);
+}
+
+pub fn subspan<T>(Span<T> mut &span, usize offset, usize count) -> mutable_span<T>
+{
+  assert(offset <= span.len && count <= span.len - offset);
+
+  return std::mutable_span(span.data + offset, span.data + offset + count);
 }

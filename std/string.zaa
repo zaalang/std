@@ -2,12 +2,12 @@
 // std string
 //
 
-import std.span;
+import std.span : Span;
 import std.stdlib : assert;
 import std.algorithm : swap;
 import std.memory : memcpy, memmove, memchr, memrchr, memcmp;
-import std.unicode : is_whitespace;
-import std.range: Range;
+import std.unicode : is_whitespace, to_uppercase, to_lowercase;
+import std.range : Sentinal, Range;
 import std.fmt;
 import std.bits.utf as utf;
 
@@ -485,6 +485,11 @@ pub struct string<Allocator = std::allocator, N = 24>
     return this._data + this._len;
   }
 
+  pub fn as_literal(this &)
+  {
+    return string_literal(this.data, this.len);
+  }
+
   pub fn reserve(this mut &, usize capacity) -> void
   {
     if (this._capacity < capacity)
@@ -510,6 +515,55 @@ pub struct string<Allocator = std::allocator, N = 24>
   pub fn clear(this mut &) -> void
   {
     this._len = 0;
+  }
+
+  pub fn insert(this mut &, u8 *position, char ch) -> (u8 mut *, usize)
+  {
+    return insert(this, position - this.begin, ch);
+  }
+
+  pub fn insert(this mut &, usize position, char ch) -> (u8 mut *, usize)
+  {
+    var buf = [0; 8];
+    var len = utf::encode(buf.data, ch);
+
+    return insert(this, position, std::string_view(buf.data, len));
+  }
+
+  pub fn insert(this mut &, u8 *position, String &str) -> (u8 mut *, usize)
+  {
+    return insert(this, position - this.begin, str);
+  }
+
+  pub fn insert(this mut &, usize position, String &str) -> (u8 mut *, usize)
+  {
+    assert(position <= this._len);
+
+    ensure_capacity(this, this._len + str.len);
+
+    memmove(this._data + position + str.len, this._data + position, this._len - position);
+    memcpy(this._data + position, str.data, str.len);
+
+    this._len += str.len;
+
+    return std::tuple(this._data + position, str.len);
+  }
+
+  pub fn insert<I>(this mut &, u8 *position, I first, Sentinal<I> last) -> (u8 mut *, usize)
+  {
+    return insert(this, position - this.begin, first, last);
+  }
+
+  pub fn insert<I>(this mut &, usize position, I first, Sentinal<I> last) -> (u8 mut *, usize)
+  {
+    var index = position;
+
+    while (first != last)
+    {
+      index += insert(this, index, *first++).1;
+    }
+
+    return std::tuple(this._data + position, index - position);
   }
 
   pub fn append(this mut &, var & ...args) -> usize
@@ -935,7 +989,7 @@ pub fn trim(String &str) -> string_view
 
 pub fn starts_with(String &haystack, String &needle) -> bool
 {
-  return haystack.take(needle.len) == needle;
+  return haystack.len >= needle.len && haystack[0 .. needle.len] == needle;
 }
 
 pub fn starts_with(String &haystack, char needle) -> bool
@@ -945,12 +999,39 @@ pub fn starts_with(String &haystack, char needle) -> bool
 
 pub fn ends_with(String &haystack, String &needle) -> bool
 {
-  return haystack.len >= needle.len && haystack.substr(haystack.len - needle.len, needle.len) == needle;
+  return haystack.len >= needle.len && haystack[haystack.len - needle.len .. haystack.len] == needle;
 }
 
 pub fn ends_with(String &haystack, char needle) -> bool
 {
   return !haystack.empty && *std::prev(haystack.chars.end) == needle;
+}
+
+pub fn to_lowercase(String &&str) -> string
+{
+  var result = string(&&str);
+
+  for(var mut &ch : result)
+    ch = to_lowercase(ch);
+
+  return result;
+}
+
+pub fn to_uppercase(String &&str) -> string
+{
+  var result = string(&&str);
+
+  for(var mut &ch : result)
+    ch = to_uppercase(ch);
+
+  return result;
+}
+
+pub fn format(String &format, var & ...args) -> string
+{
+  var str = string();
+  str.appendf(format, args...);
+  return str;
 }
 
 pub fn format(#string_literal format, var & ...args) -> string

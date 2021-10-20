@@ -325,11 +325,6 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     //  return this.merge(other);
     //}
 
-    #if (__is_rvalue<typeof(other)> && __is_array<typeof(other)>)
-    {
-      return this.insert(std::move_iterator(other.begin), std::move_iterator(other.end));
-    }
-
     return this.insert((&&other).begin, (&&other).end);
   }
 

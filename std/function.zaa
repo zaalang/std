@@ -7,7 +7,7 @@ import std.stdlib;
 pub struct delegate<R(V), N = 24>
 {
   u64[(N+7)/8] storage;
-  R(void*, V mut &) *_fx;
+  R fn(void*, V mut &) *_fx;
 
   pub fn ()(this&, V ...v) -> R
   {

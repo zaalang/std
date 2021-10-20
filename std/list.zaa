@@ -256,11 +256,6 @@ pub struct list<T, Allocator = std::allocator>
       return this.splice(position, other);
     }
 
-    #if (__is_rvalue<typeof(other)> && __is_array<typeof(other)>)
-    {
-      return this.insert(position, std::move_iterator(other.begin), std::move_iterator(other.end));
-    }
-
     return this.insert(position, (&&other).begin, (&&other).end);
   }
 

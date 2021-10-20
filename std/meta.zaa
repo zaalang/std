@@ -7,6 +7,7 @@ import std.stdio : assert;
 pub struct meta
 {
   pub using declid = typeof(__decl__);
+  pub using typeid = typeof($int);
 
   pub enum DeclKind : u64
   {
@@ -15,6 +16,8 @@ pub struct meta
     Function,
     DeclScoped,
     DeclRef,
+    TypeName,
+    DeclName,
     TypeOf,
     Import,
     Using,
@@ -24,6 +27,7 @@ pub struct meta
     StmtVar,
     ParmVar,
     Struct,
+    Union,
     VTable,
     Lambda,
     ThisVar,
@@ -38,9 +42,27 @@ pub struct meta
     Requires,
     Enum,
     EnumConstant,
-    Union,
+    Attribute,
     Run,
     If,
+  }
+
+  enum DeclFlags
+  {
+    const public = 0x01;
+  }
+
+  enum TypeQuery
+  {
+    add_const,
+    remove_const,
+    add_pointer,
+    remove_pointer,
+    add_reference,
+    remove_reference,
+    return_type,
+    parameters_type,
+    tuple_append,
   }
 
   pub const fn kind_of(declid decl)
@@ -58,28 +80,118 @@ pub struct meta
     return __decl_parent(decl);
   }
 
-  pub const fn children_of(declid decl, u64 filter = 0)
+  pub const fn children_of(declid decl, DeclKind filter = cast(0))
   {
-    return __decl_children(decl, filter);
+    return __decl_children(decl, cast(filter));
   }
 
-  pub const fn fields_of<T>()
+  pub const fn name_of(typeid type)
   {
-    return __type_fields<T>();
+    return __type_name(type);
   }
 
-  pub const fn enumerators_of<T>()
+  pub const fn children_of(typeid type, DeclKind filter = cast(0))
   {
-    return __type_enumerators<T>();
+    return __type_children(type, cast(filter));
+  }
+
+  pub const fn fields_of(typeid type)
+  {
+    return __type_children(type, cast(DeclKind::FieldVar));
+  }
+
+  pub const fn enumerators_of(typeid type)
+  {
+    return __type_children(type, cast(DeclKind::EnumConstant));
   }
 
   pub const fn is_public(declid decl) -> bool
   {
-    return __decl_flags(decl) & 0x01 == 0x01;
+    return __decl_flags(decl) & DeclFlags::public == DeclFlags::public;
   }
 
   pub const fn is_enumerator(declid decl) -> bool
   {
     return kind_of(decl) == DeclKind::EnumConstant;
+  }
+
+  pub const fn is_const(typeid type) -> bool
+  {
+    return __type_query(cast(TypeQuery::remove_const), type) != type;
+  }
+
+  pub const fn add_const(typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::add_const), type);
+  }
+
+  pub const fn remove_const(typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::remove_const), type);
+  }
+
+  pub const fn is_pointer(typeid type) -> bool
+  {
+    return __type_query(cast(TypeQuery::remove_pointer), type) != type;
+  }
+
+  pub const fn add_pointer(typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::add_pointer), type);
+  }
+
+  pub const fn remove_pointer(typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::remove_pointer), type);
+  }
+
+  pub const fn is_reference(typeid type) -> bool
+  {
+    return __type_query(cast(TypeQuery::remove_reference), type) != type;
+  }
+
+  pub const fn add_reference(typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::add_reference), type);
+  }
+
+  pub const fn remove_reference(typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::remove_reference), type);
+  }
+
+  pub const fn return_type(declid decl) -> typeid
+  {
+    return __type_query(cast(TypeQuery::return_type), decl);
+  }
+
+  pub const fn parameters_type(declid decl) -> typeid
+  {
+    return __type_query(cast(TypeQuery::parameters_type), decl);
+  }
+
+  pub const fn decay(typeid type) -> typeid
+  {
+    return remove_const(remove_reference(type));
+  }
+
+  pub const fn tuple_append(typeid tuple, typeid type) -> typeid
+  {
+    return __type_query(cast(TypeQuery::tuple_append), tuple, type);
+  }
+
+  pub const fn enumerator_name<T>(T value)
+  {
+    switch (value)
+    {
+      #{
+        #for(const k : std::meta::enumerators_of($T))
+        {
+          -> { case $(T::#k): return $(std::meta::name_of(k)); }
+        }
+      }
+    }
+
+    return "unknown";
   }
 }

@@ -83,7 +83,7 @@ pub struct fd
     exclusive = 0x02,
     trunc = 0x04,
 
-    pub fn |(oflags lhs, oflags rhs) -> oflags { return cast<oflags>(cast<isize>(lhs) | cast<isize>(rhs)); }
+    pub const fn |(oflags lhs, oflags rhs) -> oflags { return cast<oflags>(cast<isize>(lhs) | cast<isize>(rhs)); }
   }
 
   pub enum rights
@@ -91,7 +91,7 @@ pub struct fd
     read = 0x01,
     write = 0x02,
 
-    pub fn |(rights lhs, rights rhs) -> rights { return cast<rights>(cast<isize>(lhs) | cast<isize>(rhs)); }
+    pub const fn |(rights lhs, rights rhs) -> rights { return cast<rights>(cast<isize>(lhs) | cast<isize>(rhs)); }
   }
 
   pub enum fdflags
@@ -102,7 +102,7 @@ pub struct fd
     rsync = 0x08,
     sync = 0x10,
 
-    pub fn |(fdflags lhs, fdflags rhs) -> fdflags { return cast<fdflags>(cast<isize>(lhs) | cast<isize>(rhs)); }
+    pub const fn |(fdflags lhs, fdflags rhs) -> fdflags { return cast<fdflags>(cast<isize>(lhs) | cast<isize>(rhs)); }
   }
 
   pub fn open(String &path, oflags oflags, rights rights, fdflags fdflags = cast(0)) throws -> fd
