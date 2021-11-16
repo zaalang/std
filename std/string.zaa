@@ -50,7 +50,7 @@ pub struct string_view : std::span<u8>
   {
   }
 
-  pub string_view(String &&str)
+  pub string_view(String &str)
     : super(str.data, str.len)
   {
   }
@@ -362,6 +362,41 @@ pub fn String(string_literal &str) -> string_view
   return string_view(str.data, str.len);
 }
 
+pub struct string_stream
+{
+  u8 *cursor;
+  usize remaining;
+
+  pub string_stream(u8 *data, usize len)
+    : cursor(data), remaining(len)
+  {
+  }
+
+  pub string_stream(u8 *beg, u8 *end)
+    : cursor(beg), remaining(end - beg)
+  {
+  }
+
+  pub string_stream(String &str)
+    : cursor(str.data), remaining(str.len)
+  {
+  }
+
+  pub fn read(this mut &, u8 mut *data, usize len) -> usize
+  {
+    var bytes = std::min(this.remaining, len);
+
+    std::memcpy(data, this.cursor, bytes);
+
+    this.cursor += bytes;
+    this.remaining -= bytes;
+
+    return bytes;
+  }
+
+  pub ~string_stream() = default;
+}
+
 pub struct string<Allocator = std::allocator, N = 24>
 {
   pub string(Allocator &allocator = Allocator())
@@ -400,6 +435,15 @@ pub struct string<Allocator = std::allocator, N = 24>
       this.write(other.data, other.len);
 
     return &this;
+  }
+
+  pub fn with_size(usize size, Allocator &allocator = Allocator()) -> string
+  {
+    var result = string(allocator);
+
+    result.resize(size);
+
+    return result;
   }
 
   pub fn with_capacity(usize capacity, Allocator &allocator = Allocator()) -> string
@@ -517,6 +561,16 @@ pub struct string<Allocator = std::allocator, N = 24>
     this._len = 0;
   }
 
+  pub fn insert(this mut &, u8 *position, u8 ch) -> (u8 mut *, usize)
+  {
+    return insert(this, position - this.begin, ch);
+  }
+
+  pub fn insert(this mut &, usize position, u8 ch) -> (u8 mut *, usize)
+  {
+    return insert(this, position, std::string_view(&ch, 1));
+  }
+
   pub fn insert(this mut &, u8 *position, char ch) -> (u8 mut *, usize)
   {
     return insert(this, position - this.begin, ch);
@@ -564,6 +618,60 @@ pub struct string<Allocator = std::allocator, N = 24>
     }
 
     return std::tuple(this._data + position, index - position);
+  }
+
+  pub fn erase(this mut &, u8 *position) -> u8 mut *
+  {
+    return erase(this, position - this.begin, 1);
+  }
+
+  pub fn erase(this mut &, usize position) -> u8 mut *
+  {
+    return erase(this, position, 1);
+  }
+
+  pub fn erase(this mut &, u8 *first, u8 *last) -> u8 mut *
+  {
+    return erase(this, first - this.begin, last - first);
+  }
+
+  pub fn erase(this mut &, usize position, usize count) -> u8 mut *
+  {
+    assert(position <= this._len);
+
+    if (this._len - position < count)
+      count = this._len - position;
+
+    memmove(this._data + position, this._data + position + count, this._len - position - count);
+
+    this._len -= count;
+
+    return this._data + position;
+  }
+
+  pub fn +=(this mut &, u8 ch) -> string mut &
+  {
+    ensure_capacity(this, this._len + 1);
+
+    *(this._data + this.len) = ch;
+
+    this._len += 1;
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, char ch) -> string mut &
+  {
+    insert(this, this.len, ch);
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, String &str) -> string mut &
+  {
+    insert(this, this.len, str);
+
+    return &this;
   }
 
   pub fn append(this mut &, var & ...args) -> usize
@@ -664,6 +772,52 @@ pub struct string<Allocator = std::allocator, N = 24>
   u8[N] _smallbuffer;
 
   Allocator _allocator;
+}
+
+pub fn +<Allocator, N>(string<Allocator, N> &&lhs, String &rhs) -> string
+{
+  var result = string<Allocator, N>(&&lhs);
+
+  result += rhs;
+
+  return result;
+}
+
+pub fn +<Allocator, N>(string<Allocator, N> &&lhs, u8 rhs) -> string
+{
+  var result = string<Allocator, N>(&&lhs);
+
+  result += rhs;
+
+  return result;
+}
+
+pub fn +<Allocator, N>(string<Allocator, N> &&lhs, char rhs) -> string
+{
+  var result = string<Allocator, N>(&&lhs);
+
+  result += rhs;
+
+  return result;
+}
+
+pub fn erase(string mut &str, u8 ch) -> usize
+{
+  var n = str.len;
+
+  str.erase(std::remove(str.begin, str.end, ch), str.end);
+
+  return n - str.len;
+}
+
+pub fn erase_if<Pred>(string mut &str, Pred &pred) -> usize
+  where requires (u8 i, Pred &pred) { pred(i); }
+{
+  var n = str.len;
+
+  str.erase(std::remove_if(str.begin, str.end, pred), str.end);
+
+  return n - str.len;
 }
 
 pub fn hash(var &hasher, String &str) -> usize

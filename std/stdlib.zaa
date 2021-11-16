@@ -15,9 +15,10 @@ import std.string : String;
 #[noreturn]
 pub extern fn exit(i32) -> void;
 
-pub fn move<T>(T mut &v) -> T&&
+#[lifetime(consume(v))]
+pub fn move<T>(T mut &x) -> T&&
 {
-  return &v;
+  return &x;
 }
 
 #[noreturn]

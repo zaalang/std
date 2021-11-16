@@ -191,9 +191,19 @@ pub fn hash<T>(var &hasher, T &object) -> usize
   var seed = 0;
 
   #for(const k : std::meta::fields_of($T))
-  {
     seed = hasher.combine(seed, object.#k);
-  }
+
+  return seed;
+}
+
+pub fn hash<T>(var &hasher, T &object) -> usize
+  where __is_union<T>
+{
+  var seed = 0;
+
+  #for(const k = 1; k != std::meta::fields_of($T).len; ++k)
+    if (object.kind == cast(k))
+      seed = hasher.combine(seed, object.#k);
 
   return seed;
 }

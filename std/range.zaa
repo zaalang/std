@@ -69,11 +69,13 @@ pub const fn is_all_ranges<Ranges, T>() -> bool
   return true;
 }
 
+#[lifetime(consume(range))]
 pub fn move<T>(std::mutable_span<T> mut &range)
 {
   return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
 
+#[lifetime(consume(range))]
 pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
 {
   return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));

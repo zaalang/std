@@ -124,7 +124,8 @@ pub fn reverse<I>(I first, I last) -> void
 
 pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
 {
-  if (first == last) return first;
+  if (first == last)
+    return first;
 
   var tmp = std::move(*first);
   var lm1 = move(first, last, std::next(first), last);
@@ -135,7 +136,8 @@ pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
 
 pub fn rotate_right<I>(I first, I last) -> I
 {
-  if (first == last) return last;
+  if (first == last)
+    return last;
 
   var lm1 = std::prev(last);
   var tmp = std::move(*lm1);

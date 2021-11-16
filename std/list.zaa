@@ -480,7 +480,25 @@ pub fn hash<T>(var &hasher, list<T> &lst) -> usize
   return hasher.combine_range(lst.begin, lst.end);
 }
 
+pub fn erase<T, Value>(list<T> mut &lst, Value &value) -> usize
+  match (Value value) { T(value); }
+{
+  var n = lst.len;
+  var first = lst.begin;
+
+  for (; first != lst.end; )
+  {
+    if (*first == value)
+      first = lst.erase(first);
+    else
+      ++first;
+  }
+
+  return n - lst.len;
+}
+
 pub fn erase_if<T, Pred>(list<T> mut &lst, Pred &pred) -> usize
+  where requires (T i, Pred &pred) { pred(i); }
 {
   var n = lst.len;
   var first = lst.begin;
