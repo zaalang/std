@@ -29,9 +29,9 @@ pub struct string_ref : std::span<u8>
   {
   }
 
-  pub fn String(this &) -> std::string_view
+  pub fn String(this &) -> string_view
   {
-    return std::string_view(this.data, this.len);
+    return string_view(this.data, this.len);
   }
 
   pub string_ref(string_ref &that) = default;
@@ -364,34 +364,57 @@ pub fn String(string_literal &str) -> string_view
 
 pub struct string_stream
 {
-  u8 *cursor;
-  usize remaining;
+  pub std::span<u8> buffer;
 
   pub string_stream(u8 *data, usize len)
-    : cursor(data), remaining(len)
+    : buffer(data, len)
   {
   }
 
   pub string_stream(u8 *beg, u8 *end)
-    : cursor(beg), remaining(end - beg)
+    : buffer(beg, end)
   {
   }
 
   pub string_stream(String &str)
-    : cursor(str.data), remaining(str.len)
+    : buffer(str.data, str.len)
   {
+  }
+
+  pub fn capacity(this &) -> usize
+  {
+    return buffer.len;
+  }
+
+  pub fn fetch(this mut &) -> std::span<u8>
+  {
+    return this.buffer;
+  }
+
+  pub fn pack_and_fetch(this mut &) -> std::span<u8>
+  {
+    return this.buffer;
+  }
+
+  pub fn discard(this mut &, usize len) -> void
+  {
+    this.buffer.remove_prefix(len);
   }
 
   pub fn read(this mut &, u8 mut *data, usize len) -> usize
   {
-    var bytes = std::min(this.remaining, len);
+    var bytes = std::min(this.buffer.len, len);
 
-    std::memcpy(data, this.cursor, bytes);
+    std::memcpy(data, this.buffer.data, bytes);
 
-    this.cursor += bytes;
-    this.remaining -= bytes;
+    this.buffer.remove_prefix(bytes);
 
     return bytes;
+  }
+
+  pub fn lines(this mut &)
+  {
+    return string_view(this.buffer.data, this.buffer.len).lines();
   }
 
   pub ~string_stream() = default;
@@ -568,7 +591,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn insert(this mut &, usize position, u8 ch) -> (u8 mut *, usize)
   {
-    return insert(this, position, std::string_view(&ch, 1));
+    return insert(this, position, string_view(&ch, 1));
   }
 
   pub fn insert(this mut &, u8 *position, char ch) -> (u8 mut *, usize)
@@ -581,7 +604,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     var buf = [0; 8];
     var len = utf::encode(buf.data, ch);
 
-    return insert(this, position, std::string_view(buf.data, len));
+    return insert(this, position, string_view(buf.data, len));
   }
 
   pub fn insert(this mut &, u8 *position, String &str) -> (u8 mut *, usize)
@@ -620,14 +643,9 @@ pub struct string<Allocator = std::allocator, N = 24>
     return std::tuple(this._data + position, index - position);
   }
 
-  pub fn erase(this mut &, u8 *position) -> u8 mut *
+  pub fn erase(this mut &, u8 *position, usize len) -> u8 mut *
   {
-    return erase(this, position - this.begin, 1);
-  }
-
-  pub fn erase(this mut &, usize position) -> u8 mut *
-  {
-    return erase(this, position, 1);
+    return erase(this, first - this.begin, len);
   }
 
   pub fn erase(this mut &, u8 *first, u8 *last) -> u8 mut *
@@ -647,6 +665,108 @@ pub struct string<Allocator = std::allocator, N = 24>
     this._len -= count;
 
     return this._data + position;
+  }
+
+  pub fn replace(this mut &, u8 *position, usize len, String &str) -> u8 mut *
+  {
+    return replace(this, position - this.begin, len, str);
+  }
+
+  pub fn replace(this mut &, u8 *first, u8 *last, String &str) -> u8 mut *
+  {
+    return replace(this, first - this.begin, last - first, str);
+  }
+
+  pub fn replace(this mut &, usize position, usize count, String &str) -> u8 mut *
+  {
+    assert(position <= this._len);
+
+    if (this._len - position < count)
+      count = this._len - position;
+
+    if (str.len < count)
+    {
+      memmove(this._data + position + str.len, this._data + position + count, this._len - position - count);
+      memcpy(this._data + position, str.data, str.len);
+      this._len -= count - str.len;
+    }
+    else if (count < str.len)
+    {
+      ensure_capacity(this, this._len + str.len - count);
+      memmove(this._data + position + str.len, this._data + position + count, this._len - position - count);
+      memcpy(this._data + position, str.data, str.len);
+      this._len += str.len - count;
+    }
+    else
+    {
+      memcpy(this._data + position, str.data, str.len);
+    }
+
+    return this._data + position;
+  }
+
+  pub fn replace_all(this mut &, u8 from, u8 to) -> string mut &
+  {
+    while (var i = this.begin; i += memchr(i, from, this.end - i); i != this.end)
+      *i++ = to;
+
+    return &this;
+  }
+
+  pub fn replace_first(this mut &, u8 from, u8 to) -> string mut &
+  {
+    if (var i = memchr(this.begin, from, this.len); i != this.len)
+      this[i] = to;
+
+    return &this;
+  }
+
+  pub fn replace_first(this mut &, char from, char to) -> string mut &
+  {
+    var from_buf = [0; 8];
+    var from_len = utf::encode(from_buf.data, from);
+
+    var to_buf = [0; 8];
+    var to_len = utf::encode(to_buf.data, to);
+
+    replace_first(this, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
+
+    return &this;
+  }
+
+  pub fn replace_first(this mut &, String &from, String &to) -> string mut &
+  {
+    if (from.len != 0)
+    {
+      if (var i = this.find_first(from); i != this.end)
+        replace(this, i, from.len, to);
+    }
+
+    return &this;
+  }
+
+  pub fn replace_all(this mut &, char from, char to) -> string mut &
+  {
+    var from_buf = [0; 8];
+    var from_len = utf::encode(from_buf.data, from);
+
+    var to_buf = [0; 8];
+    var to_len = utf::encode(to_buf.data, to);
+
+    replace_all(this, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
+
+    return &this;
+  }
+
+  pub fn replace_all(this mut &, String &from, String &to) -> string mut &
+  {
+    if (from.len != 0)
+    {
+      while (var i = this.begin; i = this.find_first(i, from); i != this.end)
+        i = replace(this, i, from.len, to) + to.len;
+    }
+
+    return &this;
   }
 
   pub fn +=(this mut &, u8 ch) -> string mut &
@@ -712,6 +832,27 @@ pub struct string<Allocator = std::allocator, N = 24>
     {
       return 0;
     }
+  }
+
+  pub fn trim!(this mut &) -> string mut &
+  {
+    return &(this = trim(this));
+  }
+
+  pub fn to_lowercase!(this mut &) -> string mut &
+  {
+    for(var mut &ch : this)
+      ch = to_lowercase(ch);
+
+    return &this;
+  }
+
+  pub fn to_uppercase!(this mut &) -> string mut &
+  {
+    for(var mut &ch : this)
+      ch = to_uppercase(ch);
+
+    return &this;
   }
 
   pub fn write(this mut &, u8 *data, usize len) -> usize
@@ -1161,24 +1302,29 @@ pub fn ends_with(String &haystack, char needle) -> bool
   return !haystack.empty && *std::prev(haystack.chars.end) == needle;
 }
 
+pub fn gsub(String &&str, u8 from, u8 to) -> string
+{
+  return string(&&str).replace_all(from, to);
+}
+
+pub fn gsub(String &&str, char from, char to) -> string
+{
+  return string(&&str).replace_all(from, to);
+}
+
+pub fn gsub(String &&str, String &from, String &to) -> string
+{
+  return string(&&str).replace_all(from, to);
+}
+
 pub fn to_lowercase(String &&str) -> string
 {
-  var result = string(&&str);
-
-  for(var mut &ch : result)
-    ch = to_lowercase(ch);
-
-  return result;
+  return string(&&str).to_lowercase!;
 }
 
 pub fn to_uppercase(String &&str) -> string
 {
-  var result = string(&&str);
-
-  for(var mut &ch : result)
-    ch = to_uppercase(ch);
-
-  return result;
+  return string(&&str).to_uppercase!;
 }
 
 pub fn format(String &format, var & ...args) -> string

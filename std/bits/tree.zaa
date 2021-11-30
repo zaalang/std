@@ -187,7 +187,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       }
       else
       {
-        while (var z = x.right; z)
+        for (var z = x.right; z; )
         {
           if (this.cmp(key, cast<Node*>(z).value.key))
           {
@@ -200,7 +200,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
           }
         }
 
-        while (var z = x.left; z)
+        for (var z = x.left; z; )
         {
           if (!this.cmp(cast<Node*>(z).value.key, key))
           {

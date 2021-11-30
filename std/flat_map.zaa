@@ -173,6 +173,23 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return tuple(pos, false);
   }
 
+  pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
+    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    var pos = this.lower_bound(key);
+
+    if (pos == this.end || this.cmp(key, (*pos).key))
+    {
+      pos = this._tree.insert(pos, &&key, &&args...);
+
+      return tuple(pos, true);
+    }
+
+    (*pos).value = T(&&args..., allocator?: this.allocator);
+
+    return tuple(pos, false);
+  }
+
   pub fn insert(this mut &, Range<value_type> &&other) -> void
   {
     #if (__is_rvalue<typeof(other)> && __is_same<flat_map, typeof(other)>)

@@ -65,6 +65,26 @@ pub struct span<T>
     return span(this.data + range.0, this.data + range.1 + 1);
   }
 
+  pub fn remove_prefix(this mut &, usize n) -> void
+  {
+    assert(n <= this.len);
+
+    this.len -= n;
+    this.data += n;
+  }
+
+  pub fn remove_suffix(this mut &, usize n) -> void
+  {
+    assert(n <= this.len);
+
+    this.len -= n;
+  }
+
+  pub span(mutable_span<T> &that)
+    : len(that.len), data(that.data)
+  {
+  }
+
   pub fn =(this mut &, mutable_span<T> &that) -> span mut &
   {
     this.len = that.len;
@@ -143,6 +163,21 @@ pub struct mutable_span<T>
     return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
+  pub fn remove_prefix(this mut &, usize n) -> void
+  {
+    assert(n <= this.len);
+
+    this.len -= n;
+    this.data += n;
+  }
+
+  pub fn remove_suffix(this mut &, usize n) -> void
+  {
+    assert(n <= this.len);
+
+    this.len -= n;
+  }
+
   pub mutable_span() = default;
   pub mutable_span(mutable_span &that) = default;
   pub fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
@@ -172,9 +207,31 @@ pub fn subspan<T>(Span<T> &span, usize offset, usize count) -> span<T>
   return std::span(span.data + offset, span.data + offset + count);
 }
 
-pub fn subspan<T>(Span<T> mut &span, usize offset, usize count) -> mutable_span<T>
+pub fn subspan<T>(std::mutable_span<T> &span, usize offset, usize count) -> mutable_span<T>
 {
   assert(offset <= span.len && count <= span.len - offset);
 
   return std::mutable_span(span.data + offset, span.data + offset + count);
+}
+
+pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize
+{
+  var bytes = std::min(span.len, len);
+
+  std::memcpy(data, span.data, bytes);
+
+  span.remove_prefix(bytes);
+
+  return bytes;
+}
+
+pub fn write(std::mutable_span<u8> mut &span, u8 *data, usize len) -> usize
+{
+  var bytes = std::min(span.len, len);
+
+  std::memcpy(span.data, data, bytes);
+
+  span.remove_prefix(bytes);
+
+  return bytes;
 }

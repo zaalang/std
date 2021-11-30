@@ -351,6 +351,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
+    where requires (I i) { T(*i); }
   {
     return iterator(insert(this, position.cursor, first, last, std::distance(first, last)));
   }

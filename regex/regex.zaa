@@ -95,10 +95,12 @@ pub struct regex
 fn build(std::string_literal pattern, options flags)
 {
   var ast = std::vector<expr>();
-  assert(parse(pattern, ast, flags) == cast<errc>(0));
+  if (var r = parse(pattern, ast, flags); r != cast<errc>(0))
+    std::panic("regex parse error : ", r);
 
   var program = std::vector<u32>();
-  assert(compile(ast, program, flags) == cast<errc>(0));
+  if (var r = compile(ast, program, flags); r != cast<errc>(0))
+    std::panic("regex compile error : ", r);
 
   return [program.data .. program.data + program.len];
 }

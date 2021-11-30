@@ -315,15 +315,32 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return std::tuple(iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
   }
 
+  pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
+    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    var pos = this.find_or_prepare_insert(key);
+
+    if (pos.1)
+    {
+      new<value_type>(this._data + pos.0)(&&key, &&args..., allocator?: this.allocator);
+    }
+    else
+    {
+      (this._data + pos.0).value = T(&&args..., allocator?: this.allocator);
+    }
+
+    return std::tuple(iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
+  }
+
   pub fn insert(this mut &, Range<value_type> &&other) -> void
   {
-    //#if (__is_rvalue<typeof(other)> && __is_same<flat_hash_map, typeof(other)>)
-    //{
-    //  if (this.empty)
-    //    return this.take(other);
-    //
+    #if (__is_rvalue<typeof(other)> && __is_same<flat_hash_map, typeof(other)>)
+    {
+      if (this.empty)
+        return this.take(other);
+
     //  return this.merge(other);
-    //}
+    }
 
     return this.insert((&&other).begin, (&&other).end);
   }
@@ -334,6 +351,17 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     while (first != last)
     {
       insert(this, *first++);
+    }
+  }
+
+  pub fn merge(this mut &, flat_hash_map mut &other) -> void
+  {
+    assert(&this != &other);
+    assert(this.allocator == other.allocator);
+
+    for(var mut &it : other)
+    {
+      insert(this, std::move(it));
     }
   }
 
@@ -368,6 +396,18 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     }
 
     return iterator(last.ctrl, last.data);
+  }
+
+  fn take(this mut &, flat_hash_map mut &other) -> void
+  {
+    assert(this.empty);
+    assert(this.allocator == other.allocator);
+
+    swap(this._data, other._data);
+    swap(this._ctrl, other._ctrl);
+    swap(this._len, other._len);
+    swap(this._capacity, other._capacity);
+    swap(this.growth_left, other.growth_left);
   }
 
   fn resize(this mut &, usize n) -> void

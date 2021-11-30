@@ -431,6 +431,13 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) th
   ctx.written += format_to(os, "{}:{}", loc.file_name, loc.lineno);
 }
 
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws -> void
+{
+  var buf = [0; 256];
+
+  fmt(os, ctx, error.message(buf.data, buf.len));
+}
+
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
 {
   fmt(os, ctx, "null");

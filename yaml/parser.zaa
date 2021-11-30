@@ -1,0 +1,819 @@
+//
+// yaml parser
+//
+
+import yaml;
+import yaml.scanner;
+import std.io : InputReader;
+import std.vector;
+import std.flat_map;
+import std.scan;
+
+using yaml::errc;
+using yaml::mark;
+using yaml::node;
+using yaml::token;
+using yaml::scanner;
+using yaml::scalar_style;
+
+enum state
+{
+  stream_start = 0,
+  implicit_document_start,
+  document_start,
+  document_content,
+  document_end,
+  block_node,
+  block_node_or_indentless_sequence,
+  flow_node,
+  block_sequence_entry,
+  indentless_sequence_entry,
+  block_mapping_key,
+  block_mapping_value,
+  flow_sequence_entry,
+  flow_sequence_entry_mapping_key,
+  flow_sequence_entry_mapping_value,
+  flow_mapping_key,
+  flow_mapping_value,
+  sequence_entry,
+  sequence_flow_entry,
+  mapping_entry,
+  mapping_flow_entry,
+  anchor_entry,
+  tag_seq,
+  tag_map,
+  tag_set,
+  tag_str,
+  tag_binary,
+  tag_null,
+  tag_bool,
+  tag_int,
+  tag_float,
+  tag_unknown,
+  errored,
+  end,
+}
+
+struct parse_context
+{
+  token tok;
+  state state;
+  errc error;
+  scanner scanner;
+  std::vector<node> stack;
+  std::vector<state> states;
+  std::flat_map<std::string, node> anchors;
+  std::vector<std::string> names;
+
+  fn push_state(this mut &, state state) -> void
+  {
+    this.states.push_back(state);
+  }
+
+  fn pop_state(this mut &) -> state
+  {
+    return this.states.take_back();
+  }
+
+  fn consume_token(this mut &, var mut &is) throws -> void
+  {
+    this.tok = this.scanner.fetch(is);
+  }
+
+  parse_context()
+  {
+    states.reserve(32);
+  }
+
+  ~parse_context() = default;
+}
+
+pub struct parse_result
+{
+  pub yaml::errc error;
+  pub yaml::mark mark;
+  pub std::vector<node> docs;
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
+}
+
+fn parse_error(parse_context mut &ctx, errc error) -> state
+{
+  ctx.error = error;
+  ctx.state = state::errored;
+
+  return ctx.state;
+}
+
+fn parser_process_directives(parse_context mut &ctx, InputReader mut &is) throws -> void
+{
+  while (ctx.tok.type == token::type::directive)
+  {
+    ctx.consume_token(is);
+  }
+}
+
+fn stream_start(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  ctx.consume_token(is);
+
+  return state::implicit_document_start;
+}
+
+fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) throws -> state
+{
+  if (!implicit)
+  {
+    while (ctx.tok.type == token::type::document_end)
+      ctx.consume_token(is);
+  }
+
+  switch (ctx.tok.type)
+  {
+    case stream_end:
+      ctx.consume_token(is);
+      ctx.state = state::end;
+
+    case directive:
+      parser_process_directives(ctx, is);
+
+    case document_start:
+      ctx.consume_token(is);
+      ctx.push_state(state::document_end);
+      ctx.state = state::document_content;
+
+    else:
+      if (!implicit)
+        return parse_error(ctx, yaml::errc::expected_document_start);
+
+      parser_process_directives(ctx, is);
+      ctx.push_state(state::document_end);
+      ctx.state = state::block_node;
+  }
+
+  return ctx.state;
+}
+
+fn document_content(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case directive:
+    case document_start:
+    case document_end:
+    case stream_end:
+      parse_empty(ctx, is);
+
+    else:
+      parse_node(ctx, is, true, false);
+  }
+
+  return ctx.state;
+}
+
+fn document_end(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  if (ctx.tok.type == token::type::document_end)
+    ctx.consume_token(is);
+
+  return state::document_start;
+}
+
+fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  if (ctx.tok.value == "!!seq")
+    ctx.state = state::tag_seq;
+
+  else if (ctx.tok.value == "!!map")
+    ctx.state = state::tag_map;
+
+  else if (ctx.tok.value == "!!set")
+    ctx.state = state::tag_set;
+
+  else if (ctx.tok.value == "!!str")
+    ctx.state = state::tag_str;
+
+  else if (ctx.tok.value == "!!binary")
+    ctx.state = state::tag_binary;
+
+  else if (ctx.tok.value == "!!null")
+    ctx.state = state::tag_null;
+
+  else if (ctx.tok.value == "!!bool")
+    ctx.state = state::tag_bool;
+
+  else if (ctx.tok.value == "!!int")
+    ctx.state = state::tag_int;
+
+  else if (ctx.tok.value == "!!float")
+    ctx.state = state::tag_float;
+
+  else
+    ctx.state = state::tag_unknown;
+
+  ctx.consume_token(is);
+
+  return ctx.state;
+}
+
+fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> state
+{
+  switch (ctx.state)
+  {
+    case tag_seq:
+      ctx.stack.push_back(std::vector<node>());
+
+    case tag_map:
+    case tag_set:
+      ctx.stack.push_back(std::flat_hash_map<node, node>());
+
+    case tag_null:
+      ctx.stack.push_back(null);
+
+    case tag_bool:
+      ctx.stack.push_back(false);
+
+    case tag_int:
+      ctx.stack.push_back(0);
+
+    case tag_float:
+      ctx.stack.push_back(0.0);
+
+    case tag_str:
+    case tag_binary:
+      ctx.stack.push_back("");
+
+    case tag_unknown:
+      return parse_error(ctx, yaml::errc::unknown_tag);
+
+    else:
+      ctx.stack.push_back(null);
+  }
+
+  ctx.state = ctx.pop_state();
+
+  return ctx.state;
+}
+
+fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.state)
+  {
+    case tag_null:
+      if (ctx.tok.value != "~" && ctx.tok.value != "null")
+        return parse_error(ctx, yaml::errc::invalid_null_value);
+
+      ctx.stack.push_back(null);
+
+    case tag_bool:
+      if (ctx.tok.value != "true" && ctx.tok.value != "false")
+        return parse_error(ctx, yaml::errc::invalid_bool_value);
+
+      ctx.stack.push_back(ctx.tok.value == "true");
+
+    case tag_int:
+      var integer = i64();
+      if (std::sscan(ctx.tok.value, integer) != ctx.tok.value.len)
+        return parse_error(ctx, yaml::errc::invalid_int_value);
+
+      ctx.stack.push_back(integer);
+
+    case tag_float:
+      var real = f64();
+      if (std::sscan(ctx.tok.value, real) != ctx.tok.value.len)
+        return parse_error(ctx, yaml::errc::invalid_float_value);
+
+      ctx.stack.push_back(real);
+
+    case tag_str:
+    case tag_binary:
+      ctx.stack.push_back(ctx.tok.value);
+
+    case tag_unknown:
+      return parse_error(ctx, yaml::errc::unknown_tag);
+
+    else:
+      switch (ctx.tok.style)
+      {
+        case plain:
+          ctx.stack.push_back(node::from(ctx.tok.value));
+
+        else:
+          ctx.stack.push_back(ctx.tok.value);
+      }
+  }
+
+  ctx.consume_token(is);
+  ctx.state = ctx.pop_state();
+
+  return ctx.state;
+}
+
+fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case block_sequence_start:
+      ctx.consume_token(is);
+      ctx.state = state::block_sequence_entry;
+
+    case flow_sequence_start:
+      ctx.consume_token(is);
+      ctx.state = state::flow_sequence_entry;
+
+    case block_entry:
+      ctx.state = state::indentless_sequence_entry;
+
+    else:
+      std::panic("unexpected");
+  }
+
+  ctx.stack.push_back(std::vector<node>());
+
+  return ctx.state;
+}
+
+fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
+{
+  var mut &entry = ctx.stack[ctx.stack.len - 1];
+
+  ctx.stack[ctx.stack.len - 2].Array.push_back(std::move(entry));
+
+  ctx.stack.pop_back();
+
+  return ctx.pop_state();
+}
+
+fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case block_mapping_start:
+      ctx.consume_token(is);
+      ctx.state = state::block_mapping_key;
+
+    case flow_mapping_start:
+      ctx.consume_token(is);
+      ctx.state = state::flow_mapping_key;
+
+    case key:
+      ctx.consume_token(is);
+      ctx.state = state::flow_sequence_entry_mapping_key;
+
+    case value:
+      ctx.state = state::flow_sequence_entry_mapping_key;
+
+    else:
+      std::panic("unexpected");
+  }
+
+  ctx.stack.push_back(std::flat_hash_map<node, node>());
+
+  return ctx.state;
+}
+
+fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
+{
+  var mut &key = ctx.stack[ctx.stack.len - 2];
+  var mut &value = ctx.stack[ctx.stack.len - 1];
+
+  ctx.stack[ctx.stack.len - 3].Map.insert(std::move(key), std::move(value));
+
+  ctx.stack.pop_back();
+  ctx.stack.pop_back();
+
+  return ctx.pop_state();
+}
+
+fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool indentless_sequence) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case tag:
+      ctx.state = parse_tag(ctx, is);
+
+      switch (ctx.tok.type)
+      {
+        case anchor:
+          ctx.push_state(state::anchor_entry);
+          ctx.names.push_back(std::move(ctx.tok.value));
+          ctx.consume_token(is);
+      }
+
+    case anchor:
+      ctx.push_state(state::anchor_entry);
+      ctx.names.push_back(std::move(ctx.tok.value));
+      ctx.consume_token(is);
+
+      switch (ctx.tok.type)
+      {
+        case tag:
+          ctx.state = parse_tag(ctx, is);
+      }
+  }
+
+  switch (ctx.tok.type)
+  {
+    case alias:
+      var j = ctx.anchors.find(ctx.tok.value);
+
+      if (j == ctx.anchors.end)
+        return parse_error(ctx, yaml::errc::anchor_not_found);
+
+      ctx.consume_token(is);
+      ctx.stack.push_back((*j).value);
+      ctx.state = ctx.pop_state();
+
+    case key:
+    case value:
+    case block_end:
+    case flow_entry:
+    case flow_sequence_end:
+    case flow_mapping_end:
+    case document_start:
+    case document_end:
+    case stream_end:
+      parse_empty(ctx, is);
+
+    case block_entry:
+      if (!indentless_sequence)
+        parse_empty(ctx, is);
+      else
+        parse_sequence(ctx, is);
+
+    case block_sequence_start:
+    case flow_sequence_start:
+
+      if (ctx.tok.type == token::type::block_sequence_start && !block)
+        return parse_error(ctx, yaml::errc::invalid_sequence_start);
+
+      parse_sequence(ctx, is);
+
+    case block_mapping_start:
+    case flow_mapping_start:
+
+      if (ctx.tok.type == token::type::block_mapping_start && !block)
+        return parse_error(ctx, yaml::errc::invalid_mapping_start);
+
+      parse_mapping(ctx, is);
+
+    case scalar:
+      parse_scalar(ctx, is);
+
+    else:
+      switch (ctx.tok.type)
+      {
+        case bad_escape:
+          ctx.error = yaml::errc::bad_escape;
+
+        case bad_indent_character:
+          ctx.error = yaml::errc::bad_indent_character;
+
+        case unexpected_document_indicator:
+          ctx.error = yaml::errc::unexpected_document_indicator;
+
+        case unexpected_end_of_stream:
+          ctx.error = yaml::errc::unexpected_end_of_stream;
+
+        case invalid_sequence_start:
+          ctx.error = yaml::errc::invalid_sequence_start;
+
+        case invalid_mapping_start:
+          ctx.error = yaml::errc::invalid_mapping_start;
+
+        else:
+          ctx.error = yaml::errc::invalid_value;
+      }
+
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn anchor_entry(parse_context mut &ctx, InputReader mut &is) -> state
+{
+  ctx.anchors.insert_or_assign(ctx.names.take_back(), ctx.stack.back());
+
+  return ctx.pop_state();
+}
+
+fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case block_end:
+      ctx.consume_token(is);
+      ctx.state = ctx.pop_state();
+
+    case block_entry:
+      ctx.consume_token(is);
+      ctx.push_state(state::block_sequence_entry);
+      ctx.push_state(state::sequence_entry);
+      parse_node(ctx, is, true, false);
+
+    else:
+      ctx.error = yaml::errc::expected_sequence_entry;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case block_end:
+      ctx.consume_token(is);
+      ctx.state = ctx.pop_state();
+
+    case key:
+      ctx.consume_token(is);
+      ctx.push_state(state::block_mapping_value);
+      parse_node(ctx, is, true, true);
+
+    case value:
+      ctx.push_state(state::block_mapping_value);
+      parse_empty(ctx, is);
+
+    else:
+      ctx.error = yaml::errc::expected_block_mapping_key;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case value:
+      ctx.consume_token(is);
+      ctx.push_state(state::block_mapping_key);
+      ctx.push_state(state::mapping_entry);
+      parse_node(ctx, is, true, true);
+
+    else:
+      ctx.push_state(state::block_mapping_key);
+      ctx.push_state(state::mapping_entry);
+      parse_empty(ctx, is);
+  }
+
+  return ctx.state;
+}
+
+fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case flow_entry:
+      return parse_error(ctx, yaml::errc::expected_sequence_entry);
+
+    case flow_sequence_end:
+      ctx.consume_token(is);
+      ctx.state = ctx.pop_state();
+
+    case key:
+    case value:
+      ctx.push_state(state::flow_sequence_entry);
+      ctx.push_state(state::sequence_flow_entry);
+      parse_mapping(ctx, is);
+
+    else:
+      ctx.push_state(state::flow_sequence_entry);
+      ctx.push_state(state::sequence_flow_entry);
+      parse_node(ctx, is, false, false);
+  }
+
+  return ctx.state;
+}
+
+fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case flow_entry:
+    case flow_sequence_end:
+      ctx.state = sequence_entry(ctx, is);
+      if (ctx.tok.type == token::type::flow_entry)
+        ctx.consume_token(is);
+
+    else:
+      ctx.error = yaml::errc::missing_comma;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case flow_mapping_end:
+      ctx.consume_token(is);
+      ctx.state = ctx.pop_state();
+
+    case key:
+      ctx.consume_token(is);
+      ctx.push_state(state::flow_mapping_value);
+      parse_node(ctx, is, false, false);
+
+    case value:
+      ctx.push_state(state::flow_mapping_value);
+      parse_empty(ctx, is);
+
+    else:
+      ctx.push_state(state::flow_mapping_value);
+      parse_node(ctx, is, false, false);
+  }
+
+  return ctx.state;
+}
+
+fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case value:
+      ctx.consume_token(is);
+      ctx.push_state(state::flow_mapping_key);
+      ctx.push_state(state::mapping_flow_entry);
+      parse_node(ctx, is, true, true);
+
+    else:
+      ctx.push_state(state::flow_mapping_key);
+      ctx.push_state(state::mapping_flow_entry);
+      parse_empty(ctx, is);
+  }
+
+  return ctx.state;
+}
+
+fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case flow_entry:
+    case flow_mapping_end:
+      ctx.state = mapping_entry(ctx, is);
+      if (ctx.tok.type == token::type::flow_entry)
+        ctx.consume_token(is);
+
+    else:
+      ctx.error = yaml::errc::missing_comma;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case block_entry:
+      ctx.consume_token(is);
+      ctx.push_state(state::indentless_sequence_entry);
+      ctx.push_state(state::sequence_entry);
+      parse_node(ctx, is, true, false);
+
+    else:
+      ctx.state = ctx.pop_state();
+  }
+
+  return ctx.state;
+}
+
+fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case value:
+    case flow_entry:
+    case flow_sequence_end:
+      ctx.push_state(state::flow_sequence_entry_mapping_value);
+      parse_empty(ctx, is);
+
+    else:
+      ctx.push_state(state::flow_sequence_entry_mapping_value);
+      parse_node(ctx, is, false, false);
+  }
+
+  return ctx.state;
+}
+
+fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case value:
+      ctx.consume_token(is);
+      ctx.push_state(state::mapping_entry);
+      parse_node(ctx, is, false, false);
+
+    else:
+      ctx.push_state(state::mapping_entry);
+      parse_empty(ctx, is);
+  }
+
+  return ctx.state;
+}
+
+pub fn parse(InputReader mut &is) throws -> parse_result
+{
+  var result = parse_result();
+
+  var ctx = parse_context();
+
+  ctx.consume_token(is);
+
+  while (ctx.state != state::end)
+  {
+    switch (ctx.state)
+    {
+      case stream_start:
+        ctx.state = stream_start(ctx, is);
+
+      case implicit_document_start:
+        ctx.state = document_start(ctx, is, true);
+
+      case document_start:
+        ctx.state = document_start(ctx, is, false);
+
+      case document_content:
+        ctx.state = document_content(ctx, is);
+
+      case document_end:
+        ctx.state = document_end(ctx, is);
+
+      case block_node:
+        ctx.state = parse_node(ctx, is, true, false);
+
+      case block_sequence_entry:
+        ctx.state = block_sequence_entry(ctx, is);
+
+      case flow_sequence_entry:
+        ctx.state = flow_sequence_entry(ctx, is);
+
+      case sequence_flow_entry:
+        ctx.state = sequence_flow_entry(ctx, is);
+
+      case indentless_sequence_entry:
+        ctx.state = indentless_sequence_entry(ctx, is);
+
+      case sequence_entry:
+        ctx.state = sequence_entry(ctx, is);
+
+      case block_mapping_key:
+        ctx.state = block_mapping_key(ctx, is);
+
+      case block_mapping_value:
+        ctx.state = block_mapping_value(ctx, is);
+
+      case flow_mapping_key:
+        ctx.state = flow_mapping_key(ctx, is);
+
+      case flow_mapping_value:
+        ctx.state = flow_mapping_value(ctx, is);
+
+      case mapping_flow_entry:
+        ctx.state = mapping_flow_entry(ctx, is);
+
+      case flow_sequence_entry_mapping_key:
+        ctx.state = flow_sequence_entry_mapping_key(ctx, is);
+
+      case flow_sequence_entry_mapping_value:
+        ctx.state = flow_sequence_entry_mapping_value(ctx, is);
+
+      case mapping_entry:
+        ctx.state = mapping_entry(ctx, is);
+
+      case block_node_or_indentless_sequence:
+        ctx.state = parse_node(ctx, is, true, true);
+
+      case flow_node:
+        ctx.state = parse_node(ctx, is, false, false);
+
+      case anchor_entry:
+        ctx.state = anchor_entry(ctx, is);
+
+      case errored:
+        result.error = ctx.error;
+        result.mark = ctx.tok.loc;
+        ctx.state = state::end;
+
+      else:
+        std::panic("invalid state");
+    }
+  }
+
+  result.docs = std::move(ctx.stack);
+
+  return result;
+}

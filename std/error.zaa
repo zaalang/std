@@ -4,11 +4,12 @@
 
 import std.string;
 
-pub struct error_category
+pub vtable error_category
 {
-  error_category() = default;
-  error_category(error_category &) = default;
-  ~error_category() = default;
+  fn message(uintptr value, u8 mut *buffer, usize buflen) -> std::string_view;
+
+  //fn ref(uintptr value) -> void;
+  //fn unref(uintptr value) -> void;
 }
 
 pub struct source_location
@@ -31,12 +32,15 @@ pub struct source_location
 
 pub struct error
 {
-  pub i64 value;
+  pub uintptr value;
   pub error_category *category;
-  // pub source_location location; ?
-  // pub backtrace ?
+  // pub source_location location; // ?
+  // pub backtrace // ?
 
-  // pub fn what() { return category.what(value); }
+  pub fn message(this &, u8 mut *buffer, usize buflen)
+  {
+    return this.category.message(this.value, buffer, buflen);
+  }
 
   pub error(error &that) = default;
   pub ~error() = default;
@@ -50,6 +54,8 @@ pub enum errc : u32
   no_such_device = 6,
   format_error = 8,
   bad_descriptor = 9,
+  would_block = 11,
+  permission_denied = 13,
   bad_address = 14,
   device_busy = 16,
   already_exists = 17,
@@ -62,6 +68,7 @@ pub enum errc : u32
   timed_out = 110,
   operation_cancelled = 125,
   not_supported = 134,
+  overflow = 139,
   line_too_long = 175,
 
   pub const fn bool(errc code) -> bool
@@ -72,16 +79,30 @@ pub enum errc : u32
 
 pub struct system_error_category : error_category
 {
-  pub fn instance() -> system_error_category *
+  fn instance() -> system_error_category *
   {
-    static instance = #system_error_category();
+    static instance = #system_error_category::system_error_category();
 
     return &instance;
   }
 
-  system_error_category() = default;
+  pub fn message(uintptr value, u8 mut *buffer, usize buflen) -> std::string_view
+  {
+    return std::meta::enumerator_name(cast<errc>(value));
+  }
+
+  system_error_category()
+    : super(error_category<system_error_category>)
+  {
+  }
+
   system_error_category(system_error_category &) = default;
   ~system_error_category() = default;
+}
+
+pub fn system_error_category() -> system_error_category *
+{
+  return system_error_category::instance;
 }
 
 pub fn system_error(errc code) -> error

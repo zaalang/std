@@ -279,6 +279,23 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return std::tuple(iterator(pos.0), !!pos.1);
   }
 
+  pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
+    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    var pos = this._tree.find_insert_position_unique(key);
+
+    if (pos.1)
+    {
+      pos.0 = this._tree.insert(pos.1, &&key, &&args...);
+    }
+    else
+    {
+      cast<node_type mut *>(pos.0).value.value = T(&&args..., allocator?: this.allocator);
+    }
+
+    return std::tuple(iterator(pos.0), !!pos.1);
+  }
+
   pub fn insert(this mut &, Range<value_type> &&other) -> void
   {
     #if (__is_rvalue<typeof(other)> && __is_same<map, typeof(other)>)

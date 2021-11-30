@@ -39,6 +39,12 @@ pub struct iterator_pair<I, J>
   {
     return (&&this).second;
   }
+
+  //pub fn [](this &&, usize index)
+  //  where __is_match<RandomAccessIterator, I>
+  //{
+  //  return &&(*std::next((&&this).first, index));
+  //}
 }
 
 pub fn Range<T, N>(T[N] &&array)

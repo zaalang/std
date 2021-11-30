@@ -1,0 +1,370 @@
+//
+// yaml
+//
+
+import std.stdlib : assert;
+import std.io : InputReader;
+import std.string : String;
+import std.range : Range;
+import std.vector;
+import std.flat_hash_map;
+import std.scan;
+import yaml.parser;
+
+pub enum errc : u32
+{
+  internal_error = 1,
+  expected_document_start,
+  expected_sequence_entry,
+  expected_block_mapping_key,
+  missing_comma,
+  bad_escape,
+  bad_indent_character,
+  unknown_tag,
+  anchor_not_found,
+  invalid_null_value,
+  invalid_bool_value,
+  invalid_int_value,
+  invalid_float_value,
+  invalid_sequence_start,
+  invalid_mapping_start,
+  invalid_value,
+  invalid_utf8,
+  unexpected_document_indicator,
+  unexpected_end_of_stream,
+
+  pub fn bool(errc code) -> bool
+  {
+    return cast<u32>(code) != 0;
+  }
+}
+
+pub union node
+{
+  pub Null,
+  pub Real(f64),
+  pub Integer(i64),
+  pub Boolean(bool),
+  pub String(std::string),
+  pub Array(std::vector<node>),
+  pub Map(std::flat_hash_map<node, node>),
+
+  pub fn bool(this&) -> bool
+  {
+    return this.kind != cast(0);
+  }
+
+  pub fn is_null(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Null;
+  }
+
+  pub fn is_real(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Real;
+  }
+
+  pub fn is_integer(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Integer;
+  }
+
+  pub fn is_boolean(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Boolean;
+  }
+
+  pub fn is_string(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::String;
+  }
+
+  pub fn is_array(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Array;
+  }
+
+  pub fn is_map(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Map;
+  }
+
+  pub fn as<T>(this&)
+  {
+    switch (this)
+    {
+      case Real(real):
+        #if (__is_arithmetic<T>)
+          return cast<T>(real);
+        #if (requires { T(f64); })
+          return T(real);
+
+      case Integer(integer):
+        #if (__is_arithmetic<T>)
+          return cast<T>(integer);
+        #if (requires { T(i64); })
+          return T(integer);
+
+      case Boolean(boolean):
+        #if (requires { T(bool); })
+          return T(boolean);
+
+      case String(string):
+        #if (__is_same<T, std::string &>)
+          return T(&string);
+        #if (requires { T(std::string()); })
+          return T(string);
+    }
+
+    std::panic("invalid yaml access");
+  }
+
+  pub fn as_vec(this &&)
+  {
+    switch (this)
+    {
+      case Array(array):
+        return &(&&array);
+    }
+
+    std::panic("invalid yaml access");
+  }
+
+  pub fn as_map(this &&)
+  {
+    switch (this)
+    {
+      case Map(map):
+        return &(&&map);
+    }
+
+    std::panic("invalid yaml access");
+  }
+
+  pub fn []<Key>(this&, Key &key) -> node &
+  {
+    static emptynode = [<uintptr>: 0; sizeof<node>/sizeof<uintptr>];
+
+    switch (this)
+    {
+      case Array(array):
+        #if (__is_integral<Key>)
+          if (0 < key && cast<usize>(key) < array.len)
+            return &array[cast<usize>(key)];
+        #if (__is_same<Key, node>)
+          if (key.is_integer && 0 < key.Integer && cast<usize>(key.Integer) < array.len)
+            return &array[cast<usize>(key.Integer)];
+
+      case Map(map):
+        if (var j = map.find(key); j != map.end)
+          return &(*j).value;
+    }
+
+    return &cast<node&>(emptynode);
+  }
+
+  pub fn ==(node &lhs, null) -> bool
+  {
+    return lhs.is_null;
+  }
+
+  pub fn ==<T>(node &lhs, T rhs) -> bool
+    where __is_floating_point<T>
+  {
+    switch (lhs)
+    {
+      case Real(lhs):
+        return lhs == cast<f64>(rhs);
+    }
+
+    return false;
+  }
+
+  pub fn ==<T>(node &lhs, T rhs) -> bool
+    where __is_integral<T>
+  {
+    switch (lhs)
+    {
+      case Integer(lhs):
+        return lhs == cast<i64>(rhs);
+    }
+
+    return false;
+  }
+
+  pub fn ==(node &lhs, bool rhs) -> bool
+  {
+    switch (lhs)
+    {
+      case Boolean(lhs):
+        return lhs == rhs;
+    }
+
+    return false;
+  }
+
+  pub fn ==(node &lhs, String &rhs) -> bool
+  {
+    switch (lhs)
+    {
+      case String(lhs):
+        return lhs == rhs;
+    }
+
+    return false;
+  }
+
+  pub node(null)
+    : Null()
+  {
+  }
+
+  pub node(f64 real)
+    : Real(real)
+  {
+  }
+
+  pub node<T>(T real)
+    where __is_floating_point<T>
+    : Real(cast<f64>(real))
+  {
+  }
+
+  pub node(i64 integer)
+    : Integer(integer)
+  {
+  }
+
+  pub node<T>(T integer)
+    where __is_integral<T>
+    : Integer(cast<i64>(integer))
+  {
+  }
+
+  pub node(bool boolean)
+    : Boolean(boolean)
+  {
+  }
+
+  pub node(String &&string)
+    : String(&&string)
+  {
+  }
+
+  pub node(Range<node> &&array)
+    : Array(&&array)
+  {
+  }
+
+  pub node(Range<std::key_value_pair<node, node>> &&map)
+    : Map(&&map)
+  {
+  }
+
+  pub fn from(String &str) -> node
+  {
+    var ch = str.begin;
+    var end = str.end;
+    var gotdig = false;
+    var gotdot = false;
+
+    if (ch != end && (*ch == cast('+') || *ch == cast('-')))
+      ++ch;
+
+    for(; ch != end; ++ch)
+    {
+      if (cast('0') <= *ch && *ch <= cast('9'))
+        gotdig = true;
+
+      else if (*ch == cast('.'))
+        gotdot = true;
+
+      else
+        break;
+    }
+
+    if (gotdig && gotdot)
+    {
+      var real = f64();
+      if (std::sscan(str, real) == str.len)
+        return real;
+    }
+
+    if (gotdig)
+    {
+      var integer = i64();
+      if (std::sscan(str, integer) == str.len)
+        return integer;
+    }
+
+    if (str == "~" || str == "null")
+      return null;
+
+    if (str == "true")
+      return true;
+
+    if (str == "false")
+      return false;
+
+    return str;
+  }
+
+  pub node() = default;
+  pub node(node&&) = default;
+  pub fn =(node mut &, node &&) -> node mut & = default;
+  pub ~node() = default;
+}
+
+pub fn ==(node &lhs, node &rhs) -> bool
+{
+  if (lhs.kind == rhs.kind)
+  {
+    switch (cast<int>(lhs.kind))
+    {
+      #{
+        #for(const k = 1; k != std::meta::fields_of($node).len; ++k)
+          -> { case $(k): return lhs.$(k) == rhs.$(k); }
+      }
+    }
+  }
+
+  return lhs.kind == rhs.kind;
+}
+
+pub fn <=>(node &lhs, node &rhs) -> int
+{
+  if (lhs.kind == rhs.kind)
+  {
+    switch (cast<int>(lhs.kind))
+    {
+      #{
+        #for(const k = 1; k != std::meta::fields_of($node).len; ++k)
+          -> { case $(k): return lhs.$(k) <=> rhs.$(k); }
+      }
+    }
+  }
+
+  return lhs.kind <=> rhs.kind;
+}
+
+pub fn load_from_str(String &src) -> parse_result
+{
+  try
+  {
+    return load_from(std::string_stream(src));
+  }
+  catch(std::error)
+  {
+    std::panic();
+  }
+}
+
+pub fn load_from_file(String &path) throws -> parse_result
+{
+  return load_from(std::buffered_reader(std::file::open(path)));
+}
+
+pub fn load_from(InputReader mut &is) throws -> parse_result
+{
+  return parse(is);
+}
