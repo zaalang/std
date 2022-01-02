@@ -6,7 +6,7 @@ import std.stdio;
 import std.error;
 import std.string : String;
 
-#if (__cfg("zaa.build.checked"))
+#if __cfg("zaa.build.checked")
   const checked_assert = true;
 #else
   const checked_assert = false;

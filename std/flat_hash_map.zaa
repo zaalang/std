@@ -299,7 +299,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       new<value_type>(this._data + pos.0)(&&value, allocator?: this.allocator);
     }
 
-    return std::tuple(iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
+    return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
   }
 
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
@@ -312,7 +312,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       new<value_type>(this._data + pos.0)(&&key, &&args..., allocator?: this.allocator);
     }
 
-    return std::tuple(iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
+    return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
   }
 
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
@@ -329,7 +329,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       (this._data + pos.0).value = T(&&args..., allocator?: this.allocator);
     }
 
-    return std::tuple(iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
+    return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
   }
 
   pub fn insert(this mut &, Range<value_type> &&other) -> void
@@ -474,7 +474,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       if (is_match(this._ctrl + index, hash2))
       {
         if (this._cmp((this._data + index).key, key))
-          return std::tuple(index, false);
+          return (index, false);
       }
 
       if (is_empty(this._ctrl + index))
@@ -499,7 +499,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     *(this._ctrl + index) = hash2;
 
-    return std::tuple(index, true);
+    return (index, true);
   }
 
   pub fn reserve(this mut &, usize capacity) -> void

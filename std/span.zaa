@@ -34,17 +34,17 @@ pub struct span<T>
     return this.len == 0;
   }
 
-  pub fn begin(this&) -> T*
+  pub fn begin(this&) -> T *
   { 
     return this.data;
   }
   
-  pub fn end(this&) -> T*
+  pub fn end(this&) -> T *
   { 
     return this.data + this.len;
   }
   
-  pub fn [](this &, usize index) -> T&
+  pub fn [](this &, usize index) -> T &
   {
     assert(index < this.len);
 
@@ -200,18 +200,9 @@ pub fn Span<T = u8>(typeof("") &str) -> span<T>
   return span<u8>(str.data, str.len);
 }
 
-pub fn subspan<T>(Span<T> &span, usize offset, usize count) -> span<T>
+pub fn subspan<T>(Span<T> &&span, usize offset, usize count)
 {
-  assert(offset <= span.len && count <= span.len - offset);
-
-  return std::span(span.data + offset, span.data + offset + count);
-}
-
-pub fn subspan<T>(std::mutable_span<T> &span, usize offset, usize count) -> mutable_span<T>
-{
-  assert(offset <= span.len && count <= span.len - offset);
-
-  return std::mutable_span(span.data + offset, span.data + offset + count);
+  return span[std::min(offset, span.len) .. std::min(offset + count, span.len)];
 }
 
 pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize

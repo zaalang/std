@@ -438,7 +438,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
       this.take(other);
     #else
-      this.write(other.data, other.len);
+      this.insert(this._len, other.data, other.len);
   }
 
   pub fn =(this mut &, String &&other) -> string mut &
@@ -455,7 +455,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
       this.take(other);
     #else
-      this.write(other.data, other.len);
+      this.insert(this._len, other.data, other.len);
 
     return &this;
   }
@@ -523,23 +523,23 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn [](this &&, usize index)
   {
-    assert(index < this.len);
+    assert(index < this._len);
 
-    return &*(this.data + index);
+    return &*(this._data + index);
   }
 
   pub fn [](this &, (usize, usize) range) -> string_view
   {
-    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
 
-    return string_view(this.data + range.0, this.data + range.1);
+    return string_view(this._data + range.0, this._data + range.1);
   }
 
   pub fn [](this &, (usize, usize, void) range) -> string_view
   {
-    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
 
-    return string_view(this.data + range.0, this.data + range.1 + 1);
+    return string_view(this._data + range.0, this._data + range.1 + 1);
   }
 
   pub fn begin(this &&)
@@ -554,7 +554,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn as_literal(this &)
   {
-    return string_literal(this.data, this.len);
+    return string_literal(this._data, this._len);
   }
 
   pub fn reserve(this mut &, usize capacity) -> void
@@ -614,16 +614,13 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn insert(this mut &, usize position, String &str) -> (u8 mut *, usize)
   {
+    var len = str.len;
+
     assert(position <= this._len);
 
-    ensure_capacity(this, this._len + str.len);
+    insert(this, position, str.data, str.len);
 
-    memmove(this._data + position + str.len, this._data + position, this._len - position);
-    memcpy(this._data + position, str.data, str.len);
-
-    this._len += str.len;
-
-    return std::tuple(this._data + position, str.len);
+    return (this._data + position, len);
   }
 
   pub fn insert<I>(this mut &, u8 *position, I first, Sentinal<I> last) -> (u8 mut *, usize)
@@ -640,7 +637,7 @@ pub struct string<Allocator = std::allocator, N = 24>
       index += insert(this, index, *first++).1;
     }
 
-    return std::tuple(this._data + position, index - position);
+    return (this._data + position, index - position);
   }
 
   pub fn erase(this mut &, u8 *position, usize len) -> u8 mut *
@@ -686,36 +683,27 @@ pub struct string<Allocator = std::allocator, N = 24>
 
     if (str.len < count)
     {
-      memmove(this._data + position + str.len, this._data + position + count, this._len - position - count);
-      memcpy(this._data + position, str.data, str.len);
-      this._len -= count - str.len;
+      memmove(this._data + position, str.data, str.len);
+
+      erase(this, position + str.len, count - str.len);
     }
     else if (count < str.len)
     {
-      ensure_capacity(this, this._len + str.len - count);
-      memmove(this._data + position + str.len, this._data + position + count, this._len - position - count);
-      memcpy(this._data + position, str.data, str.len);
-      this._len += str.len - count;
+      memmove(this._data + position, str.data, count);
+
+      insert(this, position + count, str.data + count, str.len - count);
     }
     else
     {
-      memcpy(this._data + position, str.data, str.len);
+      memmove(this._data + position, str.data, str.len);
     }
 
     return this._data + position;
   }
 
-  pub fn replace_all(this mut &, u8 from, u8 to) -> string mut &
-  {
-    while (var i = this.begin; i += memchr(i, from, this.end - i); i != this.end)
-      *i++ = to;
-
-    return &this;
-  }
-
   pub fn replace_first(this mut &, u8 from, u8 to) -> string mut &
   {
-    if (var i = memchr(this.begin, from, this.len); i != this.len)
+    if (var i = memchr(this.begin, from, this._len); i != this._len)
       this[i] = to;
 
     return &this;
@@ -741,6 +729,14 @@ pub struct string<Allocator = std::allocator, N = 24>
       if (var i = this.find_first(from); i != this.end)
         replace(this, i, from.len, to);
     }
+
+    return &this;
+  }
+
+  pub fn replace_all(this mut &, u8 from, u8 to) -> string mut &
+  {
+    while (var i = this.begin; i += memchr(i, from, this.end - i); i != this.end)
+      *i++ = to;
 
     return &this;
   }
@@ -771,25 +767,35 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn +=(this mut &, u8 ch) -> string mut &
   {
-    ensure_capacity(this, this._len + 1);
-
-    *(this._data + this.len) = ch;
-
-    this._len += 1;
+    if (this._len < this._capacity)
+    {
+      *(this._data + this._len++) = ch;
+    }
+    else
+    {
+      insert(this, this._len, ch);
+    }
 
     return &this;
   }
 
   pub fn +=(this mut &, char ch) -> string mut &
   {
-    insert(this, this.len, ch);
+    if (this._len + 4 < this._capacity)
+    {
+      this._len += utf::encode(this._data + this._len, ch);
+    }
+    else
+    {
+      insert(this, this._len, ch);
+    }
 
     return &this;
   }
 
   pub fn +=(this mut &, String &str) -> string mut &
   {
-    insert(this, this.len, str);
+    insert(this, this._len, str.data, str.len);
 
     return &this;
   }
@@ -808,8 +814,6 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn appendf(this mut &, String &format, var & ...args) -> usize
   {
-    ensure_capacity(this, this._len + format.len);
-
     try
     {
       return std::format_to(this, format, args...);
@@ -822,8 +826,6 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn appendf(this mut &, #string_literal format, var & ...args) -> usize
   {
-    ensure_capacity(this, this._len + format.len);
-
     try
     {
       return std::format_to(this, format, args...);
@@ -832,6 +834,26 @@ pub struct string<Allocator = std::allocator, N = 24>
     {
       return 0;
     }
+  }
+
+  pub fn drop!(this mut &, usize n) -> string mut &
+  {
+    return &(this = drop(this, n));
+  }
+
+  pub fn drop_n!(this mut &, usize n) -> string mut &
+  {
+    return &(this = drop_n(this, n));
+  }
+
+  pub fn take!(this mut &, usize n) -> string mut &
+  {
+    return &(this = take(this, n));
+  }
+
+  pub fn take_n!(this mut &, usize n) -> string mut &
+  {
+    return &(this = take_n(this, n));
   }
 
   pub fn trim!(this mut &) -> string mut &
@@ -857,11 +879,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn write(this mut &, u8 *data, usize len) -> usize
   {
-    ensure_capacity(this, this._len + len);
-
-    memcpy(this._data + this._len, data, len);
-
-    this._len += len;
+    insert(this, this._len, data, len);
 
     return len;
   }
@@ -872,17 +890,6 @@ pub struct string<Allocator = std::allocator, N = 24>
     this._data = this._smallbuffer.data;
     this._capacity = this._smallbuffer.len;
   } 
-
-  fn ensure_capacity(this mut &, usize len) -> void
-  {
-    if (len <= this._capacity)
-      return;
-
-    if (len < 2*this._capacity)
-      len = 2*this._capacity;
-
-    reserve(this, len);
-  }
 
   fn take<M>(this mut &, string<Allocator, M> mut &other) -> void
   {
@@ -900,10 +907,58 @@ pub struct string<Allocator = std::allocator, N = 24>
     }
     else
     {
-      write(this, other.data, other.len);
+      insert(this, this._len, other.data, other.len);
 
       other.clear();
     }
+  }
+
+  fn insert(this mut &, usize position, u8 *src, usize len) -> void
+  {
+    if (this._capacity < this._len + len)
+    {
+      var capacity = this._len + len;
+
+      if (capacity < 2*this._capacity)
+        capacity = 2*this._capacity;
+
+      var data = cast<u8 mut *>(this._allocator.allocate(capacity, alignof<u8>));
+
+      memcpy(data, this._data, position);
+      memcpy(data + position, src, len);
+      memcpy(data + position + len, this._data + position, this._len - position);
+
+      swap(this._data, data);
+
+      if (data != this._smallbuffer.data)
+        this._allocator.free(data, this._capacity);
+
+      this._capacity = capacity;
+    }
+    else
+    {
+      memmove(this._data + position + len, this._data + position, this._len - position);
+
+      if (this._data <= src && src < this._data + this._len)
+      {
+        var cut = this._data + position;
+
+        if (src < cut)
+          memcpy(this._data + position, src, std::min(cut - src, len));
+
+        if (src < cut && cut < src + len)
+          memcpy(this._data + position + (cut - src), cut + len, len - (cut - src));
+
+        if (cut <= src)
+          memcpy(this._data + position, src + len, len);
+      }
+      else
+      {
+        memcpy(this._data + position, src, len);
+      }
+    }
+
+    this._len += len;
   }
 
   usize _len;
@@ -1214,7 +1269,7 @@ pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
   return haystack.end;
 }
 
-pub fn skip(String &str, usize n) -> string_view
+pub fn drop(String &str, usize n) -> string_view
 {
   var i = str.chars.begin;
 
@@ -1246,7 +1301,7 @@ pub fn take(String &str, usize n) -> string_view
 
 pub fn substr(String &str, usize i, usize n) -> string_view
 {
-  return str.skip(i).take(n);
+  return str.drop(i).take(n);
 }
 
 pub fn trim_left(String &str) -> string_view

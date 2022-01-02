@@ -166,3 +166,15 @@ pub fn muladd_with_carry<T>(T x, T y, T z) -> (T, T)
 
   return sum;
 }
+
+pub fn ceil_div<T>(T x, T y) -> T
+  where __is_integral<T>
+{
+  return x / y + cast<T>(x % y != 0);
+}
+
+pub fn floor_div<T>(T x, T y) -> T
+  where __is_integral<T>
+{
+  return x / y - cast<T>(x % y == 0);
+}

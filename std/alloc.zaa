@@ -37,7 +37,7 @@ pub struct allocator
 
   pub fn free(this mut &, void *addr, usize size) -> void
   {
-    mem_free(addr, size);
+    //mem_free(addr, size);
   }
 
   pub fn ==(this &, allocator &) -> bool

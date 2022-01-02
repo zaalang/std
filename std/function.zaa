@@ -4,12 +4,14 @@
 
 import std.stdlib;
 
-pub struct delegate<R(V), N = 24>
+pub struct delegate<R(V), Throws = void, N = 24>
 {
   u64[(N+7)/8] storage;
-  R fn(void*, V mut &) *_fx;
+  R fn(void*, V mut &) throws(Throws) *_fx;
 
-  pub fn ()(this&, V ...v) -> R
+  pub const is_throwing = !__is_same<Throws, void>;
+
+  pub fn ()(this&, V ...v) throws(is_throwing) -> R
   {
     return this._fx(cast<void*>(this.storage.data), v);
   }
@@ -29,7 +31,14 @@ pub struct delegate<R(V), N = 24>
     std::assert(sizeof<Y> <= sizeof(storage), "delegate too large for storage");
 
     cast<Y mut &>(storage) = fx;
-    _fx = fn(void *data, V mut &v) -> R { return cast<Y mut *>(data)(v...); };
+    _fx = fn(void *data, V mut &v) throws(is_throwing) -> R { return cast<Y mut *>(data)(v...); };
+  }
+
+  pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
+  {
+    this = delegate(&&fx);
+
+    return &this;
   }
 
   pub delegate() = default;

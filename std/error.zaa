@@ -42,7 +42,8 @@ pub struct error
     return this.category.message(this.value, buffer, buflen);
   }
 
-  pub error(error &that) = default;
+  pub error(error &) = default;
+  pub fn =(error mut &, error &) -> error mut & = default;
   pub ~error() = default;
 }
 
@@ -62,12 +63,15 @@ pub enum errc : u32
   not_a_directory = 20,
   invalid_argument = 22,
   resource_exhausted = 24,
+  file_too_large = 27,
+  no_space_remaining = 28,
   readonly_file_system = 30,
   result_out_of_range = 34,
+  directory_not_empty = 39,
   value_too_large = 75,
+  not_supported = 95,
   timed_out = 110,
   operation_cancelled = 125,
-  not_supported = 134,
   overflow = 139,
   line_too_long = 175,
 

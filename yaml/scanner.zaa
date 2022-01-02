@@ -120,6 +120,7 @@ pub struct simple_key
 pub struct scanner
 {
   int flow_level;
+  usize tokens_head;
   usize tokens_parsed;
   bool allow_simple_key;
   bool allow_adjacent_value;
@@ -298,7 +299,7 @@ fn save_simple_key(scanner mut &this) -> void
     var key = simple_key();
     key.possible = true;
     key.required = required;
-    key.token_number = this.tokens_parsed + this.tokens.len;
+    key.token_number = this.tokens_parsed + this.tokens.len - this.tokens_head;
     key.loc = this.loc;
 
     remove_simple_key(this);
@@ -779,7 +780,7 @@ fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
 
   if (key.possible)
   {
-    var idx = key.token_number - this.tokens_parsed;
+    var idx = key.token_number - this.tokens_parsed + this.tokens_head;
 
     this.tokens.insert(this.tokens.begin + idx, make_token(token::type::key, loc));
 
@@ -1177,7 +1178,13 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
   {
     var need_more = true;
 
-    if (!this.tokens.empty)
+    if (this.tokens_head == this.tokens.len)
+    {
+      this.tokens.clear();
+      this.tokens_head = 0;
+    }
+
+    else if (this.tokens_head < this.tokens.len)
     {
       need_more = false;
 
@@ -1199,5 +1206,5 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
 
   this.tokens_parsed += 1;
 
-  return this.tokens.take_front();
+  return std::move(this.tokens[this.tokens_head++]);
 }

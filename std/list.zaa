@@ -343,6 +343,24 @@ pub struct list<T, Allocator = std::allocator>
     erase(this, this._root.prev, this._root.prev.next);
   }
   
+  pub fn take_front(this mut &) -> T
+  {
+    var result = std::move(this.front);
+
+    pop_front(this);
+
+    return result;
+  }
+
+  pub fn take_back(this mut &) -> T
+  {
+    var result = std::move(this.back);
+
+    pop_back(this);
+
+    return result;
+  }
+
   pub fn erase(this mut &, Iterator position) -> iterator
   {
     if (position == this.end)

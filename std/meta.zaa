@@ -54,15 +54,15 @@ pub struct meta
 
   enum TypeQuery
   {
-    add_const,
-    remove_const,
-    add_pointer,
-    remove_pointer,
-    add_reference,
-    remove_reference,
-    return_type,
-    parameters_type,
-    tuple_append,
+    const add_const = 0xcd;
+    const remove_const = 0x95;
+    const add_pointer = 0xfa;
+    const remove_pointer = 0x73;
+    const add_reference = 0xeb;
+    const remove_reference = 0xfc;
+    const return_type = 0xc8;
+    const parameters_type = 0x93;
+    const tuple_append = 0xe4;
   }
 
   pub const fn kind_of(declid decl)
@@ -117,57 +117,57 @@ pub struct meta
 
   pub const fn is_const(typeid type) -> bool
   {
-    return __type_query(cast(TypeQuery::remove_const), type) != type;
+    return __type_query(TypeQuery::remove_const, type) != type;
   }
 
   pub const fn add_const(typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::add_const), type);
+    return __type_query(TypeQuery::add_const, type);
   }
 
   pub const fn remove_const(typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::remove_const), type);
+    return __type_query(TypeQuery::remove_const, type);
   }
 
   pub const fn is_pointer(typeid type) -> bool
   {
-    return __type_query(cast(TypeQuery::remove_pointer), type) != type;
+    return __type_query(TypeQuery::remove_pointer, type) != type;
   }
 
   pub const fn add_pointer(typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::add_pointer), type);
+    return __type_query(TypeQuery::add_pointer, type);
   }
 
   pub const fn remove_pointer(typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::remove_pointer), type);
+    return __type_query(TypeQuery::remove_pointer, type);
   }
 
   pub const fn is_reference(typeid type) -> bool
   {
-    return __type_query(cast(TypeQuery::remove_reference), type) != type;
+    return __type_query(TypeQuery::remove_reference, type) != type;
   }
 
   pub const fn add_reference(typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::add_reference), type);
+    return __type_query(TypeQuery::add_reference, type);
   }
 
   pub const fn remove_reference(typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::remove_reference), type);
+    return __type_query(TypeQuery::remove_reference, type);
   }
 
   pub const fn return_type(declid decl) -> typeid
   {
-    return __type_query(cast(TypeQuery::return_type), decl);
+    return __type_query(TypeQuery::return_type, decl);
   }
 
   pub const fn parameters_type(declid decl) -> typeid
   {
-    return __type_query(cast(TypeQuery::parameters_type), decl);
+    return __type_query(TypeQuery::parameters_type, decl);
   }
 
   pub const fn decay(typeid type) -> typeid
@@ -177,7 +177,7 @@ pub struct meta
 
   pub const fn tuple_append(typeid tuple, typeid type) -> typeid
   {
-    return __type_query(cast(TypeQuery::tuple_append), tuple, type);
+    return __type_query(TypeQuery::tuple_append, tuple, type);
   }
 
   pub const fn enumerator_name<T>(T value)

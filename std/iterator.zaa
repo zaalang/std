@@ -86,9 +86,7 @@ pub fn +<I>(move_iterator<I> &lhs, usize rhs) -> move_iterator<I>
 
 pub fn distance<I>(I first, Sentinal<I> last) -> usize
 {
-  using S = typeof(last);
-
-  #if (requires (I x, S y) { y - x; })
+  #if (requires (typeof(first) x, typeof(last) y) { y - x; })
   {
     return last - first;
   }
@@ -124,6 +122,27 @@ pub fn next(Iterator i, usize n = 1) -> typeof(i)
   }
 }
 
+pub fn next(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
+{
+  #if (requires (typeof(i) x, usize y) { x + y; })
+  {
+    #if (requires (typeof(i) x, typeof(bound) y) { y - x; })
+      n = std::min(n, bound - i);
+
+    return i + n;
+  }
+  #else
+  {
+    while (i != bound && n != 0)
+    {
+      ++i;
+      --n;
+    }
+
+    return i;
+  }
+}
+
 pub fn prev(Iterator i, usize n = 1) -> typeof(i)
 {
   #if (requires (typeof(i) x, usize y) { x - y; })
@@ -133,6 +152,27 @@ pub fn prev(Iterator i, usize n = 1) -> typeof(i)
   #else
   {
     while (n != 0)
+    {
+      --i;
+      --n;
+    }
+
+    return i;
+  }
+}
+
+pub fn prev(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
+{
+  #if (requires (typeof(i) x, usize y) { x - y; })
+  {
+    #if (requires (typeof(i) x, typeof(bound) y) { y - x; })
+      n = std::min(n, bound - i);
+
+    return i - n;
+  }
+  #else
+  {
+    while (i != bound && n != 0)
     {
       --i;
       --n;

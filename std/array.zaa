@@ -188,9 +188,7 @@ pub struct array<T, N> : T[N]
 
   pub fn +(Iterator lhs, usize rhs) -> typeof(lhs)
   {
-    using Iterator = typeof(lhs);
-
-    return Iterator(lhs.cursor + rhs);
+    return lhs.cursor + rhs;
   }
 
   pub fn begin(this &&)

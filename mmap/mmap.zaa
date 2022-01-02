@@ -1,0 +1,488 @@
+//
+// mmap
+//
+
+import std.stdlib : assert;
+import std.span;
+import std.string : String;
+import std.error;
+
+enum mode
+{
+  readonly = 0x0,
+  readwrite = 0x01,
+}
+
+pub struct mmap_error_category : std::error_category
+{
+  fn instance() -> mmap_error_category *
+  {
+    static instance = #mmap_error_category::mmap_error_category();
+
+    return &instance;
+  }
+
+  pub fn message(uintptr value, u8 mut *buffer, usize buflen) -> std::string_view
+  {
+    return strerror(value, buffer, buflen);
+  }
+
+  mmap_error_category()
+    : super(std::error_category<mmap_error_category>)
+  {
+  }
+
+  mmap_error_category(mmap_error_category &) = default;
+  ~mmap_error_category() = default;
+}
+
+pub fn error_category() -> mmap_error_category *
+{
+  return mmap_error_category::instance;
+}
+
+pub fn mmap_error(uintptr code) -> std::error
+{
+  var result = std::error(void);
+
+  result.value = code;
+  result.category = mmap_error_category::instance;
+
+  return result;
+}
+
+pub struct file
+{
+  pub fn open(String &path, u64 offset = 0, usize length = 0) throws -> file
+  {
+    var fd = open_file(std::string_view(path.data, path.len), mode::readonly);
+
+    var addr = map_file(fd, offset, length, mode::readonly);
+
+    close_file(fd);
+
+    return file(addr, length);
+  }
+
+  pub file(u8 *data, usize len)
+    : _data(data), _len(len)
+  {
+  }
+
+  pub ~file()
+  {
+    unmap(_data, _len);
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn size(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn data(this &) -> u8 *
+  {
+    return this._data;
+  }
+
+  pub fn begin(this &) -> u8 *
+  {
+    return this._data;
+  }
+
+  pub fn end(this &) -> u8 *
+  {
+    return this._data + this._len;
+  }
+
+  pub fn [](this &, usize index) -> u8 &
+  {
+    assert(index < this._len);
+
+    return &*(this._data + index);
+  }
+
+  pub fn [](this &, (usize, usize) range) -> std::span<u8>
+  {
+    assert(range.0 <= range.1 && range.0 < this._len && range.1 <= this._len);
+
+    return std::span(this._data + range.0, this._data + range.1);
+  }
+
+  pub fn [](this &, (usize, usize, void) range) -> std::span<u8>
+  {
+    assert(range.0 <= range.1 && range.0 < this._len && range.1 + 1 <= this._len);
+
+    return std::span(this._data + range.0, this._data + range.1 + 1);
+  }
+
+  usize _len;
+  u8 *_data;
+}
+
+pub struct mutable_file
+{
+  pub fn open(String &path, u64 offset = 0, usize length = 0) throws -> mutable_file
+  {
+    var fd = open_file(std::string_view(path.data, path.len), mode::readwrite);
+
+    var addr = map_file(fd, offset, length, mode::readwrite);
+
+    close_file(fd);
+
+    return mutable_file(addr, length);
+  }
+
+  pub mutable_file(u8 mut *data, usize len)
+    : _data(data), _len(len)
+  {
+  }
+
+  pub ~mutable_file()
+  {
+    unmap(_data, _len);
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn size(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn data(this &&)
+  {
+    return this._data;
+  }
+
+  pub fn begin(this &&)
+  {
+    return this._data;
+  }
+
+  pub fn end(this &&)
+  {
+    return this._data + this._len;
+  }
+
+  pub fn [](this &&, usize index)
+  {
+    assert(index < this._len);
+
+    return &*(this._data + index);
+  }
+
+  pub fn [](this &, (usize, usize) range) -> std::span<u8>
+  {
+    assert(range.0 <= range.1 && range.0 < this._len && range.1 <= this._len);
+
+    return std::span(this._data + range.0, this._data + range.1);
+  }
+
+  pub fn [](this &, (usize, usize, void) range) -> std::span<u8>
+  {
+    assert(range.0 <= range.1 && range.0 < this._len && range.1 + 1 <= this._len);
+
+    return std::span(this._data + range.0, this._data + range.1 + 1);
+  }
+
+  pub fn [](this mut &, (usize, usize) range) -> std::mutable_span<u8>
+  {
+    assert(range.0 <= range.1 && range.0 < this._len && range.1 <= this._len);
+
+    return std::mutable_span(this._data + range.0, this._data + range.1);
+  }
+
+  pub fn [](this mut &, (usize, usize, void) range) -> std::mutable_span<u8>
+  {
+    assert(range.0 <= range.1 && range.0 < this._len && range.1 + 1 <= this._len);
+
+    return std::mutable_span(this._data + range.0, this._data + range.1 + 1);
+  }
+
+  usize _len;
+  u8 mut *_data;
+}
+
+#if __cfg("os.linux")
+
+  const sys_open = 2;
+  const sys_close = 3;
+  const sys_fstat = 5;
+  const sys_mmap = 9;
+  const sys_munmap = 11;
+
+  const O_RDONLY = 0;
+  const O_WRONLY = 1;
+  const O_RDWR = 2;
+
+  const O_CREAT = 0o100;
+  const O_EXCL = 0o200;
+
+  const PROT_READ = 0x1;
+  const PROT_WRITE = 0x2;
+  const PROT_EXEC = 0x4;
+  const PROT_NONE = 0x0;
+
+  const MAP_SHARED = 0x01;
+  const MAP_PRIVATE = 0x02;
+  const MAP_ANONYMOUS = 0x20;
+
+  struct stat
+  {
+    u64 st_dev;
+    u64 st_ino;
+    u64 st_nlink;
+
+    u32 st_mode;
+    u32 st_uid;
+    u32 st_gid;
+    u32 __pad0;
+    u64 st_rdev;
+    u64 st_size;
+    u64 st_blksize;
+    u64 st_blocks;
+
+    u8[16] st_atim;
+    u8[16] st_mtim;
+    u8[16] st_ctim;
+    u8[24] __unused;
+
+    stat() = default;
+    ~stat() = default;
+  }
+
+  fn open(void *path, int flags, int mode) -> int
+  {
+    var ret = __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},~{rcx},~{r11},~{memory}", sys_open, path, flags, mode);
+
+    return cast<int>(std::bit_cast<intptr>(ret));
+  }
+
+  fn fstat(int fd, stat mut *fs) -> int
+  {
+    var ret = __asm("syscall", "=r,{rax},{rdi},{rsi},~{rcx},~{r11},~{memory}", sys_fstat, fd, fs);
+
+    return cast<int>(std::bit_cast<intptr>(ret));
+  }
+
+  fn mmap(void *addr, usize length, int prot, int flags, int fd, u64 offset) -> void mut *
+  {
+    var ret = __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", sys_mmap, addr, length, prot, flags, fd, offset);
+
+    return cast<void mut *>(ret);
+  }
+
+  fn munmap(void *addr, usize length) -> int
+  {
+    var ret = __asm("syscall", "=r,{rax},{rdi},{rsi},~{rcx},~{r11},~{memory}", sys_munmap, addr, length);
+
+    return cast<int>(std::bit_cast<intptr>(ret));
+  }
+
+  fn close(int fd) -> int
+  {
+    var ret = __asm("syscall", "=r,{rax},{rdi},~{rcx},~{r11},~{memory}", sys_close, fd);
+
+    return cast<int>(std::bit_cast<intptr>(ret));
+  }
+
+  fn strerror(uintptr value, u8 mut *buffer, usize buflen) -> std::string_view
+  {
+    return std::meta::enumerator_name(cast<std::errc>(value));
+  }
+
+  fn open_file(std::string_view path, mode mode) throws -> int
+  {
+    var pathstr = [0; 2048];
+
+    if (path.len >= pathstr.len)
+      throw mmap_error(36);
+
+    std::memcpy(pathstr.data, path.data, path.len);
+
+    var fd = open(pathstr.data, (mode == mode::readonly) ? O_RDONLY : O_RDWR, 0o666);
+
+    if (fd < 0)
+      throw mmap_error(cast<uintptr>(-fd));
+
+    return fd;
+  }
+
+  fn map_file(int fd, u64 offset, usize mut &length, mode mode) throws -> u8 mut *
+  {
+    if (length == 0)
+    {
+      var fs = stat();
+      if (var result = fstat(fd, &fs); result < 0)
+      {
+        close(fd);
+
+        throw mmap_error(cast<uintptr>(-result));
+      }
+
+      length = cast<usize>(fs.st_size - offset);
+    }
+
+    var addr = mmap(null, length, (mode == mode::readonly) ? PROT_READ : PROT_WRITE, MAP_SHARED, fd, offset);
+
+    if (var result = std::bit_cast<intptr>(addr); result < 0)
+    {
+      close(fd);
+
+      throw mmap_error(cast<uintptr>(-result));
+    }
+
+    return cast<u8 mut *>(addr);
+  }
+
+  fn unmap(void *addr, usize length) -> void
+  {
+    munmap(addr, length);
+  }
+
+  fn close_file(int fd) -> void
+  {
+    close(fd);
+  }
+
+#end
+
+#if __cfg("os.windows")
+
+  using UINT = u32;
+  using DWORD = u32;
+  using LPDWORD = u32 mut *;
+  using ULONG = u32;
+  using LPCCH = u8 *;
+  using LPSTR = u8 mut *;
+  using LPWSTR = u16 mut *;
+  using LPCWSTR = u16 *;
+  using LPVOID = void mut *;
+  using LPCVOID = void *;
+  using SIZE_T = usize;
+  using HANDLE = uintptr;
+
+  const CP_UTF8 = 65001;
+
+  const PAGE_READONLY = 0x02;
+  const PAGE_READWRITE = 0x04;
+
+  const FILE_MAP_WRITE = 0x02;
+  const FILE_MAP_READ = 0x04;
+
+  const GENERIC_READ = 0x80000000;
+  const GENERIC_WRITE = 0x40000000;
+  const OPEN_EXISTING = 3;
+  const FILE_SHARE_READ = 0x00000001;
+  const FILE_SHARE_WRITE = 0x00000002;
+  const FILE_ATTRIBUTE_NORMAL = 0x00000080;
+  const INVALID_HANDLE_VALUE = uintptr(~0);
+  const INVALID_FILE_SIZE = u32(0xffffffff);
+
+  using LPSECURITY_ATTRIBUTES = void *;
+
+  extern "C" fn GetLastError() -> DWORD;
+  extern "C" fn MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCCH lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar) -> int;
+  extern "C" fn FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, void *Arguments) -> DWORD;
+  extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
+  extern "C" fn CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName) -> HANDLE;
+  extern "C" fn MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress) -> LPVOID;
+  extern "C" fn UnmapViewOfFileEx(LPCVOID BaseAddress, ULONG UnmapFlags) -> UINT;
+  extern "C" fn GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh) -> DWORD;
+  extern "C" fn CloseHandle(HANDLE hObject) -> UINT;
+
+  fn strerror(uintptr value, u8 mut *buffer, usize buflen) -> std::string_view
+  {
+    var nchars = FormatMessageA(0x00001000, null, cast(value), 0x400, buffer, cast(buflen), null);
+
+    return std::string_view(buffer, cast<usize>(nchars)).trim_right;
+  }
+
+  fn open_file(std::string_view path, mode mode) throws -> HANDLE
+  {
+    var pathstr = [0; 2048];
+
+    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len));
+
+    if (nchars == 0)
+      throw mmap_error(cast<uintptr>(GetLastError()));
+
+    var access = (mode == mode::readonly) ? GENERIC_READ : GENERIC_READ | GENERIC_WRITE;
+
+    var handle = CreateFileW(pathstr.data, access, FILE_SHARE_READ | FILE_SHARE_WRITE, null, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+
+    if (handle == INVALID_HANDLE_VALUE)
+      throw mmap_error(cast<uintptr>(GetLastError()));
+
+    return handle;
+  }
+
+  fn map_file(HANDLE fd, u64 offset, usize mut &length, mode mode) throws -> u8 mut *
+  {
+    var sizelo = cast<u32>(length & 0xffffffff);
+    var sizehi = cast<u32>(length >> 32);
+
+    if (length == 0)
+    {
+      sizelo = GetFileSize(fd, &sizehi);
+
+      if (sizelo == INVALID_FILE_SIZE)
+      {
+        CloseHandle(fd);
+
+        throw mmap_error(cast<uintptr>(GetLastError()));
+      }
+
+      length = cast<usize>(sizehi) << 32 + cast<usize>(sizelo) - cast<usize>(offset);
+    }
+
+    var offsetlo = cast<u32>(offset & 0xffffffff);
+    var offsethi = cast<u32>(offset >> 32);
+
+    var protect = (mode == mode::readonly) ? PAGE_READONLY : PAGE_READWRITE;
+
+    var filemap = CreateFileMappingW(fd, null, protect, sizehi, sizelo, null);
+
+    if (filemap == INVALID_HANDLE_VALUE)
+    {
+      CloseHandle(fd);
+
+      throw mmap_error(cast<uintptr>(GetLastError()));
+    }
+
+    var access = (mode == mode::readonly) ? FILE_MAP_READ : FILE_MAP_READ | FILE_MAP_WRITE;
+
+    var addr = MapViewOfFileEx(filemap, access, offsethi, offsetlo, length, null);
+
+    if (!addr)
+    {
+      CloseHandle(fd);
+      CloseHandle(filemap);
+
+      throw mmap_error(cast<uintptr>(GetLastError()));
+    }
+
+    CloseHandle(filemap);
+
+    return cast<u8 mut *>(addr);
+  }
+
+  fn unmap(void *addr, usize length) -> void
+  {
+    UnmapViewOfFileEx(addr, 0);
+  }
+
+  fn close_file(HANDLE fd) -> void
+  {
+    CloseHandle(fd);
+  }
+
+#end

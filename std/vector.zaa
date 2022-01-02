@@ -276,16 +276,12 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   pub fn -(Iterator lhs, usize rhs) -> typeof(lhs)
   {
-    using Iterator = typeof(lhs);
-
-    return Iterator(lhs.cursor - rhs);
+    return lhs.cursor - rhs;
   }
 
   pub fn +(Iterator lhs, usize rhs) -> typeof(lhs)
   {
-    using Iterator = typeof(lhs);
-
-    return Iterator(lhs.cursor + rhs);
+    return lhs.cursor + rhs;
   }
 
   pub fn begin(this &&)
@@ -317,21 +313,21 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return &*(this._data + this._len - 1);
   }
 
-  pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
-  {
-    return &*insert(this, this.begin.cursor, &&args...);
-  }
-
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
+    #for(const k = 0; k < __tuple_len<Args>; ++k)
+      assert(!(cast<void*>(this._data) <= cast<void*>(&args.0) && cast<void*>(&args.0) < cast<void*>(this._data + this._len)));
+
     return &*insert(this, this.end.cursor, &&args...);
   }
 
   pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
+    #for(const k = 0; k < __tuple_len<Args>; ++k)
+      assert(!(cast<void*>(this._data) <= cast<void*>(&args.0) && cast<void*>(&args.0) < cast<void*>(this._data + this._len)));
+
     return iterator(insert(this, position.cursor, &&args...));
   }
 
@@ -353,6 +349,9 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
     where requires (I i) { T(*i); }
   {
+    #if (__is_match<Iterator, I>)
+      assert(!(this._data <= first.cursor && first.cursor < this._data + this._len));
+
     return iterator(insert(this, position.cursor, first, last, std::distance(first, last)));
   }
 
@@ -366,27 +365,11 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return insert(this, this.end, first, last);
   }
 
-  pub fn pop_front(this mut &) -> void
-  {
-    assert(!this.empty);
-    
-    erase(this, this._data, 1);
-  }
-
   pub fn pop_back(this mut &) -> void
   {
     assert(!this.empty);
 
     erase(this, this._data + this._len - 1, 1);
-  }
-
-  pub fn take_front(this mut &) -> T
-  {
-    var result = std::move(this.front);
-
-    pop_front(this);
-
-    return result;
   }
 
   pub fn take_back(this mut &) -> T
@@ -434,6 +417,20 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return result;
   }
 
+  pub fn drop_n!(this mut &, usize n) -> vector mut &
+  {
+    erase(this, this._data, std::min(this._len, n));
+
+    return &this;
+  }
+
+  pub fn take_n!(this mut &, usize n) -> vector mut &
+  {
+    erase(this, this._data + std::min(this._len, n), this.len - std::min(this._len, n));
+
+    return &this;
+  }
+
   pub fn reserve(this mut &, usize capacity) -> void
   {
     if (this._capacity < capacity)
@@ -443,12 +440,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
       uninitialised_move(this, data, this._data, this._data + this._len);
 
       swap(this._data, data);
-      swap(this._capacity, capacity);
 
       destruct(this, data, data + this._len);
 
       if (data && data != cast(this._smallbuffer.data))
-        this._allocator.free(data, capacity * sizeof<T>);
+        this._allocator.free(data, this._capacity * sizeof<T>);
+
+      this._capacity = capacity;
     }
   }
 

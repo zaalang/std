@@ -4,6 +4,7 @@
 
 import std.stdlib;
 import std.iterator : Iterator, Sentinal, RandomAccessIterator;
+import std.span : Span;
 
 // NOTE:
 //  Range is expected to behave like at least a multi-pass-forward range.
@@ -11,6 +12,7 @@ import std.iterator : Iterator, Sentinal, RandomAccessIterator;
 
 pub concept Range<U>
 {
+  requires<T> !__is_pointer<T>;
   requires<T> (T x) -> U { return *x.begin; };
   requires<T> (T x) { x.end; };
 }
@@ -128,6 +130,93 @@ pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
   return 0;
 }
 
+pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
+{
+  pub iota_view(I beg, J end = void)
+    : super(iota_iterator(beg), iota_iterator(end))
+  {
+  }
+
+  pub ~iota_view() = default;
+
+  pub struct iota_iterator<N>
+  {
+    N n;
+
+    iota_iterator(N &&n)
+      : n(&&n)
+    {
+    }
+
+    pub iota_iterator() = default;
+    pub iota_iterator(iota_iterator &&) = default;
+    pub fn =(iota_iterator mut &lhs, iota_iterator &&rhs) -> iota_iterator mut & = default;
+    pub ~iota_iterator() = default;
+
+    pub fn *(iota_iterator &this)
+    {
+      return &this.n;
+    }
+
+    pub fn ++(iota_iterator mut &this) -> iota_iterator mut &
+    {
+      ++this.n;
+      return &this;
+    }
+
+    pub fn --(iota_iterator mut &this) -> iota_iterator mut &
+      where requires (N n) { --n; }
+    {
+      --this.n;
+      return &this;
+    }
+
+    pub fn ==<I, J>(iota_iterator<I> &lhs, iota_iterator<J> &rhs) -> bool
+    {
+      return lhs.n == rhs.n;
+    }
+
+    pub fn ==<I, J>(iota_iterator<I> &lhs, iota_iterator<void> &rhs) -> bool
+    {
+      return false;
+    }
+  }
+
+  pub const fn is_bounded() -> bool
+  {
+    return requires (I i, J j) { j - i; };
+  }
+
+  pub fn -<I, J>(iota_iterator<I> &lhs, iota_iterator<J> &rhs) -> usize
+    where requires (I i, J j) { i - j; }
+  {
+    return cast<usize>(lhs.n - rhs.n);
+  }
+
+  pub fn +<I>(iota_iterator<I> &lhs, usize rhs) -> iota_iterator<I>
+  {
+    return iota_iterator<I>(lhs.n + cast<I>(rhs));
+  }
+
+  pub fn len(this &) -> usize
+  {
+    #std::assert(is_bounded, "unbounded");
+
+    return cast<usize>(this.second.n - this.first.n);
+  }
+}
+
+pub fn iota<T>(T &&value)
+{
+  return iota_view(&&value);
+}
+
+pub fn iota<T, W>(T &&value, W &&bound)
+  match(T x, W y) { x == y; }
+{
+  return iota_view(&&value, &&bound);
+}
+
 pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_iterator<J>>
 {
   pub filter_view(I beg, J end, Pred &&pred)
@@ -194,7 +283,7 @@ pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_it
       return lhs.base == rhs;
     }
 
-    pub fn ==(filter_iterator &lhs, filter_iterator<J> &rhs) -> bool
+    pub fn ==<I, J>(filter_iterator<I> &lhs, filter_iterator<J> &rhs) -> bool
     {
       return lhs.base == rhs.base;
     }
@@ -259,7 +348,7 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
       return lhs.base == rhs;
     }
 
-    pub fn ==(transform_iterator &lhs, transform_iterator<J> &rhs) -> bool
+    pub fn ==<I, J>(transform_iterator<I> &lhs, transform_iterator<J> &rhs) -> bool
     {
       return lhs.base == rhs.base;
     }
@@ -337,6 +426,11 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
       return &this;
     }
 
+    pub fn ==(zip_iterator &lhs, zip_iterator &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+
     pub fn ==(zip_iterator &this, zip_sentinal &) -> bool
     {
       #for(const i = 0; i < __tuple_len<I>; ++i)
@@ -344,11 +438,6 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
           return true;
 
       return false;
-    }
-
-    pub fn ==(zip_iterator &lhs, zip_iterator &rhs) -> bool
-    {
-      return lhs.base == rhs.base;
     }
 
     J end;
@@ -412,6 +501,21 @@ pub fn zip(var && ...ranges)
   where is_all_ranges<typeof(ranges)>
 {
   return zip_view(std::tuple(((&&ranges).begin)...), std::tuple(((&&ranges).end)...));
+}
+
+pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
+{
+  return std::iterator_pair(first, last);
+}
+
+pub fn drop_n<T>(Range<T> &&range, usize n)
+{
+  return range.subrange(std::next((&&range).begin, n, range.end), (&&range).end);
+}
+
+pub fn take_n<T>(Range<T> &&range, usize n)
+{
+  return range.subrange((&&range).begin, std::next((&&range).begin, n, range.end));
 }
 
 pub fn fill<T>(Range<T> mut &range, T &value) -> void

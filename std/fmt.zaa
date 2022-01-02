@@ -623,6 +623,7 @@ pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -
 pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
 {
   var ctx = fmt_context();
+  //var os = std::output_stream(os);
 
   #for(var &arg : args)
   {
@@ -842,6 +843,8 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throw
 pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args) throws -> usize
 { 
   var ctx = fmt_context();
+  //var os = std::output_stream(os);
+
   const fmt = #parse_args<Args>(format);
 
   #for(const k = 0; k < std::tuple_len<Args>; ++k)
@@ -878,6 +881,7 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
 pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) throws -> usize
 {
   var ctx = fmt_context();
+  //var os = std::output_stream(os);
 
   var arg = 0;
   var beg = format.begin;

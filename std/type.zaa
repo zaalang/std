@@ -63,6 +63,12 @@ pub const fn is_integral<T>() -> bool
   return __is_integral<T>();
 }
 
+pub const fn is_unsigned<T>() -> bool
+  where __is_integral<T>
+{
+  return __is_unsigned<T>();
+}
+
 pub const fn is_floating_point<T>() -> bool
 {
   return __is_floating_point<T>();
@@ -78,20 +84,16 @@ pub fn as_const<T>(T &v) -> T&
   return &v;
 }
 
-pub struct add_const_t<T>
+struct add_const_t<T>
 {
-  pub using type = T const;
+  using type = T const;
 }
 
 pub using add_const<T> = add_const_t<T>::type;
 
-pub struct remove_const_t<T>
+struct remove_const_t<T>
 {
-  #if __is_const<T>
-    pub using type = typeof(declval<T>);
-  #else
-    pub using type = T;
-  #end
+  using type = typeof(*declval<typeof(declval<T>) mut &>);
 }
 
 pub using remove_const<T> = remove_const_t<T>::type;
@@ -106,38 +108,59 @@ pub const fn is_reference<T>() -> bool
   return __is_reference<T>();
 }
 
-pub struct add_pointer_t<T>
+struct add_pointer_t<T>
 {
-  pub using type = T mut *;
+  using type = T *;
 }
 
 pub using add_pointer<T> = add_pointer_t<T>::type;
 
-pub struct remove_pointer_t<T>
+struct add_mut_pointer_t<T>
+{
+  using type = T mut *;
+}
+
+pub using add_mut_pointer<T> = add_mut_pointer_t<T>::type;
+
+struct remove_pointer_t<T>
 {
   #if __is_pointer<T>
-    pub using type = typeof(*declval<T>);
+    using type = typeof(*declval<T>);
   #else
-    pub using type = T;
+    using type = T;
   #end
 }
 
 pub using remove_pointer<T> = remove_pointer_t<T>::type;
 
-pub struct add_reference_t<T>
+struct add_reference_t<T>
 {
-  pub using type = T mut &;
+  using type = T &;
 }
 
 pub using add_reference<T> = add_reference_t<T>::type;
 
-pub struct remove_reference_t<T>
+struct add_mut_reference_t<T>
+{
+  using type = T mut &;
+}
+
+pub using add_mut_reference<T> = add_mut_reference_t<T>::type;
+
+struct remove_reference_t<T>
 {
   #if __is_reference<T>
-    pub using type = typeof(*declval<T>);
+    using type = typeof(*declval<T>);
   #else
-    pub using type = T;
+    using type = T;
   #end
 }
 
 pub using remove_reference<T> = remove_reference_t<T>::type;
+
+struct decay_t<T>
+{
+  using type = remove_const<remove_reference<T>>;
+}
+
+pub using decay<T> = decay_t<T>::type;

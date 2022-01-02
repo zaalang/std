@@ -6,7 +6,6 @@ import std.memory;
 import std.stdlib : assert;
 import std.algorithm : swap;
 import std.range : Sentinal, Range;
-import std.tuple : tuple;
 import std.type : as_const;
 import std.pair;
 
@@ -152,10 +151,10 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     {
       pos = this._tree.insert(pos, &&value);
 
-      return tuple(pos, true);
+      return (pos, true);
     }
 
-    return tuple(pos, false);
+    return (pos, false);
   }
 
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
@@ -167,10 +166,10 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     {
       pos = this._tree.insert(pos, &&key, &&args...);
 
-      return tuple(pos, true);
+      return (pos, true);
     }
 
-    return tuple(pos, false);
+    return (pos, false);
   }
 
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
@@ -182,12 +181,12 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     {
       pos = this._tree.insert(pos, &&key, &&args...);
 
-      return tuple(pos, true);
+      return (pos, true);
     }
 
     (*pos).value = T(&&args..., allocator?: this.allocator);
 
-    return tuple(pos, false);
+    return (pos, false);
   }
 
   pub fn insert(this mut &, Range<value_type> &&other) -> void
