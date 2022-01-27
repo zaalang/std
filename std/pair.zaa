@@ -4,6 +4,7 @@
 
 import std.memory;
 import std.stdlib : assert;
+import std.fmt;
 
 pub struct key_value_pair<K, T, Allocator = std::allocator>
 {
@@ -21,4 +22,11 @@ pub struct key_value_pair<K, T, Allocator = std::allocator>
 
   pub key_value_pair(key_value_pair &&, Allocator &allocator = Allocator()) = default;
   pub ~key_value_pair() = default;
+}
+
+pub fn fmt<K, V>(std::OutputStream mut &os, std::fmt_context mut &ctx, key_value_pair<K, V> &range) throws -> void
+{
+  std::print_to(os, range.key);
+  std::print_to(os, " => ");
+  std::fmt_to(os, ctx, range.value);
 }

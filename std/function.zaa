@@ -31,7 +31,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
     std::assert(sizeof<Y> <= sizeof(storage), "delegate too large for storage");
 
     cast<Y mut &>(storage) = fx;
-    _fx = fn(void *data, V mut &v) throws(is_throwing) -> R { return cast<Y mut *>(data)(v...); };
+    _fx = fn(void *data, V mut &v) -> R { return cast<Y mut *>(data)(v...); };
   }
 
   pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &

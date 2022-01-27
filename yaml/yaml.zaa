@@ -143,7 +143,7 @@ pub union node
 
   pub fn []<Key>(this&, Key &key) -> node &
   {
-    static emptynode = [<uintptr>: 0; sizeof<node>/sizeof<uintptr>];
+    static const emptynode = #node();
 
     switch (this)
     {
@@ -160,7 +160,7 @@ pub union node
           return &(*j).value;
     }
 
-    return &cast<node&>(emptynode);
+    return &emptynode;
   }
 
   pub fn ==(node &lhs, null) -> bool

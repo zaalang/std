@@ -5,6 +5,8 @@
 import std.stdlib;
 import std.memory;
 import std.string : String;
+import std.fmt;
+import std.scan;
 
 pub union optional<T, Allocator = std::allocator>
 {
@@ -98,4 +100,26 @@ pub union optional<T, Allocator = std::allocator>
   pub optional(optional &&, Allocator &allocator = Allocator()) = default;
   pub fn =(optional mut &, optional &&) -> optional mut & = default;
   pub ~optional() = default;
+}
+
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optional<T> &optional) throws -> void
+{
+  switch (optional)
+  {
+    case Some(v):
+      ctx.written += std::format_to(os, "Some({})", v);
+
+    case None:
+      ctx.written += std::format_to(os, "None");
+  }
+}
+
+pub fn scan<T>(std::string_view is, std::scan_context mut &ctx, std::optional<T> mut &optional) -> void
+{
+  var v = T();
+
+  std::scan_to(is, ctx, v);
+
+  if (!ctx.error)
+    optional = v;
 }

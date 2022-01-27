@@ -542,7 +542,6 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
   {
     normalize(x.value);
 
-
     var K = 0;
     var z = get_cached_power10(rp, K);
 
@@ -599,7 +598,6 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
 
 pub fn scan<T>(u8 *beg, u8 *end, T mut &value) -> usize
 {
-  value = 0.0;
   var ch = beg;
 
   var fp = parse_decfloat(ch, end);

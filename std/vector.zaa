@@ -317,7 +317,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     #for(const k = 0; k < __tuple_len<Args>; ++k)
-      assert(!(cast<void*>(this._data) <= cast<void*>(&args.0) && cast<void*>(&args.0) < cast<void*>(this._data + this._len)));
+      assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
 
     return &*insert(this, this.end.cursor, &&args...);
   }
@@ -326,7 +326,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     #for(const k = 0; k < __tuple_len<Args>; ++k)
-      assert(!(cast<void*>(this._data) <= cast<void*>(&args.0) && cast<void*>(&args.0) < cast<void*>(this._data + this._len)));
+      assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
 
     return iterator(insert(this, position.cursor, &&args...));
   }

@@ -12,11 +12,11 @@ import std.type;
 using std::String;
 using std::InputStream;
 
-struct scan_context
+pub struct scan_context
 {
-  u8 type;
-  usize cursor;
-  std::errc error;
+  pub u8 type;
+  pub usize cursor;
+  pub std::errc error;
 
   scan_context() = default;
   ~scan_context() = default;
@@ -200,15 +200,20 @@ fn scan(std::string_view is, scan_context mut &ctx, std::string mut &str) -> voi
   ctx.cursor += str.len;
 }
 
-pub fn sscan<T>(String &str, T mut &value) -> usize
+pub fn scan_to<T>(std::string_view is, scan_context mut &ctx, T mut &object) -> void
 {
   using T;
 
+  scan(is, ctx, object);
+}
+
+pub fn sscan<T>(String &str, T mut &value) -> usize
+{
   var ctx = scan_context();
 
-  scan(std::string_view(str.data, str.len), ctx, value);
+  scan_to(std::string_view(str.data, str.len), ctx, value);
 
-  return ctx.cursor;
+  return cast<usize>(!ctx.error);
 }
 
 pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
@@ -225,6 +230,8 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
     switch (*ch)
     {
       case ' ':
+      case '\t':
+      case '\n':
         while (sv != str.end && std::is_whitespace(*sv))
           ++sv;
         ++ch;
@@ -234,6 +241,7 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
         var len = str.end;
 
         ctx.type = 0;
+        ctx.cursor = 0;
 
         while (++ch != end)
         {
@@ -257,6 +265,9 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
               while (len != str.end && !std::is_whitespace(*len))
                 ++len;
 
+            case '\n':
+              len = str.end;
+
             else:
               len = beg;
               while (len != str.end && *len != *ch)
@@ -264,30 +275,31 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
           }
         }
 
-        #for(const k = 0; k < std::tuple_len<Args>; ++k)
+        switch (arg)
         {
-          if (k < arg)
-            continue;
-
-          using typeof(Args::#k);
-
-          scan(std::string_view(beg, len), ctx, args.#k);
-
-          break;
+          #{
+            #for(const k = 0; k < std::tuple_len<Args>; ++k)
+            {
+              -> {
+                case $(k):
+                  scan_to(std::string_view(beg, len), ctx, args.$(k));
+              }
+            }
+          }
         }
 
-        sv = str.data + ctx.cursor;
+        sv = beg + ctx.cursor;
 
         arg += 1;
 
       else:
-        if (*sv++ != *ch++)
+        if (sv == str.end || *sv++ != *ch++)
           ctx.error = std::errc::format_error;
     }
 
-    if (ctx.error != cast(0))
+    if (ctx.error)
       break;
   }
 
-  return ctx.cursor;
+  return arg;
 }

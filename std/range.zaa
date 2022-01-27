@@ -5,6 +5,7 @@
 import std.stdlib;
 import std.iterator : Iterator, Sentinal, RandomAccessIterator;
 import std.span : Span;
+import std.fmt;
 
 // NOTE:
 //  Range is expected to behave like at least a multi-pass-forward range.
@@ -128,6 +129,21 @@ pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
     return +1;
 
   return 0;
+}
+
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
+{
+  std::print_to(os, "[");
+
+  for(var k = 0, var &value : range;; ++k)
+  {
+    if (k != 0)
+      std::print_to(os, ", ");
+
+    std::fmt_to(os, ctx, value);
+  }
+
+  std::print_to(os, "]");
 }
 
 pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>

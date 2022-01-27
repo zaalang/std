@@ -1,0 +1,306 @@
+//
+// chrono duration
+//
+
+pub struct ratio<N, D>
+{
+  pub const numerator = N;
+  pub const denominator = D;
+}
+
+pub struct duration<R, P>
+{
+  pub R count;
+
+  pub using rep = R;
+  pub using period = P;
+
+  pub duration(R count)
+    : count(count)
+  {
+  }
+
+  pub duration<R2, P2>(duration<R2, P2> &value)
+    : count(duration_cast<duration>(value).count)
+  {
+  }
+
+  pub fn =<R2, P2>(duration mut &lhs, duration<R2, P2> &rhs) -> duration mut &
+  {
+    lhs.count = duration_cast<duration>(rhs).count;
+
+    return &lhs;
+  }
+
+  pub fn +(duration mut &lhs) -> duration mut &
+  {
+    return &lhs;
+  }
+
+  pub fn -(duration mut &lhs) -> duration mut &
+  {
+    lhs.count = -lhs.count;
+
+    return &lhs;
+  }
+
+  pub fn ++(duration mut &lhs) -> duration mut &
+  {
+    lhs.count += 1;
+
+    return &lhs;
+  }
+
+  pub fn --(duration mut &lhs) -> duration mut &
+  {
+    lhs.count -= 1;
+
+    return &lhs;
+  }
+
+  pub fn ==(duration &, duration &) -> bool = default;
+  pub fn <=>(duration &, duration &) -> int = default;
+
+  pub duration() = default;
+  pub duration(duration&) = default;
+  pub fn =(duration mut &, duration &) -> duration mut & = default;
+  pub ~duration() = default;
+}
+
+pub using nanoseconds_t = duration<i64, ratio<1, 1000000000>>;
+pub using microseconds_t = duration<i64, ratio<1, 1000000>>;
+pub using milliseconds_t = duration<i64, ratio<1, 1000>>;
+pub using seconds_t = duration<i64, ratio<1, 1>>;
+pub using minutes_t = duration<i64, ratio<60, 1>>;
+pub using hours_t = duration<i64, ratio<3600, 1>>;
+pub using days_t = duration<i64, ratio<86400, 1>>;
+pub using weeks_t = duration<i64, ratio<604800, 1>>;
+pub using months_t = duration<i64, ratio<2629746, 1>>;
+pub using years_t = duration<i64, ratio<31556952, 1>>;
+
+pub const fn nanoseconds<T>(T count) -> duration<i64, ratio<1, 1000000000>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn nanoseconds<R, P>(duration<R, P> &value) -> duration<i64, ratio<1, 1000000000>>
+{
+  return duration_cast<duration<i64, ratio<1, 1000000>>>(value);
+}
+
+pub const fn microseconds<T>(T count) -> duration<i64, ratio<1, 1000000000>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn microseconds<R, P>(duration<R, P> &value) -> duration<i64, ratio<1, 1000000>>
+{
+  return duration_cast<duration<i64, ratio<1, 1000000>>>(value);
+}
+
+pub const fn milliseconds<T>(T count) -> duration<i64, ratio<1, 1000>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn milliseconds<R, P>(duration<R, P> &value) -> duration<i64, ratio<1, 1000>>
+{
+  return duration_cast<duration<i64, ratio<1, 1000>>>(value);
+}
+
+pub const fn seconds<T>(T count) -> duration<i64, ratio<1, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn seconds<R, P>(duration<R, P> &value) -> duration<i64, ratio<1, 1>>
+  where __is_integral<R>
+{
+  return duration_cast<duration<i64, ratio<1, 1>>>(value);
+}
+
+pub const fn seconds<T>(T count) -> duration<f64, ratio<1, 1>>
+  where __is_floating_point<T>
+{
+  return cast<f64>(count);
+}
+
+pub const fn seconds<R, P>(duration<R, P> &value) -> duration<f64, ratio<1, 1>>
+  where __is_floating_point<R>
+{
+  return duration_cast<duration<f64, ratio<1, 1>>>(value);
+}
+
+pub const fn minutes<T>(T count) -> duration<i64, ratio<60, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn minutes<R, P>(duration<R, P> &value) -> duration<i64, ratio<60, 1>>
+  where __is_integral<R>
+{
+  return duration_cast<duration<i64, ratio<60, 1>>>(value);
+}
+
+pub const fn minutes<T>(T count) -> duration<f64, ratio<60, 1>>
+  where __is_floating_point<T>
+{
+  return cast<f64>(count);
+}
+
+pub const fn minutes<R, P>(duration<R, P> &value) -> duration<f64, ratio<60, 1>>
+  where __is_floating_point<R>
+{
+  return duration_cast<duration<f64, ratio<60, 1>>>(value);
+}
+
+pub const fn hours<T>(T count) -> duration<i64, ratio<3600, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn hours<R, P>(duration<R, P> &value) -> duration<i64, ratio<3600, 1>>
+  where __is_integral<R>
+{
+  return duration_cast<duration<i64, ratio<3600, 1>>>(value);
+}
+
+pub const fn hours<T>(T count) -> duration<f64, ratio<3600, 1>>
+  where __is_floating_point<T>
+{
+  return cast<f64>(count);
+}
+
+pub const fn hours<R, P>(duration<R, P> &value) -> duration<f64, ratio<3600, 1>>
+  where __is_floating_point<R>
+{
+  return duration_cast<duration<f64, ratio<3600, 1>>>(value);
+}
+
+pub const fn days<T>(T count) -> duration<i64, ratio<86400, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn weeks<T>(T count) -> duration<i64, ratio<604800, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn months<T>(T count) -> duration<i64, ratio<2629746, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+pub const fn years<T>(T count) -> duration<i64, ratio<31556952, 1>>
+  where __is_integral<T>
+{
+  return cast<i64>(count);
+}
+
+const fn gcd<T>(T m, T n) -> T
+{
+  while(n != 0)
+  {
+    var rem = m % n;
+    m = n;
+    n = rem;
+  }
+
+  return m;
+}
+
+struct common_type<R1, P1, R2, P2>
+{
+  const gcdn = gcd(P1::numerator, P2::numerator);
+  const gcdd = gcd(P1::denominator, P2::denominator);
+
+  using period = ratio<gcdn, (P1::denominator / gcdd) * P2::denominator>;
+
+  #if (__is_same<R1, R2>)
+    using rep = R1;
+  #else if (__is_floating_point<R1> || __is_floating_point<R2>)
+    using rep = f64;
+  #else
+    using rep = i64;
+  #end
+}
+
+pub const fn duration_cast<To, R2, P2>(duration<R2, P2> &value) -> To
+{
+  using R1 = To::rep;
+  using P1 = To::period;
+
+  using ct = common_type<R1, P1, R2, P2>;
+
+  const N = (P2::numerator / ct::gcdn) * (P1::denominator / ct::gcdd);
+  const D = (P2::denominator / ct::gcdd) * (P1::numerator / ct::gcdn);
+
+  return To(cast<R1>(cast<ct::rep>(value.count) * cast<ct::rep>(N) / cast<ct::rep>(D)));
+}
+
+pub const fn +<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+
+  return duration<ct::rep, ct::period>(duration<ct::rep, ct::period>(lhs).count + duration<ct::rep, ct::period>(rhs).count);
+}
+
+pub const fn -<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+
+  return duration<ct::rep, ct::period>(duration<ct::rep, ct::period>(lhs).count - duration<ct::rep, ct::period>(rhs).count);
+}
+
+pub const fn *<R, P>(R lhs, duration<R, P> &rhs) -> duration<R, P>
+{
+  return duration<R, P>(lhs * rhs.count);
+}
+
+pub const fn *<R, P>(duration<R, P> &lhs, R rhs) -> duration<R, P>
+{
+  return duration<R, P>(lhs.count * rhs);
+}
+
+pub const fn /<R, P>(duration<R, P> &lhs, R rhs) -> duration<R, P>
+{
+  return duration<R, P>(lhs.count / rhs);
+}
+
+pub const fn /<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+
+  return duration<ct::rep, ct::period>(lhs).count / duration<ct::rep, ct::period>(rhs).count;
+}
+
+pub const fn %<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+
+  return duration<ct::rep, ct::period>(lhs).count % duration<ct::rep, ct::period>(rhs).count;
+}
+
+pub const fn ==<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs) -> bool
+{
+  using ct = common_type<R1, P1, R2, P2>;
+
+  return duration<ct::rep, ct::period>(lhs).count == duration<ct::rep, ct::period>(rhs).count;
+}
+
+pub const fn <=><R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs) -> int
+{
+  using ct = common_type<R1, P1, R2, P2>;
+
+  return duration<ct::rep, ct::period>(lhs).count <=> duration<ct::rep, ct::period>(rhs).count;
+}
