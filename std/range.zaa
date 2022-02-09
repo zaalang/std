@@ -64,15 +64,20 @@ pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
   return std::span<u8>(str.data, str.len);
 }
 
+pub fn is_range<R, T>() -> bool
+{
+  return __is_match<Range<T>, R>;
+}
+
 pub fn is_range<T>(var &range) -> bool
 {
   return __is_match<Range<T>, typeof(range)>;
 }
 
-pub const fn is_all_ranges<Ranges, T>() -> bool
+pub const fn is_all_ranges<Rs, T>() -> bool
 {
-  #for(const k = 0; k < __tuple_len<Ranges>; ++k)
-    if (!__is_match<Range<T>, typeof(Ranges::#k)>())
+  #for(const k = 0; k < __tuple_len<Rs>; ++k)
+    if (!__is_match<Range<T>, typeof(Rs::#k)>())
       return false;
 
   return true;
@@ -90,13 +95,13 @@ pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
   return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
 }
 
-pub fn len<T>(Range<T> &range) -> usize
+pub fn len<T>(Range<T> &&range) -> usize
 {
   return std::distance(range.begin, range.end);
 }
 
-pub fn ==<T>(Range<T> &lhs, Range<T> &rhs) -> bool
-  where requires (typeof(lhs) &x, typeof(rhs) &y) { *x.begin == *y.begin; }
+pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
+  where requires (typeof(lhs) x, typeof(rhs) y) { *x.begin == *y.begin; }
 {
   if (lhs.len != rhs.len)
     return false;
@@ -110,8 +115,8 @@ pub fn ==<T>(Range<T> &lhs, Range<T> &rhs) -> bool
   return true;
 }
 
-pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
-  where requires (typeof(lhs) &x, typeof(rhs) &y) { *x.begin <=> *y.begin; }
+pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
+  where requires (typeof(lhs) x, typeof(rhs) y) { *x.begin <=> *y.begin; }
 {
   var i = lhs.begin;
   var j = rhs.begin;
@@ -171,12 +176,13 @@ pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
 
     pub fn *(iota_iterator &this)
     {
-      return &this.n;
+      return this.n;
     }
 
     pub fn ++(iota_iterator mut &this) -> iota_iterator mut &
     {
       ++this.n;
+
       return &this;
     }
 
@@ -184,6 +190,7 @@ pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
       where requires (N n) { --n; }
     {
       --this.n;
+
       return &this;
     }
 
@@ -231,6 +238,72 @@ pub fn iota<T, W>(T &&value, W &&bound)
   match(T x, W y) { x == y; }
 {
   return iota_view(&&value, &&bound);
+}
+
+pub struct reverse_view<I, J> : iterator_pair<reverse_iterator<I>, reverse_iterator<J>>
+{
+  pub reverse_view(I beg, J end)
+    : super(reverse_iterator(end), reverse_iterator(beg))
+  {
+  }
+
+  pub ~reverse_view() = default;
+
+  pub struct reverse_iterator<X>
+  {
+    pub X base;
+
+    reverse_iterator(X &&base)
+      : base(&&base)
+    {
+    }
+
+    pub reverse_iterator() = default;
+    pub reverse_iterator(reverse_iterator &&) = default;
+    pub fn =(reverse_iterator mut &lhs, reverse_iterator &&rhs) -> reverse_iterator mut & = default;
+    pub ~reverse_iterator() = default;
+
+    pub fn *(reverse_iterator &&this)
+    {
+      return &&(*std::prev(this.base));
+    }
+
+    pub fn ++(reverse_iterator mut &this) -> reverse_iterator mut &
+      where requires (X mut &x) { --x; }
+    {
+      --this.base;
+
+      return &this;
+    }
+
+    pub fn --(reverse_iterator mut &this) -> reverse_iterator mut &
+      where requires (X mut &x) { ++x; }
+    {
+      ++this.base;
+
+      return &this;
+    }
+
+    pub fn ==(reverse_iterator &lhs, X &rhs) -> bool
+    {
+      return lhs.base == rhs;
+    }
+
+    pub fn ==<I, J>(reverse_iterator<I> &lhs, reverse_iterator<J> &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+  }
+}
+
+pub fn reverse<T>(Range<T> &&range)
+{
+  return reverse_view((&&range).begin, (&&range).end);
+}
+
+pub fn reverse<I, J>(zip_view<I, J> &&range)
+{
+  return reverse_view((&&range).begin, (&&range).begin + range.len);
 }
 
 pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_iterator<J>>
@@ -349,6 +422,7 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
       where requires (X mut &x) { ++x; }
     {
       ++this.base;
+
       return &this;
     }
 
@@ -356,6 +430,7 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
       where requires (X mut &x) { --x; }
     {
       --this.base;
+
       return &this;
     }
 
@@ -532,10 +607,4 @@ pub fn drop_n<T>(Range<T> &&range, usize n)
 pub fn take_n<T>(Range<T> &&range, usize n)
 {
   return range.subrange((&&range).begin, std::next((&&range).begin, n, range.end));
-}
-
-pub fn fill<T>(Range<T> mut &range, T &value) -> void
-{
-  for(var mut &element : range)
-    element = value;
 }

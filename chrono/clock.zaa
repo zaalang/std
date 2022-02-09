@@ -1,0 +1,87 @@
+//
+// chrono clock
+//
+
+import std.sys.clock;
+import chrono.duration;
+
+pub struct time_point<Clock, Duration>
+{
+  Duration time;
+
+  pub using clock = Clock;
+  pub using duration = Duration;
+
+  pub time_point(Duration &time)
+    : time(time)
+  {
+  }
+
+  pub fn time_since_epoch(this&) -> duration
+  {
+    return this.time;
+  }
+
+  pub fn ==(time_point &, time_point &) -> bool = default;
+  pub fn <=>(time_point &, time_point &) -> int = default;
+
+  pub time_point(time_point &) = default;
+  pub fn =(time_point mut &, time_point &) -> time_point mut & = default;
+  pub ~time_point() = default;
+}
+
+pub fn +<Clock, D1, R2, P2>(time_point<Clock, D1> &lhs, chrono::duration<P2, R2> &rhs)
+{
+  return time_point<Clock>(lhs.time + rhs);
+}
+
+pub fn -<Clock, D1, R2, P2>(time_point<Clock, D1> &lhs, chrono::duration<P2, R2> &rhs)
+{
+  return time_point<Clock>(lhs.time - rhs);
+}
+
+pub fn -<Clock, D1, D2>(time_point<Clock, D1> &lhs, time_point<Clock, D2> &rhs)
+{
+  return lhs.time - rhs.time;
+}
+
+pub const fn time_point_cast<To, Clock, Duration>(time_point<Clock, Duration> &tp) -> time_point<Clock, To>
+{
+  return time_point<Clock, To>(chrono::duration_cast<To>(tp.time));
+}
+
+pub struct system_clock
+{
+  pub using duration = chrono::nanoseconds_t;
+  pub using time_point = chrono::time_point<system_clock, duration>;
+
+  pub fn now() -> time_point
+  {
+    try
+    {
+      return time_point(chrono::nanoseconds(std::clock::tick(std::clock::id::realtime)));
+    }
+    catch(std::error e)
+    {
+      std::panic("system_clock failure");
+    }
+  }
+}
+
+pub struct steady_clock
+{
+  pub using duration = chrono::nanoseconds_t;
+  pub using time_point = chrono::time_point<steady_clock, duration>;
+
+  pub fn now() -> time_point
+  {
+    try
+    {
+      return time_point(chrono::nanoseconds(std::clock::tick(std::clock::id::monotonic)));
+    }
+    catch(std::error e)
+    {
+      std::panic("steady_clock failure");
+    }
+  }
+}

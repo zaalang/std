@@ -2,4 +2,5 @@
 // chrono
 //
 
+import chrono.clock;
 import chrono.duration;

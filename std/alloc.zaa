@@ -30,7 +30,7 @@ pub struct allocator
     var memory = mem_alloc(size);
 
     if (memory.errno != 0)
-      std::panic("Memory Allocation Failure");
+      std::panic("memory allocation failure");
 
     return memory.addr;
   }

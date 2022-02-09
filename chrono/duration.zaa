@@ -2,6 +2,8 @@
 // chrono duration
 //
 
+import std.fmt;
+
 pub struct ratio<N, D>
 {
   pub const numerator = N;
@@ -62,7 +64,7 @@ pub struct duration<R, P>
   pub fn <=>(duration &, duration &) -> int = default;
 
   pub duration() = default;
-  pub duration(duration&) = default;
+  pub duration(duration &) = default;
   pub fn =(duration mut &, duration &) -> duration mut & = default;
   pub ~duration() = default;
 }
@@ -303,4 +305,31 @@ pub const fn <=><R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs) -
   using ct = common_type<R1, P1, R2, P2>;
 
   return duration<ct::rep, ct::period>(lhs).count <=> duration<ct::rep, ct::period>(rhs).count;
+}
+
+pub fn duration_suffix<Period>()
+{
+  const N = Period::numerator;
+  const D = Period::denominator;
+
+  #if (N == 1 && D == 1000000000) return "ns";
+  #if (N == 1 && D == 1000000) return "µs";
+  #if (N == 1 && D == 1000) return "ms";
+  #if (N == 1 && D == 1) return "s";
+  #if (N == 60 && D == 1) return "minutes";
+  #if (N == 3600 && D == 1) return "hours";
+  #if (N == 86400 && D == 1) return "days";
+  #if (N == 604800 && D == 1) return "weeks";
+  #if (N == 2629746 && D == 1) return "months";
+  #if (N == 31556952 && D == 1) return "years";
+
+  std::panic("unknown duration suffix");
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, duration<R, P> &duration) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(std::mutable_span<u8>(buf.data, buf.len), "{}{}", duration.count, duration_suffix<P>);
+
+  std::fmt_to(os, ctx, std::string_view(buf.data, len));
 }

@@ -1,0 +1,45 @@
+//
+// std sys clock
+//
+
+import std.error;
+
+struct clock_result
+{
+  u32 errno;
+  u64 timestamp;
+
+  ~clock_result() = default;
+}
+
+extern "C" fn clock_getres(u32 clockid) -> clock_result;
+extern "C" fn clock_gettime(u32 clockid) -> clock_result;
+
+pub struct clock
+{
+  pub enum id
+  {
+    realtime,
+    monotonic,
+  }
+
+  pub fn res(id clock) throws -> u64
+  {
+    var result = clock_getres(cast(id));
+
+    if (result.errno != 0)
+      throw std::system_error(cast<std::errc>(result.errno));
+
+    return result.timestamp;
+  }
+
+  pub fn tick(id clock) throws -> u64
+  {
+    var result = clock_gettime(cast(clock));
+
+    if (result.errno != 0)
+      throw std::system_error(cast<std::errc>(result.errno));
+
+    return result.timestamp;
+  }
+}

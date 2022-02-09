@@ -38,6 +38,12 @@ pub fn fill_n<O, T, N>(O dst, Sentinal<O> end, T &value, N n) -> O
   return dst;
 }
 
+pub fn fill<T>(Range<T> mut &range, T &value) -> void
+{
+  for(var mut &element : range)
+    element = value;
+}
+
 pub fn copy<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
 {
   while (first != last)
@@ -50,7 +56,7 @@ pub fn copy<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
   return dst;
 }
 
-pub fn copy_backward<O, I>(Sentinal<O> dst, O end, Sentinal<I> first, I last) -> O
+pub fn copy_backward<O, I>(O dst, O end, I first, I last) -> O
 {
   while (first != last)
   {
@@ -88,7 +94,7 @@ pub fn move<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
   return dst;
 }
 
-pub fn move_backward<O, I>(Sentinal<O> dst, O end, Sentinal<I> first, I last) -> O
+pub fn move_backward<O, I>(O dst, O end, I first, I last) -> O
 {
   while (first != last)
   {
@@ -114,12 +120,67 @@ pub fn move_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
   return dst;
 }
 
-pub fn reverse<I>(I first, I last) -> void
+pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, Func &func) -> O
+{
+  while (first != last)
+  {
+    assert(dst != end);
+
+    *dst++ = func(*first++);
+  }
+
+  return dst;
+}
+
+pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &func) -> O
+{
+  while (first != last)
+  {
+    assert(end != dst);
+
+    *--end = func(*--last);
+  }
+
+  return end;
+}
+
+pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &func) -> O
+{
+  while (n > 0)
+  {
+    assert(dst != end);
+
+    *dst++ = func(*first++);
+
+    --n;
+  }
+
+  return dst;
+}
+
+pub fn transform!<O, I, Func>(I first, Sentinal<I> last, Func &func) -> void
+{
+  transform(first, last, first, last, func);
+}
+
+pub fn transform!<T, Func>(Range<T> &&range, Func &func) -> void
+  where requires (typeof(range) range, Func &func) { transform!(range.begin, range.end, func); }
+{
+  transform!(range.begin, range.end, func);
+}
+
+pub fn reverse!<I>(I first, I last) -> void
 {
   while (first != last && first != --last)
   {
     swap(*first++, *last);
   }
+}
+
+pub fn reverse!<T, Func>(Range<T> &&range) -> void
+  where requires (typeof(range) range) { reverse!(range.begin, range.end); }
+{
+  reverse!(range.begin, range.end);
 }
 
 pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
@@ -147,19 +208,19 @@ pub fn rotate_right<I>(I first, I last) -> I
   return fp1;
 }
 
-pub const fn min<T>(T &&a, T &&b)
+pub fn min<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {
   return (b < a) ? &b : &a;
 }
 
-pub const fn max<T>(T &&a, T &&b)
+pub fn max<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {
   return (a < b) ? &b : &a;
 }
 
-pub const fn min<Args>(Args & ...args)
+pub fn min<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
 {
   var &result = args.0;
@@ -173,7 +234,7 @@ pub const fn min<Args>(Args & ...args)
   return &result;
 }
 
-pub const fn max<Args>(Args & ...args)
+pub fn max<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
 {
   var &result = args.0;
@@ -209,7 +270,7 @@ pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 
 pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 {
-  return min_element(range.begin, range.end, cmp);
+  return min_element((&&range).begin, (&&range).end, cmp);
 }
 
 pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
@@ -230,7 +291,7 @@ pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 
 pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 {
-  return max_element(range.begin, range.end, cmp);
+  return max_element((&&range).begin, (&&range).end, cmp);
 }
 
 pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
@@ -278,7 +339,7 @@ pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
 
 pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
 {
   return lower_bound((&&range).begin, (&&range).end, value, cmp);
 }
@@ -309,7 +370,7 @@ pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
 
 pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value, Cmp &cmp) { upper_bound(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) range, Value &value, Cmp &cmp) { upper_bound(range.begin, range.end, value, cmp); }
 {
   return upper_bound((&&range).begin, (&&range).end, value, cmp);
 }
@@ -322,7 +383,7 @@ pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
 
 pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value, Cmp &cmp) { equal_range(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) range, Value &value, Cmp &cmp) { equal_range(range.begin, range.end, value, cmp); }
 {
   return equal_range((&&range).begin, (&&range).end, value, cmp);
 }
@@ -340,7 +401,7 @@ pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp
 
 pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value, Cmp &cmp) { binary_search(range.begin, range.end, value, cmp); }
+  where requires (typeof(range) range, Value &value, Cmp &cmp) { binary_search(range.begin, range.end, value, cmp); }
 {
   return binary_search((&&range).begin, (&&range).end, value, cmp);
 }
@@ -359,9 +420,9 @@ pub fn count<I, Value>(I first, Sentinal<I> last, Value &value) -> usize
   return count;
 }
 
-pub fn count<T, Value>(Range<T> &range, Value &value) -> usize
+pub fn count<T, Value>(Range<T> &&range, Value &value) -> usize
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value) { count(range.begin, range.end, value); }
+  where requires (typeof(range) range, Value &value) { count(range.begin, range.end, value); }
 {
   return count(range.begin, range.end, value);
 }
@@ -380,8 +441,8 @@ pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
   return count;
 }
 
-pub fn count_if<T, Pred>(Range<T> &range, Pred &pred)
-  where requires (typeof(range) &range, Pred &pred) { count_if(range.begin, range.end, pred); }
+pub fn count_if<T, Pred>(Range<T> &&range, Pred &pred)
+  where requires (typeof(range) range, Pred &pred) { count_if(range.begin, range.end, pred); }
 {
   return count_if(range.begin, range.end, pred);
 }
@@ -400,7 +461,7 @@ pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
 
 pub fn find<T, Value>(Range<T> &&range, Value &value)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value) { find(range.begin, range.end, value); }
+  where requires (typeof(range) range, Value &value) { find(range.begin, range.end, value); }
 {
   return find((&&range).begin, (&&range).end, value);
 }
@@ -418,7 +479,7 @@ pub fn find_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
 }
 
 pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
-  where requires (typeof(range) &range, Pred &pred) { find_if(range.begin, range.end, pred); }
+  where requires (typeof(range) range, Pred &pred) { find_if(range.begin, range.end, pred); }
 {
   return find_if((&&range).begin, (&&range).end, pred);
 }
@@ -442,7 +503,7 @@ pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
 
 pub fn remove<T, Value>(Range<T> &&range, Value &value)
   match (Value value) { T(value); }
-  where requires (typeof(range) &range, Value &value) { remove(range.begin, range.end, value); }
+  where requires (typeof(range) range, Value &value) { remove(range.begin, range.end, value); }
 {
   return remove((&&range).begin, (&&range).end, value);
 }
@@ -465,7 +526,7 @@ pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
 }
 
 pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
-  where requires (typeof(range) &range, Pred &pred) { remove_if(range.begin, range.end, pred); }
+  where requires (typeof(range) range, Pred &pred) { remove_if(range.begin, range.end, pred); }
 {
   return remove_if((&&range).begin, (&&range).end, pred);
 }

@@ -701,70 +701,6 @@ pub struct string<Allocator = std::allocator, N = 24>
     return this._data + position;
   }
 
-  pub fn replace_first(this mut &, u8 from, u8 to) -> string mut &
-  {
-    if (var i = memchr(this.begin, from, this._len); i != this._len)
-      this[i] = to;
-
-    return &this;
-  }
-
-  pub fn replace_first(this mut &, char from, char to) -> string mut &
-  {
-    var from_buf = [0; 8];
-    var from_len = utf::encode(from_buf.data, from);
-
-    var to_buf = [0; 8];
-    var to_len = utf::encode(to_buf.data, to);
-
-    replace_first(this, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
-
-    return &this;
-  }
-
-  pub fn replace_first(this mut &, String &from, String &to) -> string mut &
-  {
-    if (from.len != 0)
-    {
-      if (var i = this.find_first(from); i != this.end)
-        replace(this, i, from.len, to);
-    }
-
-    return &this;
-  }
-
-  pub fn replace_all(this mut &, u8 from, u8 to) -> string mut &
-  {
-    while (var i = this.begin; i += memchr(i, from, this.end - i); i != this.end)
-      *i++ = to;
-
-    return &this;
-  }
-
-  pub fn replace_all(this mut &, char from, char to) -> string mut &
-  {
-    var from_buf = [0; 8];
-    var from_len = utf::encode(from_buf.data, from);
-
-    var to_buf = [0; 8];
-    var to_len = utf::encode(to_buf.data, to);
-
-    replace_all(this, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
-
-    return &this;
-  }
-
-  pub fn replace_all(this mut &, String &from, String &to) -> string mut &
-  {
-    if (from.len != 0)
-    {
-      while (var i = this.begin; i = this.find_first(i, from); i != this.end)
-        i = replace(this, i, from.len, to) + to.len;
-    }
-
-    return &this;
-  }
-
   pub fn +=(this mut &, u8 ch) -> string mut &
   {
     if (this._len < this._capacity)
@@ -834,47 +770,6 @@ pub struct string<Allocator = std::allocator, N = 24>
     {
       return 0;
     }
-  }
-
-  pub fn drop!(this mut &, usize n) -> string mut &
-  {
-    return &(this = drop(this, n));
-  }
-
-  pub fn drop_n!(this mut &, usize n) -> string mut &
-  {
-    return &(this = drop_n(this, n));
-  }
-
-  pub fn take!(this mut &, usize n) -> string mut &
-  {
-    return &(this = take(this, n));
-  }
-
-  pub fn take_n!(this mut &, usize n) -> string mut &
-  {
-    return &(this = take_n(this, n));
-  }
-
-  pub fn trim!(this mut &) -> string mut &
-  {
-    return &(this = trim(this));
-  }
-
-  pub fn to_lowercase!(this mut &) -> string mut &
-  {
-    for(var mut &ch : this)
-      ch = to_lowercase(ch);
-
-    return &this;
-  }
-
-  pub fn to_uppercase!(this mut &) -> string mut &
-  {
-    for(var mut &ch : this)
-      ch = to_uppercase(ch);
-
-    return &this;
   }
 
   pub fn write(this mut &, u8 *data, usize len) -> usize
@@ -970,27 +865,27 @@ pub struct string<Allocator = std::allocator, N = 24>
   Allocator _allocator;
 }
 
-pub fn +<Allocator, N>(string<Allocator, N> &&lhs, String &rhs) -> string
+pub fn +<Allocator, N>(string<Allocator, N> &&lhs, String &rhs) -> string<Allocator, N>
 {
-  var result = string<Allocator, N>(&&lhs);
+  var result = string<Allocator, N>(&&lhs, lhs.allocator);
 
   result += rhs;
 
   return result;
 }
 
-pub fn +<Allocator, N>(string<Allocator, N> &&lhs, u8 rhs) -> string
+pub fn +<Allocator, N>(string<Allocator, N> &&lhs, u8 rhs) -> string<Allocator, N>
 {
-  var result = string<Allocator, N>(&&lhs);
+  var result = string<Allocator, N>(&&lhs, lhs.allocator);
 
   result += rhs;
 
   return result;
 }
 
-pub fn +<Allocator, N>(string<Allocator, N> &&lhs, char rhs) -> string
+pub fn +<Allocator, N>(string<Allocator, N> &&lhs, char rhs) -> string<Allocator, N>
 {
-  var result = string<Allocator, N>(&&lhs);
+  var result = string<Allocator, N>(&&lhs, lhs.allocator);
 
   result += rhs;
 
@@ -1269,6 +1164,105 @@ pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
   return haystack.end;
 }
 
+pub fn contains(String &haystack, u8 needle) -> bool
+{
+  return memchr(haystack.data, needle, haystack.len) != haystack.len;
+}
+
+pub fn contains(String &haystack, char needle) -> bool
+{
+  return find_first(haystack, needle) != haystack.end;
+}
+
+pub fn contains(String &haystack, String &needle) -> bool
+{
+  return find_first(haystack, needle) != haystack.end;
+}
+
+pub fn replace_first(string mut &str, u8 from, u8 to) -> bool
+{
+  var found = false;
+
+  if (var i = memchr(str.begin, from, str._len); i != str._len)
+  {
+    str[i] = to;
+
+    found = true;
+  }
+
+  return found;
+}
+
+pub fn replace_first(string mut &str, char from, char to) -> bool
+{
+  var from_buf = [0; 8];
+  var from_len = utf::encode(from_buf.data, from);
+
+  var to_buf = [0; 8];
+  var to_len = utf::encode(to_buf.data, to);
+
+  return replace_first(str, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
+}
+
+pub fn replace_first(string mut &str, String &from, String &to) -> bool
+{
+  var found = false;
+
+  if (from.len != 0)
+  {
+    if (var i = str.find_first(from); i != str.end)
+    {
+      str.replace(i, from.len, to);
+
+      found = true;
+    }
+  }
+
+  return found;
+}
+
+pub fn replace_all(string mut &str, u8 from, u8 to) -> usize
+{
+  var count = 0;
+
+  while (var i = str.begin; i += memchr(i, from, str.end - i); i != str.end)
+  {
+    *i++ = to;
+
+    count += 1;
+  }
+
+  return count;
+}
+
+pub fn replace_all(string mut &str, char from, char to) -> usize
+{
+  var from_buf = [0; 8];
+  var from_len = utf::encode(from_buf.data, from);
+
+  var to_buf = [0; 8];
+  var to_len = utf::encode(to_buf.data, to);
+
+  return replace_all(str, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
+}
+
+pub fn replace_all(string mut &str, String &from, String &to) -> usize
+{
+  var count = 0;
+
+  if (from.len != 0)
+  {
+    while (var i = str.begin; i = str.find_first(i, from); i != str.end)
+    {
+      i = str.replace(i, from.len, to) + to.len;
+
+      count += 1;
+    }
+  }
+
+  return count;
+}
+
 pub fn drop(String &str, usize n) -> string_view
 {
   var i = str.chars.begin;
@@ -1284,6 +1278,16 @@ pub fn drop(String &str, usize n) -> string_view
   return string_view(i, str.end);
 }
 
+pub fn drop!(string mut &str, usize n) -> void
+{
+  str = drop(str, n);
+}
+
+pub fn drop_n!(string mut &str, usize n) -> void
+{
+  str = drop_n(str, n);
+}
+
 pub fn take(String &str, usize n) -> string_view
 {
   var i = str.chars.begin;
@@ -1297,6 +1301,16 @@ pub fn take(String &str, usize n) -> string_view
   }
 
   return string_view(str.begin, i);
+}
+
+pub fn take!(string mut &str, usize n) -> void
+{
+  str = take(str, n);
+}
+
+pub fn take_n!(string mut &str, usize n) -> void
+{
+  str = take_n(str, n);
 }
 
 pub fn substr(String &str, usize i, usize n) -> string_view
@@ -1337,9 +1351,14 @@ pub fn trim(String &str) -> string_view
   return trim_right(trim_left(str));
 }
 
-pub fn starts_with(String &haystack, String &needle) -> bool
+pub fn trim!(string mut &str) -> void
 {
-  return haystack.len >= needle.len && haystack[0 .. needle.len] == needle;
+  str = trim(str);
+}
+
+pub fn starts_with(String &haystack, u8 needle) -> bool
+{
+  return !haystack.empty && *haystack.begin == needle;
 }
 
 pub fn starts_with(String &haystack, char needle) -> bool
@@ -1347,9 +1366,14 @@ pub fn starts_with(String &haystack, char needle) -> bool
   return !haystack.empty && *haystack.chars.begin == needle;
 }
 
-pub fn ends_with(String &haystack, String &needle) -> bool
+pub fn starts_with(String &haystack, String &needle) -> bool
 {
-  return haystack.len >= needle.len && haystack[haystack.len - needle.len .. haystack.len] == needle;
+  return haystack.len >= needle.len && haystack[0 .. needle.len] == needle;
+}
+
+pub fn ends_with(String &haystack, u8 needle) -> bool
+{
+  return !haystack.empty && *std::prev(haystack.end) == needle;
 }
 
 pub fn ends_with(String &haystack, char needle) -> bool
@@ -1357,29 +1381,56 @@ pub fn ends_with(String &haystack, char needle) -> bool
   return !haystack.empty && *std::prev(haystack.chars.end) == needle;
 }
 
+pub fn ends_with(String &haystack, String &needle) -> bool
+{
+  return haystack.len >= needle.len && haystack[haystack.len - needle.len .. haystack.len] == needle;
+}
+
 pub fn gsub(String &&str, u8 from, u8 to) -> string
 {
-  return string(&&str).replace_all(from, to);
+  var str = string(&&str);
+  str.replace_all(from, to);
+  return str;
 }
 
 pub fn gsub(String &&str, char from, char to) -> string
 {
-  return string(&&str).replace_all(from, to);
+  var str = string(&&str);
+  str.replace_all(from, to);
+  return str;
 }
 
 pub fn gsub(String &&str, String &from, String &to) -> string
 {
-  return string(&&str).replace_all(from, to);
+  var str = string(&&str);
+  str.replace_all(from, to);
+  return str;
 }
 
 pub fn to_lowercase(String &&str) -> string
 {
-  return string(&&str).to_lowercase!;
+  var str = string(&&str);
+  str.to_lowercase!;
+  return str;
+}
+
+pub fn to_lowercase!(string mut &str) -> void
+{
+  for(var mut &ch : str)
+    ch = to_lowercase(ch);
 }
 
 pub fn to_uppercase(String &&str) -> string
 {
-  return string(&&str).to_uppercase!;
+  var str = string(&&str);
+  str.to_uppercase!;
+  return str;
+}
+
+pub fn to_uppercase!(string mut &str) -> void
+{
+  for(var mut &ch : str)
+    ch = to_uppercase(ch);
 }
 
 pub fn format(String &format, var & ...args) -> string
