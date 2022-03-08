@@ -30,14 +30,14 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   pub fn =(this mut &, map &&other) -> map mut &
   {
-    if (&this == &other)
-      return &this;
+    if (&this != &other)
+    {
+      clear(this);
 
-    clear(this);
+      this._tree.cmp = other.cmp;
 
-    this._tree.cmp = other.cmp;
-
-    insert(this, &&other);
+      insert(this, &&other);
+    }
 
     return &this;
   }

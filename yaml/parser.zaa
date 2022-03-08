@@ -276,14 +276,14 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
 
     case tag_int:
       var integer = i64();
-      if (std::sscan(ctx.tok.value, integer) != ctx.tok.value.len)
+      if (std::sscan(ctx.tok.value, integer) != 1)
         return parse_error(ctx, yaml::errc::invalid_int_value);
 
       ctx.stack.push_back(integer);
 
     case tag_float:
       var real = f64();
-      if (std::sscan(ctx.tok.value, real) != ctx.tok.value.len)
+      if (std::sscan(ctx.tok.value, real) != 1)
         return parse_error(ctx, yaml::errc::invalid_float_value);
 
       ctx.stack.push_back(real);

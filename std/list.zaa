@@ -26,12 +26,12 @@ pub struct list<T, Allocator = std::allocator>
 
   pub fn =(this mut &, list &&other) -> list mut &
   {
-    if (&this == &other)
-      return &this;
+    if (&this != &other)
+    {
+      clear(this);
 
-    clear(this);
-
-    insert(this, this.end, &&other);
+      insert(this, this.end, &&other);
+    }
 
     return &this;
   }

@@ -15,10 +15,17 @@ import std.string : String;
 #[noreturn]
 pub extern fn exit(i32) -> void;
 
-#[lifetime(consume(v))]
+#[lifetime(consume(x))]
 pub fn move<T>(T mut &x) -> T&&
 {
   return &x;
+}
+
+// circumvent lifetime, move a component without consuming the object
+// eg. std::move(std::launder(x).i)
+pub fn launder<T>(T &&x)
+{
+  return &(&&x);
 }
 
 #[noreturn]

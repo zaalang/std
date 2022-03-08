@@ -32,15 +32,15 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   pub fn =(this mut &, flat_hash_map &&other) -> flat_hash_map mut &
   {
-    if (&this == &other)
-      return &this;
+    if (&this != &other)
+    {
+      clear(this);
 
-    clear(this);
+      this._cmp = other.cmp;
+      this._hash = other.hash;
 
-    this._cmp = other.cmp;
-    this._hash = other.hash;
-
-    insert(this, &&other);
+      insert(this, &&other);
+    }
 
     return &this;
   }

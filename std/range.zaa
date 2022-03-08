@@ -33,11 +33,13 @@ pub struct iterator_pair<I, J>
   pub fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
   pub ~iterator_pair() = default;
 
+  #[lifetime(clone(this))]
   pub fn begin(this &&)
   {
     return (&&this).first;
   }
 
+  #[lifetime(clone(this))]
   pub fn end(this &&)
   {
     return (&&this).second;

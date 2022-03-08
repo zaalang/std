@@ -286,14 +286,14 @@ pub union node
     if (gotdig && gotdot)
     {
       var real = f64();
-      if (std::sscan(str, real) == str.len)
+      if (std::sscan(str, real) == 1)
         return real;
     }
 
     if (gotdig)
     {
       var integer = i64();
-      if (std::sscan(str, integer) == str.len)
+      if (std::sscan(str, integer) == 1)
         return integer;
     }
 

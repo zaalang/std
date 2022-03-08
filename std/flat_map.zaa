@@ -30,14 +30,14 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   pub fn =(this mut &, flat_map &&other) -> flat_map mut &
   {
-    if (&this == &other)
-      return &this;
+    if (&this != &other)
+    {
+      clear(this);
 
-    clear(this);
+      this.cmp = other.cmp;
 
-    this.cmp = other.cmp;
-
-    insert(this, &&other);
+      insert(this, &&other);
+    }
 
     return &this;
   }
