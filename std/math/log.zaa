@@ -89,13 +89,13 @@ pub const fn log10<T>(T x) -> T
   return ln(x) * (1.0 / Ln10);
 }
 
-pub const fn ceillog2<T>(T x) -> T
+pub const fn ceil_log2<T>(T x) -> T
   where __is_integral<T>
 {
   return cast<T>(64 - __clz(cast<u64>(x - 1)));
 }
 
-pub const fn floorlog2<T>(T x) -> T
+pub const fn floor_log2<T>(T x) -> T
   where __is_integral<T>
 {
   return cast<T>(63 - __clz(cast<u64>(x)));

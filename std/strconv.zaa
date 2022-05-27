@@ -180,7 +180,42 @@ pub fn ctoa(u8 mut *beg, u8 mut *end, char value) -> strconv_result
   return result;
 }
 
-fn ftoa_exp(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit) -> strconv_result
+fn ftoa_round(u8 mut *digits, int mut &K, usize mut &len, int prec) -> void
+{
+  if (prec <= 0)
+  {
+    *digits = (cast(-K) == len && *digits >= cast('5')) ? cast('1') : cast('0');
+    len = 1;
+    K = 0;
+  }
+
+  if (0 < prec && len > cast(prec))
+  {
+    K += cast(len) - prec;
+    len = cast(prec);
+
+    var digit = *(digits + len);
+
+    if (digit >= cast('5'))
+    {
+      rof(var i = digits + len; i == digits; --i)
+      {
+        if ((*i)++ < cast('9'))
+          break;
+
+        *i = cast('0');
+
+        if (i == digits)
+        {
+          K += 1;
+          *i = cast('1');
+        }
+      }
+    }
+  }
+}
+
+fn ftoa_scientific(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
 {
   var result = strconv_result();
 
@@ -199,6 +234,14 @@ fn ftoa_exp(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit)
     *ch++ = cast('-');
   }
   
+  if (prec > -1)
+  {
+    if (prec == 0)
+      prec = 1;
+
+    ftoa_round(digits, K, len, prec);
+  }
+
   if (end - ch < len + 8)
   {
     result.error = std::errc::value_too_large;
@@ -207,10 +250,24 @@ fn ftoa_exp(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit)
 
   *ch++ = *digits;
   
-  if (len != 1)
+  if (len != 1 || prec > cast(len))
     *ch++ = cast('.');
 
   ch = std::copy_n(ch, end, digits + 1, len - 1);
+
+  if (prec > cast(len))
+  {
+    if (cast(prec) - len > end - ch)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+
+    ch = std::fill_n(ch, end, cast<u8>('0'), cast(prec) - len);
+  }
+
+  if (prec == 0)
+    ch -= 2;
 
   *ch++ = cast('e');
 
@@ -245,7 +302,7 @@ fn ftoa_exp(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit)
   return result;  
 }
 
-fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit) -> strconv_result
+fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
 {
   var result = strconv_result();
 
@@ -263,7 +320,12 @@ fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbi
 
     *ch++ = cast('-');
   }
-  
+
+  if (prec > -1)
+  {
+    ftoa_round(digits, K, len, cast(len) + K + prec);
+  }
+
   if (0 <= K)
   {
     var k = cast<usize>(K);
@@ -278,6 +340,7 @@ fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbi
     ch = std::fill_n(ch, end, cast<u8>('0'), k);
     *ch++ = cast('.');
     *ch++ = cast('0');
+    K = 1;
   }
   else if (len <= cast(-K))
   {
@@ -293,6 +356,7 @@ fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbi
     *ch++ = cast('.');
     ch = std::fill_n(ch, end, cast<u8>('0'), k - len);
     ch = std::copy_n(ch, end, digits, len);
+    K = -K;
   }
   else
   {
@@ -307,21 +371,36 @@ fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbi
     ch = std::copy_n(ch, end, digits, len - k);
     *ch++ = cast('.');
     ch = std::copy_n(ch, end, digits + len - k, k);
+    K = -K;
   }
+
+  if (prec > K)
+  {
+    if (cast(prec - K) > end - ch)
+    {
+      result.error = std::errc::value_too_large;
+      return result;
+    }
+
+    ch = std::fill_n(ch, end, cast<u8>('0'), prec - K);
+  }
+
+  if (prec == 0)
+    ch -= 2;
   
   result.len = ch - beg;
 
   return result;
 }
 
-fn ftoa_general(u8 mut *beg, u8 mut *end, u8 *digits, int K, usize len, int signbit) -> strconv_result
+fn ftoa_general(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
 {
   var exp = cast<int>(len) + K - 1;
-  
+
   if (exp < -4 || exp >= 16)
-    return ftoa_exp(beg, end, digits, K, len, signbit);
+    return ftoa_scientific(beg, end, digits, K, len, signbit, prec);
   else
-    return ftoa_fixed(beg, end, digits, K, len, signbit);
+    return ftoa_fixed(beg, end, digits, K, len, signbit, prec >= 0 ? std::max(prec - exp - 1, 1) : prec);
 }
 
 fn ftoa_special<T>(u8 mut *beg, u8 mut *end, T value) -> strconv_result
@@ -351,7 +430,7 @@ fn ftoa_special<T>(u8 mut *beg, u8 mut *end, T value) -> strconv_result
   return result;
 }
 
-pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value) -> strconv_result
+pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value, char fmt = ' ', int prec = -1) -> strconv_result
 {
   if (!std::is_finite(value))
     return ftoa_special(beg, end, value);
@@ -362,10 +441,19 @@ pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value) -> strconv_result
 
   flt::grisu(digits.begin, digits.end, value, K, len);
 
-  return ftoa_general(beg, end, digits.data, K, len, std::signbit(value));
+  switch (fmt)
+  {
+    case 'f':
+      return ftoa_fixed(beg, end, digits.data, K, len, std::signbit(value), prec);
+
+    case 'e':
+      return ftoa_scientific(beg, end, digits.data, K, len, std::signbit(value), prec);
+  }
+
+  return ftoa_general(beg, end, digits.data, K, len, std::signbit(value), prec);
 }
 
-pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value) -> strconv_result
+pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value, char fmt = ' ', int prec = -1) -> strconv_result
 {
   if (!std::is_finite(value))
     return ftoa_special(beg, end, value);
@@ -376,7 +464,16 @@ pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value) -> strconv_result
 
   flt::grisu(digits.begin, digits.end, value, K, len);
 
-  return ftoa_general(beg, end, digits.data, K, len, std::signbit(value));
+  switch (fmt)
+  {
+    case 'f':
+      return ftoa_fixed(beg, end, digits.data, K, len, std::signbit(value), prec);
+
+    case 'e':
+      return ftoa_scientific(beg, end, digits.data, K, len, std::signbit(value), prec);
+  }
+
+  return ftoa_general(beg, end, digits.data, K, len, std::signbit(value), prec);
 }
 
 pub fn atoi(u8 *beg, u8 *end, bool mut &value, int base = 10) -> strconv_result

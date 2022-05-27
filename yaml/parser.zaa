@@ -276,14 +276,14 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
 
     case tag_int:
       var integer = i64();
-      if (std::sscan(ctx.tok.value, integer) != 1)
+      if (std::sscan(ctx.tok.value, integer).len != ctx.tok.value.len)
         return parse_error(ctx, yaml::errc::invalid_int_value);
 
       ctx.stack.push_back(integer);
 
     case tag_float:
       var real = f64();
-      if (std::sscan(ctx.tok.value, real) != 1)
+      if (std::sscan(ctx.tok.value, real).len != ctx.tok.value.len)
         return parse_error(ctx, yaml::errc::invalid_float_value);
 
       ctx.stack.push_back(real);
@@ -338,7 +338,7 @@ fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var mut &entry = ctx.stack[ctx.stack.len - 1];
+  var mut &entry = std::launder(ctx.stack[ctx.stack.len - 1]);
 
   ctx.stack[ctx.stack.len - 2].Array.push_back(std::move(entry));
 
@@ -377,8 +377,8 @@ fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var mut &key = ctx.stack[ctx.stack.len - 2];
-  var mut &value = ctx.stack[ctx.stack.len - 1];
+  var mut &key = std::launder(ctx.stack[ctx.stack.len - 2]);
+  var mut &value = std::launder(ctx.stack[ctx.stack.len - 1]);
 
   ctx.stack[ctx.stack.len - 3].Map.insert(std::move(key), std::move(value));
 
@@ -400,12 +400,14 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
         case anchor:
           ctx.push_state(state::anchor_entry);
           ctx.names.push_back(std::move(ctx.tok.value));
+          std::launder(ctx.tok);
           ctx.consume_token(is);
       }
 
     case anchor:
       ctx.push_state(state::anchor_entry);
       ctx.names.push_back(std::move(ctx.tok.value));
+      std::launder(ctx.tok);
       ctx.consume_token(is);
 
       switch (ctx.tok.type)

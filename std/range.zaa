@@ -45,11 +45,12 @@ pub struct iterator_pair<I, J>
     return (&&this).second;
   }
 
-  //pub fn [](this &&, usize index)
-  //  where __is_match<RandomAccessIterator, I>
-  //{
-  //  return &&(*std::next((&&this).first, index));
-  //}
+  #[lifetime(clone(this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(*std::next((&&this).first, index));
+  }
 }
 
 pub fn Range<T, N>(T[N] &&array)
@@ -140,17 +141,17 @@ pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
 
 pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
 {
-  std::print_to(os, "[");
+  ctx.written += std::print_to(os, "[");
 
   for(var k = 0, var &value : range;; ++k)
   {
     if (k != 0)
-      std::print_to(os, ", ");
+      ctx.written += std::print_to(os, ", ");
 
     std::fmt_to(os, ctx, value);
   }
 
-  std::print_to(os, "]");
+  ctx.written += std::print_to(os, "]");
 }
 
 pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
@@ -219,6 +220,7 @@ pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
   }
 
   pub fn +<I>(iota_iterator<I> &lhs, usize rhs) -> iota_iterator<I>
+    where requires (I i, usize j) { i + j; }
   {
     return iota_iterator<I>(lhs.n + cast<I>(rhs));
   }
@@ -296,13 +298,27 @@ pub struct reverse_view<I, J> : iterator_pair<reverse_iterator<I>, reverse_itera
       return lhs.base == rhs.base;
     }
   }
+
+  pub fn -<I, J>(reverse_iterator<I> &lhs, reverse_iterator<J> &rhs) -> usize
+    where requires (I i, J j) { j - i; }
+  {
+    return rhs.base - lhs.base;
+  }
+
+  pub fn +<I>(reverse_iterator<I> lhs, usize rhs) -> reverse_iterator<I>
+    where requires (I i, usize j) { i - j; }
+  {
+    return reverse_iterator<I>(lhs.base - rhs);
+  }
 }
 
+#[lifetime(depend(range))]
 pub fn reverse<T>(Range<T> &&range)
 {
   return reverse_view((&&range).begin, (&&range).end);
 }
 
+#[lifetime(depend(range))]
 pub fn reverse<I, J>(zip_view<I, J> &&range)
 {
   return reverse_view((&&range).begin, (&&range).begin + range.len);
@@ -386,6 +402,7 @@ pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_it
   Pred _pred;
 }
 
+#[lifetime(depend(range))]
 pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
 {
   return filter_view((&&range).begin, (&&range).end, &&pred);
@@ -455,7 +472,7 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
     return lhs.base - rhs.base;
   }
 
-  pub fn +<I>(transform_iterator<I> &lhs, usize rhs) -> transform_iterator<I>
+  pub fn +<I>(transform_iterator<I> lhs, usize rhs) -> transform_iterator<I>
     where requires (I i, usize j) { i + j; }
   {
     return transform_iterator<I>(lhs.base + rhs, lhs.func);
@@ -464,6 +481,7 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
   Func _func;
 }
 
+#[lifetime(depend(range))]
 pub fn transform<T, Func>(Range<T> &&range, Func &&func)
 {
   return transform_view((&&range).begin, (&&range).end, &&func);
@@ -590,22 +608,26 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
   }
 }
 
+#[lifetime(depend(ranges))]
 pub fn zip(var && ...ranges)
   where is_all_ranges<typeof(ranges)>
 {
   return zip_view(std::tuple(((&&ranges).begin)...), std::tuple(((&&ranges).end)...));
 }
 
+#[lifetime(depend(range))]
 pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 {
   return std::iterator_pair(first, last);
 }
 
+#[lifetime(depend(range))]
 pub fn drop_n<T>(Range<T> &&range, usize n)
 {
   return range.subrange(std::next((&&range).begin, n, range.end), (&&range).end);
 }
 
+#[lifetime(depend(range))]
 pub fn take_n<T>(Range<T> &&range, usize n)
 {
   return range.subrange((&&range).begin, std::next((&&range).begin, n, range.end));

@@ -1,0 +1,45 @@
+//
+// unistd
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+import os.linux.time : timeval, timespec;
+
+pub fn fork() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_fork)));
+}
+
+pub fn execve(u8 *pathname, u8 **argv, u8 **envp) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_execve, pathname, argv, envp)));
+}
+
+pub const WAIT_ANY = ~0;
+pub const WAIT_MYPGRP = 0;
+
+pub fn wexitstatus(int s) -> int { return (s & 0xff00) >> 8; }
+pub fn wtermsig(int s) -> int { return s & 0x7f; }
+pub fn wstopsig(int s) -> int { return wexitstatus(s); }
+pub fn wcoredump(int s) -> bool { return s & 0x80 != 0; }
+pub fn wifexited(int s) -> bool { return wtermsig(s) == 0; }
+pub fn wifstopped(int s) -> bool { return (((s & 0xffff) * 0x10001) >> 8) > 0x7f00; }
+pub fn wifsignaled(int s) -> bool { return ((s & 0xffff) - 1) < 0xff; }
+pub fn wifcontinued(int s) -> bool { return (s == 0xffff); }
+
+pub fn wait4(pid_t pid, int mut *wstatus, int options, void mut *rusage) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall4(sys_wait4, pid, wstatus, options, rusage)));
+}
+
+pub fn setsid() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_setsid)));
+}
+
+#[noreturn]
+pub fn exit(int status) -> void
+{
+  syscall1(sys_exit, status);
+}

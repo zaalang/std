@@ -1,0 +1,56 @@
+//
+// mman
+//
+
+pub enum mmap
+{
+  pub const shared = 0x1;
+  pub const private = 0x2;
+  pub const anonymous = 0x20;
+}
+
+pub enum prot
+{
+  pub const none = 0;
+  pub const readonly = 1;
+  pub const readwrite = 2;
+  pub const executable = 4;
+}
+
+pub struct mmvec
+{
+  pub u64 offset;
+  pub usize length;
+  pub uintptr base;
+  pub u32 flags;
+  pub u32 prot;
+
+  pub mmvec() = default;
+  pub mmvec(mmvec&) = default;
+  pub fn =(mmvec mut &, mmvec &) -> mmvec mut & = default;
+  pub ~mmvec() = default;
+}
+
+#[weak]
+extern fn __vdso_get_pagesize() -> usize;
+
+#[weak]
+extern fn __vdso_mmap(i32 fd, mmvec *mmvs, usize n, u64 flags, void mut * mut *addrbuf) -> i32;
+
+#[weak]
+extern fn __vdso_munmap(void *addr, usize length) -> i32;
+
+pub fn get_pagesize() -> usize
+{
+  return __vdso_get_pagesize();
+}
+
+pub fn mmap(i32 fd, mmvec *mmvs, usize n, u64 flags, void mut * mut *addrbuf) -> i32
+{
+  return __vdso_mmap(fd, mmvs, n, flags, addrbuf);
+}
+
+pub fn munmap(void *addr, usize length) -> i32
+{
+  return __vdso_munmap(addr, length);
+}

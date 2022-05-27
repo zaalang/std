@@ -1,0 +1,171 @@
+//
+// socket
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+
+pub const AF_UNIX = 1;
+pub const AF_LOCAL = 1;
+pub const AF_INET = 2;
+pub const AF_INET6 = 10;
+
+pub const SOCK_STREAM = 1;
+pub const SOCK_DGRAM = 2;
+
+pub const SOL_SOCKET = 65535;
+
+pub const SO_REUSEADDR = 0x0004;
+pub const SO_KEEPALIVE = 0x0008;
+pub const SO_DONTROUTE = 0x0010;
+pub const SO_BROADCAST = 0x0020;
+pub const SO_LINGER = 0x0080;
+pub const SO_OOBINLINE = 0x0100;
+pub const SO_REUSEPORT = 0x0200;
+pub const SO_SNDBUF = 0x1001;
+pub const SO_RCVBUF = 0x1002;
+pub const SO_SNDLOWAT = 0x1003;
+pub const SO_RCVLOWAT = 0x1004;
+pub const SO_ERROR = 0x1007;
+pub const SO_TYPE = 0x1008;
+pub const SO_ACCEPTCONN = 0x1009;
+pub const SO_PROTOCOL = 0x1028;
+pub const SO_DOMAIN = 0x1029;
+
+pub const SOCK_CLOEXEC = 0o2000000;
+pub const SOCK_NONBLOCK = 0o4000;
+
+pub const IPPROTO_IP = 0;
+pub const IPPROTO_ICMP = 1;
+pub const IPPROTO_TCP = 6;
+pub const IPPROTO_UDP = 17;
+pub const IPPROTO_IPV6 = 41;
+pub const IPPROTO_ICMPV6 = 58;
+
+pub struct sockaddr
+{
+  pub u16 sa_family;
+
+  sockaddr() = default;
+  ~sockaddr() = default;
+}
+
+pub struct sockaddr_un : sockaddr
+{
+  pub u8[108] sun_path;
+
+  pub sockaddr_un() = default;
+  pub sockaddr_un(sockaddr_in4&) = default;
+  pub fn =(sockaddr_un mut &, sockaddr_un &) -> sockaddr_un mut & = default;
+  pub ~sockaddr_un() = default;
+}
+
+pub struct in4_addr : u8[4]
+{
+  pub fn s_addr(this&&) { return &cast<u32&&>(this.super); }
+
+  pub in4_addr() = default;
+  pub in4_addr(u8[4] &addr) : super(addr) { }
+  pub in4_addr(in4_addr&) = default;
+  pub fn =(in4_addr mut &, in4_addr &) -> in4_addr mut & = default;
+  pub ~in4_addr() = default;
+}
+
+pub const in4addr_any = in6_addr([0,0,0,0]);
+pub const in4addr_loopback = in6_addr([255,255,255,255]);
+
+pub struct sockaddr_in4 : sockaddr
+{
+  pub u16 sin4_port;
+  pub in4_addr sin4_addr;
+  pub u8[8] sin4_zero;
+
+  pub sockaddr_in4() = default;
+  pub sockaddr_in4(sockaddr_in4&) = default;
+  pub fn =(sockaddr_in4 mut &, sockaddr_in4 &) -> sockaddr_in4 mut & = default;
+  pub ~sockaddr_in4() = default;
+}
+
+pub struct in6_addr : u8[16]
+{
+  pub fn s6_addr(this&&) { return &this.super; }
+  pub fn s6_addr16(this&&) { return &cast<u16[8]&&>(this.super); }
+  pub fn s6_addr32(this&&) { return &cast<u32[4]&&>(this.super); }
+
+  pub in6_addr() = default;
+  pub in6_addr(u8[16] &addr) : super(addr) { }
+  pub in6_addr(in6_addr&) = default;
+  pub fn =(in6_addr mut &, in6_addr &) -> in6_addr mut & = default;
+  pub ~in6_addr() = default;
+}
+
+pub const in6addr_any = in6_addr([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
+pub const in6addr_loopback = in6_addr([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]);
+
+pub struct sockaddr_in6 : sockaddr
+{
+  pub u16 sin6_port;
+  pub u32 sin6_flowinfo;
+  pub in6_addr sin6_addr;
+  pub u32 sin6_scope_id;
+
+  pub sockaddr_in6() = default;
+  pub sockaddr_in6(sockaddr_in6&) = default;
+  pub fn =(sockaddr_in6 mut &, sockaddr_in6 &) -> sockaddr_in6 mut & = default;
+  pub ~sockaddr_in6() = default;
+}
+
+pub fn socket(int domain, int type, int protocol) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_socket, domain, type, protocol)));
+}
+
+pub fn connect(int fd, sockaddr *addr, u32 alen) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_connect, fd, addr, alen)));
+}
+
+pub fn accept(int fd, sockaddr mut *addr, u32 mut *alen) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_accept, fd, addr, alen)));
+}
+
+pub fn send(int fd, void *buf, usize len, int flags) -> isize
+{
+  return std::bit_cast<isize>(syscall6(sys_sendto, fd, buf, len, flags, null, 0));
+}
+
+pub fn sendto(int fd, void *buf, usize len, int flags, sockaddr *addr, u32 alen) -> isize
+{
+  return std::bit_cast<isize>(syscall6(sys_sendto, fd, buf, len, flags, addr, alen));
+}
+
+pub fn recv(int fd, void mut *buf, usize len, int flags) -> isize
+{
+  return std::bit_cast<isize>(syscall6(sys_recvfrom, fd, buf, len, flags, null, null));
+}
+
+pub fn recvfrom(int fd, void mut *buf, usize len, int flags, sockaddr mut *addr, u32 mut *alen) -> isize
+{
+  return std::bit_cast<isize>(syscall6(sys_recvfrom, fd, buf, len, flags, addr, alen));
+}
+
+pub fn bind(int fd, sockaddr *addr, u32 alen) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_bind, fd, addr, alen)));
+}
+
+pub fn listen(int fd, int backlog) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_listen, fd, backlog)));
+}
+
+pub fn getsockopt(int fd, int level, int optname, void mut *optval, u32 mut *optlen) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall5(sys_getsockopt, fd, level, optname, optval, optlen)));
+}
+
+pub fn setsockopt(int fd, int level, int optname, void *optval, u32 optlen) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall5(sys_setsockopt, fd, level, optname, optval, optlen)));
+}

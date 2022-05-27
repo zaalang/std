@@ -16,22 +16,14 @@ pub struct delegate<R(V), Throws = void, N = 24>
     return this._fx(cast<void*>(this.storage.data), v);
   }
 
-  pub delegate<Y>(Y &fx)
+  pub delegate<Y>(Y &&fx)
   {
+    std::assert(__is_trivial_copy<Y>, "delegate must be trivial copy");
     std::assert(__is_trivial_destroy<Y>, "delegate must be trivial destroy");
     std::assert(sizeof<Y> <= sizeof(storage), "delegate too large for storage");
 
-    cast<Y mut &>(storage) = fx;
-    _fx = fn(void *data, V mut &v) -> R { return cast<Y*>(data)(v...); };
-  }
-
-  pub delegate<Y>(Y mut &fx)
-  {
-    std::assert(__is_trivial_destroy<Y>, "delegate must be trivial destroy");
-    std::assert(sizeof<Y> <= sizeof(storage), "delegate too large for storage");
-
-    cast<Y mut &>(storage) = fx;
-    _fx = fn(void *data, V mut &v) -> R { return cast<Y mut *>(data)(v...); };
+    cast<Y mut &>(storage) = &&fx;
+    _fx = fn(void *data, V mut &v) -> R { return cast<typeof(fx) mut *>(data)(v...); };
   }
 
   pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
@@ -39,6 +31,23 @@ pub struct delegate<R(V), Throws = void, N = 24>
     this = delegate(&&fx);
 
     return &this;
+  }
+
+  pub fn =<Y>(this mut &, null) -> delegate mut &
+  {
+    this._fx = null;
+
+    return &this;
+  }
+
+  pub fn bool(this&) -> bool
+  {
+    return this._fx != null;
+  }
+
+  pub fn ==(this&, null) -> bool
+  {
+    return this._fx == null;
   }
 
   pub delegate() = default;

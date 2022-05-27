@@ -975,6 +975,42 @@ pub fn hash(var &hasher, String &str) -> usize
   return hasher.combine_contiguous(str.data, str.len);
 }
 
+pub fn sprint<Args>(Span<u8> mut &os, Args & ...args) -> usize
+{
+  try
+  {
+    return std::format_to(os, args...);
+  }
+  catch(std::error e)
+  {
+    return 0;
+  }
+}
+
+pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args) -> usize
+{
+  try
+  {
+    return std::format_to(os, format, args...);
+  }
+  catch(std::error e)
+  {
+    return 0;
+  }
+}
+
+pub fn sprintf<Args>(Span<u8> mut &os, String &format, Args & ...args) -> usize
+{
+  try
+  {
+    return std::format_to(os, format, args...);
+  }
+  catch(std::error e)
+  {
+    return 0;
+  }
+}
+
 #[lifetime(poison(str))]
 pub fn sprint(string mut &str, var & ...args) -> usize
 {

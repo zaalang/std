@@ -246,20 +246,69 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, isize value) throws -> void
     fmt_int(os, ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, f32 value) throws -> void
+fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
 {
   var buf = [0; 64];
-  var str = std::ftoa(buf.begin, buf.end, value);
+  var str = std::strconv_result(void);
 
-  fmt_str(os, ctx, buf.data, str.ptr, str.ptr, str.ptr + str.len, str.len);
+  var signbit = std::signbit(value);
+
+  if (signbit == 1)
+    value = -value;
+
+  var beg = buf.data + 1;
+
+  switch(ctx.spec.type)
+  {
+    case 'f':
+    case 'F':
+      str = std::ftoa(beg, buf.end, value, 'f', ctx.spec.precision);
+
+    case 'e':
+    case 'E':
+      str = std::ftoa(beg, buf.end, value, 'e', ctx.spec.precision);
+
+    else:
+      str = std::ftoa(beg, buf.end, value, 'g', ctx.spec.precision);
+  }
+
+  if (str.ptr != cast(beg))
+  {
+    std::memcpy(beg, str.ptr, str.len);
+
+    str.ptr = beg;
+  }
+
+  if (std::is_uppercase(ctx.spec.type))
+  {
+    for(var ch = cast<u8 mut *>(beg), var end = str.ptr + str.len; ch != end; ++ch)
+      *ch = std::to_uppercase(*ch);
+  }
+
+  switch (ctx.spec.sign)
+  {
+    case '+':
+      *--beg = cast(signbit == 1 ? '-' : '+');
+
+    case ' ':
+      *--beg = cast(signbit == 1 ? '-' : ' ');
+
+    else:
+      if (signbit == 1)
+        *--beg = cast('-');
+  }
+
+  fmt_str(os, ctx, buf.data, beg, beg, str.ptr + str.len, str.ptr + str.len - beg);
+}
+
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, f32 value) throws -> void
+{
+  fmt_flt(os, ctx, value);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, f64 value) throws -> void
 {
-  var buf = [0; 64];
-  var str = std::ftoa(buf.begin, buf.end, value);
-
-  fmt_str(os, ctx, buf.data, str.ptr, str.ptr, str.ptr + str.len, str.len);
+  fmt_flt(os, ctx, value);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws -> void

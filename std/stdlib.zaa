@@ -21,8 +21,7 @@ pub fn move<T>(T mut &x) -> T&&
   return &x;
 }
 
-// circumvent lifetime, move a component without consuming the object
-// eg. std::move(std::launder(x).i)
+#[lifetime(launder(x))]
 pub fn launder<T>(T &&x)
 {
   return &(&&x);

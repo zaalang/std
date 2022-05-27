@@ -1,5 +1,5 @@
 //
-// yaml
+// toml
 //
 
 import std.stdlib : assert;
@@ -9,28 +9,21 @@ import std.range : Range;
 import std.vector;
 import std.flat_hash_map;
 import std.scan;
-import yaml.parser;
+import toml.parser;
 
 pub enum errc : u32
 {
   internal_error = 1,
-  expected_document_start,
+  expected_block_content,
   expected_sequence_entry,
   expected_block_mapping_key,
+  expected_block_mapping_value,
+  unmatched_bracket,
   missing_comma,
+  duplicate_key,
   bad_escape,
-  bad_indent_character,
-  unknown_tag,
-  anchor_not_found,
-  invalid_null_value,
-  invalid_bool_value,
-  invalid_int_value,
-  invalid_float_value,
-  invalid_sequence_start,
-  invalid_mapping_start,
   invalid_value,
   invalid_utf8,
-  unexpected_document_indicator,
   unexpected_end_of_stream,
 
   pub fn bool(errc code) -> bool
@@ -41,7 +34,6 @@ pub enum errc : u32
 
 pub union node
 {
-  pub Null,
   pub Real(f64),
   pub Integer(i64),
   pub Boolean(bool),
@@ -52,11 +44,6 @@ pub union node
   pub fn bool(this&) -> bool
   {
     return this.kind != cast(0);
-  }
-
-  pub fn is_null(this&) -> bool
-  {
-    return this.kind == typeof(this.kind)::Null;
   }
 
   pub fn is_real(this&) -> bool
@@ -116,7 +103,7 @@ pub union node
           return T(string);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid toml access");
   }
 
   pub fn as_str(this &&)
@@ -127,7 +114,7 @@ pub union node
         return &(&&string);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid toml access");
   }
 
   pub fn as_vec(this &&)
@@ -138,7 +125,7 @@ pub union node
         return &(&&array);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid toml access");
   }
 
   pub fn as_map(this &&)
@@ -149,7 +136,7 @@ pub union node
         return &(&&map);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid toml access");
   }
 
   pub fn []<Key>(this&, Key &key) -> node &
@@ -172,11 +159,6 @@ pub union node
     }
 
     return &emptynode;
-  }
-
-  pub fn ==(node &lhs, null) -> bool
-  {
-    return lhs.is_null;
   }
 
   pub fn ==<T>(node &lhs, T rhs) -> bool
@@ -223,11 +205,6 @@ pub union node
     }
 
     return false;
-  }
-
-  pub node(null)
-    : Null()
-  {
   }
 
   pub node(f64 real)
@@ -307,9 +284,6 @@ pub union node
       if (std::sscan(str, integer).len == str.len)
         return integer;
     }
-
-    if (str == "~" || str == "null")
-      return null;
 
     if (str == "true")
       return true;

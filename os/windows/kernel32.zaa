@@ -1,0 +1,71 @@
+//
+// kernel32
+//
+
+import os.windows.ntdef : *;
+
+pub using HFILE = int;
+pub using HANDLE = uintptr;
+pub using HLOCAL = void mut *;
+pub using HGLOBAL = void mut *;
+
+pub const CP_UTF8 = 65001;
+
+pub const PAGE_READONLY = 0x02;
+pub const PAGE_READWRITE = 0x04;
+
+pub const FILE_MAP_WRITE = 0x02;
+pub const FILE_MAP_READ = 0x04;
+
+pub const GENERIC_READ = 0x80000000;
+pub const GENERIC_WRITE = 0x40000000;
+pub const GENERIC_EXECUTE = 0x20000000;
+pub const GENERIC_ALL = 0x10000000;
+
+pub const CREATE_NEW = 1;
+pub const CREATE_ALWAYS = 2;
+pub const OPEN_EXISTING = 3;
+pub const OPEN_ALWAYS = 4;
+pub const TRUNCATE_EXISTING = 5;
+
+pub const FILE_SHARE_READ = 0x00000001;
+pub const FILE_SHARE_WRITE = 0x00000002;
+pub const FILE_SHARE_DELETE = 0x00000004;
+
+pub const FILE_ATTRIBUTE_READONLY = 0x00000001;
+pub const FILE_ATTRIBUTE_HIDDEN = 0x00000002;
+pub const FILE_ATTRIBUTE_SYSTEM = 0x00000004;
+pub const FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
+pub const FILE_ATTRIBUTE_ARCHIVE = 0x00000020;
+pub const FILE_ATTRIBUTE_DEVICE = 0x00000040;
+pub const FILE_ATTRIBUTE_NORMAL = 0x00000080;
+pub const FILE_ATTRIBUTE_TEMPORARY = 0x00000100;
+pub const FILE_ATTRIBUTE_SPARSE_FILE = 0x00000200;
+pub const FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400;
+pub const FILE_ATTRIBUTE_COMPRESSED = 0x00000800;
+pub const FILE_ATTRIBUTE_OFFLINE = 0x00001000;
+pub const FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x00002000;
+pub const FILE_ATTRIBUTE_ENCRYPTED = 0x00004000;
+
+pub const INVALID_FILE_ATTRIBUTES = u32(0xffffffff);
+
+pub const INVALID_HANDLE_VALUE = uintptr(~0);
+
+pub struct SECURITY_ATTRIBUTES
+{
+  pub DWORD nLength;
+  pub LPVOID lpSecurityDescriptor;
+  pub BOOL bInheritHandle;
+}
+
+pub using LPSECURITY_ATTRIBUTES = SECURITY_ATTRIBUTES mut *;
+
+pub extern "C" fn GetLastError() -> DWORD;
+pub extern "C" fn MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCCH lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar) -> int;
+pub extern "C" fn FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, void *Arguments) -> DWORD;
+pub extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
+pub extern "C" fn CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName) -> HANDLE;
+pub extern "C" fn MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress) -> LPVOID;
+pub extern "C" fn UnmapViewOfFileEx(LPCVOID BaseAddress, ULONG UnmapFlags) -> BOOL;
+pub extern "C" fn GetFileSizeEx(HANDLE hFile, LARGE_INTEGER mut *lpFileSize) -> BOOL;
+pub extern "C" fn CloseHandle(HANDLE hObject) -> BOOL;

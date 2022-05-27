@@ -1,0 +1,211 @@
+//
+// fcntl
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+import os.linux.time : timeval, timespec;
+
+pub const O_RDONLY = 0;
+pub const O_WRONLY = 1;
+pub const O_RDWR = 2;
+
+pub const O_CREAT = 0o100;
+pub const O_EXCL = 0o200;
+
+pub const O_CREAT = 0o100;
+pub const O_EXCL = 0o200;
+pub const O_NOCTTY = 0o400;
+pub const O_TRUNC = 0o1000;
+pub const O_APPEND = 0o2000;
+pub const O_NONBLOCK = 0o4000;
+pub const O_DSYNC = 0o10000;
+pub const O_SYNC = 0o4010000;
+pub const O_RSYNC = 0o4010000;
+pub const O_DIRECTORY = 0o200000;
+pub const O_NOFOLLOW = 0o400000;
+pub const O_CLOEXEC = 0o2000000;
+
+pub const F_DUPFD = 0;
+pub const F_GETFD = 1;
+pub const F_SETFD = 2;
+pub const F_GETFL = 3;
+pub const F_SETFL = 4;
+
+pub struct iovec
+{
+  pub u8 mut *data;
+  pub usize len;
+
+  pub iovec() = default;
+  pub iovec(iovec&) = default;
+  pub fn =(iovec mut &, iovec &) -> iovec mut & = default;
+  pub ~iovec() = default;
+}
+
+pub struct ciovec
+{
+  pub u8 *data;
+  pub usize len;
+
+  pub ciovec() = default;
+  pub ciovec(ciovec&) = default;
+  pub fn =(ciovec mut &, ciovec &) -> ciovec mut & = default;
+  pub ~ciovec() = default;
+}
+
+pub struct stat
+{
+  pub dev_t st_dev;
+  pub ino_t st_ino;
+  pub nlink_t st_nlink;
+
+  pub mode_t st_mode;
+  pub uid_t st_uid;
+  pub gid_t st_gid;
+  pub u32 __pad0;
+  pub u64 st_rdev;
+  pub off_t st_size;
+  pub blksize_t st_blksize;
+  pub blkcnt_t st_blocks;
+
+  pub timespec st_atim;
+  pub timespec st_mtim;
+  pub timespec st_ctim;
+  pub u8[24] __unused;
+
+  pub stat() = default;
+  pub stat(stat&) = default;
+  pub fn =(stat mut &, stat &) -> stat mut & = default;
+  pub ~stat() = default;
+}
+
+pub fn open(u8 *path, u32 flags, mode_t mode) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_open, path, flags, mode)));
+}
+
+pub fn dup(int oldfd) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_dup, oldfd)));
+}
+
+pub fn dup2(int oldfd, int newfd, int flags) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_dup2, oldfd, newfd)));
+}
+
+pub fn dup3(int oldfd, int newfd, int flags) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_dup3, oldfd, newfd, flags)));
+}
+
+pub fn fstat(int fd, stat mut *fs) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_fstat, fd, fs)));
+}
+
+pub fn close(int fd) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_close, fd)));
+}
+
+pub fn fcntl(int fd, int cmd) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_fcntl, fd, cmd)));
+}
+
+pub fn fcntl(int fd, int cmd, var arg) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_fcntl, fd, cmd, arg)));
+}
+
+pub fn ioctl(int fd, u64 request, var arg) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_ioctl, fd, request, arg)));
+}
+
+pub fn read(int fd, void mut *buf, usize count) -> isize
+{
+  return std::bit_cast<isize>(syscall3(sys_read, fd, buf, count));
+}
+
+pub fn pread(int fd, void mut *buf, usize count, u64 ofs) -> isize
+{
+  return std::bit_cast<isize>(syscall4(sys_pread64, fd, buf, count, ofs));
+}
+
+pub fn readv(int fd, iovec *iov, int count) -> isize
+{
+  return std::bit_cast<isize>(syscall3(sys_readv, fd, iov, count));
+}
+
+pub fn preadv(int fd, iovec *iov, int count, u64 ofs) -> isize
+{
+  return std::bit_cast<isize>(syscall5(sys_preadv, fd, iov, count, ofs, ofs >> 32));
+}
+
+pub fn write(int fd, void *buf, usize count) -> isize
+{
+  return std::bit_cast<isize>(syscall3(sys_write, fd, buf, count));
+}
+
+pub fn pwrite(int fd, void *buf, usize count, u64 ofs) -> isize
+{
+  return std::bit_cast<isize>(syscall4(sys_pwrite64, fd, buf, count, ofs));
+}
+
+pub fn writev(int fd, ciovec *iov, int count) -> isize
+{
+  return std::bit_cast<isize>(syscall3(sys_writev, fd, iov, count));
+}
+
+pub fn pwritev(int fd, ciovec *iov, int count, u64 ofs) -> isize
+{
+  return std::bit_cast<isize>(syscall5(sys_pwritev, fd, iov, count, ofs, ofs >> 32));
+}
+
+pub fn pipe(int[2] mut *fds) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_pipe, fds)));
+}
+
+pub fn pipe2(int[2] mut *fds, int flags) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_pipe2, fds, flags)));
+}
+
+pub struct fd_set
+{
+  u64[16] bits;
+
+  pub fd_set() = default;
+  pub fd_set(fd_set&) = default;
+  pub fn =(fd_set mut &, stat &) -> fd_set mut & = default;
+  pub ~fd_set() = default;
+}
+
+pub fn fd_zero(fd_set mut &fds) -> void
+{
+  std::memset(fd.bits, 0, sizeof(fd.bits));
+}
+
+pub fn fd_set(fd_set mut &fds, int n) -> void
+{
+  fds.bits[cast<usize>(n) >> 6] |= (1 << (n & 63));
+}
+
+pub fn fd_clr(fd_set mut &fds, int n) -> void
+{
+  fds.bits[cast<usize>(n) >> 6] &= ~(1 << (n & 63));
+}
+
+pub fn fd_isset(fd_set mut &fds, int n) -> bool
+{
+  return fds.bits[cast<usize>(n) >> 6] & (1 << (n & 63)) != 0;
+}
+
+pub fn select(int n, fd_set *rfds, fd_set *wfds, fd_set *efds, timeval *tv) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall5(sys_select, n, rfds, wfds, efds, tv)));
+}

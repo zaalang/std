@@ -1,0 +1,280 @@
+//
+// fcntl
+//
+
+import std.stdlib;
+import std.atomic;
+
+pub using uid_t = u32;
+pub using gid_t = u32;
+pub using mode_t = u32;
+pub using off_t = u64;
+pub using time_t = i64;
+
+pub enum stats
+{
+  pub const uid = 0x01;
+  pub const gid = 0x02;
+  pub const mode = 0x04;
+  pub const size = 0x08;
+  pub const mtime = 0x10;
+  pub const ctime = 0x20;
+}
+
+pub struct stat
+{
+  pub uid_t uid,
+  pub gid_t gid,
+  pub mode_t mode,
+
+  pub off_t size,
+
+  pub time_t atime,
+  pub time_t mtime,
+  pub time_t ctime,
+
+  pub stat() = default;
+  pub stat(stat&) = default;
+  pub fn =(stat mut &, stat &) -> stat mut & = default;
+  pub ~stat() = default;
+}
+
+pub enum ioring_ops
+{
+  pub const open = 0x01;
+  pub const stat = 0x02;
+  pub const read = 0x03;
+  pub const write = 0x04;
+  pub const ioctl = 0x05;
+  pub const close = 0x06;
+  pub const fstat = 0x07;
+  pub const lstat = 0x08;
+}
+
+pub enum ioring_flags
+{
+  pub const fin = 0x1;
+}
+
+pub struct ioring_header
+{
+  pub u32 sq_head;
+  pub u32 sq_tail;
+  pub u32 sq_mask;
+  pub u32 sq_offset;
+
+  pub u32 cq_head;
+  pub u32 cq_tail;
+  pub u32 cq_mask;
+  pub u32 cq_offset;
+
+  u8[32] reserved;
+}
+
+pub struct ioring_sqe
+{
+  pub u8 op;
+  pub u8 flags;
+  pub u16 reserved1;
+  pub u32 reserved2;
+  pub uintptr[6] args;
+  pub uintptr user_data;
+}
+
+pub struct ioring_cqe
+{
+  pub u32 flags;
+  pub i32 result;
+  pub uintptr user_data;
+}
+
+pub struct ioring
+{
+  pub i32 fd;
+  pub ioring_header mut *header;
+
+  pub ioring() = default;
+  pub ioring(ioring&) = default;
+  pub fn =(ioring mut &, ioring &) -> ioring mut & = default;
+  pub ~ioring() = default;
+}
+
+#[weak]
+extern fn __vdso_ioring_setup(void *buffer, usize bufferlen, u64 flags) -> i32;
+
+#[weak]
+extern fn __vdso_ioring_enter(i32 fd, u32 to_submit, u32 min_complete, u64 flags) -> i32;
+
+pub fn ioring_setup(void *buffer, usize bufferlen, u64 flags) -> i32
+{
+  return __vdso_ioring_setup(buffer, bufferlen, flags);
+}
+
+pub fn ioring_enter(i32 fd, u32 to_submit, u32 min_complete, u64 flags) -> i32
+{
+  return __vdso_ioring_enter(fd, to_submit, min_complete, flags);
+}
+
+pub fn ioring_get_sqe(ioring mut &ring) -> ioring_sqe mut *
+{
+  var tail = ring.header.sq_tail;
+  var index = tail & ring.header.sq_mask;
+  var next = std::add_with_carry(tail, 1).0;
+
+  if (next == std::volatile_load(&ring.header.sq_head))
+    return null;
+
+  return cast<ioring_sqe mut *>(cast<uintptr>(ring.header) + cast<usize>(ring.header.sq_offset + index * sizeof<ioring_sqe>));
+}
+
+pub fn ioring_advance_sqe(ioring mut &ring) -> void
+{
+  var tail = ring.header.sq_tail;
+  var next = std::add_with_carry(tail, 1).0;
+
+  std::atomic_store(&ring.header.sq_tail, next);
+}
+
+pub fn ioring_submit_sqe(ioring mut &ring) -> i32
+{
+  var tail = ring.header.sq_tail;
+  var next = std::add_with_carry(tail, 1).0;
+
+  std::atomic_store(&ring.header.sq_tail, next);
+
+  return __vdso_ioring_enter(ring.fd, 1, 0, 0);
+}
+
+pub fn ioring_get_cqe(ioring mut &ring) -> ioring_cqe *
+{
+  var head = ring.header.cq_head;
+  var index = head & ring.header.cq_mask;
+
+  if (head == std::volatile_load(&ring.header.cq_tail))
+    return null;
+
+  return cast<ioring_cqe*>(cast<uintptr>(ring.header) + cast<usize>(ring.header.cq_offset + index * sizeof<ioring_cqe>));
+}
+
+pub fn ioring_wait_cqe(ioring mut &ring) -> i32
+{
+  var head = ring.header.cq_head;
+  var index = head & ring.header.sq_mask;
+
+  if (head == std::volatile_load(&ring.header.sq_tail))
+  {
+    if (var result = __vdso_ioring_enter(ring.fd, 0, 1, 0); result < 0)
+      return result;
+  }
+
+  return 0;
+}
+
+pub fn ioring_advance_cqe(ioring mut &ring) -> void
+{
+  var head = ring.header.cq_head;
+  var next = std::add_with_carry(head, 1).0;
+
+  std::atomic_store(&ring.header.cq_head, next);
+}
+
+pub fn ioring_prep_sqe_open(ioring_sqe mut *sqe, i32 dir, std::string_view path, u64 flags, u32 mode) -> void
+{
+  sqe.op = ioring_ops::open;
+  sqe.args[0] = cast(dir);
+  sqe.args[1] = cast(path.data);
+  sqe.args[2] = cast(path.len);
+  sqe.args[3] = cast(flags);
+  sqe.args[4] = cast(mode);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_stat(ioring_sqe mut *sqe, i32 fd, u64 flags, stat mut *statbuf) -> void
+{
+  sqe.op = ioring_ops::stat;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(flags);
+  sqe.args[2] = cast(statbuf);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_ioctl(ioring_sqe mut *sqe, i32 fd, u32 op, void mut *buffer, usize buflen) -> void
+{
+  sqe.op = ioring_ops::ioctl;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(op);
+  sqe.args[2] = cast(buffer);
+  sqe.args[3] = cast(buflen);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_close(ioring_sqe mut *sqe, i32 fd) -> void
+{
+  sqe.op = ioring_ops::close;
+  sqe.args[0] = cast(fd);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn open(ioring mut &ring, i32 dir, std::string_view path, u64 flags, u32 mode) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_open(sqe, dir, path, flags, mode);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}
+
+pub fn stat(ioring mut &ring, i32 fd, u64 flags, stat mut *statbuf) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_stat(sqe, fd, flags, statbuf);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}
+
+pub fn ioctl(ioring mut &ring, i32 fd, u32 op, void mut *buffer, usize buflen) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_ioctl(sqe, fd, op, buffer, buflen);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}
+
+pub fn close(ioring mut &ring, i32 fd) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_close(sqe, fd);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}

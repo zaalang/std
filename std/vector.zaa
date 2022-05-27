@@ -61,6 +61,16 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return result;
   }
 
+  pub fn with_uninitialised_size(usize size, Allocator &allocator = Allocator()) -> vector
+  {
+    var result = vector(allocator);
+
+    result.reserve(size);
+    result.append_from_capacity(size);
+
+    return result;
+  }
+
   pub fn from(Range<T> &&other, Allocator &allocator = Allocator()) -> vector
   {
     var result = vector(allocator);
@@ -407,7 +417,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = std::move(std::launder(this).back);
+    var result = std::move(std::launder(this.back));
 
     pop_back(this);
 
@@ -517,7 +527,14 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     erase(this, this._data, this._len);
   }
-  
+
+  pub fn append_from_capacity(this mut &, usize count) -> void
+  {
+    assert(this._len + count <= this._capacity);
+
+    this._len += count;
+  }
+
   fn init(this mut &)
   {
     this._len = 0;

@@ -530,3 +530,39 @@ pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
 {
   return remove_if((&&range).begin, (&&range).end, pred);
 }
+
+pub fn all_of<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> bool
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  return find_if(first, last, fn[pred](var &k) { return !pred(k); }) == last;
+}
+
+pub fn all_of<T, Pred>(Range<T> &range, Pred &pred) -> bool
+  where requires (typeof(range) range, Pred &pred) { all_of(range.begin, range.end, pred); }
+{
+  return find_if(range.begin, range.end, fn[pred](var &k) { return !pred(k); }) == range.end;
+}
+
+pub fn any_of<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> bool
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  return find_if(first, last, pred) != last;
+}
+
+pub fn any_of<T, Pred>(Range<T> &range, Pred &pred) -> bool
+  where requires (typeof(range) range, Pred &pred) { any_of(range.begin, range.end, pred); }
+{
+  return find_if(range.begin, range.end, pred) != range.end;
+}
+
+pub fn none_of<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> bool
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  return find_if(first, last, pred) == last;
+}
+
+pub fn none_of<T, Pred>(Range<T> &range, Pred &pred) -> bool
+  where requires (typeof(range) range, Pred &pred) { none_of(range.begin, range.end, pred); }
+{
+  return find_if(range.begin, range.end, pred) == range.end;
+}

@@ -1,0 +1,531 @@
+//
+// toml parser
+//
+
+import toml;
+import toml.scanner;
+import std.io : InputReader;
+import std.vector;
+import std.flat_map;
+import std.scan;
+
+using toml::errc;
+using toml::mark;
+using toml::node;
+using toml::token;
+using toml::scanner;
+using toml::scalar_style;
+
+enum state
+{
+  stream_start = 0,
+  document_content,
+  block_node,
+  block_mapping_entry,
+  block_mapping_key,
+  block_mapping_value,
+  flow_sequence_entry,
+  flow_mapping_key,
+  flow_mapping_value,
+  sequence_entry,
+  sequence_flow_entry,
+  mapping_entry,
+  mapping_flow_entry,
+  errored,
+  end,
+}
+
+struct parse_context
+{
+  token tok;
+  state state;
+  errc error;
+  scanner scanner;
+  std::vector<node> stack;
+  std::vector<state> states;
+
+  fn push_state(this mut &, state state) -> void
+  {
+    this.states.push_back(state);
+  }
+
+  fn pop_state(this mut &) -> state
+  {
+    return this.states.take_back();
+  }
+
+  fn consume_token(this mut &, var mut &is) throws -> void
+  {
+    this.tok = this.scanner.scan(is);
+  }
+
+  parse_context()
+  {
+    states.reserve(32);
+  }
+
+  ~parse_context() = default;
+}
+
+pub struct parse_result
+{
+  pub toml::errc error;
+  pub toml::mark mark;
+  pub node doc;
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
+}
+
+fn merge(node mut &lhs, node mut &rhs) -> bool
+{
+  var ok = true;
+
+  if (lhs.kind != rhs.kind)
+    return false;
+
+  switch (lhs)
+  {
+    case Array(array):
+      array.append(std::move(rhs.as_vec));
+
+    case Map(map):
+      for(var mut &it : rhs.as_map)
+      {
+        if (var j = map.insert(std::move(it)); !j.1)
+        {
+          if (!merge(j.0.value, it.value))
+            ok = false;
+        }
+      }
+
+    else:
+      ok = false;
+  }
+
+  return ok;
+}
+
+fn parse_error(parse_context mut &ctx, errc error) -> state
+{
+  ctx.error = error;
+  ctx.state = state::errored;
+
+  return ctx.state;
+}
+
+fn stream_start(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  ctx.state = state::document_content;
+  ctx.stack.push_back(std::flat_hash_map<node, node>());
+
+  return ctx.state;
+}
+
+fn document_content(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case stream_end:
+      ctx.state = state::end;
+
+    case scalar:
+      ctx.push_state(state::document_content);
+      ctx.state = state::block_mapping_key;
+
+    case l_square:
+      ctx.push_state(state::document_content);
+      ctx.state = state::block_mapping_entry;
+
+    else:
+      return parse_error(ctx, toml::errc::expected_block_content);
+  }
+
+  return ctx.state;
+}
+
+fn block_node(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case l_square:
+    case stream_end:
+      ctx.state = ctx.pop_state();
+
+    case scalar:
+      ctx.push_state(state::block_node);
+      ctx.state = state::block_mapping_key;
+
+    else:
+      return parse_error(ctx, toml::errc::expected_block_content);
+  }
+
+  return ctx.state;
+}
+
+fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.style)
+  {
+    case plain:
+      ctx.stack.push_back(node::from(ctx.tok.value));
+
+    else:
+      ctx.stack.push_back(ctx.tok.value);
+  }
+
+  ctx.consume_token(is);
+  ctx.state = ctx.pop_state();
+
+  return ctx.state;
+}
+
+fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case l_square:
+      ctx.consume_token(is);
+      ctx.state = state::flow_sequence_entry;
+
+    else:
+      std::panic("unexpected");
+  }
+
+  ctx.stack.push_back(std::vector<node>());
+
+  return ctx.state;
+}
+
+fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
+{
+  var mut &entry = std::launder(ctx.stack[ctx.stack.len - 1]);
+
+  ctx.stack[ctx.stack.len - 2].Array.push_back(std::move(entry));
+
+  ctx.stack.pop_back();
+
+  return ctx.pop_state();
+}
+
+fn block_mapping_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  ctx.consume_token(is);
+
+  var is_array = false;
+  if (ctx.tok.type == token::type::l_square)
+  {
+    is_array = true;
+    ctx.consume_token(is);
+  }
+
+  for(;;)
+  {
+    switch (ctx.tok.type)
+    {
+      case scalar:
+        ctx.push_state(state::mapping_entry);
+        ctx.push_state(state::block_node);
+        parse_scalar(ctx, is);
+
+      else:
+        return parse_error(ctx, toml::errc::expected_block_content);
+    }
+
+    if (ctx.tok.type != token::type::period)
+      break;
+
+    ctx.consume_token(is);
+    ctx.stack.push_back(std::flat_hash_map<node, node>());
+  }
+
+  if (is_array)
+  {
+    ctx.push_state(state::sequence_entry);
+    ctx.stack.push_back(std::vector<node>());
+  }
+
+  ctx.stack.push_back(std::flat_hash_map<node, node>());
+
+  if (ctx.tok.type != token::type::r_square)
+    return parse_error(ctx, toml::errc::unmatched_bracket);
+
+  if (is_array)
+  {
+    ctx.consume_token(is);
+
+    if (ctx.tok.type != token::type::r_square)
+      return parse_error(ctx, toml::errc::unmatched_bracket);
+  }
+
+  ctx.consume_token(is);
+
+  return ctx.state;
+}
+
+fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case l_brace:
+      ctx.consume_token(is);
+      ctx.state = state::flow_mapping_key;
+
+    else:
+      std::panic("unexpected");
+  }
+
+  ctx.stack.push_back(std::flat_hash_map<node, node>());
+
+  return ctx.state;
+}
+
+fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
+{
+  var mut &key = std::launder(ctx.stack[ctx.stack.len - 2]);
+  var mut &value = std::launder(ctx.stack[ctx.stack.len - 1]);
+
+  var mut &map = ctx.stack[ctx.stack.len - 3].Map;
+
+  if (var j = map.insert(std::move(key), std::move(value)); !j.1)
+  {
+    if (!merge(j.0.value, value))
+      return parse_error(ctx, toml::errc::duplicate_key);
+  }
+
+  ctx.stack.pop_back();
+  ctx.stack.pop_back();
+
+  return ctx.pop_state();
+}
+
+fn parse_node(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case l_square:
+      parse_sequence(ctx, is);
+
+    case l_brace:
+      parse_mapping(ctx, is);
+
+    case scalar:
+      parse_scalar(ctx, is);
+
+    else:
+      switch (ctx.tok.type)
+      {
+        case bad_escape:
+          ctx.error = toml::errc::bad_escape;
+
+        case unexpected_end_of_stream:
+          ctx.error = toml::errc::unexpected_end_of_stream;
+
+        else:
+          ctx.error = toml::errc::invalid_value;
+      }
+
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case stream_end:
+      ctx.state = ctx.pop_state();
+
+    case scalar:
+      ctx.push_state(state::block_mapping_value);
+      parse_scalar(ctx, is);
+
+    else:
+      ctx.error = toml::errc::expected_block_mapping_key;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case equal:
+      ctx.consume_token(is);
+      ctx.push_state(state::mapping_entry);
+      parse_node(ctx, is);
+
+    else:
+      ctx.error = toml::errc::expected_block_mapping_value;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case comma:
+      return parse_error(ctx, toml::errc::expected_sequence_entry);
+
+    case r_square:
+      ctx.consume_token(is);
+      ctx.state = ctx.pop_state();
+
+    else:
+      ctx.push_state(state::flow_sequence_entry);
+      ctx.push_state(state::sequence_flow_entry);
+      parse_node(ctx, is);
+  }
+
+  return ctx.state;
+}
+
+fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case comma:
+    case r_square:
+      ctx.state = sequence_entry(ctx, is);
+      if (ctx.tok.type == token::type::comma)
+        ctx.consume_token(is);
+
+    else:
+      ctx.error = toml::errc::missing_comma;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case r_brace:
+      ctx.consume_token(is);
+      ctx.state = ctx.pop_state();
+
+    case scalar:
+      ctx.push_state(state::flow_mapping_value);
+      parse_scalar(ctx, is);
+
+    else:
+      ctx.error = toml::errc::expected_block_mapping_key;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case equal:
+      ctx.consume_token(is);
+      ctx.push_state(state::flow_mapping_key);
+      ctx.push_state(state::mapping_flow_entry);
+      parse_node(ctx, is);
+
+    else:
+      ctx.error = toml::errc::expected_block_mapping_value;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+{
+  switch (ctx.tok.type)
+  {
+    case comma:
+    case r_brace:
+      ctx.state = mapping_entry(ctx, is);
+      if (ctx.tok.type == token::type::comma)
+        ctx.consume_token(is);
+
+    else:
+      ctx.error = toml::errc::missing_comma;
+      ctx.state = state::errored;
+  }
+
+  return ctx.state;
+}
+
+pub fn parse(InputReader mut &is) throws -> parse_result
+{
+  var result = parse_result();
+
+  var ctx = parse_context();
+
+  ctx.consume_token(is);
+
+  while (ctx.state != state::end)
+  {
+    switch (ctx.state)
+    {
+      case stream_start:
+        ctx.state = stream_start(ctx, is);
+
+      case document_content:
+        ctx.state = document_content(ctx, is);
+
+      case block_node:
+        ctx.state = block_node(ctx, is);
+
+      case flow_sequence_entry:
+        ctx.state = flow_sequence_entry(ctx, is);
+
+      case sequence_flow_entry:
+        ctx.state = sequence_flow_entry(ctx, is);
+
+      case sequence_entry:
+        ctx.state = sequence_entry(ctx, is);
+
+      case block_mapping_entry:
+        ctx.state = block_mapping_entry(ctx, is);
+
+      case block_mapping_key:
+        ctx.state = block_mapping_key(ctx, is);
+
+      case block_mapping_value:
+        ctx.state = block_mapping_value(ctx, is);
+
+      case flow_mapping_key:
+        ctx.state = flow_mapping_key(ctx, is);
+
+      case flow_mapping_value:
+        ctx.state = flow_mapping_value(ctx, is);
+
+      case mapping_flow_entry:
+        ctx.state = mapping_flow_entry(ctx, is);
+
+      case mapping_entry:
+        ctx.state = mapping_entry(ctx, is);
+
+      case errored:
+        result.error = ctx.error;
+        result.mark = ctx.tok.loc;
+        ctx.state = state::end;
+
+      else:
+        std::panic("invalid state");
+    }
+  }
+
+  if (ctx.stack.len != 0)
+    result.doc = std::move(ctx.stack.front);
+
+  return result;
+}

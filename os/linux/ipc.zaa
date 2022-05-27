@@ -1,0 +1,81 @@
+//
+// ipc
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+
+pub using key_t = int;
+
+pub const IPC_CREAT = 0o1000;
+pub const IPC_EXCL = 0o2000;
+pub const IPC_NOWAIT = 0o4000;
+
+pub const IPC_RMID = 0;
+pub const IPC_SET = 1;
+pub const IPC_INFO = 3;
+
+pub const IPC_PRIVATE = cast<key_t>(0);
+
+pub const SHM_HUGETLB = 0o4000;
+pub const SHM_NORESERVE = 0o10000;
+
+pub const SHM_HUGE_2MB = (21 << 26);
+pub const SHM_HUGE_1GB = (30 << 26);
+
+pub struct ipc_perm
+{
+  pub key_t __ipc_perm_key;
+  pub uid_t uid;
+  pub gid_t gid;
+  pub uid_t cuid;
+  pub gid_t cgid;
+  pub mode_t mode;
+  pub i32 __ipc_perm_seq;
+  pub i64 __pad1;
+  pub i64 __pad2;
+
+  pub ipc_perm() = default;
+  pub ipc_perm(ipc_perm&) = default;
+  pub fn =(ipc_perm mut &, ipc_perm &) -> ipc_perm mut & = default;
+  pub ~ipc_perm() = default;
+}
+
+pub struct shmid_ds
+{
+  pub ipc_perm shm_perm;
+  pub size_t shm_segsz;
+  pub time_t shm_atime;
+  pub time_t shm_dtime;
+  pub time_t shm_ctime;
+  pub pid_t shm_cpid;
+  pub pid_t shm_lpid;
+  pub u64 shm_nattch;
+  pub u64 __pad1;
+  pub u64 __pad2;
+
+  pub shmid_ds() = default;
+  pub shmid_ds(shmid_ds&) = default;
+  pub fn =(shmid_ds mut &, shmid_ds &) -> shmid_ds mut & = default;
+  pub ~shmid_ds() = default;
+}
+
+pub fn shmget(key_t key, usize size, int flag) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_shmget, key, size, flag)));
+}
+
+pub fn shmat(int id, void *addr, int flag) -> void mut *
+{
+  return cast<void mut *>(syscall3(sys_shmat, id, addr, flag));
+}
+
+pub fn shmdt(void *addr) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_shmdt, addr)));
+}
+
+pub fn shmctl(int id, int cmd, shmid_ds mut *buf)
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_shmctl, id, cmd, buf)));
+}

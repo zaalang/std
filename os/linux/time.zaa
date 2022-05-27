@@ -1,0 +1,82 @@
+//
+// time
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+
+pub const TIMER_ABSTIME = 1;
+
+pub const CLOCK_REALTIME = 0;
+pub const CLOCK_MONOTONIC = 1;
+
+pub struct timeval
+{
+  pub u64 tv_sec;
+  pub u64 tv_usec;
+
+  pub timeval(u64 sec, u64 usec)
+    : tv_sec(sec), tv_usec(usec)
+  {
+  }
+
+  pub timeval() = default;
+  pub timeval(timeval&) = default;
+  pub fn =(timeval mut &, timeval &) -> timeval mut & = default;
+  pub ~timeval() = default;
+}
+
+pub struct timespec
+{
+  pub u64 tv_sec;
+  pub u64 tv_nsec;
+
+  pub timespec(u64 sec, u64 nsec)
+    : tv_sec(sec), tv_nsec(nsec)
+  {
+  }
+
+  pub timespec() = default;
+  pub timespec(timespec&) = default;
+  pub fn =(timespec mut &, timespec &) -> timespec mut & = default;
+  pub ~timespec() = default;
+}
+
+pub fn sleep(u64 seconds) -> int
+{
+  var req = timespec(seconds, 0);
+
+  return nanosleep(&req, &req);
+}
+
+pub fn usleep(u64 useconds) -> int
+{
+  var req = timespec(useconds/1000000, (useconds % 1000000)*1000);
+
+  return nanosleep(&req, &req);
+}
+
+pub fn nanosleep(timespec *req, timespec mut *rem) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_nanosleep, req, rem)));
+}
+
+pub fn clock_nanosleep(int clockid, timespec *req, timespec mut *rem) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_clock_nanosleep, clockid, req, rem)));
+}
+
+pub fn clock_getres(int clockid, timespec mut *res) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_clock_getres, clockid, res)));
+}
+
+pub fn clock_gettime(int clockid, timespec mut *tp) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_clock_gettime, clockid, tp)));
+}
+
+pub fn clock_settime(int clockid, timespec *tp) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_clock_settime, clockid, tp)));
+}

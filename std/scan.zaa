@@ -12,6 +12,18 @@ import std.type;
 using std::String;
 using std::InputStream;
 
+pub struct scan_result
+{
+  pub usize len;
+  pub usize count;
+  pub std::errc error;
+
+  pub scan_result() = default;
+  pub scan_result(scan_result&) = default;
+  pub fn =(scan_result mut &, scan_result&) -> scan_result mut & = default;
+  pub ~scan_result() = default;
+}
+
 pub struct scan_context
 {
   pub u8 type;
@@ -207,16 +219,22 @@ pub fn scan_to<T>(std::string_view is, scan_context mut &ctx, T mut &object) -> 
   scan(is, ctx, object);
 }
 
-pub fn sscan<T>(String &str, T mut &value) -> usize
+pub fn sscan<T>(String &str, T mut &value) -> scan_result
 {
   var ctx = scan_context();
 
   scan_to(std::string_view(str.data, str.len), ctx, value);
 
-  return cast<usize>(!ctx.error);
+  var result = scan_result();
+
+  result.len = ctx.cursor;
+  result.count = cast<usize>(!ctx.error);
+  result.error = ctx.error;
+
+  return result;
 }
 
-pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
+pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_result
 {
   var ctx = scan_context();
 
@@ -239,6 +257,7 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
       case '{':
         var beg = sv;
         var len = str.end;
+        var maxwidth = str.end - beg;
 
         ctx.type = 0;
         ctx.cursor = 0;
@@ -249,7 +268,16 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
           {
             case ':':
               if (++ch != end)
-                ctx.type = *ch;
+              {
+                switch (*ch)
+                {
+                  case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+                    ch += std::atoi(ch, end, maxwidth).len;
+                }
+
+                if (ch != end)
+                  ctx.type = *ch;
+              }
 
             case '}':
               break;
@@ -260,6 +288,9 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
         {
           switch (*ch)
           {
+            case '{':
+              ;
+
             case ' ':
               len = beg;
               while (len != str.end && !std::is_whitespace(*len))
@@ -275,6 +306,9 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
           }
         }
 
+        if (maxwidth < len - beg)
+          len = beg + maxwidth;
+
         switch (arg)
         {
           #{
@@ -287,6 +321,9 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
             }
           }
         }
+
+        if (ctx.error)
+          break;
 
         sv = beg + ctx.cursor;
 
@@ -301,5 +338,11 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> usize
       break;
   }
 
-  return arg;
+  var result = scan_result();
+
+  result.len = sv - str.begin;
+  result.count = arg;
+  result.error = ctx.error;
+
+  return result;
 }

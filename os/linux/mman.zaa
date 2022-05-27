@@ -1,0 +1,25 @@
+//
+// mman
+//
+
+import std.stdlib;
+import os.linux.arch : *;
+
+pub const PROT_READ = 0x1;
+pub const PROT_WRITE = 0x2;
+pub const PROT_EXEC = 0x4;
+pub const PROT_NONE = 0x0;
+
+pub const MAP_SHARED = 0x01;
+pub const MAP_PRIVATE = 0x02;
+pub const MAP_ANONYMOUS = 0x20;
+
+pub fn mmap(void *addr, usize length, int prot, int flags, int fd, u64 offset) -> void mut *
+{
+  return cast<void mut *>(syscall6(sys_mmap, addr, length, prot, flags, fd, offset));
+}
+
+pub fn munmap(void *addr, usize length) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_munmap, addr, length)));
+}
