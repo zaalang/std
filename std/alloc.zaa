@@ -45,7 +45,8 @@ pub struct allocator
     return true;
   }
 
-  pub fn new<T>(var && ...args) -> T mut *
+  pub fn new<T, Args>(Args && ...args) -> T mut *
+    match (Args args) { T(args...); }
   {
     return new<T>(allocator().allocate(sizeof<T>, alignof<T>))(&&args...);
   }

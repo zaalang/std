@@ -96,21 +96,28 @@ fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> voi
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
 {
-  if (ctx.spec.type == cast('?'))
+  switch(ctx.spec.type)
   {
-    put(os, ctx, "'");
+    case 'd':
+    case 'b':
+    case 'B':
+    case 'o':
+    case 'O':
+    case 'x':
+    case 'X':
+      fmt_int(os, ctx, 1, cast(value));
 
-    fmt_chr(os, ctx, value);
+    case '?':
+      put(os, ctx, "'");
+      fmt_chr(os, ctx, value);
+      put(os, ctx, "'");
 
-    put(os, ctx, "'");
+    else:
+      var buf = [0; 16];
+      var str = std::ctoa(buf.begin, buf.end, value);
 
-    return;
+      fmt_str(os, ctx, buf.data, str.ptr, str.ptr, str.ptr + str.len, 1);
   }
-
-  var buf = [0; 16];
-  var str = std::ctoa(buf.begin, buf.end, value);
-
-  fmt_str(os, ctx, buf.data, str.ptr, str.ptr, str.ptr + str.len, 1);
 }
 
 fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) throws -> void
@@ -752,7 +759,7 @@ fn parse_spec(u8* mut &ch, u8 *end) -> spec
         ++ch;
         spec.width = spec::arg;
 
-      case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+      case '0' ..= '9':
         ch += std::atoi(ch, end, spec.width).len;
     }
 
@@ -770,7 +777,7 @@ fn parse_spec(u8* mut &ch, u8 *end) -> spec
           ++ch;
           spec.precision = spec::arg;
 
-        case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+        case '0' ..= '9':
           ch += std::atoi(ch, end, spec.precision).len;
       }
     }

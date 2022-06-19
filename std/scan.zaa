@@ -271,7 +271,7 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
               {
                 switch (*ch)
                 {
-                  case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+                  case '0' ..= '9':
                     ch += std::atoi(ch, end, maxwidth).len;
                 }
 

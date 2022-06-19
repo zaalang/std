@@ -153,7 +153,7 @@ pub struct array<T, N> : T[N]
     pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
     pub ~const_iterator() = default;
 
-    #[lifetime(clone(this))]
+    #[lifetime(clone(other))]
     pub const_iterator(iterator other)
       : cursor(other.cursor)
     {

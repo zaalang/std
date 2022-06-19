@@ -142,7 +142,7 @@ pub fn readv(int fd, iovec *iov, int count) -> isize
 
 pub fn preadv(int fd, iovec *iov, int count, u64 ofs) -> isize
 {
-  return std::bit_cast<isize>(syscall5(sys_preadv, fd, iov, count, ofs, ofs >> 32));
+  return std::bit_cast<isize>(syscall4(sys_preadv, fd, iov, count, ofs));
 }
 
 pub fn write(int fd, void *buf, usize count) -> isize
@@ -162,7 +162,7 @@ pub fn writev(int fd, ciovec *iov, int count) -> isize
 
 pub fn pwritev(int fd, ciovec *iov, int count, u64 ofs) -> isize
 {
-  return std::bit_cast<isize>(syscall5(sys_pwritev, fd, iov, count, ofs, ofs >> 32));
+  return std::bit_cast<isize>(syscall4(sys_pwritev, fd, iov, count, ofs));
 }
 
 pub fn pipe(int[2] mut *fds) -> int

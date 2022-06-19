@@ -70,12 +70,14 @@ struct string
   ~string() = default;
 }
 
-struct fd_result
+pub struct fd_result
 {
-  u32 errno;
-  usize length;
+  pub u32 errno;
+  pub usize length;
 
-  ~fd_result() = default;
+  pub fd_result() = default;
+  pub fd_result(fd_result&) = default;
+  pub ~fd_result() = default;
 }
 
 extern fn fd_open(uintptr &fd, string path, u32 oflags, u64 rights, u32 fdflags) -> u32;

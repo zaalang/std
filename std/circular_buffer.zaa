@@ -1,0 +1,673 @@
+//
+// std circular_buffer
+//
+
+import std.stdlib : assert;
+import std.memory : memset, memcpy, memmove;
+import std.algorithm : swap;
+import std.range : Sentinal, Range;
+import std.span : span, mutable_span;
+import std.type : as_const;
+
+pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
+{
+  pub circular_buffer(Allocator &allocator = Allocator())
+    : _allocator(allocator),
+      _smallbuffer(void)
+  {
+    #if (N != 0)
+    {
+      init(this);
+    }
+  }
+
+  pub circular_buffer<M>(circular_buffer<T, Allocator, M> &&other, Allocator &allocator = Allocator())
+    : _allocator(allocator),
+      _smallbuffer(void)
+  {
+    init(this);
+
+    insert(this, this.end, &&other);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn =<M>(this mut &, circular_buffer<T, Allocator, M> &&other) -> circular_buffer mut &
+  {
+    if (&this != &other)
+    {
+      clear(this);
+
+      insert(this, this.end, &&other);
+    }
+
+    return &this;
+  }
+
+  pub fn with_capacity(usize capacity, Allocator &allocator = Allocator()) -> circular_buffer
+  {
+    var result = circular_buffer(allocator);
+
+    result.reserve(capacity);
+
+    return result;
+  }
+
+  pub ~circular_buffer()
+  {
+    clear(this);
+
+    if (_data && _data != cast(_smallbuffer.data))
+      _allocator.free(_data, _capacity * sizeof<T>);
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn full(this &) -> bool
+  {
+    return this._len == this._capacity;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this._len == 0;
+  }
+
+  pub fn capacity(this &) -> usize
+  {
+    return this._capacity;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn spans(this &)
+  {
+    var spans = [ std::span<T>(); 2 ];
+
+    spans[0] = std::span(this._data + this._head, std::min(this._len, this._capacity - this._head));
+    spans[1] = std::span(this._data, this._len - spans[0].len);
+
+    return spans;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn spans(this mut &)
+  {
+    var spans = [ std::mutable_span<T>(); 2 ];
+
+    spans[0] = std::mutable_span(this._data + this._head, std::min(this._len, this._capacity - this._head));
+    spans[1] = std::mutable_span(this._data, this._len - spans[0].len);
+
+    return spans;
+  }
+
+  pub fn allocator(this &) -> Allocator &
+  {
+    return &this._allocator;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn [](this &&, usize index)
+  {
+    assert(index < this.len);
+
+    return &*(this._data + (this._head + index) & (this._capacity - 1));
+  }
+
+  pub struct iterator
+  {
+    pub iterator() = default;
+    pub iterator(iterator&) = default;
+    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    pub ~iterator() = default;
+
+    #[lifetime(clone(this))]
+    pub fn *(iterator &this) -> T &
+    {
+      return &*(this.buffer._data + this.cursor & (this.buffer._capacity - 1));
+    }
+
+    #[lifetime(clone(this))]
+    pub fn *(iterator mut &this) -> T mut &
+    {
+      return &*(this.buffer._data + this.cursor & (this.buffer._capacity - 1));
+    }
+
+    #[lifetime(depend(this))]
+    pub fn ++(iterator mut &this) -> iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    #[lifetime(depend(this))]
+    pub fn --(iterator mut &this) -> iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    iterator(circular_buffer mut &buffer, usize item)
+      : buffer(&buffer), cursor(item)
+    {
+    }
+
+    usize cursor;
+    circular_buffer mut &buffer;
+  }
+
+  pub struct move_iterator
+  {
+    pub move_iterator() = default;
+    pub move_iterator(move_iterator&) = default;
+    pub fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
+    pub ~move_iterator() = default;
+
+    #[lifetime(clone(this))]
+    pub fn *(move_iterator &this) -> T &
+    {
+      return &*(this.buffer._data + this.cursor & (this.buffer._capacity - 1));
+    }
+
+    #[lifetime(clone(this))]
+    pub fn *(move_iterator mut &this) -> T &&
+    {
+      return &std::move(*(this.buffer._data + this.cursor & (this.buffer._capacity - 1)));
+    }
+
+    #[lifetime(depend(this))]
+    pub fn ++(move_iterator mut &this) -> move_iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    #[lifetime(depend(this))]
+    pub fn --(move_iterator mut &this) -> move_iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    move_iterator(circular_buffer mut &buffer, usize item)
+      : buffer(&buffer), cursor(item)
+    {
+    }
+
+    usize cursor;
+    circular_buffer mut &buffer;
+  }
+
+  pub struct const_iterator
+  {
+    pub const_iterator() = default;
+    pub const_iterator(const_iterator&) = default;
+    pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
+    pub ~const_iterator() = default;
+
+    #[lifetime(clone(other))]
+    pub const_iterator(iterator other)
+      : cursor(other.cursor)
+    {
+    }
+
+    #[lifetime(clone(this))]
+    pub fn *(const_iterator &this) -> T &
+    {
+      return &*(this.buffer._data + this.cursor & (this.buffer._capacity - 1));
+    }
+
+    #[lifetime(depend(this))]
+    pub fn ++(const_iterator mut &this) -> const_iterator mut &
+    {
+      ++this.cursor;
+      return &this;
+    }
+
+    #[lifetime(depend(this))]
+    pub fn --(const_iterator mut &this) -> const_iterator mut &
+    {
+      --this.cursor;
+      return &this;
+    }
+
+    const_iterator(circular_buffer &buffer, usize item)
+      : buffer(&buffer), cursor(item)
+    {
+    }
+
+    usize cursor;
+    circular_buffer &buffer;
+  }
+
+  pub concept Iterator
+  {
+    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
+  }
+
+  pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
+  {
+    return lhs.cursor == rhs.cursor;
+  }
+
+  pub fn -(Iterator lhs, Iterator rhs) -> usize
+  {
+    return lhs.cursor - rhs.cursor;
+  }
+
+  #[lifetime(clone(lhs))]
+  pub fn -(Iterator lhs, usize rhs) -> typeof(lhs)
+  {
+    return typeof(lhs)(lhs.buffer, lhs.cursor - rhs);
+  }
+
+  #[lifetime(clone(lhs))]
+  pub fn +(Iterator lhs, usize rhs) -> typeof(lhs)
+  {
+    return typeof(lhs)(lhs.buffer, lhs.cursor + rhs);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn begin(this &&)
+  {
+    return iter(&&this, this._head);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn end(this &&)
+  {
+    return iter(&&this, this._head + this._len);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn front(this &&)
+  {
+    assert(!this.empty);
+
+    return &*(this._data + this._head);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn back(this &&)
+  {
+    assert(!this.empty);
+
+    return &*(this._data + (this._head + this._len - 1) & (this._capacity - 1));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn push_back<Args>(this mut &, Args && ...args) -> void
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    if (this.full)
+    {
+      if (this.empty)
+        return;
+
+      pop_front(this);
+    }
+
+    var tail = (this._head + this._len) & (this._capacity - 1);
+
+    new<T>(this._data + tail)(&&args..., allocator?: this.allocator);
+
+    this._len += 1;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn push_front<Args>(this mut &, Args && ...args) -> void
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    if (this.full)
+    {
+      if (this.empty)
+        return;
+
+      pop_back(this);
+    }
+
+    this._head = (this._capacity + this._head - 1) & (this._capacity - 1);
+
+    new<T>(this._data + this._head)(&&args..., allocator?: this.allocator);
+
+    this._len += 1;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
+    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+  {
+    return iterator(this, insert(this, position.cursor, &&args...));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<U>(this mut &, Iterator position, Range<U> &&other) -> iterator
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+  {
+    #if (__is_same<circular_buffer, typeof(other)>)
+      assert(&this != &other);
+
+    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
+    {
+      if (this.empty)
+        return iterator(this, this.take(other));
+    }
+
+    return iterator(this, insert(this, position.cursor, (&&other).begin, (&&other).end, other.len));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
+    where requires (I i) { T(*i); }
+  {
+    return iterator(this, insert(this, position.cursor, first, last, std::distance(first, last)));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn append<U>(this mut &, Range<U> &&other) -> iterator
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+  {
+    return insert(this, this.end, &&other);
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn append<I>(this mut &, I first, Sentinal<I> last) -> iterator
+  {
+    return insert(this, this.end, first, last);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn pop_front(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    T::~T(*(this._data + this._head & (this._capacity - 1)));
+
+    this._len -= 1;
+    this._head = (this._head + 1) & (this._capacity - 1);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn pop_back(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    T::~T(*(this._data + (this._head + this._len - 1) & (this._capacity - 1)));
+
+    this._len -= 1;
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_front(this mut &) -> T
+  {
+    var result = std::move(std::launder(this.front));
+
+    pop_front(this);
+
+    return result;
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_back(this mut &) -> T
+  {
+    var result = std::move(std::launder(this.back));
+
+    pop_back(this);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn erase(this mut &, Iterator position) -> iterator
+  {
+    assert(this._head <= position.cursor && position.cursor < this._head + this._len);
+
+    return iterator(this, erase(this, position.cursor, 1));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
+  {
+    return iterator(this, erase(this, first.cursor, last.cursor - first.cursor));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn drop_n!(this mut &, usize n) -> circular_buffer mut &
+  {
+    erase(this, this._head, std::min(this._len, n));
+
+    return &this;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn take_n!(this mut &, usize n) -> circular_buffer mut &
+  {
+    erase(this, this._head + std::min(this._len, n), this.len - std::min(this._len, n));
+
+    return &this;
+  }
+
+  #[lifetime(poison(this))]
+  pub fn reserve(this mut &, usize capacity) -> void
+  {
+    if (this._capacity < capacity)
+    {
+      capacity = ~0 >> __clz(capacity - 1) + 1;
+
+      var data = cast<T mut *>(this._allocator.allocate(capacity * sizeof<T>, alignof<T>));
+
+      uninitialised_move(this, data, this._head, this._head + this._len);
+      destruct(this, this._head, this._head + this._len);
+      swap(this._data, data);
+
+      if (data && data != cast(this._smallbuffer.data))
+        this._allocator.free(data, this._capacity * sizeof<T>);
+
+      this._head = 0;
+      this._capacity = capacity;
+    }
+  }
+
+  #[lifetime(poison(this))]
+  pub fn resize(this mut &, usize size) -> void
+  {
+    reserve(this, size);
+
+    while (size < this._len)
+      this.pop_back();
+
+    while (this._len < size)
+      this.push_back();
+  }
+
+  #[lifetime(poison(this))]
+  pub fn clear(this mut &) -> void
+  {
+    erase(this, this._head, this._len);
+  }
+
+  fn init(this mut &)
+  {
+    this._len = 0;
+    this._head = 0;
+    this._data = cast(this._smallbuffer.data);
+    this._capacity = this._smallbuffer.len / sizeof<T>;
+
+    assert(cast<usize>(this._data) & (alignof<T> - 1) == 0);
+    assert(this._capacity == 0 || this._capacity & (this._capacity - 1) == 0);
+  }
+
+  fn iter(this &&, var item)
+  {
+    #if (__is_const<typeof(this)>)
+      return const_iterator(this, item);
+
+    #else if (__is_rvalue<typeof(this)>)
+      return move_iterator(this, item);
+
+    #else
+      return iterator(this, item);
+  }
+
+  fn take<M>(this mut &, circular_buffer<T, Allocator, M> mut &other) -> usize
+  {
+    assert(this.empty);
+    assert(this.allocator == other.allocator);
+
+    if (other._data != cast(other._smallbuffer.data))
+    {
+      swap(this._data, other._data);
+      swap(this._len, other._len);
+      swap(this._head, other._head);
+      swap(this._capacity, other._capacity);
+
+      if (other._data == cast(this._smallbuffer.data))
+        other.init();
+    }
+    else
+    {
+      insert(this, this._head, std::move_iterator(other.begin), std::move_iterator(other.end), other.len);
+
+      other.clear();
+    }
+
+    return this._head;
+  }
+
+  fn insert<Args>(this mut &, usize position, Args && ...args) -> usize
+  {
+    if (this.full)
+    {
+      if (this.empty)
+        return 0;
+
+      if (position == this._head)
+        return this._head + this._len;
+
+      if (var index = position - this._head; index != 0)
+      {
+        pop_front(this);
+        position = this._head + index - 1;
+      }
+    }
+
+    if (position != this._head + this._len)
+    {
+      uninitialised_move(this, this._head + this._len, this._head + this._len - 1, this._head + this._len);
+      initialised_move_backward(this, position + 1, position, this._head + this._len - 1);
+      destruct(this, position, position + 1);
+    }
+
+    new<T>(this._data + position & (this._capacity - 1))(&&args..., allocator?: this.allocator);
+
+    this._len += 1;
+
+    return this._head + ((position - this._head) & (this._capacity - 1));
+  }
+
+  fn insert<I>(this mut &, usize position, I first, Sentinal<I> last, usize count) -> usize
+  {
+    for(var it = position; first != last; ++it, ++first)
+    {
+      it = insert(this, it, *first);
+
+      if (it == this._head + this._len)
+        break;
+    }
+
+    return position;
+  }
+
+  fn erase(this mut &, usize first, usize count) -> usize
+  {
+    var index = first;
+
+    initialised_move(this, index, index + count, this._head + this._len);
+    destruct(this, this._head + this._len - count, this._head + this._len);
+
+    this._len -= count;
+
+    return index;
+  }
+
+  fn initialised_move(this mut &, usize dst, usize first, usize last) -> void
+  {
+    while (first != last)
+    {
+      T::~T(*(this._data + dst & (this._capacity - 1)));
+
+      new<T>(this._data + dst++ & (this._capacity - 1))(std::move(*(this._data + first++ & (this._capacity - 1))), allocator?: this.allocator);
+    }
+  }
+
+  fn initialised_move_backward(this mut &, usize dst, usize first, usize last) -> void
+  {
+    var end = dst + (last - first);
+
+    while (first != last)
+    {
+      T::~T(*(this._data + (end - 1) & (this._capacity - 1)));
+
+      new<T>(this._data + --end & (this._capacity - 1))(std::move(*(this._data + --last & (this._capacity - 1))), allocator?: this.allocator);
+    }
+  }
+
+  fn uninitialised_move(this mut &, usize dst, usize first, usize last) -> void
+  {
+    while (first != last)
+    {
+      new<T>(this._data + dst++ & (this._capacity - 1))(std::move(*(this._data + first++ & (this._capacity - 1))), allocator?: this.allocator);
+    }
+  }
+
+  fn uninitialised_move(this mut &, T mut *dst, usize first, usize last) -> void
+  {
+    while (first != last)
+    {
+      new<T>(dst++)(std::move(*(this._data + first++ & (this._capacity - 1))), allocator?: this.allocator);
+    }
+  }
+
+  fn destruct(this mut &, usize first, usize last) -> void
+  {
+    #if (!__is_trivial_destroy<T>)
+    {
+      while (first != last)
+        T::~T(*(this._data + first++ & (this._capacity - 1)));
+    }
+  }
+
+  pub circular_buffer(#circular_buffer&) = default;
+
+  usize _len;
+  usize _head;
+  T mut *_data;
+
+  usize _capacity;
+  u8[N*sizeof<T>] _smallbuffer; // NOTE: relying on alignment after a usize
+
+  Allocator _allocator;
+}
+
+#[lifetime(poison(range))]
+pub fn erase<T, Value>(circular_buffer<T> mut &range, Value &value) -> usize
+  match (Value value) { T(value); }
+{
+  var n = range.len;
+
+  range.erase(std::remove(range.begin, range.end, value), range.end);
+
+  return n - range.len;
+}
+
+#[lifetime(poison(range))]
+pub fn erase_if<T, Pred>(circular_buffer<T> mut &range, Pred &pred) -> usize
+  where requires (T i, Pred &pred) { pred(i); }
+{
+  var n = range.len;
+
+  range.erase(std::remove_if(range.begin, range.end, pred), range.end);
+
+  return n - range.len;
+}

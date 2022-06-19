@@ -28,6 +28,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     insert(this, &&other);
   }
 
+  #[lifetime(poison(this))]
   pub fn =(this mut &, flat_map &&other) -> flat_map mut &
   {
     if (&this != &other)
@@ -79,6 +80,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return this._tree.capacity;
   }
 
+  #[lifetime(depend(this))]
   pub fn data(this &&)
   {
     return this._tree.data;
@@ -98,34 +100,40 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
   }
 
+  #[lifetime(depend(this))]
   pub fn begin(this &&)
   {
     return (&&this)._tree.begin;
   }
 
+  #[lifetime(depend(this))]
   pub fn end(this &&)
   {
     return (&&this)._tree.end;
   }
 
+  #[lifetime(depend(this))]
   pub fn lower_bound<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
     return std::lower_bound(&&this._tree, key, fn [this](var &lhs, Key &rhs) { return this.cmp(lhs.key, rhs); });
   }
 
+  #[lifetime(depend(this))]
   pub fn upper_bound<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
     return std::upper_bound(&&this._tree, key, fn [this](Key &lhs, var &rhs) { return this.cmp(lhs, rhs.key); });
   }
 
+  #[lifetime(depend(this))]
   pub fn equal_range<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
     return std::iterator_pair(lower_bound(&&this, key), upper_bound(&&this, key));
   }
 
+  #[lifetime(depend(this))]
   pub fn find<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
@@ -143,6 +151,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return this.find(key) != this.end;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn insert(this mut &, value_type &&value) -> (iterator, bool)
   {
     var pos = this.lower_bound(value.key);
@@ -157,6 +166,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return (pos, false);
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
   {
@@ -172,6 +182,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return (pos, false);
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
   {
@@ -189,12 +200,17 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return (pos, false);
   }
 
+  #[lifetime(poison(this))]
   pub fn insert(this mut &, Range<value_type> &&other) -> void
   {
     #if (__is_rvalue<typeof(other)> && __is_same<flat_map, typeof(other)>)
     {
       if (this.empty)
+      {
         this._tree = std::move(other._tree);
+
+        return;
+      }
 
       return this.merge(other);
     }
@@ -202,6 +218,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return this.insert((&&other).begin, (&&other).end);
   }
 
+  #[lifetime(poison(this))]
   pub fn insert<I>(this mut &, I first, Sentinal<I> last) -> void
     where requires (I i) { value_type(*i); }
   {
@@ -211,17 +228,19 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     }
   }
 
+  #[lifetime(poison(this), consume(other))]
   pub fn merge(this mut &, flat_map mut &other) -> void
   {
     assert(&this != &other);
     assert(this.allocator == other.allocator);
 
-    for(var mut &it : other)
+    for(var mut &it : std::move(other))
     {
       insert(this, std::move(it));
     }
   }
 
+  #[lifetime(poison(this))]
   pub fn erase<Key>(this mut &, Key &key) -> usize
   {
     this._tree.erase(this.find(key));
@@ -229,21 +248,25 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return 1;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, Iterator position) -> iterator
   {
     return this._tree.erase(position);
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
   {
     return this._tree.erase(first, last);
   }
 
+  #[lifetime(poison(this))]
   pub fn reserve(this mut &, usize capacity) -> void
   {
     this._tree.reserve(capacity);
   }
 
+  #[lifetime(poison(this))]
   pub fn clear(this mut &) -> void
   {
     this._tree.clear();
@@ -263,6 +286,7 @@ pub fn hash<K, T>(var &hasher, flat_map<K, T> &map) -> usize
   return hasher.combine_contiguous(map.data, map.len);
 }
 
+#[lifetime(poison(map))]
 pub fn erase_if<K, T, Pred>(flat_map<K, T> mut &map, Pred &pred) -> usize
 {
   var n = map.len;

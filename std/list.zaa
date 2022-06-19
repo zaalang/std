@@ -24,6 +24,7 @@ pub struct list<T, Allocator = std::allocator>
     insert(this, this.end, &&other);
   }
 
+  #[lifetime(poison(this))]
   pub fn =(this mut &, list &&other) -> list mut &
   {
     if (&this != &other)
@@ -56,7 +57,7 @@ pub struct list<T, Allocator = std::allocator>
 
   pub fn from<U>(Range<U> &&other, Allocator &allocator = Allocator()) -> list
     match (U u) { T(u, allocator?: std::declval<Allocator>()); }
-    where !__is_same<T, U>
+    where !__is_same<U, T>
   {
     var result = list(allocator);
 
@@ -92,22 +93,26 @@ pub struct list<T, Allocator = std::allocator>
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 
-    pub fn *(iterator &this) -> T&
+    #[lifetime(clone(this))]
+    pub fn *(iterator &this) -> T &
     {
       return &cast<Node*>(this.cursor).value;
     }
 
+    #[lifetime(clone(this))]
     pub fn *(iterator mut &this) -> T mut &
     {
       return &cast<Node mut *>(this.cursor).value;
     }
 
+    #[lifetime(clone(this))]
     pub fn ++(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
+    #[lifetime(clone(this))]
     pub fn --(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.prev;
@@ -129,22 +134,26 @@ pub struct list<T, Allocator = std::allocator>
     pub fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
     pub ~move_iterator() = default;
 
+    #[lifetime(clone(this))]
     pub fn *(move_iterator &this) -> T &
     {
       return &cast<Node*>(this.cursor).value;
     }
 
+    #[lifetime(clone(this))]
     pub fn *(move_iterator mut &this) -> T &&
     {
       return &std::move(cast<Node mut *>(this.cursor).value);
     }
 
+    #[lifetime(clone(this))]
     pub fn ++(move_iterator mut &this) -> move_iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
+    #[lifetime(clone(this))]
     pub fn --(move_iterator mut &this) -> move_iterator mut &
     {
       this.cursor = this.cursor.prev;
@@ -166,22 +175,26 @@ pub struct list<T, Allocator = std::allocator>
     pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
     pub ~const_iterator() = default;
 
+    #[lifetime(clone(other))]
     pub const_iterator(iterator other)
       : cursor(other.cursor)
     {
     }
 
+    #[lifetime(clone(this))]
     pub fn *(const_iterator &this) -> T&
     {
       return &cast<Node*>(this.cursor).value;
     }
 
+    #[lifetime(clone(this))]
     pub fn ++(const_iterator mut &this) -> const_iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
+    #[lifetime(clone(this))]
     pub fn --(const_iterator mut &this) -> const_iterator mut &
     {
       this.cursor = this.cursor.prev;
@@ -206,16 +219,19 @@ pub struct list<T, Allocator = std::allocator>
     return lhs.cursor == rhs.cursor;
   }
 
+  #[lifetime(depend(this))]
   pub fn begin(this &&)
   {
     return iter(&&this, this._root.next);
   }
 
+  #[lifetime(depend(this))]
   pub fn end(this &&)
   {
     return iter(&&this, &this._root);
   }
 
+  #[lifetime(depend(this))]
   pub fn front(this &&)
   {
     assert(!this.empty);
@@ -223,6 +239,7 @@ pub struct list<T, Allocator = std::allocator>
     return &cast<Node&&>(*this._root.next).value;
   }
 
+  #[lifetime(depend(this))]
   pub fn back(this &&)
   {
     assert(!this.empty);
@@ -230,24 +247,28 @@ pub struct list<T, Allocator = std::allocator>
     return &cast<Node&&>(*this._root.prev).value;
   }
 
+  #[lifetime(depend(this))]
   pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(this, this.begin.cursor, &&args...).value;
   }
 
+  #[lifetime(depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(this, this.end.cursor, &&args...).value;
   }
 
+  #[lifetime(depend(this))]
   pub fn insert<Args>(this mut &, Iterator position, Args && ...args) -> iterator
     match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
   {
     return iterator(insert(this, position.cursor, &&args...));
   }
 
+  #[lifetime(depend(this))]
   pub fn insert<U>(this mut &, Iterator position, Range<U> &&other) -> iterator
     match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
@@ -259,6 +280,7 @@ pub struct list<T, Allocator = std::allocator>
     return this.insert(position, (&&other).begin, (&&other).end);
   }
 
+  #[lifetime(depend(this))]
   pub fn insert<I>(this mut &, Iterator position, I first, Sentinal<I> last) -> iterator
   {
     var node = cast<Node mut *>(position.cursor);
@@ -276,16 +298,20 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(node);
   }
 
-  pub fn append(this mut &, Range<T> &&other) -> iterator
+  #[lifetime(depend(this))]
+  pub fn append<U>(this mut &, Range<U> &&other) -> iterator
+    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
     return insert(this, this.end, &&other);
   }
 
+  #[lifetime(depend(this))]
   pub fn append<I>(this mut &, I first, Sentinal<I> last) -> iterator
   {
     return insert(this, this.end, first, last);
   }
 
+  #[lifetime(depend(this))]
   pub fn splice(this mut &, Iterator position, list mut &other) -> iterator
   {
     assert(&this != &other);
@@ -301,6 +327,7 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(x);
   }
 
+  #[lifetime(depend(this))]
   pub fn splice(this mut &, Iterator position, list mut &other, Iterator first) -> iterator
   {
     assert(this.allocator == other.allocator);
@@ -315,6 +342,7 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(x);
   }
 
+  #[lifetime(depend(this))]
   pub fn splice(this mut &, Iterator position, list mut &other, Iterator first, Iterator last) -> iterator
   {
     assert(this.allocator == other.allocator);
@@ -329,6 +357,7 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(x);
   }
 
+  #[lifetime(poison(this))]
   pub fn pop_front(this mut &) -> void
   {
     assert(!this.empty);
@@ -336,6 +365,7 @@ pub struct list<T, Allocator = std::allocator>
     erase(this, this._root.next, this._root.next.next);
   }
 
+  #[lifetime(poison(this))]
   pub fn pop_back(this mut &) -> void
   {
     assert(!this.empty);
@@ -343,24 +373,27 @@ pub struct list<T, Allocator = std::allocator>
     erase(this, this._root.prev, this._root.prev.next);
   }
   
+  #[lifetime(poison(this))]
   pub fn take_front(this mut &) -> T
   {
-    var result = std::move(this.front);
+    var result = std::move(std::launder(this.front));
 
     pop_front(this);
 
     return result;
   }
 
+  #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = std::move(this.back);
+    var result = std::move(std::launder(this.back));
 
     pop_back(this);
 
     return result;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, Iterator position) -> iterator
   {
     if (position == this.end)
@@ -369,9 +402,26 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(erase(this, position.cursor, position.cursor.next));
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
   {
     return iterator(erase(this, first.cursor, last.cursor));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn drop_n!(this mut &, usize n) -> list mut &
+  {
+    erase(this, this.begin, std::next(this.begin, n, this.end));
+
+    return &this;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn take_n!(this mut &, usize n) -> list mut &
+  {
+    erase(this, std::next(this.begin, n, this.end), this.end);
+
+    return &this;
   }
 
   pub fn resize(this mut &, usize size) -> void
@@ -383,6 +433,7 @@ pub struct list<T, Allocator = std::allocator>
       this.push_back();
   }
 
+  #[lifetime(poison(this))]
   pub fn clear(this mut &) -> void
   {
     erase(this, this._root.next, &this._root);
@@ -498,6 +549,7 @@ pub fn hash<T>(var &hasher, list<T> &lst) -> usize
   return hasher.combine_range(lst.begin, lst.end);
 }
 
+#[lifetime(poison(lst))]
 pub fn erase<T, Value>(list<T> mut &lst, Value &value) -> usize
   match (Value value) { T(value); }
 {
@@ -515,6 +567,7 @@ pub fn erase<T, Value>(list<T> mut &lst, Value &value) -> usize
   return n - lst.len;
 }
 
+#[lifetime(poison(lst))]
 pub fn erase_if<T, Pred>(list<T> mut &lst, Pred &pred) -> usize
   where requires (T i, Pred &pred) { pred(i); }
 {

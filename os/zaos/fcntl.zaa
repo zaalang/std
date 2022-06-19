@@ -153,6 +153,8 @@ pub fn ioring_get_cqe(ioring mut &ring) -> ioring_cqe *
   if (head == std::volatile_load(&ring.header.cq_tail))
     return null;
 
+  std::atomic_thread_fence(std::memory_order::acquire);
+
   return cast<ioring_cqe*>(cast<uintptr>(ring.header) + cast<usize>(ring.header.cq_offset + index * sizeof<ioring_cqe>));
 }
 
@@ -175,7 +177,7 @@ pub fn ioring_advance_cqe(ioring mut &ring) -> void
   var head = ring.header.cq_head;
   var next = std::add_with_carry(head, 1).0;
 
-  std::atomic_store(&ring.header.cq_head, next);
+  std::atomic_store(&ring.header.cq_head, next, std::memory_order::relaxed);
 }
 
 pub fn ioring_prep_sqe_open(ioring_sqe mut *sqe, i32 dir, std::string_view path, u64 flags, u32 mode) -> void
@@ -195,6 +197,24 @@ pub fn ioring_prep_sqe_stat(ioring_sqe mut *sqe, i32 fd, u64 flags, stat mut *st
   sqe.args[0] = cast(fd);
   sqe.args[1] = cast(flags);
   sqe.args[2] = cast(statbuf);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_read(ioring_sqe mut *sqe, i32 fd, void mut *buffer, usize buflen) -> void
+{
+  sqe.op = ioring_ops::read;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(buffer);
+  sqe.args[2] = cast(buflen);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_write(ioring_sqe mut *sqe, i32 fd, void *buffer, usize buflen) -> void
+{
+  sqe.op = ioring_ops::write;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(buffer);
+  sqe.args[2] = cast(buflen);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -235,6 +255,38 @@ pub fn stat(ioring mut &ring, i32 fd, u64 flags, stat mut *statbuf) -> i32
 {
   var sqe = ioring_get_sqe(ring);
   ioring_prep_sqe_stat(sqe, fd, flags, statbuf);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}
+
+pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize buflen) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_read(sqe, fd, buffer, buflen);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}
+
+pub fn write(ioring mut &ring, i32 fd, void *buffer, usize buflen) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_write(sqe, fd, buffer, buflen);
   ioring_advance_sqe(ring);
 
   if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)

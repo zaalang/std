@@ -180,6 +180,7 @@ fn add_range(klass mut &cc, char lo, char hi) -> void
     if ((*j).lo <= (*i).hi + 1)
     {
       (*i).hi = std::max((*i).hi, (*j).hi);
+
       j = cc.runes.erase(j) - 1;
     }
   }
