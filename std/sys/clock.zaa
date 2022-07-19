@@ -4,16 +4,18 @@
 
 import std.error;
 
-struct clock_result
+pub struct clk_result
 {
-  u32 errno;
-  u64 timestamp;
+  pub u32 errno;
+  pub u64 timestamp;
 
-  ~clock_result() = default;
+  pub clk_result() = default;
+  pub clk_result(clk_result&) = default;
+  pub ~clk_result() = default;
 }
 
-extern "C" fn clock_getres(u32 clockid) -> clock_result;
-extern "C" fn clock_gettime(u32 clockid) -> clock_result;
+extern "C" fn clk_getres(u32 clockid) -> clk_result;
+extern "C" fn clk_gettime(u32 clockid) -> clk_result;
 
 pub struct clock
 {
@@ -25,7 +27,7 @@ pub struct clock
 
   pub fn res(id clock) throws -> u64
   {
-    var result = clock_getres(cast(id));
+    var result = clk_getres(cast(clock));
 
     if (result.errno != 0)
       throw std::system_error(cast<std::errc>(result.errno));
@@ -35,7 +37,7 @@ pub struct clock
 
   pub fn tick(id clock) throws -> u64
   {
-    var result = clock_gettime(cast(clock));
+    var result = clk_gettime(cast(clock));
 
     if (result.errno != 0)
       throw std::system_error(cast<std::errc>(result.errno));

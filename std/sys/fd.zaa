@@ -166,7 +166,7 @@ pub fn read(fd &fd, u8 mut *data, usize len) throws -> usize
   return result.length;
 }
 
-pub fn read(fd &fd, u64 offset, u8 mut *data, usize len) throws -> usize
+pub fn read_at(fd &fd, u64 offset, u8 mut *data, usize len) throws -> usize
 {
   var buf = iovec(void);
   buf.data = data;
@@ -194,7 +194,7 @@ pub fn write(fd &fd, u8 *data, usize len) throws -> usize
   return result.length;
 }
 
-pub fn write(fd &fd, u64 offset, u8 *data, usize len) throws -> usize
+pub fn write_at(fd &fd, u64 offset, u8 *data, usize len) throws -> usize
 {
   var buf = ciovec(void);
   buf.data = data;

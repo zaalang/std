@@ -191,11 +191,6 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     pub line_iterator(line_iterator&) = default;
     pub ~line_iterator() = default;
 
-    pub fn *(line_iterator &this) -> std::string_view
-    {
-      return std::string_view(this.reader.buffer.data, this.m);
-    }
-
     pub fn ++(line_iterator mut &this) throws -> line_iterator mut &
     {
       this.reader.discard(this.n);
@@ -253,9 +248,14 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     ~end_iterator() = default;
   }
 
-  pub fn lines(this mut &) throws -> std::iterator_pair<line_iterator, end_iterator>
+  pub fn [](this&, line_iterator &iter)
   {
-    return std::iterator_pair(++line_iterator(this), end_iterator());
+    return std::string_view(this.buffer.data, iter.m);
+  }
+
+  pub fn lines(this mut &) throws -> std::iterator_pair<buffered_reader, line_iterator, end_iterator>
+  {
+    return std::iterator_pair(this, ++line_iterator(this), end_iterator());
   }
 
   usize _head;

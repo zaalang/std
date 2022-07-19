@@ -37,9 +37,19 @@ pub struct file
     return this.fd.read(data, len);
   }
 
+  pub fn read_at(this mut &, u64 offset, u8 mut *data, usize len) throws -> usize
+  {
+    return this.fd.read_at(offset, data, len);
+  }
+
   pub fn write(this mut &, u8 *data, usize len) throws -> usize
   {
     return this.fd.write(data, len);
+  }
+
+  pub fn write_at(this mut &, u64 offset, u8 *data, usize len) throws -> usize
+  {
+    return this.fd.write_at(offset, data, len);
   }
 
   pub fn print(this mut &, var & ...args) throws -> usize

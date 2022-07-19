@@ -1,0 +1,27 @@
+//
+// time
+//
+
+pub enum clock
+{
+  pub const realtime = 0;
+  pub const monotonic = 1;
+}
+
+pub using timespec = u64;
+
+#[weak]
+extern fn __vdso_clock_res(i32 clockid, timespec mut *res) -> i32;
+
+#[weak]
+extern fn __vdso_clock_time(i32 clockid, timespec mut *tp) -> i32;
+
+pub fn clock_res(i32 clockid, timespec mut *res) -> i32
+{
+  return __vdso_clock_res(clockid, res);
+}
+
+pub fn clock_time(i32 clockid, timespec mut *tp) -> i32
+{
+  return __vdso_clock_time(clockid, tp);
+}

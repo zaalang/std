@@ -32,6 +32,16 @@ pub const F_SETFD = 2;
 pub const F_GETFL = 3;
 pub const F_SETFL = 4;
 
+pub const S_IFMT = 0xf000;
+
+pub const S_IFDIR = 0o040000;
+pub const S_IFCHR = 0o020000;
+pub const S_IFBLK = 0o060000;
+pub const S_IFREG = 0o100000;
+pub const S_IFIFO = 0o010000;
+pub const S_IFLNK = 0o120000;
+pub const S_IFSOCK = 0o140000;
+
 pub struct iovec
 {
   pub u8 mut *data;
@@ -142,7 +152,7 @@ pub fn readv(int fd, iovec *iov, int count) -> isize
 
 pub fn preadv(int fd, iovec *iov, int count, u64 ofs) -> isize
 {
-  return std::bit_cast<isize>(syscall4(sys_preadv, fd, iov, count, ofs));
+  return std::bit_cast<isize>(syscall5(sys_preadv, fd, iov, count, ofs, 0));
 }
 
 pub fn write(int fd, void *buf, usize count) -> isize
@@ -162,7 +172,7 @@ pub fn writev(int fd, ciovec *iov, int count) -> isize
 
 pub fn pwritev(int fd, ciovec *iov, int count, u64 ofs) -> isize
 {
-  return std::bit_cast<isize>(syscall4(sys_pwritev, fd, iov, count, ofs));
+  return std::bit_cast<isize>(syscall5(sys_pwritev, fd, iov, count, ofs, 0));
 }
 
 pub fn pipe(int[2] mut *fds) -> int

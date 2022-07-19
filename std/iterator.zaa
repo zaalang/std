@@ -10,7 +10,6 @@ import std.stdlib;
 
 pub concept Iterator
 {
-  requires<T> (T x) { *x; };
   requires<T> (T x) { ++x; };
   requires<T> (T x, T y) { x == y; };
 }
@@ -25,63 +24,6 @@ pub concept RandomAccessIterator
 pub concept Sentinal<I>
 {
   requires<T> (T x, I y) { y == x; };
-}
-
-pub struct move_iterator<I>
-{
-  pub I base;
-
-  pub move_iterator(I &&base)
-    : base(&&base)
-  {
-  }
-
-  pub move_iterator() = default;
-  pub move_iterator(move_iterator &&) = default;
-  pub fn =(move_iterator mut &, move_iterator &) -> move_iterator mut & = default;
-  pub ~move_iterator() = default;
-
-  pub fn *(move_iterator &&this)
-  {
-    return &&std::move(*this.base);
-  }
-
-  pub fn ++(move_iterator mut &this) -> move_iterator mut &
-    where requires (I mut &x) { ++x; }
-  {
-    ++this.base;
-    return &this;
-  }
-
-  pub fn --(move_iterator mut &this) -> move_iterator mut &
-    where requires (I mut &x) { --x; }
-  {
-    --this.base;
-    return &this;
-  }
-}
-
-pub fn ==<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> bool
-{
-  return lhs.base == rhs.base;
-}
-
-pub fn -<I, J>(move_iterator<I> &lhs, move_iterator<J> &rhs) -> usize
-  where requires (I i, J j) { i - j; }
-{
-  return lhs.base - rhs.base;
-}
-
-pub fn -<I>(move_iterator<I> &lhs, usize rhs) -> move_iterator<I>
-  where requires (I i, usize j) { i - j; }
-{
-  return move_iterator<I>(lhs.base - rhs);
-}
-
-pub fn +<I>(move_iterator<I> &lhs, usize rhs) -> move_iterator<I>
-  where requires (I i, usize j) { i + j; }
-{
-  return move_iterator<I>(lhs.base + rhs);
 }
 
 pub fn distance<I>(I first, Sentinal<I> last) -> usize

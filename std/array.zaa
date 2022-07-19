@@ -11,7 +11,7 @@ import std.type : as_const;
 pub struct array<T, N> : T[N]
 {
   pub array() = default;
-  pub array(array&&) = default;
+  pub array(array &&) = default;
   pub fn =(this mut &, array &&) -> array mut & = default;
 
   pub array(T[N] &&that)
@@ -64,160 +64,48 @@ pub struct array<T, N> : T[N]
     return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
-  pub struct iterator
+  #[lifetime(depend(this))]
+  pub fn [](this &, (T*, T*) range) -> span<T>
   {
-    pub iterator() = default;
-    pub iterator(iterator&) = default;
-    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
-    pub ~iterator() = default;
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
 
-    #[lifetime(clone(this))]
-    pub fn *(iterator &this) -> T &
-    {
-      return &*this.cursor;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn *(iterator mut &this) -> T mut &
-    {
-      return &*this.cursor;
-    }
-
-    #[lifetime(depend(this))]
-    pub fn ++(iterator mut &this) -> iterator mut &
-    {
-      ++this.cursor;
-      return &this;
-    }
-
-    #[lifetime(depend(this))]
-    pub fn --(iterator mut &this) -> iterator mut &
-    {
-      --this.cursor;
-      return &this;
-    }
-
-    iterator(T mut *item)
-      : cursor(item)
-    {
-    }
-
-    T mut *cursor;
+    return span(range.0, range.1);
   }
 
-  pub struct move_iterator
+  #[lifetime(depend(this))]
+  pub fn [](this &, (T*, T*, void) range) -> span<T>
   {
-    pub move_iterator() = default;
-    pub move_iterator(move_iterator&) = default;
-    pub fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
-    pub ~move_iterator() = default;
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
 
-    #[lifetime(clone(this))]
-    pub fn *(move_iterator &this) -> T &
-    {
-      return &*this.cursor;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn *(move_iterator mut &this) -> T &&
-    {
-      return &std::move(*this.cursor);
-    }
-
-    #[lifetime(depend(this))]
-    pub fn ++(move_iterator mut &this) -> move_iterator mut &
-    {
-      ++this.cursor;
-      return &this;
-    }
-
-    #[lifetime(depend(this))]
-    pub fn --(move_iterator mut &this) -> move_iterator mut &
-    {
-      --this.cursor;
-      return &this;
-    }
-
-    move_iterator(T mut *item)
-      : cursor(item)
-    {
-    }
-
-    T mut *cursor;
+    return span(range.0, range.1 + 1);
   }
 
-  pub struct const_iterator
+  #[lifetime(depend(this))]
+  pub fn [](this mut &, (T*, T*) range) -> mutable_span<T>
   {
-    pub const_iterator() = default;
-    pub const_iterator(const_iterator&) = default;
-    pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
-    pub ~const_iterator() = default;
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
 
-    #[lifetime(clone(other))]
-    pub const_iterator(iterator other)
-      : cursor(other.cursor)
-    {
-    }
-
-    #[lifetime(clone(this))]
-    pub fn *(const_iterator &this) -> T &
-    {
-      return &*this.cursor;
-    }
-
-    #[lifetime(depend(this))]
-    pub fn ++(const_iterator mut &this) -> const_iterator mut &
-    {
-      ++this.cursor;
-      return &this;
-    }
-
-    #[lifetime(depend(this))]
-    pub fn --(const_iterator mut &this) -> const_iterator mut &
-    {
-      --this.cursor;
-      return &this;
-    }
-
-    const_iterator(T *item)
-      : cursor(item)
-    {
-    }
-
-    T *cursor;
+    return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1));
   }
 
-  pub concept Iterator
+  #[lifetime(depend(this))]
+  pub fn [](this mut &, (T*, T*, void) range) -> mutable_span<T>
   {
-    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
-  }
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
 
-  pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
-  {
-    return lhs.cursor == rhs.cursor;
-  }
-
-  pub fn -(Iterator lhs, Iterator rhs) -> usize
-  {
-    return lhs.cursor - rhs.cursor;
-  }
-
-  #[lifetime(clone(lhs))]
-  pub fn +(Iterator lhs, usize rhs) -> typeof(lhs)
-  {
-    return lhs.cursor + rhs;
+    return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1 + 1));
   }
 
   #[lifetime(depend(this))]
   pub fn begin(this &&)
   {
-    return iter(&&this, this.data);
+    return this.data;
   }
 
   #[lifetime(depend(this))]
   pub fn end(this &&)
   {
-    return iter(&&this, this.data + this.len);
+    return this.data + this.len;
   }
 
   #[lifetime(depend(this))]
@@ -234,18 +122,6 @@ pub struct array<T, N> : T[N]
     assert(N != 0);
 
     return &*(this.data + this.len - 1);
-  }
-
-  fn iter(this &&, var item)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(item);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(item);
-
-    #else
-      return iterator(item);
   }
 }
 

@@ -160,15 +160,15 @@ pub union node
     {
       case Array(array):
         #if (__is_integral<Key>)
-          if (0 < key && cast<usize>(key) < array.len)
+          if (0 <= key && cast<usize>(key) < array.len)
             return &array[cast<usize>(key)];
         #if (__is_same<Key, node>)
-          if (key.is_integer && 0 < key.Integer && cast<usize>(key.Integer) < array.len)
+          if (key.is_integer && 0 <= key.Integer && cast<usize>(key.Integer) < array.len)
             return &array[cast<usize>(key.Integer)];
 
       case Map(map):
         if (var j = map.find(key); j != map.end)
-          return &(*j).value;
+          return &map[j].value;
     }
 
     return &emptynode;

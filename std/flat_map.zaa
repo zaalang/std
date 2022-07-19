@@ -56,7 +56,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var result = flat_map(allocator);
 
-    result.insert(&&other);
+    insert(result, &&other);
 
     return result;
   }
@@ -91,25 +91,22 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return &this._tree.allocator;
   }
 
-  using iterator = tree_type::iterator;
-  using move_iterator = tree_type::move_iterator;
-  using const_iterator = tree_type::const_iterator;
-
-  pub concept Iterator
-  {
-    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
-  }
-
   #[lifetime(depend(this))]
   pub fn begin(this &&)
   {
-    return (&&this)._tree.begin;
+    return this._tree.begin;
   }
 
   #[lifetime(depend(this))]
   pub fn end(this &&)
   {
-    return (&&this)._tree.end;
+    return this._tree.end;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn [](this &&, value_type *iter)
+  {
+    return &(&&this)._tree[iter];
   }
 
   #[lifetime(depend(this))]
@@ -130,7 +127,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn equal_range<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    return std::iterator_pair(lower_bound(&&this, key), upper_bound(&&this, key));
+    return (lower_bound(&&this, key), upper_bound(&&this, key));
   }
 
   #[lifetime(depend(this))]
@@ -140,7 +137,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     var x = lower_bound(&&this, key);
 
     if (x == this.end || this.cmp(key, (*x).key))
-      return (&&this).end;
+      return this.end;
 
     return x;
   }
@@ -152,7 +149,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn insert(this mut &, value_type &&value) -> (iterator, bool)
+  pub fn insert(this mut &, value_type &&value) -> (value_type *, bool)
   {
     var pos = this.lower_bound(value.key);
 
@@ -167,7 +164,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
+  pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (value_type *, bool)
     match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
   {
     var pos = this.lower_bound(key);
@@ -183,7 +180,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
+  pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (value_type *, bool)
     match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
   {
     var pos = this.lower_bound(key);
@@ -215,7 +212,13 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return this.merge(other);
     }
 
-    return this.insert((&&other).begin, (&&other).end);
+    if (var first = other.begin, var last = other.end; first != last)
+    {
+      while (first != last)
+      {
+        insert(this, (&&other)[first++]);
+      }
+    }
   }
 
   #[lifetime(poison(this))]
@@ -249,13 +252,13 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn erase(this mut &, Iterator position) -> iterator
+  pub fn erase(this mut &, value_type *position) -> value_type *
   {
     return this._tree.erase(position);
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
+  pub fn erase(this mut &, value_type *first, value_type *last) -> value_type *
   {
     return this._tree.erase(first, last);
   }
@@ -294,7 +297,7 @@ pub fn erase_if<K, T, Pred>(flat_map<K, T> mut &map, Pred &pred) -> usize
 
   for (; first != map.end; )
   {
-    if (pred(*first))
+    if (pred(map[first]))
       first = map.erase(first);
     else
       ++first;

@@ -23,12 +23,12 @@ pub struct hash
     return seed;
   }
 
-  pub fn combine_range<I, J>(hash &hash, I first, J last) -> usize
+  pub fn combine_range<R, I, J>(hash &hash, R &range, I first, J last) -> usize
   {
     var seed = 0;
 
     for( ; first != last; ++first)
-      mix(seed, hash(*first));
+      mix(seed, hash(range[first]));
 
     return seed;
   }

@@ -47,7 +47,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var result = map(allocator);
 
-    result.insert(&&other);
+    insert(result, &&other);
 
     return result;
   }
@@ -84,18 +84,6 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     pub ~iterator() = default;
 
     #[lifetime(clone(this))]
-    pub fn *(iterator &this) -> value_type &
-    {
-      return &cast<node_type*>(this.cursor).value;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn *(iterator mut &this) -> value_type mut &
-    {
-      return &cast<node_type mut *>(this.cursor).value;
-    }
-
-    #[lifetime(clone(this))]
     pub fn ++(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.next;
@@ -109,89 +97,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return &this;
     }
 
-    iterator(Tree::Link mut *node)
-      : cursor(node)
-    {
-    }
-
-    Tree::Link mut *cursor;
-  }
-
-  pub struct move_iterator
-  {
-    pub move_iterator() = default;
-    pub move_iterator(move_iterator&) = default;
-    pub fn =(move_iterator mut &this, move_iterator &that) -> move_iterator mut & = default;
-    pub ~move_iterator() = default;
-
-    #[lifetime(clone(this))]
-    pub fn *(move_iterator &this) -> value_type &
-    {
-      return &cast<node_type*>(this.cursor).value;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn *(move_iterator mut &this) -> value_type &&
-    {
-      return &std::move(cast<node_type mut *>(this.cursor).value);
-    }
-
-    #[lifetime(clone(this))]
-    pub fn ++(move_iterator mut &this) -> move_iterator mut &
-    {
-      this.cursor = this.cursor.next;
-      return &this;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn --(move_iterator mut &this) -> move_iterator mut &
-    {
-      this.cursor = this.cursor.prev;
-      return &this;
-    }
-
-    move_iterator(Tree::Link mut *node)
-      : cursor(node)
-    {
-    }
-
-    Tree::Link mut *cursor;
-  }
-
-  pub struct const_iterator
-  {
-    pub const_iterator() = default;
-    pub const_iterator(const_iterator&) = default;
-    pub fn =(const_iterator mut &this, const_iterator &that) -> const_iterator mut & = default;
-    pub ~const_iterator() = default;
-
-    #[lifetime(clone(other))]
-    pub const_iterator(iterator other)
-      : cursor(other.cursor)
-    {
-    }
-
-    #[lifetime(clone(this))]
-    pub fn *(const_iterator &this) -> value_type &
-    {
-      return &cast<node_type*>(this.cursor).value;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn ++(const_iterator mut &this) -> const_iterator mut &
-    {
-      this.cursor = this.cursor.next;
-      return &this;
-    }
-
-    #[lifetime(clone(this))]
-    pub fn --(const_iterator mut &this) -> const_iterator mut &
-    {
-      this.cursor = this.cursor.prev;
-      return &this;
-    }
-
-    const_iterator(Tree::Link *node)
+    iterator(Tree::Link *node)
       : cursor(node)
     {
     }
@@ -199,24 +105,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     Tree::Link *cursor;
   }
 
-  pub concept Iterator
-  {
-    requires<T> __is_same<T, iterator> || __is_same<T, move_iterator> || __is_same<T, const_iterator>;
-  }
-
-  #[lifetime(clone(this))]
-  pub fn key(Iterator &this)
-  {
-    return &(*this).key;
-  }
-
-  #[lifetime(clone(this))]
-  pub fn value(Iterator &&this)
-  {
-    return &(*this).value;
-  }
-
-  pub fn ==(Iterator &lhs, Iterator &rhs) -> bool
+  pub fn ==(iterator &lhs, iterator &rhs) -> bool
   {
     return lhs.cursor == rhs.cursor;
   }
@@ -224,26 +113,33 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(depend(this))]
   pub fn begin(this &&)
   {
-    return iter(&&this, this._tree.leftmost);
+    return iterator(this._tree.leftmost);
   }
 
   #[lifetime(depend(this))]
   pub fn end(this &&)
   {
-    return iter(&&this, &this._tree.root);
+    return iterator(&this._tree.root);
   }
 
+  #[lifetime(depend(this))]
+  pub fn [](this &&, iterator iter)
+  {
+    return &cast<&&typeof(this)>(cast<node_type mut *>(iter.cursor).value);
+  }
+
+  #[lifetime(depend(this))]
   pub fn lower_bound<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    return iter(&&this, this._tree.lower_bound(key));
+    return iterator(this._tree.lower_bound(key));
   }
 
   #[lifetime(depend(this))]
   pub fn upper_bound<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    return iter(&&this, this._tree.upper_bound(key));
+    return iterator(this._tree.upper_bound(key));
   }
 
   #[lifetime(depend(this))]
@@ -252,7 +148,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var x = this._tree.equal_range(key);
 
-    return std::iterator_pair(iter(&&this, x.0), iter(&&this, x.1));
+    return (iterator(x.0), iterator(x.1));
   }
 
   #[lifetime(depend(this))]
@@ -261,8 +157,8 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var x = lower_bound(&&this, key);
 
-    if (x == this.end || this.cmp()(key, x.key))
-      return (&&this).end;
+    if (x == this.end || this.cmp()(key, (&&this)[x].key))
+      return this.end;
 
     return x;
   }
@@ -328,7 +224,13 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return this.merge(other);
     }
 
-    return this.insert((&&other).begin, (&&other).end);
+    if (var first = other.begin, var last = other.end; first != last)
+    {
+      while (first != last)
+      {
+        insert(this, (&&other)[first++]);
+      }
+    }
   }
 
   pub fn insert<I>(this mut &, I first, Sentinal<I> last) -> void
@@ -375,13 +277,13 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn erase(this mut &, Iterator position) -> iterator
+  pub fn erase(this mut &, iterator position) -> iterator
   {
     return iterator(this._tree.erase(position.cursor, position.cursor.next));
   }
 
   #[lifetime(poison(this), depend(this))]
-  pub fn erase(this mut &, Iterator first, Iterator last) -> iterator
+  pub fn erase(this mut &, iterator first, iterator last) -> iterator
   {
     return iterator(this._tree.erase(first.cursor, last.cursor));
   }
@@ -390,18 +292,6 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn clear(this mut &) -> void
   {
     this._tree.clear();
-  }
-
-  fn iter(this &&, var node)
-  {
-    #if (__is_const<typeof(this)>)
-      return const_iterator(node);
-
-    #else if (__is_rvalue<typeof(this)>)
-      return move_iterator(node);
-
-    #else
-      return iterator(node);
   }
 
   using tree_type = Tree::tree<K, T, Cmp, Allocator>;
@@ -413,7 +303,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
 pub fn hash<K, T>(var &hasher, map<K, T> &map) -> usize
 {
-  return hasher.combine_range(map.begin, map.end);
+  return hasher.combine_range(map, map.begin, map.end);
 }
 
 #[lifetime(poison(map))]
@@ -424,7 +314,7 @@ pub fn erase_if<K, T, Pred>(map<K, T> mut &map, Pred &pred) -> usize
 
   for (; first != map.end; )
   {
-    if (pred(*first))
+    if (pred(map[first]))
       first = map.erase(first);
     else
       ++first;

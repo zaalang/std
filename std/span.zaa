@@ -3,7 +3,7 @@
 //
 
 import std.stdlib : assert;
-import std.range: Range;
+import std.range : Range;
 
 pub concept Span<U>
 {
@@ -57,7 +57,7 @@ pub struct span<T>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this &, (usize, usize) range) -> span
+  pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
 
@@ -65,11 +65,35 @@ pub struct span<T>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this &, (usize, usize, void) range) -> span
+  pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 < this.len && range.1 + 1 <= this.len);
 
     return span(this.data + range.0, this.data + range.1 + 1);
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, T *iter)
+  {
+    assert(this.data <= iter && iter < this.data + this.len);
+
+    return &*iter;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, (T*, T*) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
+
+    return span(range.0, range.1);
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, (T*, T*, void) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
+
+    return span(range.0, range.1 + 1);
   }
 
   pub fn remove_prefix(this mut &, usize n) -> void
@@ -181,6 +205,46 @@ pub struct mutable_span<T>
     return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
+  #[lifetime(clone(this))]
+  pub fn [](this &&, T *iter)
+  {
+    assert(this.data <= iter && iter < this.data + this.len);
+
+    return &*(this.data + (iter - this.data));
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, (T*, T*) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
+
+    return span(range.0, range.1);
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, (T*, T*, void) range) -> span<T>
+  {
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
+
+    return span(range.0, range.1 + 1);
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this mut &, (T*, T*) range) -> mutable_span<T>
+  {
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
+
+    return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1));
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this mut &, (T*, T*, void) range) -> mutable_span<T>
+  {
+    assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
+
+    return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1 + 1));
+  }
+
   pub fn remove_prefix(this mut &, usize n) -> void
   {
     assert(n <= this.len);
@@ -200,6 +264,84 @@ pub struct mutable_span<T>
   pub mutable_span(mutable_span &that) = default;
   pub fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
   pub ~mutable_span() = default;
+}
+
+pub struct moveable_span<T>
+{
+  pub usize len;
+  pub T mut *data;
+
+  #[lifetime(clone(data))]
+  pub moveable_span(T mut *data, usize len)
+    : len(len), data(data)
+  {
+  }
+
+  #[lifetime(clone(beg))]
+  pub moveable_span(T mut *beg, T mut *end)
+    : len(end - beg), data(beg)
+  {
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this.len == 0;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
+  {
+    return this.data;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.data + this.len;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, usize index)
+  {
+    assert(index < this.len);
+
+    return &*(this.data + index);
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this mut &, usize index)
+  {
+    assert(index < this.len);
+
+    return &std::move(*(this.data + index));
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, T *iter)
+  {
+    assert(this.data <= iter && iter < this.data + this.len);
+
+    return &*iter;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this mut &, T *iter)
+  {
+    assert(this.data <= iter && iter < this.data + this.len);
+
+    return &std::move(*cast<T mut *>(iter));
+  }
+
+  pub moveable_span() = default;
+  pub moveable_span(moveable_span &that) = default;
+  pub fn =(this mut &, moveable_span &that) -> moveable_span mut & = default;
+  pub ~moveable_span() = default;
+}
+
+#[lifetime(consume(span))]
+pub fn move<T>(mutable_span<T> mut &span)
+{
+  return moveable_span(span.data, span.len);
 }
 
 pub fn Span<T, N>(T[N] &array) -> span<T>

@@ -14,17 +14,19 @@ import std.fmt;
 pub concept Range<U>
 {
   requires<T> !__is_pointer<T>;
-  requires<T> (T x) -> U { return *x.begin; };
+  requires<T> (T x) -> U { return x[x.begin]; };
   requires<T> (T x) { x.end; };
 }
 
-pub struct iterator_pair<I, J>
+pub struct iterator_pair<R, I, J>
 {
+  R &&range;
+
   pub I first;
   pub J second;
 
-  pub iterator_pair(I first, J second)
-    : first(first), second(second)
+  pub iterator_pair(R &&range, I first, J second)
+    : range(&range), first(first), second(second)
   {
   }
 
@@ -36,29 +38,74 @@ pub struct iterator_pair<I, J>
   #[lifetime(clone(this))]
   pub fn begin(this &&)
   {
-    return (&&this).first;
+    return this.first;
   }
 
   #[lifetime(clone(this))]
   pub fn end(this &&)
   {
-    return (&&this).second;
+    return this.second;
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this &&, usize index)
-    where __is_match<RandomAccessIterator, I>
+  pub fn [](this &&, I iter)
   {
-    return &&(*std::next((&&this).first, index));
+    return &&(&&this.range)[iter];
   }
+}
+
+pub struct moveable_iterator_pair<R, I, J>
+{
+  R &&range;
+
+  pub I first;
+  pub J second;
+
+  pub moveable_iterator_pair(R &&range, I first, J second)
+    : range(&range), first(first), second(second)
+  {
+  }
+
+  pub moveable_iterator_pair() = default;
+  pub moveable_iterator_pair(moveable_iterator_pair &&) = default;
+  pub fn =(moveable_iterator_pair mut &, moveable_iterator_pair &) -> moveable_iterator_pair mut & = default;
+  pub ~moveable_iterator_pair() = default;
+
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &&, I iter)
+  {
+    return &&std::move((&&this.range)[iter]);
+  }
+}
+
+#[lifetime(consume(range))]
+pub fn move<R, I, J>(iterator_pair<R, I, J> mut &range)
+{
+  return moveable_iterator_pair(range.range, range.begin, range.end);
 }
 
 pub fn Range<T, N>(T[N] &&array)
 {
-  #if (__is_rvalue<typeof(array)>)
-    return std::iterator_pair(std::move_iterator(array.begin), std::move_iterator(array.end));
+  #if (__is_const<typeof(array)>)
+    return std::span(array.begin, array.end);
 
-  return std::iterator_pair((&&array).begin, (&&array).end);
+  #else if (__is_rvalue<typeof(array)>)
+    return std::moveable_span(array.begin, array.end);
+
+  #else
+    return std::mutable_span(array.begin, array.end);
 }
 
 pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
@@ -86,32 +133,20 @@ pub const fn is_all_ranges<Rs, T>() -> bool
   return true;
 }
 
-#[lifetime(consume(range))]
-pub fn move<T>(std::mutable_span<T> mut &range)
-{
-  return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
-}
-
-#[lifetime(consume(range))]
-pub fn move<I, J>(std::iterator_pair<I, J> mut &range)
-{
-  return std::iterator_pair(std::move_iterator(range.begin), std::move_iterator(range.end));
-}
-
 pub fn len<T>(Range<T> &&range) -> usize
 {
   return std::distance(range.begin, range.end);
 }
 
 pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
-  where requires (typeof(lhs) x, typeof(rhs) y) { *x.begin == *y.begin; }
+  where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] == y[y.begin]; }
 {
   if (lhs.len != rhs.len)
     return false;
 
   for(var i = lhs.begin, var j = rhs.begin, var end = lhs.end; i != end; ++i, ++j)
   {
-    if (!(*i == *j))
+    if (!(lhs[i] == rhs[j]))
       return false;
   }
 
@@ -119,7 +154,7 @@ pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
 }
 
 pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
-  where requires (typeof(lhs) x, typeof(rhs) y) { *x.begin <=> *y.begin; }
+  where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] <=> x[y.begin]; }
 {
   var i = lhs.begin;
   var j = rhs.begin;
@@ -129,7 +164,7 @@ pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
     if (i == endi)
       return -1;
 
-    if (var cmp = (*i <=> *j); cmp != 0)
+    if (var cmp = (lhs[i] <=> rhs[j]); cmp != 0)
       return cmp;
   }
 
@@ -154,10 +189,13 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &ra
   ctx.written += std::print_to(os, "]");
 }
 
-pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
+pub struct iota_view<I, J>
 {
+  pub iota_iterator<I> first;
+  pub iota_iterator<J> second;
+
   pub iota_view(I beg, J end = void)
-    : super(iota_iterator(beg), iota_iterator(end))
+    : first(beg), second(end)
   {
   }
 
@@ -219,10 +257,31 @@ pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
     return cast<usize>(lhs.n - rhs.n);
   }
 
+  pub fn -<I>(iota_iterator<I> &lhs, usize rhs) -> iota_iterator<I>
+    where requires (I i, usize j) { i - cast<I>(j); }
+  {
+    return iota_iterator<I>(lhs.n - cast<I>(rhs));
+  }
+
   pub fn +<I>(iota_iterator<I> &lhs, usize rhs) -> iota_iterator<I>
-    where requires (I i, usize j) { i + j; }
+    where requires (I i, usize j) { i + cast<I>(j); }
   {
     return iota_iterator<I>(lhs.n + cast<I>(rhs));
+  }
+
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  pub fn [](this &&, iota_iterator<I> iter)
+  {
+    return iter.n;
   }
 
   pub fn len(this &) -> usize
@@ -231,6 +290,26 @@ pub struct iota_view<I, J> : iterator_pair<iota_iterator<I>, iota_iterator<J>>
 
     return cast<usize>(this.second.n - this.first.n);
   }
+}
+
+pub fn iota(#int value)
+{
+  return iota_view(value);
+}
+
+pub fn iota(#int value, #int bound)
+{
+  return iota_view(value, bound);
+}
+
+pub fn iota(#float value)
+{
+  return iota_view(value);
+}
+
+pub fn iota(#float value, #float bound)
+{
+  return iota_view(value, bound);
 }
 
 pub fn iota<T>(T &&value)
@@ -244,10 +323,15 @@ pub fn iota<T, W>(T &&value, W &&bound)
   return iota_view(&&value, &&bound);
 }
 
-pub struct reverse_view<I, J> : iterator_pair<reverse_iterator<I>, reverse_iterator<J>>
+pub struct reverse_view<R, I, J>
 {
-  pub reverse_view(I beg, J end)
-    : super(reverse_iterator(end), reverse_iterator(beg))
+  R &&range;
+
+  pub reverse_iterator<J> first;
+  pub reverse_iterator<I> second;
+
+  pub reverse_view(R &&range, I beg, J end)
+    : range(&range), first(end), second(beg)
   {
   }
 
@@ -266,11 +350,6 @@ pub struct reverse_view<I, J> : iterator_pair<reverse_iterator<I>, reverse_itera
     pub reverse_iterator(reverse_iterator &&) = default;
     pub fn =(reverse_iterator mut &lhs, reverse_iterator &&rhs) -> reverse_iterator mut & = default;
     pub ~reverse_iterator() = default;
-
-    pub fn *(reverse_iterator &&this)
-    {
-      return &&(*std::prev(this.base));
-    }
 
     pub fn ++(reverse_iterator mut &this) -> reverse_iterator mut &
       where requires (X mut &x) { --x; }
@@ -310,24 +389,53 @@ pub struct reverse_view<I, J> : iterator_pair<reverse_iterator<I>, reverse_itera
   {
     return reverse_iterator<I>(lhs.base - rhs);
   }
+
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &&, reverse_iterator<J> iter)
+  {
+    return &&(&&this.range)[std::prev(iter.base)];
+  }
 }
 
 #[lifetime(depend(range))]
 pub fn reverse<T>(Range<T> &&range)
 {
-  return reverse_view((&&range).begin, (&&range).end);
+  return reverse_view<typeof(range)>(range, range.begin, range.end);
 }
 
 #[lifetime(depend(range))]
-pub fn reverse<I, J>(zip_view<I, J> &&range)
+pub fn reverse<Rs, I, J>(zip_view<Rs, I, J> &&range)
 {
-  return reverse_view((&&range).begin, (&&range).begin + range.len);
+  return reverse_view<typeof(range)>(range, range.begin, std::next(range.begin, range.len));
 }
 
-pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_iterator<J>>
+#[lifetime(consume(range))]
+pub fn move<R, I, J>(reverse_view<R, I, J> mut &range)
 {
-  pub filter_view(I beg, J end, Pred &&pred)
-    : super(filter_iterator(beg, end, _pred), filter_iterator(end, _pred)),
+  return moveable_iterator_pair(range, range.begin, range.end);
+}
+
+pub struct filter_view<R, I, J, Pred>
+{
+  R &&range;
+
+  pub filter_iterator<I> first;
+  pub filter_iterator<J> second;
+
+  pub filter_view(R &&range, I beg, J end, Pred &&pred)
+    : range(&range), first(beg, end, _pred), second(end, _pred),
       _pred(&&pred)
   {
   }
@@ -354,11 +462,6 @@ pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_it
     pub filter_iterator(filter_iterator &&) = default;
     pub fn =(filter_iterator mut &lhs, filter_iterator &&rhs) -> filter_iterator mut & = default;
     pub ~filter_iterator() = default;
-
-    pub fn *(filter_iterator &&this)
-    {
-      return &&(*this.base);
-    }
 
     pub fn ++(filter_iterator mut &this) -> filter_iterator mut &
       where requires (X mut &x) { ++x; }
@@ -399,19 +502,48 @@ pub struct filter_view<I, J, Pred> : iterator_pair<filter_iterator<I>, filter_it
     Pred &pred;
   }
 
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &&, filter_iterator<I> iter)
+  {
+    return &&(&&this.range)[iter.base];
+  }
+
   Pred _pred;
 }
 
 #[lifetime(depend(range))]
 pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
 {
-  return filter_view((&&range).begin, (&&range).end, &&pred);
+  return filter_view<typeof(range)>(range, range.begin, range.end, &&pred);
 }
 
-pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, transform_iterator<J>>
+#[lifetime(consume(range))]
+pub fn move<R, I, J, Pred>(filter_view<R, I, J, Pred> mut &range)
 {
-  pub transform_view(I beg, J end, Func &&func)
-    : super(transform_iterator(beg, _func), transform_iterator(end, _func)),
+  return moveable_iterator_pair(range, range.begin, range.end);
+}
+
+pub struct transform_view<R, I, J, Func>
+{
+  R &&range;
+
+  pub transform_iterator<I> first;
+  pub transform_iterator<J> second;
+
+  pub transform_view(R &&range, I beg, J end, Func &&func)
+    : range(&range), first(beg), second(end),
       _func(&&func)
   {
   }
@@ -422,8 +554,8 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
   {
     pub X base;
 
-    transform_iterator(X &&base, Func &func)
-      : base(&&base), func(&func)
+    transform_iterator(X &&base)
+      : base(&&base)
     {
     }
 
@@ -431,11 +563,6 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
     pub transform_iterator(transform_iterator &&) = default;
     pub fn =(transform_iterator mut &lhs, transform_iterator &&rhs) -> transform_iterator mut & = default;
     pub ~transform_iterator() = default;
-
-    pub fn *(transform_iterator &&this)
-    {
-      return &&this.func(*this.base);
-    }
 
     pub fn ++(transform_iterator mut &this) -> transform_iterator mut &
       where requires (X mut &x) { ++x; }
@@ -462,8 +589,6 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
     {
       return lhs.base == rhs.base;
     }
-
-    Func &func;
   }
 
   pub fn -<I, J>(transform_iterator<I> &lhs, transform_iterator<J> &rhs) -> usize
@@ -475,7 +600,25 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
   pub fn +<I>(transform_iterator<I> lhs, usize rhs) -> transform_iterator<I>
     where requires (I i, usize j) { i + j; }
   {
-    return transform_iterator<I>(lhs.base + rhs, lhs.func);
+    return transform_iterator<I>(lhs.base + rhs);
+  }
+
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &&, transform_iterator<I> iter)
+  {
+    return &&this._func((&&this.range)[iter.base]);
   }
 
   Func _func;
@@ -484,13 +627,18 @@ pub struct transform_view<I, J, Func> : iterator_pair<transform_iterator<I>, tra
 #[lifetime(depend(range))]
 pub fn transform<T, Func>(Range<T> &&range, Func &&func)
 {
-  return transform_view((&&range).begin, (&&range).end, &&func);
+  return transform_view<typeof(range)>(range, range.begin, range.end, &&func);
 }
 
-pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
+pub struct zip_view<Rs, I, J>
 {
-  pub zip_view(I beg, J end)
-    : super(zip_iterator(beg, end), zip_sentinal())
+  Rs rs;
+
+  pub zip_iterator first;
+  pub zip_sentinal second;
+
+  pub zip_view(Rs rs, I beg, J end)
+    : rs(rs), first(beg, end)
   {
   }
 
@@ -510,16 +658,6 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
     pub fn =(zip_iterator mut &lhs, zip_iterator &&rhs) -> zip_iterator mut & = default;
     pub ~zip_iterator() = default;
 
-    pub fn *(zip_iterator &&this)
-    {
-      fn deref(I && ...is)
-      {
-        return std::tuple((&&*is)...);
-      }
-
-      return deref(this.base...);
-    }
-
     pub fn ++(zip_iterator mut &this) -> zip_iterator mut &
     {
       #for(var mut &i : this.base)
@@ -529,7 +667,6 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
     }
 
     pub fn --(zip_iterator mut &this) -> zip_iterator mut &
-      where is_random_access()
     {
       #for(var mut &i : this.base)
         --i;
@@ -560,6 +697,15 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
     pub zip_sentinal(zip_sentinal &&) = default;
     pub fn =(zip_sentinal mut &lhs, zip_sentinal &&rhs) -> zip_sentinal mut & = default;
     pub ~zip_sentinal() = default;
+  }
+
+  pub fn is_random_access() -> bool
+  {
+    #for(const i = 0; i < __tuple_len<I>; ++i)
+      if (!__is_match<RandomAccessIterator, typeof(I::#i)>())
+        return false;
+
+    return true;
   }
 
   pub fn -(zip_iterator &lhs, zip_iterator &rhs) -> usize
@@ -598,13 +744,27 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
     return lhs;
   }
 
-  pub fn is_random_access() -> bool
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
   {
-    #for(const i = 0; i < __tuple_len<I>; ++i)
-      if (!__is_match<RandomAccessIterator, typeof(I::#i)>())
-        return false;
+    return this.first;
+  }
 
-    return true;
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &&, zip_iterator iter)
+  {
+    fn deref(Rs && ...rs, I && ...is)
+    {
+      return std::tuple((&&(&&rs)[is])...);
+    }
+
+    return deref(this.rs..., iter.base...);
   }
 }
 
@@ -612,23 +772,37 @@ pub struct zip_view<I, J> : iterator_pair<zip_iterator, zip_sentinal>
 pub fn zip(var && ...ranges)
   where is_all_ranges<typeof(ranges)>
 {
-  return zip_view(std::tuple(((&&ranges).begin)...), std::tuple(((&&ranges).end)...));
+  return zip_view(ranges, std::tuple((ranges.begin)...), std::tuple((ranges.end)...));
 }
 
 #[lifetime(depend(range))]
 pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 {
-  return std::iterator_pair(first, last);
+  return std::iterator_pair<typeof(range)>(range, first, last);
 }
 
 #[lifetime(depend(range))]
 pub fn drop_n<T>(Range<T> &&range, usize n)
 {
-  return range.subrange(std::next((&&range).begin, n, range.end), (&&range).end);
+  return subrange(&&range, std::next(range.begin, n, range.end), range.end);
 }
 
 #[lifetime(depend(range))]
 pub fn take_n<T>(Range<T> &&range, usize n)
 {
-  return range.subrange((&&range).begin, std::next((&&range).begin, n, range.end));
+  return subrange(&&range, range.begin, std::next(range.begin, n, range.end));
 }
+
+#[lifetime(depend(range))]
+pub fn front<T>(Range<T> &&range)
+{
+  return &&(&&range)[range.begin];
+}
+
+#[lifetime(depend(range))]
+pub fn [](var &&range, usize index)
+  where is_range<typeof(range)> && __is_match<RandomAccessIterator, typeof(range.begin)>
+{
+  return &&(&&range)[std::next(range.begin, index)];
+}
+

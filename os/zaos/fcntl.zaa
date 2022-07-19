@@ -21,6 +21,18 @@ pub enum stats
   pub const ctime = 0x20;
 }
 
+pub enum ftype
+{
+  unknown,
+  block_device,
+  character_device,
+  directory,
+  regular_file,
+  socket_dgram,
+  socket_stream,
+  symbolic_link,
+}
+
 pub struct stat
 {
   pub uid_t uid,
@@ -29,7 +41,6 @@ pub struct stat
 
   pub off_t size,
 
-  pub time_t atime,
   pub time_t mtime,
   pub time_t ctime,
 
@@ -37,6 +48,60 @@ pub struct stat
   pub stat(stat&) = default;
   pub fn =(stat mut &, stat &) -> stat mut & = default;
   pub ~stat() = default;
+}
+
+pub fn ftype(stat &stat) -> ftype
+{
+  switch (stat.mode & 0xf000)
+  {
+    case 0x8000:
+      return ftype::regular_file;
+
+    case 0x6000:
+      return ftype::block_device;
+
+    case 0x4000:
+      return ftype::directory;
+
+    case 0x2000:
+      return ftype::character_device;
+
+    case 0xa000:
+      return ftype::symbolic_link;
+  }
+
+  return ftype::unknown;
+}
+
+pub struct pollfd
+{
+  pub i32 fd;
+  pub u16 events;
+  pub u16 revents;
+
+  pub pollfd() = default;
+  pub pollfd(pollfd&) = default;
+  pub fn =(pollfd mut &, pollfd &) -> pollfd mut & = default;
+  pub ~pollfd() = default;
+}
+
+pub struct string
+{
+  u8 *data;
+  usize len;
+
+  pub string(u8 *data, usize len)
+    : len(len), data(data)
+  {
+  }
+
+  pub string(typeof("") &str)
+    : len(str.len), data(str.data)
+  {
+  }
+
+  pub string(string&) = default;
+  pub ~string() = default;
 }
 
 pub enum ioring_ops
@@ -49,6 +114,7 @@ pub enum ioring_ops
   pub const close = 0x06;
   pub const fstat = 0x07;
   pub const lstat = 0x08;
+  pub const select = 0x09;
 }
 
 pub enum ioring_flags
@@ -180,7 +246,7 @@ pub fn ioring_advance_cqe(ioring mut &ring) -> void
   std::atomic_store(&ring.header.cq_head, next, std::memory_order::relaxed);
 }
 
-pub fn ioring_prep_sqe_open(ioring_sqe mut *sqe, i32 dir, std::string_view path, u64 flags, u32 mode) -> void
+pub fn ioring_prep_sqe_open(ioring_sqe mut *sqe, i32 dir, string path, u64 flags, u32 mode) -> void
 {
   sqe.op = ioring_ops::open;
   sqe.args[0] = cast(dir);
@@ -235,7 +301,16 @@ pub fn ioring_prep_sqe_close(ioring_sqe mut *sqe, i32 fd) -> void
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn open(ioring mut &ring, i32 dir, std::string_view path, u64 flags, u32 mode) -> i32
+pub fn ioring_prep_sqe_select(ioring_sqe mut *sqe, pollfd mut *fds, usize n, u64 timeout) -> void
+{
+  sqe.op = ioring_ops::select;
+  sqe.args[0] = cast(fds);
+  sqe.args[1] = cast(n);
+  sqe.args[2] = cast(timeout);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
 {
   var sqe = ioring_get_sqe(ring);
   ioring_prep_sqe_open(sqe, dir, path, flags, mode);
@@ -319,6 +394,22 @@ pub fn close(ioring mut &ring, i32 fd) -> i32
 {
   var sqe = ioring_get_sqe(ring);
   ioring_prep_sqe_close(sqe, fd);
+  ioring_advance_sqe(ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(ring);
+  var result = cqe.result;
+  ioring_advance_cqe(ring);
+
+  return result;
+}
+
+pub fn select(ioring mut &ring, pollfd mut *fds, usize n, u64 timeout) -> i32
+{
+  var sqe = ioring_get_sqe(ring);
+  ioring_prep_sqe_select(sqe, fds, n, timeout);
   ioring_advance_sqe(ring);
 
   if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
