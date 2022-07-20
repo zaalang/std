@@ -48,7 +48,8 @@ pub struct iterator_pair<R, I, J>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this &&, I iter)
+  pub fn []<I>(this &&, I iter)
+    match (typeof(this) this, I iter) { this.range[iter]; }
   {
     return &&(&&this.range)[iter];
   }
@@ -84,9 +85,10 @@ pub struct moveable_iterator_pair<R, I, J>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this &&, I iter)
+  pub fn []<I>(this &&, I iter)
+    match (typeof(this) this, I iter) { this.range[iter]; }
   {
-    return &&std::move((&&this.range)[iter]);
+    return &&cast<&&typeof(this)>((&&this.range)[iter]);
   }
 }
 

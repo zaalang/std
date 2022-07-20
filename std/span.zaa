@@ -301,35 +301,19 @@ pub struct moveable_span<T>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this &, usize index)
+  pub fn [](this &&, usize index)
   {
     assert(index < this.len);
 
-    return &*(this.data + index);
+    return &cast<&&typeof(this)>(*(this.data + index));
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this mut &, usize index)
-  {
-    assert(index < this.len);
-
-    return &std::move(*(this.data + index));
-  }
-
-  #[lifetime(clone(this))]
-  pub fn [](this &, T *iter)
+  pub fn [](this &&, T *iter)
   {
     assert(this.data <= iter && iter < this.data + this.len);
 
-    return &*iter;
-  }
-
-  #[lifetime(clone(this))]
-  pub fn [](this mut &, T *iter)
-  {
-    assert(this.data <= iter && iter < this.data + this.len);
-
-    return &std::move(*cast<T mut *>(iter));
+    return &cast<&&typeof(this)>(*(this.data + (iter - this.data)));
   }
 
   pub moveable_span() = default;

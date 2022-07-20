@@ -369,13 +369,13 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, iterator position) -> iterator
   {
-    return erase(this, position.cursor, 1);
+    return erase(this, position, 1);
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, iterator first, iterator last) -> iterator
   {
-    return erase(this, first.cursor, last.cursor - first.cursor);
+    return erase(this, first, last.cursor - first.cursor);
   }
 
   #[lifetime(poison(this), depend(this))]
