@@ -18,6 +18,11 @@ pub concept Range<U>
   requires<T> (T x) { x.end; };
 }
 
+pub fn Range<T, N>(T[N] &&array)
+{
+  return &(&&array);
+}
+
 pub struct iterator_pair<R, I, J>
 {
   R &&range;
@@ -96,24 +101,6 @@ pub struct moveable_iterator_pair<R, I, J>
 pub fn move<R, I, J>(iterator_pair<R, I, J> mut &range)
 {
   return moveable_iterator_pair(range.range, range.begin, range.end);
-}
-
-pub fn Range<T, N>(T[N] &&array)
-{
-  #if (__is_const<typeof(array)>)
-    return std::span(array.begin, array.end);
-
-  #else if (__is_rvalue<typeof(array)>)
-    return std::moveable_span(array.begin, array.end);
-
-  #else
-    return std::mutable_span(array.begin, array.end);
-}
-
-pub fn Range<T = u8>(typeof("") &str) -> std::span<T>
-  where __is_same<T, u8>
-{
-  return std::span<u8>(str.data, str.len);
 }
 
 pub fn is_range<R, T>() -> bool

@@ -10,8 +10,13 @@ pub concept Span<U>
   requires<T> (T x) { x.len; };
   requires<T> (T x) { x.data; };
   requires<T> (T x) -> U { return *x.data; };
-  requires<T> (T x) { x.begin; };
+  requires<T> (T x) -> U { return x[x.begin]; };
   requires<T> (T x) { x.end; };
+}
+
+pub fn Span<T, N>(T[N] &&array)
+{
+  return &(&&array);
 }
 
 pub struct span<T>
@@ -326,22 +331,6 @@ pub struct moveable_span<T>
 pub fn move<T>(mutable_span<T> mut &span)
 {
   return moveable_span(span.data, span.len);
-}
-
-pub fn Span<T, N>(T[N] &array) -> span<T>
-{
-  return std::span(array.begin, array.end);
-}
-
-pub fn Span<T, N>(T[N] mut &array) -> mutable_span<T>
-{
-  return std::mutable_span(array.begin, array.end);
-}
-
-pub fn Span<T = u8>(typeof("") &str) -> span<T>
-  where __is_same<T, u8>
-{
-  return span<u8>(str.data, str.len);
 }
 
 #[lifetime(clone(span))]

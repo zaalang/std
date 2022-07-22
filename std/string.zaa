@@ -857,7 +857,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
-  pub fn append(this mut &, var & ...args) -> usize
+  pub fn append<Args>(this mut &, Args & ...args) -> usize
   {
     try
     {
@@ -870,7 +870,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
-  pub fn appendf(this mut &, String &format, var & ...args) -> usize
+  pub fn appendf<Args>(this mut &, #string_literal format, Args & ...args) -> usize
   {
     try
     {
@@ -883,7 +883,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
-  pub fn appendf(this mut &, #string_literal format, var & ...args) -> usize
+  pub fn appendf<Args>(this mut &, String &format, Args & ...args) -> usize
   {
     try
     {
@@ -1042,11 +1042,29 @@ pub fn hash(var &hasher, String &str) -> usize
   return hasher.combine_contiguous(str.data, str.len);
 }
 
+#[lifetime(poison(str))]
+pub fn sprint<Args>(string mut &str, Args & ...args) -> usize
+{
+  return str.append(args...);
+}
+
+#[lifetime(poison(str))]
+pub fn sprintf<Args>(string mut &str, #string_literal format, Args & ...args) -> usize
+{
+  return str.appendf(format, args...);
+}
+
+#[lifetime(poison(str))]
+pub fn sprintf<Args>(string mut &str, String &format, Args & ...args) -> usize
+{
+  return str.appendf(format, args...);
+}
+
 pub fn sprint<Args>(Span<u8> mut &os, Args & ...args) -> usize
 {
   try
   {
-    return std::format_to(os, args...);
+    return std::print_to(std::mutable_span(os.data, os.len), args...);
   }
   catch(std::error e)
   {
@@ -1058,7 +1076,7 @@ pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args) -
 {
   try
   {
-    return std::format_to(os, format, args...);
+    return std::format_to(std::mutable_span(os.data, os.len), format, args...);
   }
   catch(std::error e)
   {
@@ -1070,30 +1088,12 @@ pub fn sprintf<Args>(Span<u8> mut &os, String &format, Args & ...args) -> usize
 {
   try
   {
-    return std::format_to(os, format, args...);
+    return std::format_to(std::mutable_span(os.data, os.len), format, args...);
   }
   catch(std::error e)
   {
     return 0;
   }
-}
-
-#[lifetime(poison(str))]
-pub fn sprint(string mut &str, var & ...args) -> usize
-{
-  return str.append(args...);
-}
-
-#[lifetime(poison(str))]
-pub fn sprintf(string mut &str, String &format, var & ...args) -> usize
-{
-  return str.appendf(format, args...);
-}
-
-#[lifetime(poison(str))]
-pub fn sprintf(string mut &str, #string_literal format, var & ...args) -> usize
-{
-  return str.appendf(format, args...);
 }
 
 #[lifetime(follow(str.data))]

@@ -96,7 +96,7 @@ fn merge(node mut &lhs, node mut &rhs) -> bool
       {
         if (var j = map.insert(std::move(it)); !j.1)
         {
-          if (!merge(j.0.value, it.value))
+          if (!merge(map[j.0].value, it.value))
             ok = false;
         }
       }
@@ -287,11 +287,11 @@ fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
   var mut &key = std::launder(ctx.stack[ctx.stack.len - 2]);
   var mut &value = std::launder(ctx.stack[ctx.stack.len - 1]);
 
-  var mut &map = ctx.stack[ctx.stack.len - 3].Map;
+  var mut &map = std::launder(ctx.stack[ctx.stack.len - 3]).Map;
 
   if (var j = map.insert(std::move(key), std::move(value)); !j.1)
   {
-    if (!merge(j.0.value, value))
+    if (!merge(map[j.0].value, value))
       return parse_error(ctx, toml::errc::duplicate_key);
   }
 
