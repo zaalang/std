@@ -32,7 +32,6 @@ pub struct meta
     Lambda,
     ThisVar,
     FieldVar,
-    RangeVar,
     ErrorVar,
     LambdaVar,
     Initialiser,

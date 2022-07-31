@@ -2,11 +2,11 @@
 // std tuple
 //
 
-import std.stdlib;
+import std.stdlib : assert;
 
 pub using tuple<...T> = T;
 
-pub fn tuple<T>(T&& ...elements) -> T
+pub fn tuple<T>(T && ...elements) -> T
 {
   return T(&&elements...);
 }
@@ -21,13 +21,13 @@ pub fn tuple<T>(T&& ...elements) -> T
 //  return elements;
 //}
 
-pub fn tie<T>(T&& ...elements)
+pub fn tie<T>(T && ...elements)
   where !is_any_rvalue<typeof(elements)>
 {
   return elements;
 }
 
-pub fn fwd_as_tuple<T>(T&& ...elements)
+pub fn fwd_as_tuple<T>(T && ...elements)
 {
   return elements;
 }
@@ -82,44 +82,36 @@ pub const fn is_all_same<T>() -> bool
   return true;
 }
 
+pub fn tuple_cat<Ts>(Ts && ...tuples)
+{
+  return std::tuple(((&&tuples)...)...);
+}
+
+pub const fn tuple_iota<T>(#T value, #T bound)
+{
+  #if (value >= bound)
+    return std::tuple();
+
+  return std::tuple(value, tuple_iota(value + 1, bound)...);
+}
+
+pub fn tuple_select<T>(T &&tuple, #var ...indices)
+{
+  return std::tuple((&&tuple.#indices)...);
+}
+
+pub fn tuple_subset<T>(T &&tuple, #(usize, usize) range)
+{
+  return tuple_select(&&tuple, tuple_iota(range.0, range.1)...);
+}
+
+pub fn tuple_subset<T>(T &&tuple, #(usize, usize, void) range)
+{
+  return tuple_select(&&tuple, tuple_iota(range.0, range.1 + 1)...);
+}
+
 pub fn tuple_tail<T>(T &&tuple)
   where __tuple_len<T> != 0
 {
-  fn tail<U, V>(U &&, V && ...v)
-  {
-    return v;
-  }
-
-  return std::tuple(&&tail(&&tuple...)...);
-}
-
-//pub fn tuple_cat<U, V>(U &&u, V &&v) -> (U..., V...)
-//{
-//  return std::tuple(&&u..., &&v...);
-//}
-
-pub fn tuple_cat<Ts>(Ts && ...tuples)
-{
-  fn concat<U, V>(U &&u, V &&v)
-  {
-    fn tie<V>(V && ...v)
-    {
-      return v;
-    }
-
-    fn tail<U, V>(U &&, V && ...v)
-    {
-      return v;
-    }
-
-    #if (__tuple_len<V> == 1)
-      return tie(&&u..., &&v.0...);
-    #else
-      return concat(tie(&&u..., &&v.0...), tail(&&v...));
-  }
-
-  #if (__tuple_len<Ts> == 0)
-    return std::tuple();
-  #else
-    return std::tuple(&&concat(std::tuple(), tuples)...);
+  return tuple_select(&&tuple, tuple_iota(1, __tuple_len<T>)...);
 }

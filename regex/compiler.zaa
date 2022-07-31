@@ -330,13 +330,13 @@ fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
       case Klass:
         emit_klass(ctx, op.Klass);
 
-      case Repeat(repeat):
+      case Repeat[repeat]:
         emit_repeat(ctx, repeat, op + 1, op + repeat.len);
 
-      case Alternate(alternate):
+      case Alternate[alternate]:
         emit_alternate(ctx, alternate, op + 1, op + alternate.lhs, op + alternate.lhs, op + alternate.len);
 
-      case Capture(capture):
+      case Capture[capture]:
         emit_capture(ctx, capture, op + 1, op + capture.len);
     }
   }
@@ -357,26 +357,26 @@ fn encode_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> vo
 
       switch (op)
       {
-        case opcode::capture:
+        case capture:
           stack.push_back(out);
 
-        case opcode::fork:
+        case fork:
           stack.push_back(out);
 
-        case opcode::jump:
+        case jump:
           stack.push_back(out);
 
-        case opcode::condition:
+        case condition:
           stack.push_back(out);
 
-        case opcode::match:
+        case match:
           bytecode[1] = 0xFFFF_FFFF;
           bytecode[2] = 0xFFFF_FFFF;
           bytecode[3] = 0xFFFF_FFFF;
           bytecode[4] = 0xFFFF_FFFF;
 
-        case opcode::select:
-        case opcode::selecti:
+        case select:
+        case selecti:
           var lo = 0;
           var hi = 0;
 

@@ -126,7 +126,7 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optiona
 {
   switch (optional)
   {
-    case Some(v):
+    case Some[v]:
       ctx.written += std::format_to(os, "Some({})", v);
 
     case None:

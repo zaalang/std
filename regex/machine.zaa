@@ -86,24 +86,24 @@ fn match_condition(machine mut &vm, u8 *ch, condition cc) -> bool
 {
   switch (cc)
   {
-    case condition::begintext:
+    case begintext:
       if (ch == vm.text.begin)
         return true;
 
-    case condition::beginline:
+    case beginline:
       if (ch == vm.text.begin || *(ch - 1) == cast('\n'))
         return true;
 
-    case condition::endline:
+    case endline:
       if (ch == vm.text.end || *ch == cast('\n'))
         return true;
 
-    case condition::endtext:
+    case endtext:
       if (ch == vm.text.end)
         return true;
 
-    case condition::wordboundary:
-    case condition::nonwordboundary:
+    case wordboundary:
+    case nonwordboundary:
 
       fn is_wordchar(char ch) -> bool
       {
@@ -170,7 +170,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
 
         switch (op)
         {
-          case instruction::match:
+          case match:
 
             if (captures.empty)
               return true;
@@ -187,7 +187,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
 
             matched = true;
 
-          case instruction::capture:
+          case capture:
 
             var n = cast<usize>(*(thread.pc + 1));
 
@@ -206,18 +206,18 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
             thread.pc = program.data + out;
             continue;
 
-          case instruction::fork:
+          case fork:
 
             vm.threads.push_back(program.data + out);
             vm.threads.back.captures = vm.threads[i].captures;
             &thread = &vm.threads[i];
 
-          case instruction::jump:
+          case jump:
 
             thread.pc = program.data + out;
             continue;
 
-          case instruction::condition:
+          case condition:
 
             var cc = cast<condition>(*(thread.pc + 1));
 
@@ -227,7 +227,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
               continue;
             }
 
-          case instruction::select_byte:
+          case select_byte:
 
             if (ch != vm.text.end)
             {
@@ -242,7 +242,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
               }
             }
 
-          case instruction::selecti_byte:
+          case selecti_byte:
 
             if (ch != vm.text.end)
             {
@@ -257,7 +257,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
               }
             }
 
-          case instruction::select_rune:
+          case select_rune:
 
             if (ch != vm.text.end)
             {
@@ -311,4 +311,3 @@ pub fn execute(machine mut &vm, Span<u32> &program, Span<u8*> mut &captures) -> 
 {
   return execute(vm, std::span(program.data, program.len), std::mutable_span(captures.data, captures.len));
 }
-

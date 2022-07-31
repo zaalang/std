@@ -40,7 +40,7 @@ pub fn decode(u32 mut &state, char mut &codep, u8 ch) -> u32
   return state;
 }
 
-pub fn len_last(u8 *beg, u8 *end) -> usize
+pub fn len_prev(u8 *beg, u8 *end) -> usize
 {
   std::assert(beg != end);
 

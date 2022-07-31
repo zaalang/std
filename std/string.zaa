@@ -8,8 +8,8 @@ import std.algorithm : swap;
 import std.memory : memcpy, memmove, memchr, memrchr, memcmp;
 import std.unicode : is_whitespace, to_uppercase, to_lowercase;
 import std.range : Sentinal, Range;
-import std.fmt;
 import std.bits.utf as utf;
+import std.fmt;
 
 pub concept String
 {
@@ -130,7 +130,7 @@ pub struct string_view : std::span<u8>
     #[lifetime(depend(this))]
     pub fn --(char_iterator mut &this) -> char_iterator mut &
     {
-      this.n = utf::len_last(this.beg, this.super);
+      this.n = utf::len_prev(this.beg, this.super);
 
       var state = 0;
       for(var ch = this.super - this.n; ch != this.super; ++ch)
@@ -152,6 +152,13 @@ pub struct string_view : std::span<u8>
       return lhs.n == 0;
     }
 
+    pub fn -(char_iterator &lhs, char_iterator &rhs) -> usize
+    {
+      var valid = false;
+
+      return utf::len(rhs.super, lhs.super, valid);
+    }
+
     pub fn len(char_iterator &this) -> usize
     {
       return this.n;
@@ -165,6 +172,11 @@ pub struct string_view : std::span<u8>
     usize n;
     char codepoint;
     u8 *beg, u8 *end
+  }
+
+  pub fn [](this &, char_iterator &iter) -> char
+  {
+    return iter.codepoint;
   }
 
   pub struct line_iterator : u8 *
@@ -225,6 +237,12 @@ pub struct string_view : std::span<u8>
     u8 *end;
   }
 
+  #[lifetime(clone(this))]
+  pub fn [](this &, line_iterator &iter) -> string_ref
+  {
+    return string_ref(iter.super, iter.m);
+  }
+
   pub struct word_iterator : u8 *
   {
     pub word_iterator() = default;
@@ -273,6 +291,12 @@ pub struct string_view : std::span<u8>
     usize n;
     string_view delimiters;
     u8 *end;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &, word_iterator &iter) -> string_ref
+  {
+    return string_ref(iter.super, iter.n);
   }
 
   pub struct split_iterator : u8 *
@@ -347,6 +371,12 @@ pub struct string_view : std::span<u8>
     u8 *end;
   }
 
+  #[lifetime(clone(this))]
+  pub fn [](this &, split_iterator &iter) -> string_ref
+  {
+    return string_ref(iter.super, iter.m);
+  }
+
   struct end_iterator
   {
     end_iterator() = default;
@@ -355,69 +385,93 @@ pub struct string_view : std::span<u8>
     ~end_iterator() = default;
   }
 
-  pub fn [](this &, char_iterator &iter) -> char
+  pub struct iterator_pair<I, J>
   {
-    return iter.codepoint;
+    pub I first;
+    pub J second;
+
+    using std::Range;
+
+    pub iterator_pair(I first, J second)
+      : first(first), second(second)
+    {
+    }
+
+    pub iterator_pair() = default;
+    pub iterator_pair(iterator_pair &&) = default;
+    pub fn =(iterator_pair mut &, iterator_pair &) -> iterator_pair mut & = default;
+    pub ~iterator_pair() = default;
+
+    #[lifetime(clone(this))]
+    pub fn begin(this &&)
+    {
+      return this.first;
+    }
+
+    #[lifetime(clone(this))]
+    pub fn end(this &&)
+    {
+      return this.second;
+    }
+
+    #[lifetime(clone(this))]
+    pub fn [](this &&, I iter)
+    {
+      return &&*iter;
+    }
+
+    //#[lifetime(clone(this))]
+    //pub fn [](this &&, usize index)
+    //{
+    //  return &&*std::next(this.begin, index);
+    //}
+  }
+
+  pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
+  {
+    std::fmt(os, ctx, range);
   }
 
   #[lifetime(clone(this))]
   pub fn chars(this &)
   {
-    return std::iterator_pair<typeof(this)>(this, ++char_iterator(this.begin, this.end, this.begin), char_iterator(this.begin, this.end, this.end));
-  }
-
-  #[lifetime(clone(this))]
-  pub fn [](this &, line_iterator &iter) -> string_ref
-  {
-    return string_ref(iter.super, iter.m);
+    return iterator_pair(++char_iterator(this.begin, this.end, this.begin), char_iterator(this.begin, this.end, this.end));
   }
 
   #[lifetime(clone(this))]
   pub fn lines(this &)
   {
-    return std::iterator_pair<typeof(this)>(this, ++line_iterator(this.begin, this.end), end_iterator());
-  }
-
-  #[lifetime(clone(this))]
-  pub fn [](this &, word_iterator &iter) -> string_ref
-  {
-    return string_ref(iter.super, iter.n);
+    return iterator_pair(++line_iterator(this.begin, this.end), end_iterator());
   }
 
   #[lifetime(clone(this))]
   pub fn words(this &, String &delimiters = " \r\n\t")
   {
-    return std::iterator_pair<typeof(this)>(this, ++word_iterator(this.begin, this.end, delimiters), end_iterator());
-  }
-
-  #[lifetime(clone(this))]
-  pub fn [](this &, split_iterator &iter) -> string_ref
-  {
-    return string_ref(iter.super, iter.m);
+    return iterator_pair(++word_iterator(this.begin, this.end, delimiters), end_iterator());
   }
 
   #[lifetime(clone(this))]
   pub fn split(this &, String &seperator)
   {
-    return std::iterator_pair<typeof(this)>(this, ++split_iterator(this.begin, this.end, seperator, false, ~0), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~0), end_iterator());
   }
 
   #[lifetime(clone(this))]
   pub fn split_after(this &, String &seperator)
   {
-    return std::iterator_pair<typeof(this)>(this, ++split_iterator(this.begin, this.end, seperator, true, ~0), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~0), end_iterator());
   }
 
   #[lifetime(clone(this))]
   pub fn split_n(this &, usize n, String &seperator)
   {
-    return std::iterator_pair<typeof(this)>(this, ++split_iterator(this.begin, this.end, seperator, false, n + 1), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, seperator, false, n + 1), end_iterator());
   }
 
   #[lifetime(clone(this))]
   pub fn split_after_n(this &, usize n, String &seperator)
   {
-    return std::iterator_pair<typeof(this)>(this, ++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator());
   }
 
   pub string_view() = default;

@@ -151,13 +151,13 @@ pub fn len(expr &expr) -> usize
     case Klass:
       return 1;
 
-    case Repeat(repeat):
+    case Repeat[repeat]:
       return repeat.len;
 
-    case Alternate(alternate):
+    case Alternate[alternate]:
       return alternate.len;
 
-    case Capture(capture):
+    case Capture[capture]:
       return capture.len;
 
     else:
@@ -281,15 +281,15 @@ fn maybe_empty(expr *first, expr *last) -> bool
       case Klass:
         return false;
 
-      case Repeat(repeat):
+      case Repeat[repeat]:
         if (repeat.min != 0)
           return false;
 
-      case Alternate(alternate):
+      case Alternate[alternate]:
         if (!maybe_empty(op + 1, op + alternate.lhs) && !maybe_empty(op + alternate.lhs, op + alternate.len))
           return false;
 
-      case Capture(capture):
+      case Capture[capture]:
         if (!maybe_empty(op + 1, op + capture.len))
           return false;
     }
@@ -857,16 +857,16 @@ fn dump(expr *first, expr *last) -> void
       case AnyChar:
         std::printf("{{any}}");
 
-      case Literal(literal):
+      case Literal[literal]:
         std::printf("{{lit:{}}}", literal.rune);
 
-      case Klass(klass):
+      case Klass[klass]:
         std::printf("{{cc:");
         for(var &range : klass.runes)
           std::printf(" [{}-{}]", cast<u32>(range.lo), cast<u32>(range.hi));
         std::printf("}}");
 
-      case Repeat(repeat):
+      case Repeat[repeat]:
         std::printf("{{rep({},", repeat.min);
         if (repeat.max != ~0)
           std::printf("{}", repeat.max);
@@ -874,14 +874,14 @@ fn dump(expr *first, expr *last) -> void
         dump(expr + 1, expr + repeat.len);
         std::printf("}}");
 
-      case Alternate(alternate):
+      case Alternate[alternate]:
         std::printf("{{alt:");
         dump(expr + 1, expr + alternate.lhs);
         std::printf(",");
         dump(expr + alternate.lhs, expr + alternate.len);
         std::printf("}}");
 
-      case Capture(capture):
+      case Capture[capture]:
         std::printf("{{cap({}):", capture.n);
         dump(expr + 1, expr + capture.len);
         std::printf("}}");

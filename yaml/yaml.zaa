@@ -93,23 +93,23 @@ pub union node
   {
     switch (this)
     {
-      case Real(real):
+      case Real[real]:
         #if (__is_arithmetic<T>)
           return cast<T>(real);
         #if (requires { T(f64()); })
           return T(real);
 
-      case Integer(integer):
+      case Integer[integer]:
         #if (__is_arithmetic<T>)
           return cast<T>(integer);
         #if (requires { T(i64()); })
           return T(integer);
 
-      case Boolean(boolean):
+      case Boolean[boolean]:
         #if (requires { T(bool()); })
           return T(boolean);
 
-      case String(string):
+      case String[string]:
         #if (__is_same<T, std::string&>)
           return T(&string);
         #if (requires { T(std::string()); })
@@ -123,7 +123,7 @@ pub union node
   {
     switch (this)
     {
-      case String(string):
+      case String[string]:
         return &(&&string);
     }
 
@@ -134,7 +134,7 @@ pub union node
   {
     switch (this)
     {
-      case Array(array):
+      case Array[array]:
         return &(&&array);
     }
 
@@ -145,7 +145,7 @@ pub union node
   {
     switch (this)
     {
-      case Map(map):
+      case Map[map]:
         return &(&&map);
     }
 
@@ -158,7 +158,7 @@ pub union node
 
     switch (this)
     {
-      case Array(array):
+      case Array[array]:
         #if (__is_integral<Key>)
           if (0 <= key && cast<usize>(key) < array.len)
             return &array[cast<usize>(key)];
@@ -166,7 +166,7 @@ pub union node
           if (key.is_integer && 0 <= key.Integer && cast<usize>(key.Integer) < array.len)
             return &array[cast<usize>(key.Integer)];
 
-      case Map(map):
+      case Map[map]:
         if (var j = map.find(key); j != map.end)
           return &map[j].value;
     }
@@ -184,7 +184,7 @@ pub union node
   {
     switch (lhs)
     {
-      case Real(lhs):
+      case Real[lhs]:
         return lhs == cast<f64>(rhs);
     }
 
@@ -196,7 +196,7 @@ pub union node
   {
     switch (lhs)
     {
-      case Integer(lhs):
+      case Integer[lhs]:
         return lhs == cast<i64>(rhs);
     }
 
@@ -207,7 +207,7 @@ pub union node
   {
     switch (lhs)
     {
-      case Boolean(lhs):
+      case Boolean[lhs]:
         return lhs == rhs;
     }
 
@@ -218,7 +218,7 @@ pub union node
   {
     switch (lhs)
     {
-      case String(lhs):
+      case String[lhs]:
         return lhs == rhs;
     }
 

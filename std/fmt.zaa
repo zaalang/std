@@ -458,13 +458,21 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
     return;
   }
 
-  if (ctx.spec.precision >= 0)
+  var length = 0;
+
+  if (ctx.spec.precision >= 0 || ctx.spec.width >= 0)
   {
-    if (cast(ctx.spec.precision) < str.len)
+    length = str.chars.len;
+
+    if (ctx.spec.precision >= 0 && cast(ctx.spec.precision) < length)
+    {
       str = str.take(cast(ctx.spec.precision));
+
+      length = cast(ctx.spec.precision);
+    }
   }
 
-  fmt_str(os, ctx, null, str.data, str.data, str.data + str.len, str.chars.len);
+  fmt_str(os, ctx, null, str.data, str.data, str.data + str.len, length);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_literal str) throws -> void
@@ -568,7 +576,7 @@ fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> 
 
       if (str.len != 0)
       {
-        fmt_str(os, ctx, null, str.data, str.data, str.data + str.len, str.chars.len);
+        fmt_str(os, ctx, null, str.data, str.data, str.data + str.len, str.len);
       }
   }
 }

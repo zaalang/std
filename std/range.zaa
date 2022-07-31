@@ -400,12 +400,14 @@ pub struct reverse_view<R, I, J>
 
 #[lifetime(depend(range))]
 pub fn reverse<T>(Range<T> &&range)
+  where requires (typeof(range) range) { --range.end; }
 {
   return reverse_view<typeof(range)>(range, range.begin, range.end);
 }
 
 #[lifetime(depend(range))]
 pub fn reverse<Rs, I, J>(zip_view<Rs, I, J> &&range)
+  where requires (typeof(range) range) { --range.end; }
 {
   return reverse_view<typeof(range)>(range, range.begin, std::next(range.begin, range.len));
 }
