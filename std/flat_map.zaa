@@ -4,7 +4,6 @@
 
 import std.memory;
 import std.stdlib : assert;
-import std.algorithm : swap;
 import std.range : Sentinal, Range;
 import std.type : as_const;
 import std.pair;
@@ -25,7 +24,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub flat_map(flat_map &&other, Allocator &allocator = Allocator())
     : cmp(other.cmp), _tree(allocator)
   {
-    insert(this, &&other);
+    insert(&mut this, &&other);
   }
 
   #[lifetime(poison(this))]
@@ -33,11 +32,11 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     if (&this != &other)
     {
-      clear(this);
+      clear(&mut this);
 
       this.cmp = other.cmp;
 
-      insert(this, &&other);
+      insert(&mut this, &&other);
     }
 
     return &this;
@@ -47,7 +46,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var result = flat_map(allocator);
 
-    result.reserve(capacity);
+    reserve(&mut result, capacity);
 
     return result;
   }
@@ -56,7 +55,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var result = flat_map(allocator);
 
-    insert(result, &&other);
+    insert(&mut result, &&other);
 
     return result;
   }
@@ -134,12 +133,12 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn find<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    var x = lower_bound(&&this, key);
+    var j = lower_bound(&&this, key);
 
-    if (x == this.end || this.cmp(key, (*x).key))
+    if (j == this.end || this.cmp(key, (*j).key))
       return this.end;
 
-    return x;
+    return j;
   }
 
   pub fn contains<Key>(this &, Key &key) -> bool
@@ -209,14 +208,14 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
         return;
       }
 
-      return this.merge(other);
+      return this.merge(&mut other);
     }
 
     if (var first = other.begin, var last = other.end; first != last)
     {
       while (first != last)
       {
-        insert(this, (&&other)[first++]);
+        insert(&mut this, (&&other)[first++]);
       }
     }
   }
@@ -227,7 +226,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     while (first != last)
     {
-      insert(this, *first++);
+      insert(&mut this, *first++);
     }
   }
 
@@ -239,7 +238,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     for(var mut &it : std::move(other))
     {
-      insert(this, std::move(it));
+      insert(&mut this, std::move(it));
     }
   }
 

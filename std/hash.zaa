@@ -18,7 +18,7 @@ pub struct hash
     var seed = 0;
 
     #for(var &item : items)
-      mix(seed, hash(item));
+      mix(&mut seed, hash(item));
 
     return seed;
   }
@@ -28,7 +28,7 @@ pub struct hash
     var seed = 0;
 
     for( ; first != last; ++first)
-      mix(seed, hash(range[first]));
+      mix(&mut seed, hash(range[first]));
 
     return seed;
   }
@@ -43,15 +43,15 @@ pub struct hash
       var len = count * sizeof<T>;
 
       for( ; len >= 8; data += 8, len -= 8)
-        mix(seed, hash(*cast<usize*>(data)));
+        mix(&mut seed, hash(*cast<usize*>(data)));
 
       for( ; len != 0; data += 1, len -= 1)
-        mix(seed, hash(*data));
+        mix(&mut seed, hash(*data));
     }
     else
     {
       for( ; count != 0; ++first, --count)
-        mix(seed, hash(*first));
+        mix(&mut seed, hash(*first));
     }
 
     return seed;

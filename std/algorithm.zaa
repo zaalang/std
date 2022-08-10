@@ -160,16 +160,19 @@ pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &fu
 
 pub fn transform!<O, I, Func>(I first, Sentinal<I> last, Func &func) -> void
 {
-  transform(first, last, first, last, func);
+  for(; first != last; ++first)
+  {
+    *first = func(std::move(*first));
+  }
 }
 
-pub fn transform!<T, Func>(Range<T> &&range, Func &func) -> void
+pub fn transform!<T, Func>(Range<T> mut &range, Func &func) -> void
 {
   var first = range.begin;
 
   for(var last = range.end; first != last; ++first)
   {
-    range[first] = func((&&range)[first]);
+    range[first] = func(std::move(std::launder(range[first])));
   }
 }
 
@@ -177,17 +180,17 @@ pub fn reverse!<I>(I first, I last) -> void
 {
   for(; first != last && first != --last; ++first)
   {
-    swap(*first, *last);
+    swap(&mut *first, &mut *last);
   }
 }
 
-pub fn reverse!<T, Func>(Range<T> &&range) -> void
+pub fn reverse!<T, Func>(Range<T> mut &range) -> void
 {
   var first = range.begin;
 
   for(var last = range.end; first != last && first != --last; ++first)
   {
-    swap(range[first], range[last]);
+    swap(&mut range[first], &mut range[last]);
   }
 }
 
@@ -332,7 +335,7 @@ pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
     for(var j = first; j != i; ++j)
     {
       if (cmp(*i, *j))
-        swap(*i, *j);
+        swap(&mut *i, &mut *j);
     }
   }
 }
@@ -346,7 +349,7 @@ pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
     for(var j = first; j != i; ++j)
     {
       if (cmp(range[i], range[j]))
-        swap(range[i], range[j]);
+        swap(&mut range[i], &mut range[j]);
     }
   }
 }

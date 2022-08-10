@@ -274,14 +274,14 @@ pub union node
     if (gotdig && gotdot)
     {
       var real = f64();
-      if (std::sscan(str, real).len == str.len)
+      if (std::sscan(str, &mut real).len == str.len)
         return real;
     }
 
     if (gotdig)
     {
       var integer = i64();
-      if (std::sscan(str, integer).len == str.len)
+      if (std::sscan(str, &mut integer).len == str.len)
         return integer;
     }
 
@@ -336,7 +336,7 @@ pub fn load_from_str(String &src) -> parse_result
 {
   try
   {
-    return load_from(std::string_stream(src));
+    return load_from(&mut std::string_stream(src));
   }
   catch(std::error)
   {
@@ -346,10 +346,10 @@ pub fn load_from_str(String &src) -> parse_result
 
 pub fn load_from_file(String &path) throws -> parse_result
 {
-  return load_from(std::buffered_reader(std::file::open(path)));
+  return load_from(&mut std::buffered_reader(&mut std::file::open(path)));
 }
 
 pub fn load_from(InputReader mut &is) throws -> parse_result
 {
-  return parse(is);
+  return parse(&mut is);
 }

@@ -26,7 +26,7 @@ pub struct key_value_pair<K, T, Allocator = std::allocator>
 
 pub fn fmt<K, V>(std::OutputStream mut &os, std::fmt_context mut &ctx, key_value_pair<K, V> &range) throws -> void
 {
-  std::print_to(os, range.key);
-  std::print_to(os, " => ");
-  std::fmt_to(os, ctx, range.value);
+  std::print_to(&mut os, range.key);
+  std::print_to(&mut os, " => ");
+  std::fmt_to(&mut os, &mut ctx, range.value);
 }

@@ -23,6 +23,8 @@ pub struct meta
     Using,
     TypeAlias,
     TypeArg,
+    IdentPattern,
+    TuplePattern,
     VoidVar,
     StmtVar,
     ParmVar,

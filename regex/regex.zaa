@@ -76,11 +76,11 @@ pub struct regex
   {
     var ast = std::vector<expr>();
 
-    this.error = parse(pattern, ast, flags);
+    this.error = parse(pattern, &mut ast, flags);
 
     if (!this.error)
     {
-      this.error = compile(ast, program, flags);
+      this.error = compile(ast, &mut program, flags);
     }
   }
 
@@ -95,11 +95,11 @@ pub struct regex
 fn build(std::string_literal pattern, options flags)
 {
   var ast = std::vector<expr>();
-  if (var r = parse(pattern, ast, flags); r != cast<errc>(0))
+  if (var r = parse(pattern, &mut ast, flags); r != cast<errc>(0))
     std::panic("regex parse error : ", r);
 
   var program = std::vector<u32>();
-  if (var r = compile(ast, program, flags); r != cast<errc>(0))
+  if (var r = compile(ast, &mut program, flags); r != cast<errc>(0))
     std::panic("regex compile error : ", r);
 
   return [program.data .. program.data + program.len];
@@ -125,7 +125,7 @@ fn match<Args>(std::span<u32> program, std::string_view text, Args mut & ...args
   {
     #for(var mut &arg : args, const i = 2;; i += 2)
     {
-      std::sscan(std::string_view(captures[i], captures[i+1]), arg);
+      std::sscan(std::string_view(captures[i], captures[i+1]), &mut arg);
     }
 
     return true;
@@ -140,11 +140,11 @@ fn find<Args>(std::span<u32> program, std::string_view text, Args mut & ...args)
 
   var vm = machine(text);
 
-  if (vm.execute(program, captures))
+  if (vm.execute(program, &mut captures))
   {
     #for(var mut &arg : args, const i = 2;; i += 2)
     {
-      std::sscan(std::string_view(captures[i], captures[i+1]), arg);
+      std::sscan(std::string_view(captures[i], captures[i+1]), &mut arg);
     }
   }
 
@@ -179,26 +179,26 @@ pub fn match<Args>(regex &rex, String &text, Args mut & ...args) -> bool
 {
   assert(!rex.error, "invalid regex");
 
-  return match(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), args...);
+  return match(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), &mut args...);
 }
 
 pub fn match<Args>(#std::string_literal pattern, String &text, Args mut & ...args) -> bool
 {
   let program = #build(pattern, cast<options>(0));
 
-  return match(std::span(program.data, program.len), std::string_view(text.data, text.len), args...);
+  return match(std::span(program.data, program.len), std::string_view(text.data, text.len), &mut args...);
 }
 
 pub fn find<Args>(regex &rex, String &text, Args mut & ...args) -> std::string_view
 {
   assert(!rex.error, "invalid regex");
 
-  return find(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), args...);
+  return find(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), &mut args...);
 }
 
 pub fn find<Args>(#std::string_literal pattern, String &text, Args mut & ...args) -> std::string_view
 {
   let program = #build(pattern, cast<options>(0));
 
-  return find(std::span(program.data, program.len), std::string_view(text.data, text.len), args...);
+  return find(std::span(program.data, program.len), std::string_view(text.data, text.len), &mut args...);
 }

@@ -57,7 +57,7 @@ pub struct file
   {
     var fd = open_file(std::string_view(path.data, path.len), mode::readonly);
 
-    var addr = map_file(fd, offset, length, mode::readonly);
+    var addr = map_file(fd, offset, &mut length, mode::readonly);
 
     close_file(fd);
 
@@ -66,7 +66,7 @@ pub struct file
 
   pub fn map(std::fd &fd, u64 offset = 0, usize length = 0) throws -> file
   {
-    var addr = map_file(cast(std::bit_cast<uintptr>(fd)), offset, length, mode::readonly);
+    var addr = map_file(cast(std::bit_cast<uintptr>(fd)), offset, &mut length, mode::readonly);
 
     return file(addr, length);
   }
@@ -137,7 +137,7 @@ pub struct mutable_file
   {
     var fd = open_file(std::string_view(path.data, path.len), mode::readwrite);
 
-    var addr = map_file(fd, offset, length, mode::readwrite);
+    var addr = map_file(fd, offset, &mut length, mode::readwrite);
 
     close_file(fd);
 
@@ -146,7 +146,7 @@ pub struct mutable_file
 
   pub fn map(std::fd &fd, u64 offset = 0, usize length = 0) throws -> mutable_file
   {
-    var addr = map_file(cast(std::bit_cast<uintptr>(fd)), offset, length, mode::readwrite);
+    var addr = map_file(cast(std::bit_cast<uintptr>(fd)), offset, &mut length, mode::readwrite);
 
     return mutable_file(addr, length);
   }

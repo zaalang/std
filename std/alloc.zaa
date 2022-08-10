@@ -53,7 +53,7 @@ pub struct allocator
 
   pub fn delete<T>(T mut *ptr) -> void
   {
-    T::~T(*ptr);
+    T::~T(&mut *ptr);
     allocator().free(ptr, sizeof<T>);
   }
 }

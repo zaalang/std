@@ -61,65 +61,65 @@ fn encode(opcode op, usize width, usize out = 0, bool fin = true) -> u32
   return cast<u32>(out) << 8 | cast<u32>(fin) << 6 | cast<u32>(op) << 2 | cast<u32>(width - 1);
 }
 
-fn emit_nop(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+fn emit_nop(compile_context mut &ctx) -> void
 {
-  bytecode.push_back(encode(opcode::nop, 1));
+  ctx.program.push_back(encode(opcode::nop, 1));
 }
 
-fn emit_match(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+fn emit_match(compile_context mut &ctx) -> void
 {
-  bytecode.push_back(encode(opcode::match, 1));
+  ctx.program.push_back(encode(opcode::match, 1));
 }
 
-fn emit_fork(compile_context mut &ctx, usize out, std::vector<u32> mut &bytecode) -> void
+fn emit_fork(compile_context mut &ctx, usize out) -> void
 {
-  bytecode.push_back(encode(opcode::fork, 1, out: out, fin: false));
+  ctx.program.push_back(encode(opcode::fork, 1, out: out, fin: false));
 }
 
-fn emit_jump(compile_context mut &ctx, usize out, std::vector<u32> mut &bytecode) -> void
+fn emit_jump(compile_context mut &ctx, usize out) -> void
 {
-  bytecode.push_back(encode(opcode::jump, 1, out: out));
+  ctx.program.push_back(encode(opcode::jump, 1, out: out));
 }
 
-fn emit_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+fn emit_prefix(compile_context mut &ctx) -> void
 {
-  bytecode.push_back(encode(opcode::jump, 1, out: 5));
+  ctx.program.push_back(encode(opcode::jump, 1, out: 5));
 
-  bytecode.push_back(0);
-  bytecode.push_back(0);
-  bytecode.push_back(0);
-  bytecode.push_back(0);
+  ctx.program.push_back(0);
+  ctx.program.push_back(0);
+  ctx.program.push_back(0);
+  ctx.program.push_back(0);
 }
 
-fn emit_condition(compile_context mut &ctx, condition cc, std::vector<u32> mut &bytecode) -> void
+fn emit_condition(compile_context mut &ctx, condition cc) -> void
 {
-  bytecode.push_back(encode(opcode::condition, 2, out: bytecode.len + 2));
-  bytecode.push_back(cast<u32>(cc));
+  ctx.program.push_back(encode(opcode::condition, 2, out: ctx.program.len + 2));
+  ctx.program.push_back(cast<u32>(cc));
 }
 
-fn emit_select_byte(compile_context mut &ctx, u8 lo, u8 hi, std::vector<u32> mut &bytecode) -> void
+fn emit_select_byte(compile_context mut &ctx, u8 lo, u8 hi) -> void
 {
-  bytecode.push_back(encode(opcode::select, 2, out: bytecode.len + 2));
-  bytecode.push_back(cast<u32>(hi) << 8 | cast<u32>(lo));
+  ctx.program.push_back(encode(opcode::select, 2, out: ctx.program.len + 2));
+  ctx.program.push_back(cast<u32>(hi) << 8 | cast<u32>(lo));
 }
 
-fn emit_selecti_byte(compile_context mut &ctx, u8 lo, u8 hi, std::vector<u32> mut &bytecode) -> void
+fn emit_selecti_byte(compile_context mut &ctx, u8 lo, u8 hi) -> void
 {
-  bytecode.push_back(encode(opcode::selecti, 2, out: bytecode.len + 2));
-  bytecode.push_back(cast<u32>(std::to_lowercase(hi)) << 8 | cast<u32>(std::to_lowercase(lo)));
+  ctx.program.push_back(encode(opcode::selecti, 2, out: ctx.program.len + 2));
+  ctx.program.push_back(cast<u32>(std::to_lowercase(hi)) << 8 | cast<u32>(std::to_lowercase(lo)));
 }
 
-fn emit_select_rune(compile_context mut &ctx, char lo, char hi, std::vector<u32> mut &bytecode) -> void
+fn emit_select_rune(compile_context mut &ctx, char lo, char hi) -> void
 {
-  bytecode.push_back(encode(opcode::select, 3, out: bytecode.len + 3));
-  bytecode.push_back(cast<u32>(lo));
-  bytecode.push_back(cast<u32>(hi));
+  ctx.program.push_back(encode(opcode::select, 3, out: ctx.program.len + 3));
+  ctx.program.push_back(cast<u32>(lo));
+  ctx.program.push_back(cast<u32>(hi));
 }
 
-fn emit_capture(compile_context mut &ctx, usize n, std::vector<u32> mut &bytecode) -> void
+fn emit_capture(compile_context mut &ctx, usize n) -> void
 {
-  bytecode.push_back(encode(opcode::capture, 2, out: bytecode.len + 2));
-  bytecode.push_back(cast<u32>(n));
+  ctx.program.push_back(encode(opcode::capture, 2, out: ctx.program.len + 2));
+  ctx.program.push_back(cast<u32>(n));
 }
 
 fn emit_anychar(compile_context mut &ctx, var &any) -> void
@@ -128,20 +128,20 @@ fn emit_anychar(compile_context mut &ctx, var &any) -> void
 
   if (any.flags & options::multiline)
   {
-    emit_select_byte(ctx, 0, 9, ctx.program);
-    emit_select_byte(ctx, 11, 127, ctx.program);
-    emit_select_rune(ctx, 128, 0x10FFFF, ctx.program);
+    emit_select_byte(&mut ctx, 0, 9);
+    emit_select_byte(&mut ctx, 11, 127);
+    emit_select_rune(&mut ctx, 128, 0x10FFFF);
   }
   else
   {
-    emit_select_byte(ctx, 0, 127, ctx.program);
-    emit_select_rune(ctx, 128, 0x10FFFF, ctx.program);
+    emit_select_byte(&mut ctx, 0, 127);
+    emit_select_rune(&mut ctx, 128, 0x10FFFF);
   }
 
   for(var i = n; i < ctx.program.len - 3; i += get_width(ctx.program[i]))
   {
-    set_fin(ctx.program[i], false);
-    set_out(ctx.program[i], ctx.program.len);
+    set_fin(&mut ctx.program[i], false);
+    set_out(&mut ctx.program[i], ctx.program.len);
   }
 }
 
@@ -150,9 +150,9 @@ fn emit_literal(compile_context mut &ctx, var &lit) -> void
   if (lit.rune < 128)
   {
     if (lit.flags & options::foldcase)
-      emit_selecti_byte(ctx, cast<u8>(lit.rune), cast<u8>(lit.rune), ctx.program);
+      emit_selecti_byte(&mut ctx, cast<u8>(lit.rune), cast<u8>(lit.rune));
     else
-      emit_select_byte(ctx, cast<u8>(lit.rune), cast<u8>(lit.rune), ctx.program);
+      emit_select_byte(&mut ctx, cast<u8>(lit.rune), cast<u8>(lit.rune));
   }
   else
   {
@@ -160,7 +160,7 @@ fn emit_literal(compile_context mut &ctx, var &lit) -> void
     var str = std::ctoa(buf.data, buf.data + buf.len, lit.rune);
 
     for(var i = 0; i < str.len; ++i)
-      emit_select_byte(ctx, buf[i], buf[i], ctx.program);
+      emit_select_byte(&mut ctx, buf[i], buf[i]);
   }
 }
 
@@ -194,9 +194,9 @@ fn emit_klass(compile_context mut &ctx, var &cc) -> void
     m = ctx.program.len;
 
     if (range.hi < 128)
-      emit_select_byte(ctx, cast<u8>(range.lo), cast<u8>(range.hi), ctx.program);
+      emit_select_byte(&mut ctx, cast<u8>(range.lo), cast<u8>(range.hi));
     else
-      emit_select_rune(ctx, range.lo, range.hi, ctx.program);
+      emit_select_rune(&mut ctx, range.lo, range.hi);
   }
 
   if (cc.flags & options::foldcase)
@@ -205,15 +205,15 @@ fn emit_klass(compile_context mut &ctx, var &cc) -> void
     {
       var hi = lo + std::ctz(~(folded >> lo));
       m = ctx.program.len;
-      emit_selecti_byte(ctx, cast<u8>(lo + 97), cast<u8>(hi + 96), ctx.program);
+      emit_selecti_byte(&mut ctx, cast<u8>(lo + 97), cast<u8>(hi + 96));
       folded = (folded >> hi) << hi;
     }
   }
 
   for(var i = n; i < m; i += get_width(ctx.program[i]))
   {
-    set_fin(ctx.program[i], false);
-    set_out(ctx.program[i], ctx.program.len);
+    set_fin(&mut ctx.program[i], false);
+    set_out(&mut ctx.program[i], ctx.program.len);
   }
 }
 
@@ -224,40 +224,40 @@ fn emit_repeat(compile_context mut &ctx, var &rep, expr *first, expr *last) -> v
   for(var i = 0; i < rep.min; ++i)
   {
     n = ctx.program.len;
-    emit(ctx, first, last);
+    emit(&mut ctx, first, last);
   }
 
   if (rep.max != ~0)
   {
     for(var i = 0; i < rep.max - rep.min; ++i)
     {
-      emit_fork(ctx, 0xFFFFFF, ctx.program);
+      emit_fork(&mut ctx, 0xFFFFFF);
 
-      emit(ctx, first, last);
+      emit(&mut ctx, first, last);
     }
 
     for(var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
     {
       if (get_out(ctx.program[i]) == 0xFFFFFF)
-        set_out(ctx.program[i], ctx.program.len);
+        set_out(&mut ctx.program[i], ctx.program.len);
     }
   }
 
   if (rep.max == ~0)
   { 
-    emit_fork(ctx, n, ctx.program);
+    emit_fork(&mut ctx, n);
 
     if (rep.min == 0)
     {
-      emit(ctx, first, last);
+      emit(&mut ctx, first, last);
 
       for(var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
       {
         if (get_out(ctx.program[i]) == ctx.program.len)
-          set_out(ctx.program[i], n);
+          set_out(&mut ctx.program[i], n);
       }
 
-      set_out(ctx.program[n], ctx.program.len);
+      set_out(&mut ctx.program[n], ctx.program.len);
     }
   }
 }
@@ -266,35 +266,35 @@ fn emit_alternate(compile_context mut &ctx, var &alt, expr *first1, expr *last1,
 {
   var n = ctx.program.len;
 
-  emit_fork(ctx, n, ctx.program);
+  emit_fork(&mut ctx, n);
 
-  emit(ctx, first1, last1);
+  emit(&mut ctx, first1, last1);
 
   var m = ctx.program.len;
 
-  set_out(ctx.program[n], ctx.program.len);
+  set_out(&mut ctx.program[n], ctx.program.len);
 
-  emit(ctx, first2, last2);
+  emit(&mut ctx, first2, last2);
 
   if (first1 == last1)
   {
-    set_out(ctx.program[n], ctx.program.len);
+    set_out(&mut ctx.program[n], ctx.program.len);
   }
 
   for(var i = n + 1; i < m; i += get_width(ctx.program[i]))
   {
     if (get_out(ctx.program[i]) == m)
-      set_out(ctx.program[i], ctx.program.len);
+      set_out(&mut ctx.program[i], ctx.program.len);
   }
 }
 
 fn emit_capture(compile_context mut &ctx, var &cap, expr *first, expr *last) -> void
 {
-  emit_capture(ctx, 2*cap.n, ctx.program);
+  emit_capture(&mut ctx, 2*cap.n);
 
-  emit(ctx, first, last);
+  emit(&mut ctx, first, last);
 
-  emit_capture(ctx, 2*cap.n + 1, ctx.program);
+  emit_capture(&mut ctx, 2*cap.n + 1);
 }
 
 fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
@@ -304,46 +304,48 @@ fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
     switch (op)
     {
       case BeginLine:
-        emit_condition(ctx, condition::beginline, ctx.program);
+        emit_condition(&mut ctx, condition::beginline);
 
       case BeginText:
-        emit_condition(ctx, condition::begintext, ctx.program);
+        emit_condition(&mut ctx, condition::begintext);
 
       case EndLine:
-        emit_condition(ctx, condition::endline, ctx.program);
+        emit_condition(&mut ctx, condition::endline);
 
       case EndText:
-        emit_condition(ctx, condition::endtext, ctx.program);
+        emit_condition(&mut ctx, condition::endtext);
 
       case WordBoundary:
-        emit_condition(ctx, condition::wordboundary, ctx.program);
+        emit_condition(&mut ctx, condition::wordboundary);
 
       case NonWordBoundary:
-        emit_condition(ctx, condition::nonwordboundary, ctx.program);
+        emit_condition(&mut ctx, condition::nonwordboundary);
 
       case AnyChar:
-        emit_anychar(ctx, op.AnyChar);
+        emit_anychar(&mut ctx, op.AnyChar);
 
       case Literal:
-        emit_literal(ctx, op.Literal);
+        emit_literal(&mut ctx, op.Literal);
 
       case Klass:
-        emit_klass(ctx, op.Klass);
+        emit_klass(&mut ctx, op.Klass);
 
       case Repeat[repeat]:
-        emit_repeat(ctx, repeat, op + 1, op + repeat.len);
+        emit_repeat(&mut ctx, repeat, op + 1, op + repeat.len);
 
       case Alternate[alternate]:
-        emit_alternate(ctx, alternate, op + 1, op + alternate.lhs, op + alternate.lhs, op + alternate.len);
+        emit_alternate(&mut ctx, alternate, op + 1, op + alternate.lhs, op + alternate.lhs, op + alternate.len);
 
       case Capture[capture]:
-        emit_capture(ctx, capture, op + 1, op + capture.len);
+        emit_capture(&mut ctx, capture, op + 1, op + capture.len);
     }
   }
 }
 
-fn encode_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> void
+fn encode_prefix(compile_context mut &ctx) -> void
 {
+  var mut &bytecode = ctx.program;
+
   for (var stack = std::vector<usize, N:16>::from([0]); !stack.empty; )
   {
     var pc = stack.take_back();
@@ -428,15 +430,15 @@ fn encode_prefix(compile_context mut &ctx, std::vector<u32> mut &bytecode) -> vo
 
 pub fn compile(std::vector<expr> &regex, std::vector<u32> mut &program, options flags) -> errc
 {
-  var ctx = compile_context(program, flags);
+  var ctx = compile_context(&mut program, flags);
 
-  emit_prefix(ctx, ctx.program);
+  emit_prefix(&mut ctx);
 
-  emit(ctx, regex.data, regex.data + regex.len);
+  emit(&mut ctx, regex.data, regex.data + regex.len);
 
-  emit_match(ctx, ctx.program);
+  emit_match(&mut ctx);
 
-  encode_prefix(ctx, ctx.program);
+  encode_prefix(&mut ctx);
 
   return cast<errc>(0);
 }

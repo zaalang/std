@@ -350,7 +350,7 @@ fn parse_int(var mut &s, var &end, var mut &v) -> errc
   if (s == end || !std::is_digit(*s))
     return errc::invalid_digit;
 
-  if (std::atoi(s, end, v).error)
+  if (std::atoi(s, end, &mut v).error)
     return errc::invalid_digit;
 
   while (std::is_digit(*s))
@@ -403,7 +403,7 @@ fn parse_char(var mut &s, var &end, var mut &ch) -> errc
 
   if (ch == '\\')
   {
-    if (var err = parse_escape_char(s, end, ch); err)
+    if (var err = parse_escape_char(&mut s, end, &mut ch); err)
       return err;
   }
 
@@ -565,16 +565,16 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
 
     if (lo == '[')
     {
-      if (var err = parse_named_class(s, end, cc); !err)
+      if (var err = parse_named_class(&mut s, end, &mut cc); !err)
         continue;
     }
 
     if (lo == '\\')
     {
-      if (var err = parse_escape_class(s, end, cc); !err)
+      if (var err = parse_escape_class(&mut s, end, &mut cc); !err)
         continue;
 
-      if (var err = parse_escape_char(s, end, lo); err)
+      if (var err = parse_escape_char(&mut s, end, &mut lo); err)
         return err;
     }
 
@@ -584,7 +584,7 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
     {
       ++s;
 
-      if (var err = parse_char(s, end, hi); err)
+      if (var err = parse_char(&mut s, end, &mut hi); err)
         return err;
 
       if (hi < lo)
@@ -601,7 +601,7 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
 
   if (invert)
   {
-    negate(cc);
+    negate(&mut cc);
   }
 
   if (cc.runes.empty)
@@ -612,7 +612,7 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
 
 pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast(0)) -> errc
 {
-  var ctx = parse_context(regex);
+  var ctx = parse_context(&mut regex);
 
   for(var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
   {
@@ -638,7 +638,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
       case '[':
         var cc = klass(flags);
 
-        if (var err = parse_class(s, end, cc); err)
+        if (var err = parse_class(&mut s, end, &mut cc); err)
           return err;
 
         ctx.push(expr::Klass(cc));
@@ -668,11 +668,11 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
         var min = 0;
         var max = ~0;
 
-        parse_int(s, end, min);
+        parse_int(&mut s, end, &mut min);
 
         if (s != end && *s == ',')
         {
-          parse_int(++s, end, max);
+          parse_int(&mut ++s, end, &mut max);
         }
         else
         {
@@ -750,7 +750,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
         }
 
       case ')':
-        collapse(ctx);
+        collapse(&mut ctx);
 
         if (ctx.stack.empty || !is_leftparen(ctx.regex[ctx.stack.back]))
           return errc::unexpected_paren;
@@ -797,7 +797,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
         {
           var cc = klass(flags);
 
-          if (var err = parse_escape_class(s, end, cc); err)
+          if (var err = parse_escape_class(&mut s, end, &mut cc); err)
             return err;
 
           ctx.push(expr::Klass(cc));
@@ -806,7 +806,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
         {
           var lit = 0;
 
-          if (var err = parse_escape_char(s, end, lit); err)
+          if (var err = parse_escape_char(&mut s, end, &mut lit); err)
             return err;
 
           ctx.push(expr::Literal(lit, flags));
@@ -819,7 +819,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
     ch = s;
   }
 
-  collapse(ctx);
+  collapse(&mut ctx);
 
   if (ctx.stack.len != 0)
     return errc::missing_paren;

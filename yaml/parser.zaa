@@ -77,7 +77,7 @@ struct parse_context
 
   fn consume_token(this mut &, var mut &is) throws -> void
   {
-    this.tok = this.scanner.fetch(is);
+    this.tok = this.scanner.fetch(&mut is);
   }
 
   parse_context()
@@ -112,13 +112,13 @@ fn parser_process_directives(parse_context mut &ctx, InputReader mut &is) throws
 {
   while (ctx.tok.type == token::type::directive)
   {
-    ctx.consume_token(is);
+    ctx.consume_token(&mut is);
   }
 }
 
 fn stream_start(parse_context mut &ctx, InputReader mut &is) throws -> state
 {
-  ctx.consume_token(is);
+  ctx.consume_token(&mut is);
 
   return state::implicit_document_start;
 }
@@ -128,28 +128,28 @@ fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) th
   if (!implicit)
   {
     while (ctx.tok.type == token::type::document_end)
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
   }
 
   switch (ctx.tok.type)
   {
     case stream_end:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = state::end;
 
     case directive:
-      parser_process_directives(ctx, is);
+      parser_process_directives(&mut ctx, &mut is);
 
     case document_start:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::document_end);
       ctx.state = state::document_content;
 
     else:
       if (!implicit)
-        return parse_error(ctx, yaml::errc::expected_document_start);
+        return parse_error(&mut ctx, yaml::errc::expected_document_start);
 
-      parser_process_directives(ctx, is);
+      parser_process_directives(&mut ctx, &mut is);
       ctx.push_state(state::document_end);
       ctx.state = state::block_node;
   }
@@ -165,10 +165,10 @@ fn document_content(parse_context mut &ctx, InputReader mut &is) throws -> state
     case document_start:
     case document_end:
     case stream_end:
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
 
     else:
-      parse_node(ctx, is, true, false);
+      parse_node(&mut ctx, &mut is, true, false);
   }
 
   return ctx.state;
@@ -177,7 +177,7 @@ fn document_content(parse_context mut &ctx, InputReader mut &is) throws -> state
 fn document_end(parse_context mut &ctx, InputReader mut &is) throws -> state
 {
   if (ctx.tok.type == token::type::document_end)
-    ctx.consume_token(is);
+    ctx.consume_token(&mut is);
 
   return state::document_start;
 }
@@ -214,7 +214,7 @@ fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws -> state
   else
     ctx.state = state::tag_unknown;
 
-  ctx.consume_token(is);
+  ctx.consume_token(&mut is);
 
   return ctx.state;
 }
@@ -247,7 +247,7 @@ fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> state
       ctx.stack.push_back("");
 
     case tag_unknown:
-      return parse_error(ctx, yaml::errc::unknown_tag);
+      return parse_error(&mut ctx, yaml::errc::unknown_tag);
 
     else:
       ctx.stack.push_back(null);
@@ -264,27 +264,27 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
   {
     case tag_null:
       if (ctx.tok.value != "~" && ctx.tok.value != "null")
-        return parse_error(ctx, yaml::errc::invalid_null_value);
+        return parse_error(&mut ctx, yaml::errc::invalid_null_value);
 
       ctx.stack.push_back(null);
 
     case tag_bool:
       if (ctx.tok.value != "true" && ctx.tok.value != "false")
-        return parse_error(ctx, yaml::errc::invalid_bool_value);
+        return parse_error(&mut ctx, yaml::errc::invalid_bool_value);
 
       ctx.stack.push_back(ctx.tok.value == "true");
 
     case tag_int:
       var integer = i64();
-      if (std::sscan(ctx.tok.value, integer).len != ctx.tok.value.len)
-        return parse_error(ctx, yaml::errc::invalid_int_value);
+      if (std::sscan(ctx.tok.value, &mut integer).len != ctx.tok.value.len)
+        return parse_error(&mut ctx, yaml::errc::invalid_int_value);
 
       ctx.stack.push_back(integer);
 
     case tag_float:
       var real = f64();
-      if (std::sscan(ctx.tok.value, real).len != ctx.tok.value.len)
-        return parse_error(ctx, yaml::errc::invalid_float_value);
+      if (std::sscan(ctx.tok.value, &mut real).len != ctx.tok.value.len)
+        return parse_error(&mut ctx, yaml::errc::invalid_float_value);
 
       ctx.stack.push_back(real);
 
@@ -293,7 +293,7 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
       ctx.stack.push_back(ctx.tok.value);
 
     case tag_unknown:
-      return parse_error(ctx, yaml::errc::unknown_tag);
+      return parse_error(&mut ctx, yaml::errc::unknown_tag);
 
     else:
       switch (ctx.tok.style)
@@ -306,7 +306,7 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
       }
   }
 
-  ctx.consume_token(is);
+  ctx.consume_token(&mut is);
   ctx.state = ctx.pop_state();
 
   return ctx.state;
@@ -317,11 +317,11 @@ fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
   switch (ctx.tok.type)
   {
     case block_sequence_start:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = state::block_sequence_entry;
 
     case flow_sequence_start:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = state::flow_sequence_entry;
 
     case block_entry:
@@ -352,15 +352,15 @@ fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
   switch (ctx.tok.type)
   {
     case block_mapping_start:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = state::block_mapping_key;
 
     case flow_mapping_start:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = state::flow_mapping_key;
 
     case key:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = state::flow_sequence_entry_mapping_key;
 
     case value:
@@ -393,7 +393,7 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
   switch (ctx.tok.type)
   {
     case tag:
-      ctx.state = parse_tag(ctx, is);
+      ctx.state = parse_tag(&mut ctx, &mut is);
 
       switch (ctx.tok.type)
       {
@@ -401,19 +401,19 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
           ctx.push_state(state::anchor_entry);
           ctx.names.push_back(std::move(ctx.tok.value));
           std::launder(ctx.tok);
-          ctx.consume_token(is);
+          ctx.consume_token(&mut is);
       }
 
     case anchor:
       ctx.push_state(state::anchor_entry);
       ctx.names.push_back(std::move(ctx.tok.value));
       std::launder(ctx.tok);
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
 
       switch (ctx.tok.type)
       {
         case tag:
-          ctx.state = parse_tag(ctx, is);
+          ctx.state = parse_tag(&mut ctx, &mut is);
       }
   }
 
@@ -423,9 +423,9 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
       var j = ctx.anchors.find(ctx.tok.value);
 
       if (j == ctx.anchors.end)
-        return parse_error(ctx, yaml::errc::anchor_not_found);
+        return parse_error(&mut ctx, yaml::errc::anchor_not_found);
 
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.stack.push_back((*j).value);
       ctx.state = ctx.pop_state();
 
@@ -438,32 +438,32 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
     case document_start:
     case document_end:
     case stream_end:
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
 
     case block_entry:
       if (!indentless_sequence)
-        parse_empty(ctx, is);
+        parse_empty(&mut ctx, &mut is);
       else
-        parse_sequence(ctx, is);
+        parse_sequence(&mut ctx, &mut is);
 
     case block_sequence_start:
     case flow_sequence_start:
 
       if (ctx.tok.type == token::type::block_sequence_start && !block)
-        return parse_error(ctx, yaml::errc::invalid_sequence_start);
+        return parse_error(&mut ctx, yaml::errc::invalid_sequence_start);
 
-      parse_sequence(ctx, is);
+      parse_sequence(&mut ctx, &mut is);
 
     case block_mapping_start:
     case flow_mapping_start:
 
       if (ctx.tok.type == token::type::block_mapping_start && !block)
-        return parse_error(ctx, yaml::errc::invalid_mapping_start);
+        return parse_error(&mut ctx, yaml::errc::invalid_mapping_start);
 
-      parse_mapping(ctx, is);
+      parse_mapping(&mut ctx, &mut is);
 
     case scalar:
-      parse_scalar(ctx, is);
+      parse_scalar(&mut ctx, &mut is);
 
     else:
       switch (ctx.tok.type)
@@ -508,14 +508,14 @@ fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> s
   switch (ctx.tok.type)
   {
     case block_end:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = ctx.pop_state();
 
     case block_entry:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::block_sequence_entry);
       ctx.push_state(state::sequence_entry);
-      parse_node(ctx, is, true, false);
+      parse_node(&mut ctx, &mut is, true, false);
 
     else:
       ctx.error = yaml::errc::expected_sequence_entry;
@@ -530,17 +530,17 @@ fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> stat
   switch (ctx.tok.type)
   {
     case block_end:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = ctx.pop_state();
 
     case key:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::block_mapping_value);
-      parse_node(ctx, is, true, true);
+      parse_node(&mut ctx, &mut is, true, true);
 
     case value:
       ctx.push_state(state::block_mapping_value);
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
 
     else:
       ctx.error = yaml::errc::expected_block_mapping_key;
@@ -555,15 +555,15 @@ fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> st
   switch (ctx.tok.type)
   {
     case value:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::block_mapping_key);
       ctx.push_state(state::mapping_entry);
-      parse_node(ctx, is, true, true);
+      parse_node(&mut ctx, &mut is, true, true);
 
     else:
       ctx.push_state(state::block_mapping_key);
       ctx.push_state(state::mapping_entry);
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
   }
 
   return ctx.state;
@@ -574,22 +574,22 @@ fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
   switch (ctx.tok.type)
   {
     case flow_entry:
-      return parse_error(ctx, yaml::errc::expected_sequence_entry);
+      return parse_error(&mut ctx, yaml::errc::expected_sequence_entry);
 
     case flow_sequence_end:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = ctx.pop_state();
 
     case key:
     case value:
       ctx.push_state(state::flow_sequence_entry);
       ctx.push_state(state::sequence_flow_entry);
-      parse_mapping(ctx, is);
+      parse_mapping(&mut ctx, &mut is);
 
     else:
       ctx.push_state(state::flow_sequence_entry);
       ctx.push_state(state::sequence_flow_entry);
-      parse_node(ctx, is, false, false);
+      parse_node(&mut ctx, &mut is, false, false);
   }
 
   return ctx.state;
@@ -601,9 +601,9 @@ fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
   {
     case flow_entry:
     case flow_sequence_end:
-      ctx.state = sequence_entry(ctx, is);
+      ctx.state = sequence_entry(&mut ctx, &mut is);
       if (ctx.tok.type == token::type::flow_entry)
-        ctx.consume_token(is);
+        ctx.consume_token(&mut is);
 
     else:
       ctx.error = yaml::errc::missing_comma;
@@ -618,21 +618,21 @@ fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
   switch (ctx.tok.type)
   {
     case flow_mapping_end:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.state = ctx.pop_state();
 
     case key:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::flow_mapping_value);
-      parse_node(ctx, is, false, false);
+      parse_node(&mut ctx, &mut is, false, false);
 
     case value:
       ctx.push_state(state::flow_mapping_value);
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
 
     else:
       ctx.push_state(state::flow_mapping_value);
-      parse_node(ctx, is, false, false);
+      parse_node(&mut ctx, &mut is, false, false);
   }
 
   return ctx.state;
@@ -643,15 +643,15 @@ fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> sta
   switch (ctx.tok.type)
   {
     case value:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::flow_mapping_key);
       ctx.push_state(state::mapping_flow_entry);
-      parse_node(ctx, is, true, true);
+      parse_node(&mut ctx, &mut is, true, true);
 
     else:
       ctx.push_state(state::flow_mapping_key);
       ctx.push_state(state::mapping_flow_entry);
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
   }
 
   return ctx.state;
@@ -663,9 +663,9 @@ fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> sta
   {
     case flow_entry:
     case flow_mapping_end:
-      ctx.state = mapping_entry(ctx, is);
+      ctx.state = mapping_entry(&mut ctx, &mut is);
       if (ctx.tok.type == token::type::flow_entry)
-        ctx.consume_token(is);
+        ctx.consume_token(&mut is);
 
     else:
       ctx.error = yaml::errc::missing_comma;
@@ -680,10 +680,10 @@ fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws
   switch (ctx.tok.type)
   {
     case block_entry:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::indentless_sequence_entry);
       ctx.push_state(state::sequence_entry);
-      parse_node(ctx, is, true, false);
+      parse_node(&mut ctx, &mut is, true, false);
 
     else:
       ctx.state = ctx.pop_state();
@@ -700,11 +700,11 @@ fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) 
     case flow_entry:
     case flow_sequence_end:
       ctx.push_state(state::flow_sequence_entry_mapping_value);
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
 
     else:
       ctx.push_state(state::flow_sequence_entry_mapping_value);
-      parse_node(ctx, is, false, false);
+      parse_node(&mut ctx, &mut is, false, false);
   }
 
   return ctx.state;
@@ -715,13 +715,13 @@ fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is
   switch (ctx.tok.type)
   {
     case value:
-      ctx.consume_token(is);
+      ctx.consume_token(&mut is);
       ctx.push_state(state::mapping_entry);
-      parse_node(ctx, is, false, false);
+      parse_node(&mut ctx, &mut is, false, false);
 
     else:
       ctx.push_state(state::mapping_entry);
-      parse_empty(ctx, is);
+      parse_empty(&mut ctx, &mut is);
   }
 
   return ctx.state;
@@ -733,77 +733,77 @@ pub fn parse(InputReader mut &is) throws -> parse_result
 
   var ctx = parse_context();
 
-  ctx.consume_token(is);
+  ctx.consume_token(&mut is);
 
   while (ctx.state != state::end)
   {
     switch (ctx.state)
     {
       case stream_start:
-        ctx.state = stream_start(ctx, is);
+        ctx.state = stream_start(&mut ctx, &mut is);
 
       case implicit_document_start:
-        ctx.state = document_start(ctx, is, true);
+        ctx.state = document_start(&mut ctx, &mut is, true);
 
       case document_start:
-        ctx.state = document_start(ctx, is, false);
+        ctx.state = document_start(&mut ctx, &mut is, false);
 
       case document_content:
-        ctx.state = document_content(ctx, is);
+        ctx.state = document_content(&mut ctx, &mut is);
 
       case document_end:
-        ctx.state = document_end(ctx, is);
+        ctx.state = document_end(&mut ctx, &mut is);
 
       case block_node:
-        ctx.state = parse_node(ctx, is, true, false);
+        ctx.state = parse_node(&mut ctx, &mut is, true, false);
 
       case block_sequence_entry:
-        ctx.state = block_sequence_entry(ctx, is);
+        ctx.state = block_sequence_entry(&mut ctx, &mut is);
 
       case flow_sequence_entry:
-        ctx.state = flow_sequence_entry(ctx, is);
+        ctx.state = flow_sequence_entry(&mut ctx, &mut is);
 
       case sequence_flow_entry:
-        ctx.state = sequence_flow_entry(ctx, is);
+        ctx.state = sequence_flow_entry(&mut ctx, &mut is);
 
       case indentless_sequence_entry:
-        ctx.state = indentless_sequence_entry(ctx, is);
+        ctx.state = indentless_sequence_entry(&mut ctx, &mut is);
 
       case sequence_entry:
-        ctx.state = sequence_entry(ctx, is);
+        ctx.state = sequence_entry(&mut ctx, &mut is);
 
       case block_mapping_key:
-        ctx.state = block_mapping_key(ctx, is);
+        ctx.state = block_mapping_key(&mut ctx, &mut is);
 
       case block_mapping_value:
-        ctx.state = block_mapping_value(ctx, is);
+        ctx.state = block_mapping_value(&mut ctx, &mut is);
 
       case flow_mapping_key:
-        ctx.state = flow_mapping_key(ctx, is);
+        ctx.state = flow_mapping_key(&mut ctx, &mut is);
 
       case flow_mapping_value:
-        ctx.state = flow_mapping_value(ctx, is);
+        ctx.state = flow_mapping_value(&mut ctx, &mut is);
 
       case mapping_flow_entry:
-        ctx.state = mapping_flow_entry(ctx, is);
+        ctx.state = mapping_flow_entry(&mut ctx, &mut is);
 
       case flow_sequence_entry_mapping_key:
-        ctx.state = flow_sequence_entry_mapping_key(ctx, is);
+        ctx.state = flow_sequence_entry_mapping_key(&mut ctx, &mut is);
 
       case flow_sequence_entry_mapping_value:
-        ctx.state = flow_sequence_entry_mapping_value(ctx, is);
+        ctx.state = flow_sequence_entry_mapping_value(&mut ctx, &mut is);
 
       case mapping_entry:
-        ctx.state = mapping_entry(ctx, is);
+        ctx.state = mapping_entry(&mut ctx, &mut is);
 
       case block_node_or_indentless_sequence:
-        ctx.state = parse_node(ctx, is, true, true);
+        ctx.state = parse_node(&mut ctx, &mut is, true, true);
 
       case flow_node:
-        ctx.state = parse_node(ctx, is, false, false);
+        ctx.state = parse_node(&mut ctx, &mut is, false, false);
 
       case anchor_entry:
-        ctx.state = anchor_entry(ctx, is);
+        ctx.state = anchor_entry(&mut ctx, &mut is);
 
       case errored:
         result.error = ctx.error;

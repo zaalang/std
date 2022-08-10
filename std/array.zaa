@@ -132,5 +132,5 @@ pub fn hash<T, N>(var &hasher, array<T, N> &array) -> usize
 
 pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::array<T, N> &array) throws -> void
 {
-  std::fmt_to(os, ctx, array.super);
+  std::fmt_to(&mut os, &mut ctx, array.super);
 }

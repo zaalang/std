@@ -25,7 +25,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub map(map &&other, Allocator &allocator = Allocator())
     : _tree(other.cmp, allocator)
   {
-    insert(this, &&other);
+    insert(&mut this, &&other);
   }
 
   #[lifetime(poison(this))]
@@ -33,11 +33,11 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     if (&this != &other)
     {
-      clear(this);
+      clear(&mut this);
 
       this._tree.cmp = other.cmp;
 
-      insert(this, &&other);
+      insert(&mut this, &&other);
     }
 
     return &this;
@@ -47,7 +47,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     var result = map(allocator);
 
-    insert(result, &&other);
+    insert(&mut result, &&other);
 
     return result;
   }
@@ -146,21 +146,19 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn equal_range<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    var x = this._tree.equal_range(key);
-
-    return (iterator(x.0), iterator(x.1));
+    return (lower_bound(&&this, key), upper_bound(&&this, key));
   }
 
   #[lifetime(depend(this))]
   pub fn find<Key>(this &&, Key &key)
     match (Key key) { K(key); }
   {
-    var x = lower_bound(&&this, key);
+    var j = lower_bound(&&this, key);
 
-    if (x == this.end || this.cmp()(key, (&&this)[x].key))
+    if (j == this.end || this.cmp()(key, (&&this)[j].key))
       return this.end;
 
-    return x;
+    return j;
   }
 
   pub fn contains<Key>(this &, Key &key) -> bool
@@ -219,16 +217,16 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     #if (__is_rvalue<typeof(other)> && __is_same<map, typeof(other)>)
     {
       if (this.empty)
-        return this._tree.take(other._tree);
+        return this._tree.take(&mut other._tree);
 
-      return this.merge(other);
+      return this.merge(&mut other);
     }
 
     if (var first = other.begin, var last = other.end; first != last)
     {
       while (first != last)
       {
-        insert(this, (&&other)[first++]);
+        insert(&mut this, (&&other)[first++]);
       }
     }
   }
@@ -238,7 +236,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   {
     while (first != last)
     {
-      insert(this, *first++);
+      insert(&mut this, *first++);
     }
   }
 
@@ -266,12 +264,12 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn erase<Key>(this mut &, Key &key) -> usize
   {
-    var x = this.find(key);
+    var j = this.find(key);
 
-    if (x == this.end)
+    if (j == this.end)
       return 0;
 
-    this._tree.erase(x.cursor, x.cursor.next);
+    this._tree.erase(j.cursor, j.cursor.next);
 
     return 1;
   }

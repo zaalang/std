@@ -52,7 +52,7 @@ pub struct input_stream
 
   pub fn read(this mut &, u8 mut *data, usize len) throws -> usize
   {
-    return this._read(this._stream, data, len);
+    return this._read(&mut this._stream, data, len);
   }
 
   pub input_stream<T>(T mut &is)
@@ -75,7 +75,7 @@ pub struct output_stream
 
   pub fn write(this mut &, u8 *data, usize len) throws -> usize
   {
-    return this._write(this._stream, data, len);
+    return this._write(&mut this._stream, data, len);
   }
 
   pub output_stream<T>(T mut &os)
@@ -168,7 +168,7 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     {
       if (remaining < this._buffer.len)
       {
-        fetch(this);
+        fetch(&mut this);
 
         var size = std::min(this._tail - this._head, remaining);
 
@@ -255,7 +255,7 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
 
   pub fn lines(this mut &) throws -> std::iterator_pair<buffered_reader, line_iterator, end_iterator>
   {
-    return std::iterator_pair(this, ++line_iterator(this), end_iterator());
+    return std::iterator_pair(this, ++line_iterator(&mut this), end_iterator());
   }
 
   usize _head;

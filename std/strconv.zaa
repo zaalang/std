@@ -239,7 +239,7 @@ fn ftoa_scientific(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, i
     if (prec == 0)
       prec = 1;
 
-    ftoa_round(digits, K, len, prec);
+    ftoa_round(digits, &mut K, &mut len, prec);
   }
 
   if (end - ch < len + 8)
@@ -323,7 +323,7 @@ fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int si
 
   if (prec > -1)
   {
-    ftoa_round(digits, K, len, cast(len) + K + prec);
+    ftoa_round(digits, &mut K, &mut len, cast(len) + K + prec);
   }
 
   if (0 <= K)
@@ -439,7 +439,7 @@ pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value, char fmt = ' ', int prec = -1) 
   var len = 0;
   var digits = [0; 32];
 
-  flt::grisu(digits.begin, digits.end, value, K, len);
+  flt::grisu(digits.begin, digits.end, value, &mut K, &mut len);
 
   switch (fmt)
   {
@@ -462,7 +462,7 @@ pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value, char fmt = ' ', int prec = -1) 
   var len = 0;
   var digits = [0; 32];
 
-  flt::grisu(digits.begin, digits.end, value, K, len);
+  flt::grisu(digits.begin, digits.end, value, &mut K, &mut len);
 
   switch (fmt)
   {
@@ -479,7 +479,7 @@ pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value, char fmt = ' ', int prec = -1) 
 pub fn atoi(u8 *beg, u8 *end, bool mut &value, int base = 10) -> strconv_result
 {
   var v = usize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -495,7 +495,7 @@ pub fn atoi(u8 *beg, u8 *end, bool mut &value, int base = 10) -> strconv_result
 pub fn atoi(u8 *beg, u8 *end, u8 mut &value, int base = 10) -> strconv_result
 {
   var v = usize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -511,7 +511,7 @@ pub fn atoi(u8 *beg, u8 *end, u8 mut &value, int base = 10) -> strconv_result
 pub fn atoi(u8 *beg, u8 *end, u16 mut &value, int base = 10) -> strconv_result
 {
   var v = usize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -527,7 +527,7 @@ pub fn atoi(u8 *beg, u8 *end, u16 mut &value, int base = 10) -> strconv_result
 pub fn atoi(u8 *beg, u8 *end, u32 mut &value, int base = 10) -> strconv_result
 {
   var v = usize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -542,12 +542,12 @@ pub fn atoi(u8 *beg, u8 *end, u32 mut &value, int base = 10) -> strconv_result
 
 pub fn atoi(u8 *beg, u8 *end, u64 mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, cast<usize mut &>(value), base);
+  return atoi(beg, end, &mut cast<usize mut &>(value), base);
 }
 
 pub fn atoi(u8 *beg, u8 *end, char mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, cast<usize mut &>(value), base);
+  return atoi(beg, end, &mut cast<usize mut &>(value), base);
 }
 
 pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
@@ -601,7 +601,7 @@ pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
 pub fn atoi(u8 *beg, u8 *end, i8 mut &value, int base = 10) -> strconv_result
 {
   var v = isize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -617,7 +617,7 @@ pub fn atoi(u8 *beg, u8 *end, i8 mut &value, int base = 10) -> strconv_result
 pub fn atoi(u8 *beg, u8 *end, i16 mut &value, int base = 10) -> strconv_result
 {
   var v = isize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -633,7 +633,7 @@ pub fn atoi(u8 *beg, u8 *end, i16 mut &value, int base = 10) -> strconv_result
 pub fn atoi(u8 *beg, u8 *end, i32 mut &value, int base = 10) -> strconv_result
 {
   var v = isize(0);
-  var result = atoi(beg, end, v, base);
+  var result = atoi(beg, end, &mut v, base);
 
   if (!result.error)
   {
@@ -648,7 +648,7 @@ pub fn atoi(u8 *beg, u8 *end, i32 mut &value, int base = 10) -> strconv_result
 
 pub fn atoi(u8 *beg, u8 *end, i64 mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, cast<isize mut &>(value), base);
+  return atoi(beg, end, &mut cast<isize mut &>(value), base);
 }
 
 pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
@@ -659,7 +659,7 @@ pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
   if (ch != end && *ch == cast('-'))
     ++ch;
 
-  var result = atoi(ch, end, body, base);
+  var result = atoi(ch, end, &mut body, base);
 
   if (!result.error)
   {
@@ -730,11 +730,11 @@ pub fn atof(u8 *beg, u8 *end, f32 mut &value) -> strconv_result
   if (ch != end && *ch == cast('-'))
     ++ch;
 
-  var len = atof_special(ch, end, value);
+  var len = atof_special(ch, end, &mut value);
 
   if (len == 0)
   {
-    len = flt::scan(ch, end, value);
+    len = flt::scan(ch, end, &mut value);
 
     if (len == 0)
       result.error = std::errc::invalid_argument;
@@ -762,11 +762,11 @@ pub fn atof(u8 *beg, u8 *end, f64 mut &value) -> strconv_result
   if (ch != end && *ch == cast('-'))
     ++ch;
 
-  var len = atof_special(ch, end, value);
+  var len = atof_special(ch, end, &mut value);
 
   if (len == 0)
   {
-    len = flt::scan(ch, end, value);
+    len = flt::scan(ch, end, &mut value);
 
     if (len == 0)
       result.error = std::errc::invalid_argument;
@@ -834,7 +834,7 @@ pub fn atoc(u8 *beg, u8 *end, char mut &value) -> strconv_result
 
   for(; ch != end; )
   {
-    if (utf::decode(state, v, *ch) != utf::REJECT)
+    if (utf::decode(&mut state, &mut v, *ch) != utf::REJECT)
       ++ch;
     
     if (state == utf::ACCEPT || state == utf::REJECT)

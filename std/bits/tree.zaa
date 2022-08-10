@@ -87,18 +87,18 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub tree(Allocator &allocator = Allocator())
     : allocator(allocator)
   {
-    init(this);
+    init(&mut this);
   }
 
   pub tree(Cmp &&cmp, Allocator &allocator = Allocator())
     : cmp(&&cmp), allocator(allocator)
   {
-    init(this);
+    init(&mut this);
   }
 
   pub ~tree()
   {
-    clear(this);
+    clear(&mut this);
   }
 
   pub fn len(this &) -> usize
@@ -168,62 +168,11 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return y;
   }
 
-  pub fn equal_range<Key>(this &&, Key &key)
-  {
-    var x = this._root.parent;
-    var y = &this._root;
-
-    while (x)
-    {
-      if (this.cmp(key, cast<Node*>(x).value.key))
-      {
-        y = x;
-        x = x.left;
-      }
-      else if (this.cmp(cast<Node*>(x).value.key, key))
-      {
-        x = x.right;
-      }
-      else
-      {
-        for (var z = x.right; z; )
-        {
-          if (this.cmp(key, cast<Node*>(z).value.key))
-          {
-            y = z;
-            z = z.left;
-          }
-          else
-          {
-            z = z.right;
-          }
-        }
-
-        for (var z = x.left; z; )
-        {
-          if (!this.cmp(cast<Node*>(z).value.key, key))
-          {
-            x = z;
-            z = z.left;
-          }
-          else
-          {
-            z = z.right;
-          }
-        }
-
-        return (x, y);
-      }
-    }
-
-    return (y, y);
-  }
-
   pub fn clear(this mut &) -> void
   {
-    destroy(this, this._root.parent);
+    destroy(&mut this, this._root.parent);
 
-    init(this);
+    init(&mut this);
   }
 
   pub fn init(this mut &)
@@ -248,8 +197,8 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       this._leftmost = other._leftmost;
     }
 
-    swap(this._len, other.len);
-    swap(this.cmp, other.cmp);
+    swap(&mut this._len, &mut other.len);
+    swap(&mut this.cmp, &mut other.cmp);
 
     other.init();
   }
@@ -260,7 +209,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     new<value_type>(&node.value)(&&args..., allocator?: this.allocator);
 
-    return splice(this, parent, node);
+    return splice(&mut this, parent, node);
   }
 
   pub fn extract(this mut &, Link mut *node, Link mut *next) -> Node mut *
@@ -271,7 +220,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     if (node == this._root.left)
       this._root.left = (this._len == 1) ? &this._root : node.prev;
 
-    tree_balance_for_erase(this._root.parent, node);
+    tree_balance_for_erase(&mut this._root.parent, node);
 
     node.left = null;
     node.right = null;
@@ -310,7 +259,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
         this._root.left = node;
     }
 
-    tree_balance_after_insert(this._root.parent, node);
+    tree_balance_after_insert(&mut this._root.parent, node);
 
     this._len += 1;
 
@@ -327,9 +276,9 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     {
       var next = node.next;
 
-      extract(this, node, next);
+      extract(&mut this, node, next);
 
-      Node::~Node(*cast<Node mut *>(node));
+      Node::~Node(&mut *cast<Node mut *>(node));
       this.allocator.free(node, sizeof<Node>);
 
       node = next;
@@ -344,10 +293,10 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
     if (node)
     {
-      destroy(this, node.left);
-      destroy(this, node.right);
+      destroy(&mut this, node.left);
+      destroy(&mut this, node.right);
 
-      Node::~Node(*node);
+      Node::~Node(&mut *node);
       this.allocator.free(node, sizeof<Node>);
     }
   }
@@ -464,12 +413,12 @@ fn tree_balance_after_insert(Link mut * mut &root, Link mut *x) -> void
         if (x == x.parent.right)
         {
           x = x.parent;
-          tree_rotate_left(root, x);
+          tree_rotate_left(&mut root, x);
         }
 
         x.parent.color = Color::black;
         xpp.color = Color::red;
-        tree_rotate_right(root, xpp);
+        tree_rotate_right(&mut root, xpp);
       }
     }
     else
@@ -488,12 +437,12 @@ fn tree_balance_after_insert(Link mut * mut &root, Link mut *x) -> void
         if (x == x.parent.left)
         {
           x = x.parent;
-          tree_rotate_right(root, x);
+          tree_rotate_right(&mut root, x);
         }
 
         x.parent.color = Color::black;
         xpp.color = Color::red;
-        tree_rotate_left(root, xpp);
+        tree_rotate_left(&mut root, xpp);
       }
     }
   }
@@ -544,7 +493,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
       z.parent.right = y;
 
     y.parent = z.parent;
-    swap(y.color, z.color);
+    swap(&mut y.color, &mut z.color);
     y = z;
   }
   else
@@ -573,7 +522,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
         {
           w.color = Color::black;
           xp.color = Color::red;
-          tree_rotate_left(root, xp);
+          tree_rotate_left(&mut root, xp);
           w = xp.right;
         }
 
@@ -589,7 +538,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
           {
             w.left.color = Color::black;
             w.color = Color::red;
-            tree_rotate_right(root, w);
+            tree_rotate_right(&mut root, w);
             w = xp.right;
           }
 
@@ -597,7 +546,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
           xp.color = Color::black;
           if (w.right)
             w.right.color = Color::black;
-          tree_rotate_left(root, xp);
+          tree_rotate_left(&mut root, xp);
           break;
         }
       }
@@ -609,7 +558,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
         {
           w.color = Color::black;
           xp.color = Color::red;
-          tree_rotate_right(root, xp);
+          tree_rotate_right(&mut root, xp);
           w = xp.left;
         }
 
@@ -625,7 +574,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
           {
             w.right.color = Color::black;
             w.color = Color::red;
-            tree_rotate_left(root, w);
+            tree_rotate_left(&mut root, w);
             w = xp.left;
           }
 
@@ -633,7 +582,7 @@ fn tree_balance_for_erase(Link mut * mut &root, Link mut *z) -> void
           xp.color = Color::black;
           if (w.left)
             w.left.color = Color::black;
-          tree_rotate_right(root, xp);
+          tree_rotate_right(&mut root, xp);
           break;
         }
       }

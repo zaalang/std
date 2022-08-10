@@ -56,41 +56,41 @@ fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> voi
   switch(value)
   {
     case '\a':
-      put(os, ctx, "\\a");
+      put(&mut os, &mut ctx, "\\a");
 
     case '\f':
-      put(os, ctx, "\\f");
+      put(&mut os, &mut ctx, "\\f");
 
     case '\n':
-      put(os, ctx, "\\n");
+      put(&mut os, &mut ctx, "\\n");
 
     case '\r':
-      put(os, ctx, "\\r");
+      put(&mut os, &mut ctx, "\\r");
 
     case '\t':
-      put(os, ctx, "\\t");
+      put(&mut os, &mut ctx, "\\t");
 
     case '\v':
-      put(os, ctx, "\\v");
+      put(&mut os, &mut ctx, "\\v");
 
     case '"':
-      put(os, ctx, "\\\"");
+      put(&mut os, &mut ctx, "\\\"");
 
     case '\\':
-      put(os, ctx, "\\\\");
+      put(&mut os, &mut ctx, "\\\\");
 
     case 0:
-      put(os, ctx, "\\0");
+      put(&mut os, &mut ctx, "\\0");
 
     case 1: case 2: case 3: case 4: case 5: case 6: case 8:
     case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
-      ctx.written += format_to(os, "\\x{:02x}", cast<int>(value));
+      ctx.written += format_to(&mut os, "\\x{:02x}", cast<int>(value));
 
     case 127:
-      put(os, ctx, "\\x7f");
+      put(&mut os, &mut ctx, "\\x7f");
 
     else:
-      ctx.written += print_to(os, value);
+      ctx.written += print_to(&mut os, value);
   }
 }
 
@@ -105,18 +105,18 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
     case 'O':
     case 'x':
     case 'X':
-      fmt_int(os, ctx, 1, cast(value));
+      fmt_int(&mut os, &mut ctx, 1, cast(value));
 
     case '?':
-      put(os, ctx, "'");
-      fmt_chr(os, ctx, value);
-      put(os, ctx, "'");
+      put(&mut os, &mut ctx, "'");
+      fmt_chr(&mut os, &mut ctx, value);
+      put(&mut os, &mut ctx, "'");
 
     else:
       var buf = [0; 16];
       var str = std::ctoa(buf.begin, buf.end, value);
 
-      fmt_str(os, ctx, buf.data, str.ptr, str.ptr, str.ptr + str.len, 1);
+      fmt_str(&mut os, &mut ctx, buf.data, str.ptr, str.ptr, str.ptr + str.len, 1);
   }
 }
 
@@ -185,72 +185,72 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
         *--beg = cast('-');
   }
 
-  fmt_str(os, ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.ptr + str.len - beg);
+  fmt_str(&mut os, &mut ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.ptr + str.len - beg);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, u8 value) throws -> void
 {
-  fmt_int(os, ctx, +1, cast<usize>(value));
+  fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, u16 value) throws -> void
 {
-  fmt_int(os, ctx, +1, cast<usize>(value));
+  fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, u32 value) throws -> void
 {
-  fmt_int(os, ctx, +1, cast<usize>(value));
+  fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, u64 value) throws -> void
 {
-  fmt_int(os, ctx, +1, cast<usize>(value));
+  fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, usize value) throws -> void
 {
-  fmt_int(os, ctx, +1, value);
+  fmt_int(&mut os, &mut ctx, +1, value);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, i8 value) throws -> void
 {
   if (value < 0)
-    fmt_int(os, ctx, -1, cast<usize>(~value) + 1);
+    fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
   else
-    fmt_int(os, ctx, +1, cast<usize>(value));
+    fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, i16 value) throws -> void
 {
   if (value < 0)
-    fmt_int(os, ctx, -1, cast<usize>(~value) + 1);
+    fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
   else
-    fmt_int(os, ctx, +1, cast<usize>(value));
+    fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, i32 value) throws -> void
 {
   if (value < 0)
-    fmt_int(os, ctx, -1, cast<usize>(~value) + 1);
+    fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
   else
-    fmt_int(os, ctx, +1, cast<usize>(value));
+    fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, i64 value) throws -> void
 {
   if (value < 0)
-    fmt_int(os, ctx, -1, cast<usize>(~value) + 1);
+    fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
   else
-    fmt_int(os, ctx, +1, cast<usize>(value));
+    fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, isize value) throws -> void
 {
   if (value < 0)
-    fmt_int(os, ctx, -1, cast<usize>(~value) + 1);
+    fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
   else
-    fmt_int(os, ctx, +1, cast<usize>(value));
+    fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
 fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
@@ -305,17 +305,17 @@ fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
         *--beg = cast('-');
   }
 
-  fmt_str(os, ctx, buf.data, beg, beg, str.ptr + str.len, str.ptr + str.len - beg);
+  fmt_str(&mut os, &mut ctx, buf.data, beg, beg, str.ptr + str.len, str.ptr + str.len - beg);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, f32 value) throws -> void
 {
-  fmt_flt(os, ctx, value);
+  fmt_flt(&mut os, &mut ctx, value);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, f64 value) throws -> void
 {
-  fmt_flt(os, ctx, value);
+  fmt_flt(&mut os, &mut ctx, value);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws -> void
@@ -425,19 +425,19 @@ fn fmt_str(OutputStream mut &os, fmt_context mut &ctx, u8 mut *beg, u8 *start, u
   }
 
   if (padding_left != 0)
-    pad(os, ctx, padding_left);
+    pad(&mut os, &mut ctx, padding_left);
 
   ctx.written += os.write(str.data, str.len);
 
   if (padding_right != 0)
-    pad(os, ctx, padding_right);
+    pad(&mut os, &mut ctx, padding_right);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws -> void
 {
   if (ctx.spec.type == cast('?'))
   {
-    put(os, ctx, "\"");
+    put(&mut os, &mut ctx, "\"");
 
     var i = str.begin;
 
@@ -445,15 +445,15 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
     {
       if (std::is_cntrl(*j) || *j == cast('\"') || *j == cast('\\') || *j == 127)
       {
-        put(os, ctx, std::string_view(i, j));
-        fmt_chr(os, ctx, cast<char>(*j));
+        put(&mut os, &mut ctx, std::string_view(i, j));
+        fmt_chr(&mut os, &mut ctx, cast<char>(*j));
         i = j + 1;
       }
     }
 
-    put(os, ctx, std::string_view(i, str.end));
+    put(&mut os, &mut ctx, std::string_view(i, str.end));
 
-    put(os, ctx, "\"");
+    put(&mut os, &mut ctx, "\"");
 
     return;
   }
@@ -472,74 +472,74 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
     }
   }
 
-  fmt_str(os, ctx, null, str.data, str.data, str.data + str.len, length);
+  fmt_str(&mut os, &mut ctx, null, str.data, str.data, str.data + str.len, length);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_literal str) throws -> void
 {
-  fmt(os, ctx, std::string_view(str.data, str.len));
+  fmt(&mut os, &mut ctx, std::string_view(str.data, str.len));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_ref str) throws -> void
 {
-  fmt(os, ctx, std::string_view(str.data, str.len));
+  fmt(&mut os, &mut ctx, std::string_view(str.data, str.len));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string &str) throws -> void
 {
-  fmt(os, ctx, std::string_view(str.data, str.len));
+  fmt(&mut os, &mut ctx, std::string_view(str.data, str.len));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws -> void
 {
-  ctx.written += format_to(os, "{}:{}", loc.file_name, loc.lineno);
+  ctx.written += format_to(&mut os, "{}:{}", loc.file_name, loc.lineno);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws -> void
 {
   var buf = [0; 256];
 
-  fmt(os, ctx, error.message(buf.data, buf.len));
+  fmt(&mut os, &mut ctx, error.message(buf.data, buf.len));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
 {
-  fmt(os, ctx, "null");
+  fmt(&mut os, &mut ctx, "null");
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
 {
-  fmt(os, ctx, "void");
+  fmt(&mut os, &mut ctx, "void");
 }
 
 fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws -> void
 {
-  put(os, ctx, "[");
+  put(&mut os, &mut ctx, "[");
 
   for(var k = 0; k < array.len; ++k)
   {
     if (k != 0)
-      put(os, ctx, ", ");
+      put(&mut os, &mut ctx, ", ");
 
-    fmt_to(os, ctx, array[k]);
+    fmt_to(&mut os, &mut ctx, array[k]);
   }
 
-  put(os, ctx, "]");
+  put(&mut os, &mut ctx, "]");
 }
 
 fn fmt_tuple<T>(OutputStream mut &os, fmt_context mut &ctx, T &tuple) throws -> void
 {
-  put(os, ctx, "(");
+  put(&mut os, &mut ctx, "(");
 
   #for(const k = 0; k != __tuple_len<T>; ++k)
   {
     #if (k != 0)
-      put(os, ctx, ", ");
+      put(&mut os, &mut ctx, ", ");
 
-    fmt_to(os, ctx, tuple.#k);
+    fmt_to(&mut os, &mut ctx, tuple.#k);
   }
 
-  put(os, ctx, ")");
+  put(&mut os, &mut ctx, ")");
 }
 
 fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
@@ -553,7 +553,7 @@ fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> 
     case 'x':
     case 'X':
     case 'd':
-      fmt(os, ctx, cast<typeof(T::super)>(object));
+      fmt(&mut os, &mut ctx, cast<typeof(T::super)>(object));
 
     else:
 
@@ -571,12 +571,12 @@ fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> 
         buf[str.ptr - buf.data - 2] = cast('0');
         buf[str.ptr - buf.data - 1] = cast('x');
 
-        fmt_str(os, ctx, buf.data, str.ptr - 2, str.ptr, str.ptr + str.len, str.len + 2);
+        fmt_str(&mut os, &mut ctx, buf.data, str.ptr - 2, str.ptr, str.ptr + str.len, str.len + 2);
       }
 
       if (str.len != 0)
       {
-        fmt_str(os, ctx, null, str.data, str.data, str.data + str.len, str.len);
+        fmt_str(&mut os, &mut ctx, null, str.data, str.data, str.data + str.len, str.len);
       }
   }
 }
@@ -588,13 +588,13 @@ fn fmt_union<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws ->
   dtx.spec.width = spec::auto;
   dtx.spec.precision = spec::auto;
 
-  dtx.written += print_to(os, std::meta::name_of(std::meta::declid($T)), " { ", object.kind, ": ");
+  dtx.written += print_to(&mut os, std::meta::name_of(std::meta::declid($T)), " { ", object.kind, ": ");
 
   #for(const k = 1; k != std::meta::fields_of($T).len; ++k)
     if (object.kind == cast(k))
-      fmt_to(os, dtx, object.#k);
+      fmt_to(&mut os, &mut dtx, object.#k);
 
-  put(os, dtx, " }");
+  put(&mut os, &mut dtx, " }");
 
   ctx.written += dtx.written;
 }
@@ -606,19 +606,19 @@ fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -
   dtx.spec.width = spec::auto;
   dtx.spec.precision = spec::auto;
 
-  dtx.written += print_to(os, std::meta::name_of(std::meta::declid($T)), " { ");
+  dtx.written += print_to(&mut os, std::meta::name_of(std::meta::declid($T)), " { ");
 
   #for(const i = 0, const k : std::meta::fields_of($T); true; ++i)
   {
     #if (i != 0)
-      put(os, dtx, ", ");
+      put(&mut os, &mut dtx, ", ");
 
-    dtx.written += print_to(os, std::meta::name_of(k), ": ");
+    dtx.written += print_to(&mut os, std::meta::name_of(k), ": ");
 
-    fmt_to(os, dtx, object.#k);
+    fmt_to(&mut os, &mut dtx, object.#k);
   }
 
-  put(os, dtx, " }");
+  put(&mut os, &mut dtx, " }");
 
   ctx.written += dtx.written;
 }
@@ -627,74 +627,74 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 {
   #if (__is_array<T>)
   {
-    fmt_array(os, ctx, object);
+    fmt_array(&mut os, &mut ctx, object);
   }
 
   #if (__is_tuple<T>)
   {
-    fmt_tuple(os, ctx, object);
+    fmt_tuple(&mut os, &mut ctx, object);
   }
 
   #if (__is_enum<T>)
   {
-    fmt_enum(os, ctx, object);
+    fmt_enum(&mut os, &mut ctx, object);
   }
 
   #if (__is_union<T>)
   {
-    fmt_union(os, ctx, object);
+    fmt_union(&mut os, &mut ctx, object);
   }
 
   #if (__is_struct<T> || __is_vtable<T>)
   {
-    fmt_struct(os, ctx, object);
+    fmt_struct(&mut os, &mut ctx, object);
   }
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::declid declid) throws -> void
 {
   if (declid)
-    fmt(os, ctx, std::meta::name_of(declid));
+    fmt(&mut os, &mut ctx, std::meta::name_of(declid));
   else
-    fmt(os, ctx, 0);
+    fmt(&mut os, &mut ctx, 0);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::typeid typeid) throws -> void
 {
   if (typeid)
-    fmt(os, ctx, std::meta::name_of(typeid));
+    fmt(&mut os, &mut ctx, std::meta::name_of(typeid));
   else
-    fmt(os, ctx, 0);
+    fmt(&mut os, &mut ctx, 0);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0) literal) throws -> void
 {
-  fmt(os, ctx, cast<int>(literal));
+  fmt(&mut os, &mut ctx, cast<int>(literal));
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0.0) literal) throws -> void
 {
-  fmt(os, ctx, cast<float>(literal));
+  fmt(&mut os, &mut ctx, cast<float>(literal));
 }
 
 pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
 {
   using T;
 
-  fmt(os, ctx, object);
+  fmt(&mut os, &mut ctx, object);
 }
 
 pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
 {
   var ctx = fmt_context();
-  //var os = std::output_stream(os);
+  //var os = std::output_stream(&mut os);
 
   #for(var &arg : args)
   {
     ctx.spec.width = spec::auto;
     ctx.spec.precision = spec::auto;
 
-    fmt_to(os, ctx, arg);
+    fmt_to(&mut os, &mut ctx, arg);
   }
 
   return ctx.written;
@@ -768,7 +768,7 @@ fn parse_spec(u8* mut &ch, u8 *end) -> spec
         spec.width = spec::arg;
 
       case '0' ..= '9':
-        ch += std::atoi(ch, end, spec.width).len;
+        ch += std::atoi(ch, end, &mut spec.width).len;
     }
 
     if (ch == end)
@@ -786,7 +786,7 @@ fn parse_spec(u8* mut &ch, u8 *end) -> spec
           spec.precision = spec::arg;
 
         case '0' ..= '9':
-          ch += std::atoi(ch, end, spec.precision).len;
+          ch += std::atoi(ch, end, &mut spec.precision).len;
       }
     }
 
@@ -852,7 +852,7 @@ fn parse_args<Args>(std::string_literal format) -> arguments<std::tuple_len<Args
 
       args.pieces[arg] = flatten(std::string_literal(beg, ch - beg - 1));
 
-      args.specs[arg] = parse_spec(ch, end);
+      args.specs[arg] = parse_spec(&mut ch, end);
 
       if (!args.specs[arg].ok)
         std::panic("invalid arg spec in format string");
@@ -907,7 +907,7 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throw
 pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args) throws -> usize
 { 
   var ctx = fmt_context();
-  //var os = std::output_stream(os);
+  //var os = std::output_stream(&mut os);
 
   const fmt = #parse_args<Args>(format);
 
@@ -915,7 +915,7 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
   {
     #if (fmt.specs[k].ok)
     {
-      fmt_piece(os, ctx, fmt.pieces[k]);
+      fmt_piece(&mut os, &mut ctx, fmt.pieces[k]);
 
       ctx.spec = fmt.specs[k];
     }
@@ -934,10 +934,10 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
       continue;
     }
 
-    fmt_to(os, ctx, args.#k);
+    fmt_to(&mut os, &mut ctx, args.#k);
   }
 
-  fmt_piece(os, ctx, fmt.pieces[args.len]);
+  fmt_piece(&mut os, &mut ctx, fmt.pieces[args.len]);
 
   return ctx.written;
 }
@@ -945,7 +945,7 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
 pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) throws -> usize
 {
   var ctx = fmt_context();
-  //var os = std::output_stream(os);
+  //var os = std::output_stream(&mut os);
 
   var arg = 0;
   var beg = format.begin;
@@ -962,7 +962,7 @@ pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) thr
       if (ch == end || *ch != cast('{'))
         break;
 
-      fmt_piece(os, ctx, beg, ch);
+      fmt_piece(&mut os, &mut ctx, beg, ch);
 
       beg = ch + 1;
     }
@@ -970,9 +970,9 @@ pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) thr
     if (ch == end)
       break;
 
-    fmt_piece(os, ctx, beg, ch - 1);
+    fmt_piece(&mut os, &mut ctx, beg, ch - 1);
 
-    ctx.spec = parse_spec(ch, end);
+    ctx.spec = parse_spec(&mut ch, end);
 
     if (ctx.spec.ok)
     {
@@ -1003,7 +1003,7 @@ pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) thr
           continue;
         }
 
-        fmt_to(os, ctx, args.#k);
+        fmt_to(&mut os, &mut ctx, args.#k);
 
         arg = k + 1;
 
@@ -1014,7 +1014,7 @@ pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) thr
     beg = ch + 1;
   }
 
-  fmt_piece(os, ctx, beg, end);
+  fmt_piece(&mut os, &mut ctx, beg, end);
 
   return ctx.written;
 }

@@ -279,7 +279,7 @@ fn grisu_round_weed(u8 mut *digit, u64 delta, u64 mut &remainder, u64 divisor, u
 
 fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize mut &len) -> bool
 {
-  normalize(fp.upper);
+  normalize(&mut fp.upper);
 
   if (fp.value.e > fp.upper.e)
   {
@@ -293,7 +293,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
     fp.lower.e = fp.upper.e;
   }
 
-  var cached_pow = get_cached_power2(fp.upper.e, K);
+  var cached_pow = get_cached_power2(fp.upper.e, &mut K);
 
   fp.value = fp.value * cached_pow;
   fp.lower = fp.lower * cached_pow;
@@ -334,7 +334,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
       K += kappa;
       len = ch - beg;
 
-      return grisu_round_weed(ch - 1, delta, remainder, divisor << shift, diff, ulp);
+      return grisu_round_weed(ch - 1, delta, &mut remainder, divisor << shift, diff, ulp);
     }
   }
   
@@ -357,7 +357,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
       K += kappa;
       len = ch - beg;
 
-      return grisu_round_weed(ch - 1, delta, fractional, 1 << shift, diff, ulp);
+      return grisu_round_weed(ch - 1, delta, &mut fractional, 1 << shift, diff, ulp);
     }
   }
 }
@@ -382,14 +382,14 @@ fn fallback_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usiz
 
   for(var i = 0; i <= len; ++i)
   {
-    var digit = divmod(value, scale);
+    var digit = divmod(&mut value, scale);
 
     *ch++ = cast(digit + cast('0'));
 
     value *= 10;
   }
 
-  var digit = divmod(value, scale);
+  var digit = divmod(&mut value, scale);
 
   if (digit > 5 || (value.bits[0] != 0 && digit == 5))
   {
@@ -432,11 +432,11 @@ pub fn grisu<T>(u8 mut *beg, u8 mut *end, T value, int mut &K, usize mut &len) -
 
   var fp = compute_bounded_fp(value);
 
-  var ok = grisu_digits(beg, end, fp, K, len);
+  var ok = grisu_digits(beg, end, &mut fp, &mut K, &mut len);
 
   if (!ok)
   {
-    fallback_digits(beg, end, fp, K, len);
+    fallback_digits(beg, end, &mut fp, &mut K, &mut len);
   }
 }
 
@@ -540,15 +540,15 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
 
   if (x.value.f != 0)
   {
-    normalize(x.value);
+    normalize(&mut x.value);
 
     var K = 0;
-    var z = get_cached_power10(rp, K);
+    var z = get_cached_power10(rp, &mut K);
 
     if (K != rp)
     {
       var y = DiyFp(pow10(rp - K), 0);
-      normalize(y);
+      normalize(&mut y);
       x.value = x.value * y;
     }
 
@@ -556,7 +556,7 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
 
     var exp = x.value.e;
 
-    normalize(x.value);
+    normalize(&mut x.value);
 
     const ulp_shift = 3;
     const hidden_bit = 1 << (std::F64::digits - 1);
@@ -600,7 +600,7 @@ pub fn scan<T>(u8 *beg, u8 *end, T mut &value) -> usize
 {
   var ch = beg;
 
-  var fp = parse_decfloat(ch, end);
+  var fp = parse_decfloat(&mut ch, end);
 
   if (!fp.ok)
     return 0;

@@ -146,7 +146,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
       {
         for(var end = vm.text.end; ch != end; ++ch)
         {
-          if (match_prefix(vm, ch, program))
+          if (match_prefix(&mut vm, ch, program))
             break;
         }
       }
@@ -221,7 +221,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
 
             var cc = cast<condition>(*(thread.pc + 1));
 
-            if (match_condition(vm, ch, cc))
+            if (match_condition(&mut vm, ch, cc))
             {
               thread.pc = program.data + out;
               continue;
@@ -263,7 +263,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
             {
               if (!eaten)
               {
-                if (utf::decode(thread.state, thread.codepoint, *ch) != 0)
+                if (utf::decode(&mut thread.state, &mut thread.codepoint, *ch) != 0)
                   break;
 
                 eaten = true;
@@ -296,7 +296,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
     if (ch == vm.text.end)
       break;
 
-    std::unordered_erase_if(vm.threads, fn(thread &t) { return t.state == utf::REJECT; });
+    vm.threads.unordered_erase_if(fn(thread &t) { return t.state == utf::REJECT; });
   }
 
   return matched;
@@ -304,10 +304,10 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
 
 pub fn execute(machine mut &vm, Span<u32> &program) -> bool
 {
-  return execute(vm, std::span(program.data, program.len), std::mutable_span<u8*>(null, 0));
+  return execute(&mut vm, std::span(program.data, program.len), std::mutable_span<u8*>(null, 0));
 }
 
 pub fn execute(machine mut &vm, Span<u32> &program, Span<u8*> mut &captures) -> bool
 {
-  return execute(vm, std::span(program.data, program.len), std::mutable_span(captures.data, captures.len));
+  return execute(&mut vm, std::span(program.data, program.len), std::mutable_span(captures.data, captures.len));
 }

@@ -62,12 +62,12 @@ pub struct iterator_pair<R, I, J>
 
 pub struct moveable_iterator_pair<R, I, J>
 {
-  R &&range;
+  R mut &range;
 
   pub I first;
   pub J second;
 
-  pub moveable_iterator_pair(R &&range, I first, J second)
+  pub moveable_iterator_pair(R mut &range, I first, J second)
     : range(&range), first(first), second(second)
   {
   }
@@ -100,7 +100,7 @@ pub struct moveable_iterator_pair<R, I, J>
 #[lifetime(consume(range))]
 pub fn move<R, I, J>(iterator_pair<R, I, J> mut &range)
 {
-  return moveable_iterator_pair(range.range, range.begin, range.end);
+  return moveable_iterator_pair(&mut range.range, range.begin, range.end);
 }
 
 pub fn is_range<R, T>() -> bool
@@ -165,17 +165,17 @@ pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
 
 pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
 {
-  ctx.written += std::print_to(os, "[");
+  ctx.written += std::print_to(&mut os, "[");
 
   for(var k = 0, var &value : range;; ++k)
   {
     if (k != 0)
-      ctx.written += std::print_to(os, ", ");
+      ctx.written += std::print_to(&mut os, ", ");
 
-    std::fmt_to(os, ctx, value);
+    std::fmt_to(&mut os, &mut ctx, value);
   }
 
-  ctx.written += std::print_to(os, "]");
+  ctx.written += std::print_to(&mut os, "]");
 }
 
 pub struct iota_view<I, J>
@@ -330,8 +330,8 @@ pub struct reverse_view<R, I, J>
   {
     pub X base;
 
-    reverse_iterator(X &&base)
-      : base(&&base)
+    reverse_iterator(X base)
+      : base(base)
     {
     }
 
@@ -402,20 +402,20 @@ pub struct reverse_view<R, I, J>
 pub fn reverse<T>(Range<T> &&range)
   where requires (typeof(range) range) { --range.end; }
 {
-  return reverse_view<typeof(range)>(range, range.begin, range.end);
+  return reverse_view<typeof(range)>(&&range, range.begin, range.end);
 }
 
 #[lifetime(depend(range))]
 pub fn reverse<Rs, I, J>(zip_view<Rs, I, J> &&range)
   where requires (typeof(range) range) { --range.end; }
 {
-  return reverse_view<typeof(range)>(range, range.begin, std::next(range.begin, range.len));
+  return reverse_view<typeof(range)>(&&range, range.begin, std::next(range.begin, range.len));
 }
 
 #[lifetime(consume(range))]
 pub fn move<R, I, J>(reverse_view<R, I, J> mut &range)
 {
-  return moveable_iterator_pair(range, range.begin, range.end);
+  return moveable_iterator_pair(&mut range, range.begin, range.end);
 }
 
 pub struct filter_view<R, I, J, Pred>
@@ -426,7 +426,7 @@ pub struct filter_view<R, I, J, Pred>
   pub filter_iterator<J> second;
 
   pub filter_view(R &&range, I beg, J end, Pred &&pred)
-    : range(&range), first(beg, end, _pred), second(end, _pred),
+    : range(&range), first(beg, end, range, _pred), second(end, range, _pred),
       _pred(&&pred)
   {
   }
@@ -437,15 +437,15 @@ pub struct filter_view<R, I, J, Pred>
   {
     pub X base;
 
-    filter_iterator(X &&base, J &&end, Pred &pred)
-      : base(&&base), end(&&end), pred(&pred)
+    filter_iterator(X base, J end, R &range, Pred &pred)
+      : base(base), end(end), range(&range), pred(&pred)
     {
-      while (this.base != this.end && !this.pred(*this.base))
+      while (this.base != this.end && !this.pred(this.range[this.base]))
         ++this.base;
     }
 
-    filter_iterator(X &&end, Pred &pred)
-      : base(&&end), end(&&end), pred(&pred)
+    filter_iterator(X end, R &range, Pred &pred)
+      : base(end), end(end), range(&range), pred(&pred)
     {
     }
 
@@ -459,7 +459,7 @@ pub struct filter_view<R, I, J, Pred>
     {
       ++this.base;
 
-      while (this.base != this.end && !this.pred(*this.base))
+      while (this.base != this.end && !this.pred(this.range[this.base]))
         ++this.base;
 
       return &this;
@@ -472,7 +472,7 @@ pub struct filter_view<R, I, J, Pred>
       {
         --this.base;
 
-        if (this.pred(*this.base))
+        if (this.pred(this.range[this.base]))
           break;
       }
 
@@ -490,6 +490,7 @@ pub struct filter_view<R, I, J, Pred>
     }
 
     J end;
+    R &range;
     Pred &pred;
   }
 
@@ -517,13 +518,13 @@ pub struct filter_view<R, I, J, Pred>
 #[lifetime(depend(range))]
 pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
 {
-  return filter_view<typeof(range)>(range, range.begin, range.end, &&pred);
+  return filter_view<typeof(range)>(&&range, range.begin, range.end, &&pred);
 }
 
 #[lifetime(consume(range))]
 pub fn move<R, I, J, Pred>(filter_view<R, I, J, Pred> mut &range)
 {
-  return moveable_iterator_pair(range, range.begin, range.end);
+  return moveable_iterator_pair(&mut range, range.begin, range.end);
 }
 
 pub struct transform_view<R, I, J, Func>
@@ -545,8 +546,8 @@ pub struct transform_view<R, I, J, Func>
   {
     pub X base;
 
-    transform_iterator(X &&base)
-      : base(&&base)
+    transform_iterator(X base)
+      : base(base)
     {
     }
 
@@ -618,7 +619,7 @@ pub struct transform_view<R, I, J, Func>
 #[lifetime(depend(range))]
 pub fn transform<T, Func>(Range<T> &&range, Func &&func)
 {
-  return transform_view<typeof(range)>(range, range.begin, range.end, &&func);
+  return transform_view<typeof(range)>(&&range, range.begin, range.end, &&func);
 }
 
 pub struct zip_view<Rs, I, J>
@@ -639,8 +640,8 @@ pub struct zip_view<Rs, I, J>
   {
     pub I base;
 
-    zip_iterator(I &&base, J &&end)
-      : base(&&base), end(&&end)
+    zip_iterator(I base, J end)
+      : base(base), end(end)
     {
     }
 
@@ -769,7 +770,7 @@ pub fn zip(var && ...ranges)
 #[lifetime(depend(range))]
 pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 {
-  return std::iterator_pair<typeof(range)>(range, first, last);
+  return std::iterator_pair<typeof(range)>(&&range, first, last);
 }
 
 #[lifetime(depend(range))]

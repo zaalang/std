@@ -168,7 +168,7 @@ pub fn absdiff<N>(bigint<N> &x, bigint<N> &y) -> bigint<N>
   var result = bigint<N>();
 
   if (x < y)
-    std::swap(&y, &x);
+    std::swap(&mut &y, &mut &x);
 
   var sum = std::sub_with_carry(x.bits[0], y.bits[0]);
 

@@ -210,7 +210,7 @@ pub fn fd_clr(fd_set mut &fds, int n) -> void
   fds.bits[cast<usize>(n) >> 6] &= ~(1 << (n & 63));
 }
 
-pub fn fd_isset(fd_set mut &fds, int n) -> bool
+pub fn fd_isset(fd_set &fds, int n) -> bool
 {
   return fds.bits[cast<usize>(n) >> 6] & (1 << (n & 63)) != 0;
 }

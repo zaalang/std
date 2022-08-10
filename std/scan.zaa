@@ -106,7 +106,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
     }
   }
 
-  var str = std::atoi(is.data, is.end, value, base);
+  var str = std::atoi(is.data, is.end, &mut value, base);
 
   ctx.error = str.error;
   ctx.cursor += str.len;
@@ -114,52 +114,52 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
 
 fn scan(std::string_view is, scan_context mut &ctx, u8 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, u16 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, u32 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, u64 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, usize mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, i8 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, i16 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, i32 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, i64 mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, isize mut &value) -> void
 {
-  scan_int(is, ctx, value);
+  scan_int(is, &mut ctx, &mut value);
 }
 
 fn scan_flt<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
@@ -170,7 +170,7 @@ fn scan_flt<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
     is.remove_prefix(1);
   }
 
-  var str = std::atof(is.data, is.end, value);
+  var str = std::atof(is.data, is.end, &mut value);
 
   ctx.error = str.error;
   ctx.cursor += str.len;
@@ -178,25 +178,25 @@ fn scan_flt<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
 
 fn scan(std::string_view is, scan_context mut &ctx, f32 mut &value) -> void
 {
-  scan_flt(is, ctx, value);
+  scan_flt(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, f64 mut &value) -> void
 {
-  scan_flt(is, ctx, value);
+  scan_flt(is, &mut ctx, &mut value);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, typeof(0) mut &literal) -> void
 {
   var tmp = int(0);
-  scan(is, ctx, tmp);
+  scan(is, &mut ctx, &mut tmp);
   literal = cast(tmp);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, typeof(0.0) mut &literal) -> void
 {
   var tmp = float(0.0);
-  scan(is, ctx, tmp);
+  scan(is, &mut ctx, &mut tmp);
   literal = cast(tmp);
 }
 
@@ -216,14 +216,14 @@ pub fn scan_to<T>(std::string_view is, scan_context mut &ctx, T mut &object) -> 
 {
   using T;
 
-  scan(is, ctx, object);
+  scan(is, &mut ctx, &mut object);
 }
 
 pub fn sscan<T>(String &str, T mut &value) -> scan_result
 {
   var ctx = scan_context();
 
-  scan_to(std::string_view(str.data, str.len), ctx, value);
+  scan_to(std::string_view(str.data, str.len), &mut ctx, &mut value);
 
   var result = scan_result();
 
@@ -272,7 +272,7 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
                 switch (*ch)
                 {
                   case '0' ..= '9':
-                    ch += std::atoi(ch, end, maxwidth).len;
+                    ch += std::atoi(ch, end, &mut maxwidth).len;
                 }
 
                 if (ch != end)
@@ -316,7 +316,7 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
             {
               -> {
                 case $(k):
-                  scan_to(std::string_view(beg, len), ctx, args.$(k));
+                  scan_to(std::string_view(beg, len), &mut ctx, &mut args.$(k));
               }
             }
           }

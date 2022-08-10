@@ -120,7 +120,7 @@ pub struct string_view : std::span<u8>
       {
         this.n += 1;
 
-        if (utf::decode(state, this.codepoint, *ch) == 0)
+        if (utf::decode(&mut state, &mut this.codepoint, *ch) == 0)
           break;
       }
 
@@ -135,7 +135,7 @@ pub struct string_view : std::span<u8>
       var state = 0;
       for(var ch = this.super - this.n; ch != this.super; ++ch)
       {
-        utf::decode(state, this.codepoint, *ch);
+        utf::decode(&mut state, &mut this.codepoint, *ch);
       }
 
       this.super -= this.n;
@@ -156,7 +156,7 @@ pub struct string_view : std::span<u8>
     {
       var valid = false;
 
-      return utf::len(rhs.super, lhs.super, valid);
+      return utf::len(rhs.super, lhs.super, &mut valid);
     }
 
     pub fn len(char_iterator &this) -> usize
@@ -429,7 +429,7 @@ pub struct string_view : std::span<u8>
 
   pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
   {
-    std::fmt(os, ctx, range);
+    std::fmt(&mut os, &mut ctx, range);
   }
 
   #[lifetime(clone(this))]
@@ -549,17 +549,17 @@ pub struct string<Allocator = std::allocator, N = 24>
     : _allocator(allocator),
       _smallbuffer(void)
   {
-    init(this);
+    init(&mut this);
   }
   
   pub string(String &&other, Allocator &allocator = Allocator())
     : _allocator(allocator),
       _smallbuffer(void)
   {
-    init(this);
+    init(&mut this);
 
-    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
-      this.take(other);
+    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { this.take(&mut other); })
+      this.take(&mut other);
     #else
       this.insert(this._len, other.data, other.len);
   }
@@ -574,10 +574,10 @@ pub struct string<Allocator = std::allocator, N = 24>
       return &this;
     }
 
-    clear(this);
+    clear(&mut this);
 
-    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { take(this, other); })
-      this.take(other);
+    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { this.take(&mut other); })
+      this.take(&mut other);
     #else
       this.insert(this._len, other.data, other.len);
 
@@ -719,8 +719,8 @@ pub struct string<Allocator = std::allocator, N = 24>
       var data = cast<u8 mut *>(this._allocator.allocate(capacity, alignof<u8>));
       
       memcpy(data, this._data, this._len);
-      swap(this._data, data);
-      swap(this._capacity, capacity);
+      swap(&mut this._data, &mut data);
+      swap(&mut this._capacity, &mut capacity);
 
       if (data != this._smallbuffer.data)
         this._allocator.free(data, capacity);
@@ -730,7 +730,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this))]
   pub fn resize(this mut &, usize size) -> void
   {
-    reserve(this, size);
+    reserve(&mut this, size);
 
     this._len = size;
   }
@@ -744,19 +744,19 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), depend(this))]
   pub fn insert(this mut &, u8 *position, u8 ch) -> (u8 mut *, usize)
   {
-    return insert(this, position - this.begin, ch);
+    return insert(&mut this, position - this.begin, ch);
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert(this mut &, usize position, u8 ch) -> (u8 mut *, usize)
   {
-    return insert(this, position, string_view(&ch, 1));
+    return insert(&mut this, position, string_view(&ch, 1));
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert(this mut &, u8 *position, char ch) -> (u8 mut *, usize)
   {
-    return insert(this, position - this.begin, ch);
+    return insert(&mut this, position - this.begin, ch);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -765,13 +765,13 @@ pub struct string<Allocator = std::allocator, N = 24>
     var buf = [0; 8];
     var len = utf::encode(buf.data, ch);
 
-    return insert(this, position, string_view(buf.data, len));
+    return insert(&mut this, position, string_view(buf.data, len));
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert(this mut &, u8 *position, String &str) -> (u8 mut *, usize)
   {
-    return insert(this, position - this.begin, str);
+    return insert(&mut this, position - this.begin, str);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -781,7 +781,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
     assert(position <= this._len);
 
-    insert(this, position, str.data, str.len);
+    insert(&mut this, position, str.data, str.len);
 
     return (this._data + position, len);
   }
@@ -789,7 +789,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), depend(this))]
   pub fn insert<I>(this mut &, u8 *position, I first, Sentinal<I> last) -> (u8 mut *, usize)
   {
-    return insert(this, position - this.begin, first, last);
+    return insert(&mut this, position - this.begin, first, last);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -799,7 +799,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
     while (first != last)
     {
-      index += insert(this, index, *first++).1;
+      index += insert(&mut this, index, *first++).1;
     }
 
     return (this._data + position, index - position);
@@ -808,13 +808,13 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, u8 *position, usize len) -> u8 mut *
   {
-    return erase(this, first - this.begin, len);
+    return erase(&mut this, first - this.begin, len);
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, u8 *first, u8 *last) -> u8 mut *
   {
-    return erase(this, first - this.begin, last - first);
+    return erase(&mut this, first - this.begin, last - first);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -835,13 +835,13 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), depend(this))]
   pub fn replace(this mut &, u8 *position, usize len, String &str) -> u8 mut *
   {
-    return replace(this, position - this.begin, len, str);
+    return replace(&mut this, position - this.begin, len, str);
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn replace(this mut &, u8 *first, u8 *last, String &str) -> u8 mut *
   {
-    return replace(this, first - this.begin, last - first, str);
+    return replace(&mut this, first - this.begin, last - first, str);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -856,13 +856,13 @@ pub struct string<Allocator = std::allocator, N = 24>
     {
       memmove(this._data + position, str.data, str.len);
 
-      erase(this, position + str.len, count - str.len);
+      erase(&mut this, position + str.len, count - str.len);
     }
     else if (count < str.len)
     {
       memmove(this._data + position, str.data, count);
 
-      insert(this, position + count, str.data + count, str.len - count);
+      insert(&mut this, position + count, str.data + count, str.len - count);
     }
     else
     {
@@ -881,7 +881,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     }
     else
     {
-      insert(this, this._len, ch);
+      insert(&mut this, this._len, ch);
     }
 
     return &this;
@@ -896,7 +896,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     }
     else
     {
-      insert(this, this._len, ch);
+      insert(&mut this, this._len, ch);
     }
 
     return &this;
@@ -905,7 +905,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), depend(this))]
   pub fn +=(this mut &, String &str) -> string mut &
   {
-    insert(this, this._len, str.data, str.len);
+    insert(&mut this, this._len, str.data, str.len);
 
     return &this;
   }
@@ -915,7 +915,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     try
     {
-      return std::print_to(this, args...);
+      return std::print_to(&mut this, args...);
     }
     catch(std::error e)
     {
@@ -928,7 +928,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     try
     {
-      return std::format_to(this, format, args...);
+      return std::format_to(&mut this, format, args...);
     }
     catch(std::error e)
     {
@@ -941,7 +941,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     try
     {
-      return std::format_to(this, format, args...);
+      return std::format_to(&mut this, format, args...);
     }
     catch(std::error e)
     {
@@ -952,7 +952,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this))]
   pub fn write(this mut &, u8 *data, usize len) -> usize
   {
-    insert(this, this._len, data, len);
+    insert(&mut this, this._len, data, len);
 
     return len;
   }
@@ -971,16 +971,16 @@ pub struct string<Allocator = std::allocator, N = 24>
 
     if (other._data != other._smallbuffer.data)
     {
-      swap(this._data, other._data);
-      swap(this._len, other._len);
-      swap(this._capacity, other._capacity);
+      swap(&mut this._data, &mut other._data);
+      swap(&mut this._len, &mut other._len);
+      swap(&mut this._capacity, &mut other._capacity);
 
       if (other._data == this._smallbuffer.data)
         other.init();
     }
     else
     {
-      insert(this, this._len, other.data, other.len);
+      insert(&mut this, this._len, other.data, other.len);
 
       other.clear();
     }
@@ -1001,7 +1001,7 @@ pub struct string<Allocator = std::allocator, N = 24>
       memcpy(data + position, src, len);
       memcpy(data + position + len, this._data + position, this._len - position);
 
-      swap(this._data, data);
+      swap(&mut this._data, &mut data);
 
       if (data != this._smallbuffer.data)
         this._allocator.free(data, this._capacity);
@@ -1118,7 +1118,7 @@ pub fn sprint<Args>(Span<u8> mut &os, Args & ...args) -> usize
 {
   try
   {
-    return std::print_to(std::mutable_span(os.data, os.len), args...);
+    return std::print_to(&mut std::mutable_span(os.data, os.len), args...);
   }
   catch(std::error e)
   {
@@ -1130,7 +1130,7 @@ pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args) -
 {
   try
   {
-    return std::format_to(std::mutable_span(os.data, os.len), format, args...);
+    return std::format_to(&mut std::mutable_span(os.data, os.len), format, args...);
   }
   catch(std::error e)
   {
@@ -1142,7 +1142,7 @@ pub fn sprintf<Args>(Span<u8> mut &os, String &format, Args & ...args) -> usize
 {
   try
   {
-    return std::format_to(std::mutable_span(os.data, os.len), format, args...);
+    return std::format_to(&mut std::mutable_span(os.data, os.len), format, args...);
   }
   catch(std::error e)
   {
@@ -1488,7 +1488,7 @@ pub fn replace_all(string mut &str, char from, char to) -> usize
   var to_buf = [0; 8];
   var to_len = utf::encode(to_buf.data, to);
 
-  return replace_all(str, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
+  return replace_all(&mut str, string_view(from_buf.data, from_len), string_view(to_buf.data, to_len));
 }
 
 #[lifetime(poison(str))]

@@ -329,7 +329,7 @@ pub fn duration_suffix<Period>()
 pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, duration<R, P> &duration) throws -> void
 {
   var buf = [0; 256];
-  var len = std::format_to(std::mutable_span<u8>(buf.data, buf.len), "{}{}", duration.count, duration_suffix<P>);
+  var len = std::format_to(&mut std::mutable_span<u8>(buf.data, buf.len), "{}{}", duration.count, duration_suffix<P>);
 
-  std::fmt_to(os, ctx, std::string_view(buf.data, len));
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
 }

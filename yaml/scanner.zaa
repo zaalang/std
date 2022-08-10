@@ -143,7 +143,7 @@ pub struct scanner
 
   fn peek(this mut &, InputReader mut &is, usize index) throws -> u8
   {
-    if (var buffer = this.prefix(is, index + 1); index < buffer.len)
+    if (var buffer = this.prefix(&mut is, index + 1); index < buffer.len)
       return buffer[index];
 
     return 0;
@@ -174,7 +174,7 @@ pub struct scanner
   {
     indent = -1;
     allow_simple_key = true;
-    emit_stream_start(this);
+    emit_stream_start(&mut this);
   }
 
   pub ~scanner() = default;
@@ -222,26 +222,26 @@ fn is_flow(u8 ch) -> bool
 
 fn skip_blank(scanner mut &this, InputReader mut &is) throws -> void
 {
-  while (is_blank(this.peek(is)))
-    this.eat(is);
+  while (is_blank(this.peek(&mut is)))
+    this.eat(&mut is);
 }
 
 fn skip_break(scanner mut &this, InputReader mut &is) throws -> void
 {
-  if (is_break(this.peek(is)))
+  if (is_break(this.peek(&mut is)))
   {
-    if (this.prefix(is, 2) == "\r\n")
-      this.eat(is);
+    if (this.prefix(&mut is, 2) == "\r\n")
+      this.eat(&mut is);
 
-    this.eat(is);
+    this.eat(&mut is);
   }
 }
 
 fn read_break(scanner mut &this, InputReader mut &is, std::string mut &result) throws -> void
 {
-  if (is_break(this.peek(is)))
+  if (is_break(this.peek(&mut is)))
   {
-    skip_break(this, is);
+    skip_break(&mut this, &mut is);
 
     result += cast<u8>('\n');
   }
@@ -249,40 +249,40 @@ fn read_break(scanner mut &this, InputReader mut &is, std::string mut &result) t
 
 fn scan_to_next_break(scanner mut &this, InputReader mut &is) throws -> void
 {
-  while (!is_breakz(this.peek(is)))
-    this.eat(is);
+  while (!is_breakz(this.peek(&mut is)))
+    this.eat(&mut is);
 }
 
 fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
 {
   for(;;)
   {
-    switch (this.peek(is))
+    switch (this.peek(&mut is))
     {
       case ' ':
-        this.eat(is);
+        this.eat(&mut is);
 
       case '\t':
         if (this.flow_level == 0)
         {
           var i = 1;
-          while (is_blank(this.peek(is, i)))
+          while (is_blank(this.peek(&mut is, i)))
             ++i;
 
-          if (this.peek(is, i) != cast('[') && this.peek(is, i) != cast('{'))
+          if (this.peek(&mut is, i) != cast('[') && this.peek(&mut is, i) != cast('{'))
             break;
         }
 
-        this.eat(is);
+        this.eat(&mut is);
 
       case '\r':
       case '\n':
         if (this.flow_level == 0)
           this.allow_simple_key = true;
-        skip_break(this, is);
+        skip_break(&mut this, &mut is);
 
       case '#':
-        scan_to_next_break(this, is);
+        scan_to_next_break(&mut this, &mut is);
 
       else:
         break;
@@ -302,7 +302,7 @@ fn save_simple_key(scanner mut &this) -> void
     key.token_number = this.tokens_parsed + this.tokens.len - this.tokens_head;
     key.loc = this.loc;
 
-    remove_simple_key(this);
+    remove_simple_key(&mut this);
 
     this.simple_keys.pop_back();
     this.simple_keys.push_back(key);
@@ -372,8 +372,8 @@ fn emit_stream_end(scanner mut &this) -> void
     this.loc.column = 0;
   }
 
-  unwind_indent(this, -1);
-  remove_simple_key(this);
+  unwind_indent(&mut this, -1);
+  remove_simple_key(&mut this);
   this.allow_simple_key = false;
 
   this.tokens.push_back(make_token(token::type::stream_end, this.loc));
@@ -381,72 +381,72 @@ fn emit_stream_end(scanner mut &this) -> void
 
 fn is_directive(scanner mut &this, InputReader mut &is) throws -> bool
 {
-  return this.loc.column == 0 && this.peek(is) == cast('%');
+  return this.loc.column == 0 && this.peek(&mut is) == cast('%');
 }
 
 fn scan_directive(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
-  unwind_indent(this, -1);
-  remove_simple_key(this);
+  unwind_indent(&mut this, -1);
+  remove_simple_key(&mut this);
   this.allow_simple_key = false;
 
   var value = std::string();
 
-  var ch = this.peek(is);
+  var ch = this.peek(&mut is);
 
   while (!is_breakz(ch) && ch != cast('#'))
   {
     value += ch;
-    this.eat(is);
-    ch = this.peek(is);
+    this.eat(&mut is);
+    ch = this.peek(&mut is);
   }
 
   if (ch == cast('#'))
-    scan_to_next_break(this, is);
+    scan_to_next_break(&mut this, &mut is);
 
-  skip_break(this, is);
+  skip_break(&mut this, &mut is);
 
   this.tokens.push_back(make_token(token::type::directive, scalar_style::plain, value, loc));
 }
 
 fn is_document_start(scanner mut &this, InputReader mut &is) throws -> bool
 {
-  return this.loc.column == 0 && this.peek(is) == cast('-') && this.prefix(is, 3) == "---" && is_whitespace(this.peek(is, 3));
+  return this.loc.column == 0 && this.peek(&mut is) == cast('-') && this.prefix(&mut is, 3) == "---" && is_whitespace(this.peek(&mut is, 3));
 }
 
 fn scan_document_start(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
-  unwind_indent(this, -1);
-  remove_simple_key(this);
+  unwind_indent(&mut this, -1);
+  remove_simple_key(&mut this);
   this.allow_simple_key = false;
 
   for(var i = 0; i < 3; ++i)
-    this.eat(is);
+    this.eat(&mut is);
 
-  skip_blank(this, is);
+  skip_blank(&mut this, &mut is);
 
   this.tokens.push_back(make_token(token::type::document_start, loc));
 }
 
 fn is_document_end(scanner mut &this, InputReader mut &is) throws -> bool
 {
-  return this.loc.column == 0 && this.peek(is) == cast('.') && this.prefix(is, 3) == "..." && is_whitespace(this.peek(is, 3));
+  return this.loc.column == 0 && this.peek(&mut is) == cast('.') && this.prefix(&mut is, 3) == "..." && is_whitespace(this.peek(&mut is, 3));
 }
 
 fn scan_document_end(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
-  unwind_indent(this, -1);
-  remove_simple_key(this);
+  unwind_indent(&mut this, -1);
+  remove_simple_key(&mut this);
   this.allow_simple_key = false;
 
   for(var i = 0; i < 3; ++i)
-    this.eat(is);
+    this.eat(&mut is);
 
   this.tokens.push_back(make_token(token::type::document_end, loc));
 }
@@ -455,14 +455,14 @@ fn scan_flow_collection_start(scanner mut &this, InputReader mut &is, token::typ
 {
   var loc = this.loc;
 
-  save_simple_key(this);
+  save_simple_key(&mut this);
   this.allow_simple_key = true;
   this.allow_adjacent_value = false;
   this.simple_keys.push_back(simple_key());
 
   this.flow_level += 1;
 
-  this.eat(is);
+  this.eat(&mut is);
 
   this.tokens.push_back(make_token(type, loc));
 }
@@ -471,13 +471,13 @@ fn scan_flow_collection_end(scanner mut &this, InputReader mut &is, token::type 
 {
   var loc = this.loc;
 
-  remove_simple_key(this);
+  remove_simple_key(&mut this);
   this.allow_simple_key = false;
   this.allow_adjacent_value = (this.flow_level > 0);
   this.simple_keys.pop_back();
   this.flow_level -= 1;
 
-  this.eat(is);
+  this.eat(&mut is);
 
   this.tokens.push_back(make_token(type, loc));
 }
@@ -486,11 +486,11 @@ fn scan_flow_entry(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
-  remove_simple_key(this);
+  remove_simple_key(&mut this);
   this.allow_simple_key = true;
   this.allow_adjacent_value = false;
 
-  this.eat(is);
+  this.eat(&mut is);
 
   this.tokens.push_back(make_token(token::type::flow_entry, loc));
 }
@@ -499,18 +499,18 @@ fn scan_tag(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
-  save_simple_key(this);
+  save_simple_key(&mut this);
   this.allow_simple_key = false;
 
   var value = std::string();
 
-  var ch = this.peek(is);
+  var ch = this.peek(&mut is);
 
   while (is_alpha(ch) || ch == cast('!'))
   {
     value += ch;
-    this.eat(is);
-    ch = this.peek(is);
+    this.eat(&mut is);
+    ch = this.peek(&mut is);
   }
 
   this.tokens.push_back(make_token(token::type::tag, scalar_style::plain, value, loc));
@@ -520,7 +520,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
 {
   var loc = this.loc;
 
-  save_simple_key(this);
+  save_simple_key(&mut this);
   this.allow_simple_key = false;
   this.allow_adjacent_value = true;
 
@@ -530,13 +530,13 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
   var whitespaces = std::string();
   var leading_blanks = false;
 
-  this.eat(is);
+  this.eat(&mut is);
 
   for(;;)
   {
-    var ch = this.peek(is);
+    var ch = this.peek(&mut is);
 
-    if (is_document_start(this, is) || is_document_end(this, is))
+    if (is_document_start(&mut this, &mut is) || is_document_end(&mut this, &mut is))
     {
       this.tokens.push_back(make_token(token::type::unexpected_document_indicator, this.loc));
       break;
@@ -564,14 +564,14 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
         case '\'':
           if (style == scalar_style::singlequoted)
           {
-            if (this.peek(is, 1) != cast('\''))
+            if (this.peek(&mut is, 1) != cast('\''))
               break;
 
-            this.eat(is);
+            this.eat(&mut is);
           }
 
           value += ch;
-          this.eat(is);
+          this.eat(&mut is);
 
         case '"':
           if (style == scalar_style::doublequoted)
@@ -580,21 +580,21 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
           }
 
           value += ch;
-          this.eat(is);
+          this.eat(&mut is);
 
         case '\\':
           if (style == scalar_style::doublequoted)
           {
             var length = 0;
 
-            switch (this.peek(is, 1))
+            switch (this.peek(&mut is, 1))
             {
               case '\r':
               case '\n':
-                this.eat(is);
-                skip_break(this, is);
+                this.eat(&mut is);
+                skip_break(&mut this, &mut is);
                 leading_blanks = true;
-                ch = this.peek(is);
+                ch = this.peek(&mut is);
                 break;
 
               case '0': value += cast<u8>('\0');
@@ -626,32 +626,32 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
             if (length != 0)
             {
               var codepoint = ' ';
-              var buffer = this.prefix(is, length + 2);
+              var buffer = this.prefix(&mut is, length + 2);
 
-              if (std::atoi(buffer.data + 2, buffer.end, codepoint, 16).len != length)
+              if (std::atoi(buffer.data + 2, buffer.end, &mut codepoint, 16).len != length)
                 this.tokens.push_back(make_token(token::type::bad_escape, this.loc));
 
               for(var i = 0; i < buffer.len - 2; ++i)
-                this.eat(is);
+                this.eat(&mut is);
 
               value += codepoint;
             }
 
-            this.eat(is);
-            this.eat(is);
+            this.eat(&mut is);
+            this.eat(&mut is);
           }
           else
           {
             value += ch;
-            this.eat(is);
+            this.eat(&mut is);
           }
 
         else:
           value += ch;
-          this.eat(is);
+          this.eat(&mut is);
       }
 
-      ch = this.peek(is);
+      ch = this.peek(&mut is);
     }
 
     if (style == scalar_style::singlequoted && ch == cast('\''))
@@ -667,23 +667,23 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
         if (!leading_blanks)
           whitespaces += ch;
 
-        this.eat(is);
+        this.eat(&mut is);
       }
       else
       {
         if (leading_blanks)
         {
-          read_break(this, is, trailing_breaks);
+          read_break(&mut this, &mut is, &mut trailing_breaks);
         }
         else
         {
           whitespaces.clear();
-          read_break(this, is, leading_break);
+          read_break(&mut this, &mut is, &mut leading_break);
           leading_blanks = true;
         }
       }
 
-      ch = this.peek(is);
+      ch = this.peek(&mut is);
     }
 
     if (leading_blanks)
@@ -712,7 +712,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
     }
   }
 
-  this.eat(is);
+  this.eat(&mut is);
 
   this.tokens.push_back(make_token(token::type::scalar, style, value, loc));
 }
@@ -721,20 +721,20 @@ fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws 
 {
   var loc = this.loc;
 
-  save_simple_key(this);
+  save_simple_key(&mut this);
   this.allow_simple_key = false;
 
   var value = std::string();
 
-  this.eat(is);
+  this.eat(&mut is);
 
-  var ch = this.peek(is);
+  var ch = this.peek(&mut is);
 
   while (is_alpha(ch) || ch == cast(':'))
   {
     value += ch;
-    this.eat(is);
-    ch = this.peek(is);
+    this.eat(&mut is);
+    ch = this.peek(&mut is);
   }
 
   this.tokens.push_back(make_token(type, value, loc));
@@ -742,7 +742,7 @@ fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws 
 
 fn is_key(scanner mut &this, InputReader mut &is) throws -> bool
 {
-  return this.flow_level > 0 || is_whitespace(this.peek(is, 1));
+  return this.flow_level > 0 || is_whitespace(this.peek(&mut is, 1));
 }
 
 fn scan_key(scanner mut &this, InputReader mut &is) throws -> void
@@ -754,22 +754,22 @@ fn scan_key(scanner mut &this, InputReader mut &is) throws -> void
     if (!this.allow_simple_key)
       this.tokens.push_back(make_token(token::type::invalid_mapping_start, loc));
 
-    if (add_indent(this, this.loc.column))
+    if (add_indent(&mut this, this.loc.column))
       this.tokens.push_back(make_token(token::type::block_mapping_start, loc));
   }
 
-  remove_simple_key(this);
+  remove_simple_key(&mut this);
   this.allow_simple_key = (this.flow_level == 0);
 
-  this.eat(is);
-  skip_blank(this, is);
+  this.eat(&mut is);
+  skip_blank(&mut this, &mut is);
 
   this.tokens.push_back(make_token(token::type::key, loc));
 }
 
 fn is_value(scanner mut &this, InputReader mut &is) throws -> bool
 {
-  return (this.flow_level > 0 && (is_flow(this.peek(is, 1)) || this.allow_adjacent_value)) || is_whitespace(this.peek(is, 1));
+  return (this.flow_level > 0 && (is_flow(this.peek(&mut is, 1)) || this.allow_adjacent_value)) || is_whitespace(this.peek(&mut is, 1));
 }
 
 fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
@@ -784,7 +784,7 @@ fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
 
     this.tokens.insert(this.tokens.begin + idx, make_token(token::type::key, loc));
 
-    if (this.flow_level == 0 && add_indent(this, key.loc.column))
+    if (this.flow_level == 0 && add_indent(&mut this, key.loc.column))
       this.tokens.insert(this.tokens.begin + idx, make_token(token::type::block_mapping_start, loc));
 
     this.simple_keys.back.possible = false;
@@ -795,7 +795,7 @@ fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
     if (this.flow_level == 0 && !this.allow_simple_key)
       this.tokens.push_back(make_token(token::type::invalid_mapping_start, loc));
 
-    if (this.flow_level == 0 && add_indent(this, this.loc.column))
+    if (this.flow_level == 0 && add_indent(&mut this, this.loc.column))
       this.tokens.push_back(make_token(token::type::block_mapping_start, loc));
 
     this.allow_simple_key = (this.flow_level == 0);
@@ -803,15 +803,15 @@ fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
 
   this.allow_adjacent_value = false;
 
-  this.eat(is);
-  skip_blank(this, is);
+  this.eat(&mut is);
+  skip_blank(&mut this, &mut is);
 
   this.tokens.push_back(make_token(token::type::value, loc));
 }
 
 fn is_block_entry(scanner mut &this, InputReader mut &is) throws -> bool
 {
-  return is_whitespace(this.peek(is, 1));
+  return is_whitespace(this.peek(&mut is, 1));
 }
 
 fn scan_block_entry(scanner mut &this, InputReader mut &is) throws -> void
@@ -823,15 +823,15 @@ fn scan_block_entry(scanner mut &this, InputReader mut &is) throws -> void
     if (!this.allow_simple_key)
       this.tokens.push_back(make_token(token::type::invalid_sequence_start, loc));
 
-    if (add_indent(this, this.loc.column))
+    if (add_indent(&mut this, this.loc.column))
       this.tokens.push_back(make_token(token::type::block_sequence_start, loc));
   }
 
-  remove_simple_key(this);
+  remove_simple_key(&mut this);
   this.allow_simple_key = true;
 
-  this.eat(is);
-  skip_blank(this, is);
+  this.eat(&mut is);
+  skip_blank(&mut this, &mut is);
 
   this.tokens.push_back(make_token(token::type::block_entry, loc));
 }
@@ -842,19 +842,19 @@ fn block_scalar_breaks(scanner mut &this, InputReader mut &is, int mut &indent, 
 
   for(;;)
   {
-    while ((indent == 0 || this.loc.column < indent) && this.peek(is) == cast(' '))
-      this.eat(is);
+    while ((indent == 0 || this.loc.column < indent) && this.peek(&mut is) == cast(' '))
+      this.eat(&mut is);
 
     if (this.loc.column > max_indent)
       max_indent = this.loc.column;
 
-    if (this.loc.column < indent && this.peek(is) == cast('\t'))
+    if (this.loc.column < indent && this.peek(&mut is) == cast('\t'))
       this.tokens.push_back(make_token(token::type::bad_indent_character, this.loc));
 
-    if (!is_break(this.peek(is)))
+    if (!is_break(this.peek(&mut is)))
       break;
 
-    read_break(this, is, result);
+    read_break(&mut this, &mut is, &mut result);
   }
 
   if (indent == 0)
@@ -870,7 +870,7 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
 {
   var loc = this.loc;
 
-  save_simple_key(this);
+  save_simple_key(&mut this);
   this.allow_simple_key = true;
 
   var indent = 0;
@@ -883,23 +883,23 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
   var leading_break = std::string();
   var trailing_breaks = std::string();
 
-  this.eat(is);
-  var ch = this.peek(is);
+  this.eat(&mut is);
+  var ch = this.peek(&mut is);
 
   if (ch == cast('+') || ch == cast('-'))
   {
     chomping = (ch == cast('+')) ? +1 : -1;
 
-    this.eat(is);
+    this.eat(&mut is);
 
-    if (ch = this.peek(is); is_digit(ch))
+    if (ch = this.peek(&mut is); is_digit(ch))
     {
       if (ch == cast('0'))
         this.tokens.push_back(make_token(token::type::bad_indent_indicator, this.loc));
 
       increment = cast<int>(ch) - cast('0');
 
-      this.eat(is);
+      this.eat(&mut is);
     }
   }
   else if (is_digit(ch))
@@ -909,31 +909,31 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
 
     increment = cast<int>(ch) - cast('0');
 
-    this.eat(is);
+    this.eat(&mut is);
 
-    if (ch = this.peek(is); ch == cast('+') || ch == cast('-'))
+    if (ch = this.peek(&mut is); ch == cast('+') || ch == cast('-'))
     {
       chomping = (ch == cast('+')) ? +1 : -1;
 
-      this.eat(is);
+      this.eat(&mut is);
     }
   }
 
-  skip_blank(this, is);
+  skip_blank(&mut this, &mut is);
 
-  if (this.peek(is) == cast('#'))
-    scan_to_next_break(this, is);
+  if (this.peek(&mut is) == cast('#'))
+    scan_to_next_break(&mut this, &mut is);
 
-  skip_break(this, is);
+  skip_break(&mut this, &mut is);
 
   if (increment > 0)
     indent = (this.indent > 0) ? this.indent + increment : increment;
 
-  block_scalar_breaks(this, is, indent, trailing_breaks);
+  block_scalar_breaks(&mut this, &mut is, &mut indent, &mut trailing_breaks);
 
   while (this.loc.column == indent)
   {
-    if (ch = this.peek(is); !is_z(ch))
+    if (ch = this.peek(&mut is); !is_z(ch))
     {
       trailing_blank = is_blank(ch);
 
@@ -957,17 +957,17 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
       while (!is_breakz(ch))
       {
         value += ch;
-        this.eat(is);
-        ch = this.peek(is);
+        this.eat(&mut is);
+        ch = this.peek(&mut is);
       }
     }
 
     if (is_z(ch))
       break;
 
-    read_break(this, is, leading_break);
+    read_break(&mut this, &mut is, &mut leading_break);
 
-    block_scalar_breaks(this, is, indent, trailing_breaks);
+    block_scalar_breaks(&mut this, &mut is, &mut indent, &mut trailing_breaks);
   }
 
   if (chomping != -1)
@@ -983,7 +983,7 @@ fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
-  save_simple_key(this);
+  save_simple_key(&mut this);
   this.allow_simple_key = false;
 
   var indent = this.indent + 1;
@@ -996,12 +996,12 @@ fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
 
   for(;;)
   {
-    var ch = this.peek(is);
+    var ch = this.peek(&mut is);
 
     if (ch == cast('#'))
       break;
 
-    if (is_document_start(this, is) || is_document_end(this, is))
+    if (is_document_start(&mut this, &mut is) || is_document_end(&mut this, &mut is))
       break;
 
     for(;;)
@@ -1016,9 +1016,9 @@ fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
           break;
 
         case ':':
-          if (is_whitespace(this.peek(is, 1)))
+          if (is_whitespace(this.peek(&mut is, 1)))
             break;
-          if (this.flow_level > 0 && is_flow(this.peek(is, 1)))
+          if (this.flow_level > 0 && is_flow(this.peek(&mut is, 1)))
             break;
 
         case ',':
@@ -1059,8 +1059,8 @@ fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
       }
 
       value += ch;
-      this.eat(is);
-      ch = this.peek(is);
+      this.eat(&mut is);
+      ch = this.peek(&mut is);
     }
 
     if (!(is_blank(ch) || is_break(ch)))
@@ -1076,23 +1076,23 @@ fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
         if (!leading_blanks)
           whitespaces += ch;
 
-        this.eat(is);
+        this.eat(&mut is);
       }
       else
       {
         if (leading_blanks)
         {
-          read_break(this, is, trailing_breaks);
+          read_break(&mut this, &mut is, &mut trailing_breaks);
         }
         else
         {
           whitespaces.clear();
-          read_break(this, is, leading_break);
+          read_break(&mut this, &mut is, &mut leading_break);
           leading_blanks = true;
         }
       }
 
-      ch = this.peek(is);
+      ch = this.peek(&mut is);
     }
 
     if (this.flow_level == 0 && this.loc.column < indent)
@@ -1107,69 +1107,69 @@ fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
 
 pub fn scan(scanner mut &this, InputReader mut &is) throws -> void
 {
-  scan_to_next_token(this, is);
+  scan_to_next_token(&mut this, &mut is);
 
-  stale_simple_keys(this);
+  stale_simple_keys(&mut this);
 
-  unwind_indent(this, this.loc.column);
+  unwind_indent(&mut this, this.loc.column);
 
-  var ch = this.peek(is);
+  var ch = this.peek(&mut is);
 
   if (ch == 0)
-    return emit_stream_end(this);
+    return emit_stream_end(&mut this);
 
-  if (is_directive(this, is))
-    return scan_directive(this, is);
+  if (is_directive(&mut this, &mut is))
+    return scan_directive(&mut this, &mut is);
 
-  if (is_document_start(this, is))
-    return scan_document_start(this, is);
+  if (is_document_start(&mut this, &mut is))
+    return scan_document_start(&mut this, &mut is);
 
-  if (is_document_end(this, is))
-    return scan_document_end(this, is);
+  if (is_document_end(&mut this, &mut is))
+    return scan_document_end(&mut this, &mut is);
 
   switch(ch)
   {
     case '[':
-      return scan_flow_collection_start(this, is, token::type::flow_sequence_start);
+      return scan_flow_collection_start(&mut this, &mut is, token::type::flow_sequence_start);
     case '{':
-      return scan_flow_collection_start(this, is, token::type::flow_mapping_start);
+      return scan_flow_collection_start(&mut this, &mut is, token::type::flow_mapping_start);
     case ']':
-      return scan_flow_collection_end(this, is, token::type::flow_sequence_end);
+      return scan_flow_collection_end(&mut this, &mut is, token::type::flow_sequence_end);
     case '}':
-      return scan_flow_collection_end(this, is, token::type::flow_mapping_end);
+      return scan_flow_collection_end(&mut this, &mut is, token::type::flow_mapping_end);
     case ',':
-      return scan_flow_entry(this, is);
+      return scan_flow_entry(&mut this, &mut is);
     case '!':
-      return scan_tag(this, is);
+      return scan_tag(&mut this, &mut is);
     case '\'':
-      return scan_flow_scalar(this, is, scalar_style::singlequoted);
+      return scan_flow_scalar(&mut this, &mut is, scalar_style::singlequoted);
     case '\"':
-      return scan_flow_scalar(this, is, scalar_style::doublequoted);
+      return scan_flow_scalar(&mut this, &mut is, scalar_style::doublequoted);
     case '*':
-      return scan_anchor(this, is, token::type::alias);
+      return scan_anchor(&mut this, &mut is, token::type::alias);
     case '&':
-      return scan_anchor(this, is, token::type::anchor);
+      return scan_anchor(&mut this, &mut is, token::type::anchor);
     case '?':
-      if (is_key(this, is))
-        return scan_key(this, is);
+      if (is_key(&mut this, &mut is))
+        return scan_key(&mut this, &mut is);
     case ':':
-      if (is_value(this, is))
-        return scan_value(this, is);
+      if (is_value(&mut this, &mut is))
+        return scan_value(&mut this, &mut is);
     case '-':
-      if (is_block_entry(this, is))
-        return scan_block_entry(this, is);
+      if (is_block_entry(&mut this, &mut is))
+        return scan_block_entry(&mut this, &mut is);
     case '|':
       if (this.flow_level == 0)
-        return scan_block_scalar(this, is, scalar_style::literal);
+        return scan_block_scalar(&mut this, &mut is, scalar_style::literal);
     case '>':
       if (this.flow_level == 0)
-        return scan_block_scalar(this, is, scalar_style::folded);
+        return scan_block_scalar(&mut this, &mut is, scalar_style::folded);
   }
 
   if (ch == cast('\t'))
     this.tokens.push_back(make_token(token::type::bad_indent_character, this.loc));
 
-  return scan_plain(this, is);
+  return scan_plain(&mut this, &mut is);
 }
 
 pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
@@ -1201,7 +1201,7 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
     if (!need_more)
       break;
 
-    scan(this, is);
+    scan(&mut this, &mut is);
   }
 
   this.tokens_parsed += 1;

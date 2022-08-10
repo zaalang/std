@@ -27,7 +27,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub flat_hash_map(flat_hash_map &&other, Allocator &allocator = Allocator())
     : _hash(other.hash), _cmp(other.cmp), _allocator(allocator)
   {
-    insert(this, &&other);
+    insert(&mut this, &&other);
   }
 
   #[lifetime(poison(this))]
@@ -35,12 +35,12 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     if (&this != &other)
     {
-      clear(this);
+      clear(&mut this);
 
       this._cmp = other.cmp;
       this._hash = other.hash;
 
-      insert(this, &&other);
+      insert(&mut this, &&other);
     }
 
     return &this;
@@ -50,7 +50,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     var result = flat_hash_map(allocator);
 
-    result.reserve(capacity);
+    reserve(&mut result, capacity);
 
     return result;
   }
@@ -59,14 +59,14 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     var result = flat_hash_map(allocator);
 
-    insert(result, &&other);
+    insert(&mut result, &&other);
 
     return result;
   }
 
   pub ~flat_hash_map()
   {
-    clear(this);
+    clear(&mut this);
 
     if (_data)
       _allocator.free(_data, _capacity * sizeof<value_type> + (_capacity + 1) * sizeof<i8>);
@@ -243,16 +243,16 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     #if (__is_rvalue<typeof(other)> && __is_same<flat_hash_map, typeof(other)>)
     {
       if (this.empty)
-        return this.take(other);
+        return this.take(&mut other);
 
-      return this.merge(other);
+      return this.merge(&mut other);
     }
 
     if (var first = other.begin, var last = other.end; first != last)
     {
       while (first != last)
       {
-        insert(this, (&&other)[first++]);
+        insert(&mut this, (&&other)[first++]);
       }
     }
   }
@@ -263,7 +263,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     while (first != last)
     {
-      insert(this, *first++);
+      insert(&mut this, *first++);
     }
   }
 
@@ -275,19 +275,19 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     for(var mut &it : std::move(other))
     {
-      insert(this, std::move(it));
+      insert(&mut this, std::move(it));
     }
   }
 
   #[lifetime(poison(this))]
   pub fn erase<Key>(this mut &, Key &key) -> usize
   {
-    var x = this.find(key);
+    var j = this.find(key);
 
-    if (x == this.end)
+    if (j == this.end)
       return 0;
 
-    this.erase(x);
+    this.erase(j);
 
     return 1;
   }
@@ -299,7 +299,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     this._len -= 1;
     *(this._ctrl + index) = deleted;
-    value_type::~key_value_pair(*(this._data + index));
+    value_type::~key_value_pair(&mut *(this._data + index));
 
     return iterator(this._ctrl + index, this._data + index);
   }
@@ -320,11 +320,11 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     assert(this.empty);
     assert(this.allocator == other.allocator);
 
-    swap(this._data, other._data);
-    swap(this._ctrl, other._ctrl);
-    swap(this._len, other._len);
-    swap(this._capacity, other._capacity);
-    swap(this.growth_left, other.growth_left);
+    swap(&mut this._data, &mut other._data);
+    swap(&mut this._ctrl, &mut other._ctrl);
+    swap(&mut this._len, &mut other._len);
+    swap(&mut this._capacity, &mut other._capacity);
+    swap(&mut this.growth_left, &mut other.growth_left);
   }
 
   fn resize(this mut &, usize n) -> void
@@ -336,9 +336,9 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     var data = cast<value_type mut *>(alloc);
     var ctrl = cast<i8 mut *>(cast<uintptr>(alloc) + capacity * sizeof<value_type>);
 
-    swap(this._data, data);
-    swap(this._ctrl, ctrl);
-    swap(this._capacity, capacity);
+    swap(&mut this._data, &mut data);
+    swap(&mut this._ctrl, &mut ctrl);
+    swap(&mut this._capacity, &mut capacity);
 
     memset(this._ctrl, 0x80, this._capacity);
     *(this._ctrl + this._capacity) = sentinal;
@@ -354,7 +354,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
         *(this._ctrl + pos) = hash2;
         new<value_type>(this._data + pos)(std::move(*(data + i)), allocator?: this.allocator);
-        value_type::~key_value_pair(*(data + i));
+        value_type::~key_value_pair(&mut *(data + i));
       }
     }
 
@@ -380,7 +380,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   fn find_or_prepare_insert<Key>(this mut &, Key &key) -> (usize, bool)
   {
     if (this.empty)
-      resize(this, 1);
+      resize(&mut this, 1);
 
     var hash = this._hash(key);
     var hash2 = H2(hash);
@@ -404,7 +404,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (this.growth_left == 0 && !is_deleted(this._ctrl + index))
     {
-      this.resize(this._len * 2 + 1);
+      resize(&mut this, this._len * 2 + 1);
 
       index = this.find_first_non_full(hash);
     }
@@ -424,7 +424,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     if (this._capacity < capacity)
     {
-      resize(this, capacity);
+      resize(&mut this, capacity);
     }
   }
 
@@ -434,7 +434,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     for(var i = 0; i != this._capacity; ++i)
     {
       if (is_full(this._ctrl + i))
-        value_type::~key_value_pair(*(this._data + i));
+        value_type::~key_value_pair(&mut *(this._data + i));
     }
 
     this._len = 0;

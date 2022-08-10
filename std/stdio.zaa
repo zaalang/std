@@ -54,17 +54,17 @@ pub struct file
 
   pub fn print(this mut &, var & ...args) throws -> usize
   {
-    return std::print_to(this, args..., '\n');
+    return std::print_to(&mut this, args..., '\n');
   }
 
   pub fn printf(this mut &, String &format, var & ...args) throws -> usize
   {
-    return std::format_to(this, format, args...);
+    return std::format_to(&mut this, format, args...);
   }
   
   pub fn printf(this mut &, #std::string_literal format, var & ...args) throws -> usize
   {
-    return std::format_to(this, format, args...);
+    return std::format_to(&mut this, format, args...);
   }
 
   pub file(fd fd)
@@ -110,7 +110,7 @@ pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &al
 {
   var buf = std::vector<u8, Alloc, N>(alloc);
 
-  std::file::open(path).read_into(buf, maxread);
+  std::file::open(path).read_into(&mut buf, maxread);
 
   return buf;
 }
@@ -119,7 +119,7 @@ pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &al
 {
   var buf = std::string<Alloc, N>(alloc);
 
-  std::file::open(path).read_into(buf, maxread);
+  std::file::open(path).read_into(&mut buf, maxread);
 
   return buf;
 }
@@ -183,7 +183,7 @@ pub struct StdOut
   {
     try
     {
-      return write(this, &ch, 1);
+      return write(&mut this, &ch, 1);
     }
     catch(std::error e)
     {
@@ -195,7 +195,7 @@ pub struct StdOut
   {
     try
     {
-      return std::print_to(this, args..., '\n');
+      return std::print_to(&mut this, args..., '\n');
     }
     catch(std::error e)
     {
@@ -207,7 +207,7 @@ pub struct StdOut
   {
     try
     {
-      return std::format_to(this, format, args...);
+      return std::format_to(&mut this, format, args...);
     }
     catch(std::error e)
     {
@@ -219,7 +219,7 @@ pub struct StdOut
   {
     try
     {
-      return std::format_to(this, format, args...);
+      return std::format_to(&mut this, format, args...);
     }
     catch(std::error e)
     {
@@ -266,7 +266,7 @@ pub struct StdErr
   {
     try
     {
-      return std::print_to(this, args..., '\n');
+      return std::print_to(&mut this, args..., '\n');
     }
     catch(std::error e)
     {
@@ -278,7 +278,7 @@ pub struct StdErr
   {
     try
     {
-      return std::format_to(this, format, args...);
+      return std::format_to(&mut this, format, args...);
     }
     catch(std::error e)
     {
@@ -290,7 +290,7 @@ pub struct StdErr
   {
     try
     {
-      return std::format_to(this, format, args...);
+      return std::format_to(&mut this, format, args...);
     }
     catch(std::error e)
     {
