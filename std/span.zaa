@@ -122,7 +122,7 @@ pub struct span<T>
   {
   }
 
-  #[lifetime(assign(this, clone(that)), clone(that))]
+  #[lifetime(assign(this, clone(that)), depend(this))]
   pub fn =(this mut &, mutable_span<T> &that) -> span mut &
   {
     this.len = that.len;

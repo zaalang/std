@@ -253,9 +253,9 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     return std::string_view(this.buffer.data, iter.m);
   }
 
-  pub fn lines(this mut &) throws -> std::iterator_pair<buffered_reader, line_iterator, end_iterator>
+  pub fn lines(this mut &) throws -> std::range_view<buffered_reader, line_iterator, end_iterator>
   {
-    return std::iterator_pair(this, ++line_iterator(&mut this), end_iterator());
+    return std::range_view(this, ++line_iterator(&mut this), end_iterator());
   }
 
   usize _head;

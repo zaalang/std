@@ -30,6 +30,7 @@ pub struct string_ref : std::span<u8>
   {
   }
 
+  #[lifetime(clone(this))]
   pub fn String(this &) -> string_view
   {
     return string_view(this.data, this.len);
@@ -472,6 +473,14 @@ pub struct string_view : std::span<u8>
   pub fn split_after_n(this &, usize n, String &seperator)
   {
     return iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator());
+  }
+
+  #[lifetime(assign(this, clone(that)), depend(this))]
+  pub fn =(this mut &, string_ref &that) -> string_view mut &
+  {
+    this.len = that.len;
+    this.data = that.data;
+    return &this;
   }
 
   pub string_view() = default;

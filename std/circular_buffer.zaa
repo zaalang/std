@@ -476,7 +476,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     }
     else
     {
-      insert(&mut this, this.begin, std::moveable_iterator_pair(&mut other, other.begin, other.end));
+      insert(&mut this, this.begin, std::moveable_range_view(&mut other, other.begin, other.end));
 
       other.clear();
     }
