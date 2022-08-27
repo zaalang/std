@@ -414,7 +414,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     if (this._capacity < capacity)
     {
-      capacity = ~0 >> __clz(capacity - 1) + 1;
+      capacity = std::ceil_pow2(capacity);
 
       var data = cast<T mut *>(this._allocator.allocate(capacity * sizeof<T>, alignof<T>));
 

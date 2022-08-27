@@ -185,7 +185,7 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
         *--beg = cast('-');
   }
 
-  fmt_str(&mut os, &mut ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.ptr + str.len - beg);
+  fmt_str(&mut os, &mut ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.len);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, u8 value) throws -> void

@@ -182,3 +182,27 @@ fn is_odd<T>(T x) -> bool
 {
   return std::fract(x) == 0.0 && cast<i64>(x) & 1 == 1;
 }
+
+pub const fn is_pow2<T>(T x) -> bool
+  where __is_integral<T>
+{
+  return x != 0 && (x & (x - 1)) == 0;
+}
+
+pub const fn ceil_pow2<T>(T x) -> T
+  where __is_integral<T>
+{
+  if (x == 0 || x == 1)
+    return 1;
+
+  return cast<T>(u64(~0) >> __clz(cast<u64>(x - 1))) + 1;
+}
+
+pub const fn floor_pow2<T>(T x) -> T
+  where __is_integral<T>
+{
+  if (x == 0)
+    return 0;
+
+  return 1 << (63 - __clz(cast<u64>(x)));
+}
