@@ -148,6 +148,11 @@ pub struct string_view : std::span<u8>
     pub fn +(char_iterator &lhs, usize) -> char_iterator = delete;
     pub fn -(char_iterator &lhs, usize) -> char_iterator = delete;
 
+    pub fn ==(char_iterator &lhs, u8 *rhs) -> bool
+    {
+      return lhs.super == rhs;
+    }
+
     pub fn ==(char_iterator &lhs, end_iterator rhs) -> bool
     {
       return lhs.n == 0;
@@ -224,6 +229,11 @@ pub struct string_view : std::span<u8>
     pub fn +(line_iterator &lhs, usize) -> line_iterator = delete;
     pub fn -(line_iterator &lhs, usize) -> line_iterator = delete;
 
+    pub fn ==(line_iterator &lhs, u8 *rhs) -> bool
+    {
+      return lhs.super == rhs;
+    }
+
     pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
     {
       return lhs.n == 0;
@@ -278,6 +288,11 @@ pub struct string_view : std::span<u8>
     pub fn -(u8 *rhs, word_iterator &lhs) -> usize = delete;
     pub fn +(word_iterator &lhs, usize) -> word_iterator = delete;
     pub fn -(word_iterator &lhs, usize) -> word_iterator = delete;
+
+    pub fn ==(word_iterator &lhs, u8 *rhs) -> bool
+    {
+      return lhs.super == rhs;
+    }
 
     pub fn ==(word_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -355,9 +370,14 @@ pub struct string_view : std::span<u8>
     pub fn +(split_iterator &lhs, usize) -> split_iterator = delete;
     pub fn -(split_iterator &lhs, usize) -> split_iterator = delete;
 
+    pub fn ==(split_iterator &lhs, u8 *rhs) -> bool
+    {
+      return lhs.super == rhs;
+    }
+
     pub fn ==(split_iterator &lhs, end_iterator rhs) -> bool
     {
-      return lhs.count == 0;//lhs.n + lhs.leftover == 0;
+      return lhs.count == 0;
     }
 
     split_iterator(u8 *beg, u8 *end, String &seperator, bool inclusive, usize count)
@@ -420,12 +440,6 @@ pub struct string_view : std::span<u8>
     {
       return &&*iter;
     }
-
-    //#[lifetime(clone(this))]
-    //pub fn [](this &&, usize index)
-    //{
-    //  return &&*std::next(this.begin, index);
-    //}
   }
 
   pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void

@@ -46,7 +46,7 @@ pub fn distance<I>(I first, Sentinal<I> last) -> usize
   }
 }
 
-pub fn next(Iterator i, usize n = 1) -> typeof(i)
+pub static fn next(Iterator i, usize n = 1) -> typeof(i)
 {
   #if (requires (typeof(i) x, usize y) { x + y; })
   {
@@ -64,7 +64,7 @@ pub fn next(Iterator i, usize n = 1) -> typeof(i)
   }
 }
 
-pub fn next(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
+pub static fn next(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
 {
   #if (requires (typeof(i) x, usize y) { x + y; })
   {
@@ -85,7 +85,7 @@ pub fn next(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
   }
 }
 
-pub fn prev(Iterator i, usize n = 1) -> typeof(i)
+pub static fn prev(Iterator i, usize n = 1) -> typeof(i)
 {
   #if (requires (typeof(i) x, usize y) { x - y; })
   {
@@ -103,7 +103,7 @@ pub fn prev(Iterator i, usize n = 1) -> typeof(i)
   }
 }
 
-pub fn prev(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
+pub static fn prev(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
 {
   #if (requires (typeof(i) x, usize y) { x - y; })
   {

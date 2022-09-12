@@ -301,7 +301,7 @@ fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
 {
   for(var op = first; op != last; op += op.len)
   {
-    switch (op)
+    switch (*op)
     {
       case BeginLine:
         emit_condition(&mut ctx, condition::beginline);

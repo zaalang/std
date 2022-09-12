@@ -13,7 +13,6 @@ import std.fmt;
 
 pub concept Range<U>
 {
-  requires<T> !__is_pointer<T>;
   requires<T> (T x) -> U { return x[x.begin]; };
   requires<T> (T x) { x.end; };
 }
@@ -792,8 +791,8 @@ pub fn front<T>(Range<T> &&range)
 }
 
 #[lifetime(follow(range.[]))]
-pub fn [](var &&range, usize index)
-  where is_range<typeof(range)> && __is_match<RandomAccessIterator, typeof(range.begin)>
+pub fn []<Range>(Range &&range, usize index)
+  where requires(Range range) { Range::[](range, range.begin); } && __is_match<RandomAccessIterator, typeof(range.begin)>
 {
   return &&(&&range)[std::next(range.begin, index)];
 }

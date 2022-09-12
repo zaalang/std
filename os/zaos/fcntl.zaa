@@ -79,6 +79,11 @@ pub struct pollfd
   pub u16 events;
   pub u16 revents;
 
+  pub pollfd(i32 fd, u16 events)
+    : fd(fd), events(events)
+  {
+  }
+
   pub pollfd() = default;
   pub pollfd(pollfd&) = default;
   pub fn =(pollfd mut &, pollfd &) -> pollfd mut & = default;

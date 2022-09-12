@@ -270,7 +270,7 @@ fn maybe_empty(expr *first, expr *last) -> bool
 {
   for(var op = first; op != last; op += op.len)
   {
-    switch (op)
+    switch (*op)
     {
       case AnyChar:
         return false;
@@ -831,7 +831,7 @@ fn dump(expr *first, expr *last) -> void
 {
   for(var expr = first; expr != last; expr += expr.len)
   {
-    switch (expr)
+    switch (*expr)
     {
       case NoOp:
         std::printf("{{nop}}");
