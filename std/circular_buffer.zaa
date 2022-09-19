@@ -202,7 +202,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> void
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     if (this.full)
     {
@@ -221,7 +221,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), depend(this))]
   pub fn push_front<Args>(this mut &, Args && ...args) -> void
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     if (this.full)
     {
@@ -240,7 +240,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert<Args>(this mut &, iterator position, Args && ...args) -> iterator
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     if (this.full)
     {
@@ -349,7 +349,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   #[lifetime(poison(this))]
   pub fn take_front(this mut &) -> T
   {
-    var result = std::move(std::launder(this.front));
+    var result = &move std::launder(this.front);
 
     pop_front(&mut this);
 
@@ -359,7 +359,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = std::move(std::launder(this.back));
+    var result = &move std::launder(this.back);
 
     pop_back(&mut this);
 
@@ -490,7 +490,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     {
       T::~T(&mut *(this._data + dst & (this._capacity - 1)));
 
-      new<T>(this._data + dst++ & (this._capacity - 1))(std::move(*(this._data + first++ & (this._capacity - 1))), allocator?: this.allocator);
+      new<T>(this._data + dst++ & (this._capacity - 1))(&move *(this._data + first++ & (this._capacity - 1)), allocator?: this.allocator);
     }
   }
 
@@ -502,7 +502,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     {
       T::~T(&mut *(this._data + (end - 1) & (this._capacity - 1)));
 
-      new<T>(this._data + --end & (this._capacity - 1))(std::move(*(this._data + --last & (this._capacity - 1))), allocator?: this.allocator);
+      new<T>(this._data + --end & (this._capacity - 1))(&move *(this._data + --last & (this._capacity - 1)), allocator?: this.allocator);
     }
   }
 
@@ -510,7 +510,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     while (first != last)
     {
-      new<T>(this._data + dst++ & (this._capacity - 1))(std::move(*(this._data + first++ & (this._capacity - 1))), allocator?: this.allocator);
+      new<T>(this._data + dst++ & (this._capacity - 1))(&move *(this._data + first++ & (this._capacity - 1)), allocator?: this.allocator);
     }
   }
 
@@ -518,7 +518,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     while (first != last)
     {
-      new<T>(dst++)(std::move(*(this._data + first++ & (this._capacity - 1))), allocator?: this.allocator);
+      new<T>(dst++)(&move *(this._data + first++ & (this._capacity - 1)), allocator?: this.allocator);
     }
   }
 

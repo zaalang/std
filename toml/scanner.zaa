@@ -74,7 +74,7 @@ fn make_token(token::type type, std::string value, mark loc) -> token
 {
   var tok = token();
   tok.type = type;
-  tok.value = std::move(value);
+  tok.value = &move value;
   tok.loc = loc;
 
   return tok;
@@ -84,7 +84,7 @@ fn make_token(token::type type, scalar_style style, std::string value, mark loc)
 {
   var tok = token();
   tok.type = type;
-  tok.value = std::move(value);
+  tok.value = &move value;
   tok.style = style;
   tok.loc = loc;
 

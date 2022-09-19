@@ -9,9 +9,9 @@ import std.range : Iterator, RandomAccessIterator, Sentinal, Range;
 
 pub fn swap<T>(T mut &a, T mut &b)
 {
-  var tmp = std::move(a);
-  a = std::move(b);
-  b = std::move(tmp);
+  var tmp = &move a;
+  a = &move b;
+  b = &move tmp;
 }
 
 pub fn fill<O, T>(O dst, Sentinal<O> end, T &value) -> O
@@ -88,7 +88,7 @@ pub fn move<O, I>(O dst, Sentinal<O> end, I first, Sentinal<I> last) -> O
   {
     assert(dst != end);
 
-    *dst++ = std::move(*first++);
+    *dst++ = &move *first++;
   }
 
   return dst;
@@ -100,7 +100,7 @@ pub fn move_backward<O, I>(O dst, O end, I first, I last) -> O
   {
     assert(end != dst);
 
-    *--end = std::move(*--last);
+    *--end = &move *--last;
   }
 
   return end;
@@ -112,7 +112,7 @@ pub fn move_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
   {
     assert(dst != end);
 
-    *dst++ = std::move(*first++);
+    *dst++ = &move *first++;
 
     --n;
   }
@@ -162,7 +162,7 @@ pub fn transform!<O, I, Func>(I first, Sentinal<I> last, Func &func) -> void
 {
   for(; first != last; ++first)
   {
-    *first = func(std::move(*first));
+    *first = func(&move *first);
   }
 }
 
@@ -172,7 +172,7 @@ pub fn transform!<T, Func>(Range<T> mut &range, Func &func) -> void
 
   for(var last = range.end; first != last; ++first)
   {
-    range[first] = func(std::move(std::launder(range[first])));
+    range[first] = func(&move std::launder(range[first]));
   }
 }
 
@@ -199,9 +199,9 @@ pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
   if (first == last)
     return first;
 
-  var tmp = std::move(*first);
+  var tmp = &move *first;
   var lm1 = move(first, last, std::next(first), last);
-  *lm1 = std::move(tmp);
+  *lm1 = &move tmp;
 
   return lm1;
 }
@@ -212,9 +212,9 @@ pub fn rotate_right<I>(I first, I last) -> I
     return last;
 
   var lm1 = std::prev(last);
-  var tmp = std::move(*lm1);
+  var tmp = &move *lm1;
   var fp1 = move_backward(first, last, first, lm1);
-  *first = std::move(tmp);
+  *first = &move tmp;
 
   return fp1;
 }
@@ -563,7 +563,7 @@ pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
     for(var i = first; ++i != last; )
     {
       if (!(*i == value))
-        *first++ = std::move(*i);
+        *first++ = &move *i;
     }
   }
 
@@ -580,7 +580,7 @@ pub fn remove<T, Value>(Range<T> &&range, Value &value)
     for(var i = first; ++i != last; )
     {
       if (!(range[i] == value))
-        range[first++] = std::move(range[i]);
+        range[first++] = &move range[i];
     }
   }
 
@@ -597,7 +597,7 @@ pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
     for(var i = first; ++i != last; )
     {
       if (!pred(*i))
-        *first++ = std::move(*i);
+        *first++ = &move *i;
     }
   }
 
@@ -613,7 +613,7 @@ pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
     for(var i = first; ++i != last; )
     {
       if (!pred(range[i]))
-        range[first++] = std::move(range[i]);
+        range[first++] = &move range[i];
     }
   }
 

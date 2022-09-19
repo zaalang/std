@@ -89,12 +89,12 @@ fn merge(node mut &lhs, node mut &rhs) -> bool
   switch (lhs)
   {
     case Array[array]:
-      array.append(std::move(rhs.as_vec));
+      array.append(&move rhs.as_vec);
 
     case Map[map]:
       for(var mut &it : rhs.as_map)
       {
-        if (var j = map.insert(std::move(it)); !j.1)
+        if (var j = map.insert(&move it); !j.1)
         {
           std::launder(it);
 
@@ -205,7 +205,7 @@ fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
   var mut &entry = std::launder(ctx.stack[ctx.stack.len - 1]);
 
-  ctx.stack[ctx.stack.len - 2].Array.push_back(std::move(entry));
+  ctx.stack[ctx.stack.len - 2].Array.push_back(&move entry);
 
   ctx.stack.pop_back();
 
@@ -291,7 +291,7 @@ fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
 
   var mut &map = std::launder(ctx.stack[ctx.stack.len - 3]).Map;
 
-  if (var j = map.insert(std::move(key), std::move(value)); !j.1)
+  if (var j = map.insert(&move key, &move value); !j.1)
   {
     std::launder(value);
 
@@ -529,7 +529,7 @@ pub fn parse(InputReader mut &is) throws -> parse_result
   }
 
   if (ctx.stack.len != 0)
-    result.doc = std::move(ctx.stack.front);
+    result.doc = &move ctx.stack.front;
 
   return result;
 }

@@ -164,7 +164,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (value_type *, bool)
-    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     var pos = this.lower_bound(key);
 
@@ -180,7 +180,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (value_type *, bool)
-    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     var pos = this.lower_bound(key);
 
@@ -203,7 +203,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     {
       if (this.empty)
       {
-        this._tree = std::move(other._tree);
+        this._tree = &move other._tree;
 
         return;
       }
@@ -236,9 +236,9 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     assert(&this != &other);
     assert(this.allocator == other.allocator);
 
-    for(var mut &it : std::move(other))
+    for(var mut &it : &move other)
     {
-      insert(&mut this, std::move(it));
+      insert(&mut this, &move it);
     }
   }
 

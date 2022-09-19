@@ -155,21 +155,21 @@ pub struct list<T, Allocator = std::allocator>
 
   #[lifetime(depend(this))]
   pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, this.begin.cursor, &&args...).value;
   }
 
   #[lifetime(depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, this.end.cursor, &&args...).value;
   }
 
   #[lifetime(depend(this))]
   pub fn insert<Args>(this mut &, iterator position, Args && ...args) -> iterator
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     return iterator(insert(&mut this, position.cursor, &&args...));
   }
@@ -296,7 +296,7 @@ pub struct list<T, Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn take_front(this mut &) -> T
   {
-    var result = std::move(std::launder(this.front));
+    var result = &move std::launder(this.front);
 
     pop_front(&mut this);
 
@@ -306,7 +306,7 @@ pub struct list<T, Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = std::move(std::launder(this.back));
+    var result = &move std::launder(this.back);
 
     pop_back(&mut this);
 

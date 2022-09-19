@@ -24,13 +24,13 @@ pub union optional<T, Allocator = std::allocator>
   }
 
   pub optional<Args>(Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
     : Some(&&args..., allocator?: allocator)
   {
   }
 
   pub fn =<Args>(this mut &, Args && ...args) -> optional mut &
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     this.insert(&&args...);
 
@@ -70,7 +70,7 @@ pub union optional<T, Allocator = std::allocator>
   {
     std::assert(this.is_some);
 
-    return std::move(this.Some);
+    return &move this.Some;
   }
 
   #[lifetime(consume(this))]
@@ -78,21 +78,21 @@ pub union optional<T, Allocator = std::allocator>
   {
     std::assert(this.is_some);
 
-    return std::move(this.Some);
+    return &move this.Some;
   }
 
   #[lifetime(consume(this))]
   pub fn unwrap_or<U>(this mut &, U &&default) -> T
     match (U default) { T(default); }
   {
-    return (this.is_some) ? std::move(this.Some) : T(&&default);
+    return (this.is_some) ? &move this.Some : T(&&default);
   }
 
   #[lifetime(consume(this))]
   pub fn ??<U>(this mut &, U &&default) -> T
     match (U default) { T(default); }
   {
-    return (this.is_some) ? std::move(this.Some) : T(&&default);
+    return (this.is_some) ? &move this.Some : T(&&default);
   }
 
   #[lifetime(consume(this))]
@@ -101,11 +101,11 @@ pub union optional<T, Allocator = std::allocator>
     if (!this.is_some)
       std::panic(msg);
 
-    return std::move(this.Some);
+    return &move this.Some;
   }
 
   pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     optional::~optional(&mut this);
     new<optional>(&this)(&&args..., allocator?: allocator);

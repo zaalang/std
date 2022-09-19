@@ -182,7 +182,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   #[lifetime(depend(this))]
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
-    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     var pos = this._tree.find_insert_position_unique(key);
 
@@ -196,7 +196,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
   #[lifetime(depend(this))]
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
-    match (Key key, Args args) { K(key, allocator?: std::declval<Allocator>()); T(args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     var pos = this._tree.find_insert_position_unique(key);
 

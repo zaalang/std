@@ -240,7 +240,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     #for(const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
@@ -254,7 +254,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), depend(this))]
   pub fn insert<Args>(this mut &, T *position, Args && ...args) -> T mut *
-    match (Args args) { T(args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
     #for(const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
@@ -331,7 +331,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = std::move(std::launder(this.back));
+    var result = &move std::launder(this.back);
 
     pop_back(&mut this);
 
@@ -536,7 +536,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
         #if (!__is_trivial_destroy<T>)
           T::~T(&mut *dst);
 
-        new<T>(dst++)(std::move(*first++), allocator?: this.allocator);
+        new<T>(dst++)(&move *first++, allocator?: this.allocator);
       }
     }
     #else
@@ -556,7 +556,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
         #if (!__is_trivial_destroy<T>)
           T::~T(&mut *(end-1));
 
-        new<T>(--end)(std::move(*--last), allocator?: this.allocator);
+        new<T>(--end)(&move *--last, allocator?: this.allocator);
       }
     }
     #else
@@ -571,7 +571,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     {
       while (first != last)
       {
-        new<T>(dst++)(std::move(*first++), allocator?: this.allocator);
+        new<T>(dst++)(&move *first++, allocator?: this.allocator);
       }
     }
     #else

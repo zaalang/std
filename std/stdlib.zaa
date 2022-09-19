@@ -16,10 +16,10 @@ import std.string : String;
 pub extern fn exit(i32) -> void;
 
 #[lifetime(consume(x))]
-pub fn move<T>(T &&x) -> T&&
+pub fn move<T>(T &&x)
   where !__is_const<typeof(x)>
 {
-  return &x;
+  return & &move x;
 }
 
 #[lifetime(launder(x))]
