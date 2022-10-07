@@ -1,0 +1,44 @@
+//
+// unistd
+//
+
+#[weak]
+extern fn __vdso_get_uid() -> u32;
+
+#[weak]
+extern fn __vdso_get_euid() -> u32;
+
+#[weak]
+extern fn __vdso_get_gid() -> u32;
+
+#[weak]
+extern fn __vdso_get_egid() -> u32;
+
+#[weak]
+extern fn __vdso_exit_process(i32 rval) -> void;
+
+pub fn getuid() -> u32
+{
+  return __vdso_get_uid();
+}
+
+pub fn geteuid() -> u32
+{
+  return __vdso_get_euid();
+}
+
+pub fn getgid() -> u32
+{
+  return __vdso_get_gid();
+}
+
+pub fn getegid() -> u32
+{
+  return __vdso_get_egid();
+}
+
+#[noreturn]
+pub fn exit(i32 rval) -> void
+{
+  return __vdso_exit_process(rval);
+}

@@ -831,7 +831,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), depend(this))]
   pub fn erase(this mut &, u8 *position, usize len) -> u8 mut *
   {
-    return erase(&mut this, first - this.begin, len);
+    return erase(&mut this, position - this.begin, len);
   }
 
   #[lifetime(poison(this), depend(this))]

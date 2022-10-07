@@ -11,6 +11,17 @@ pub using mode_t = u32;
 pub using off_t = u64;
 pub using time_t = i64;
 
+pub const O_RDONLY = 0;
+pub const O_WRONLY = 1;
+pub const O_RDWR = 2;
+
+pub const O_CREAT = 0o100;
+pub const O_EXCL = 0o200;
+pub const O_TRUNC = 0o1000;
+pub const O_APPEND = 0o2000;
+
+pub const EINVAL = -22;
+
 pub enum stats
 {
   pub const uid = 0x01;
@@ -317,6 +328,9 @@ pub fn ioring_prep_sqe_select(ioring_sqe mut *sqe, pollfd mut *fds, usize n, u64
 
 pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
 {
+  if (dir < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_open(sqe, dir, path, flags, mode);
   ioring_advance_sqe(&mut ring);
@@ -333,6 +347,9 @@ pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
 
 pub fn stat(ioring mut &ring, i32 fd, u64 flags, stat mut *statbuf) -> i32
 {
+  if (fd < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_stat(sqe, fd, flags, statbuf);
   ioring_advance_sqe(&mut ring);
@@ -349,6 +366,9 @@ pub fn stat(ioring mut &ring, i32 fd, u64 flags, stat mut *statbuf) -> i32
 
 pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize buflen) -> i32
 {
+  if (fd < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_read(sqe, fd, buffer, buflen);
   ioring_advance_sqe(&mut ring);
@@ -365,6 +385,9 @@ pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize buflen) -> i32
 
 pub fn write(ioring mut &ring, i32 fd, void *buffer, usize buflen) -> i32
 {
+  if (fd < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_write(sqe, fd, buffer, buflen);
   ioring_advance_sqe(&mut ring);
@@ -381,6 +404,9 @@ pub fn write(ioring mut &ring, i32 fd, void *buffer, usize buflen) -> i32
 
 pub fn ioctl(ioring mut &ring, i32 fd, u32 op, void mut *buffer, usize buflen) -> i32
 {
+  if (fd < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_ioctl(sqe, fd, op, buffer, buflen);
   ioring_advance_sqe(&mut ring);
@@ -397,6 +423,9 @@ pub fn ioctl(ioring mut &ring, i32 fd, u32 op, void mut *buffer, usize buflen) -
 
 pub fn close(ioring mut &ring, i32 fd) -> i32
 {
+  if (fd < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_close(sqe, fd);
   ioring_advance_sqe(&mut ring);

@@ -33,13 +33,33 @@ pub fn wait4(pid_t pid, int mut *wstatus, int options, void mut *rusage) -> int
   return cast<int>(std::bit_cast<intptr>(syscall4(sys_wait4, pid, wstatus, options, rusage)));
 }
 
+pub fn getuid() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_getuid)));
+}
+
+pub fn geteuid() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_geteuid)));
+}
+
+pub fn getgid() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_getgid)));
+}
+
+pub fn getegid() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_getegid)));
+}
+
 pub fn setsid() -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall0(sys_setsid)));
 }
 
 #[noreturn]
-pub fn exit(int status) -> void
+pub fn exit(int rval) -> void
 {
-  syscall1(sys_exit, status);
+  syscall1(sys_exit, rval);
 }

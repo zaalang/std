@@ -4,7 +4,7 @@
 
 import std.stdlib : assert;
 import std.memory : memset, memcpy, memmove;
-import std.algorithm : swap;
+import std.algorithm : swap, find, find_if;
 import std.range : Sentinal, Range;
 import std.span : span, mutable_span, moveable_span;
 import std.type : as_const;
