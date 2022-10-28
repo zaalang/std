@@ -13,11 +13,11 @@ import std.fmt;
 
 pub concept String
 {
-  requires<T> (T x) { x.len; };
-  requires<T> (T x) { x.data; };
-  requires<T> (T x) -> u8 { return *x.data; };
-  requires<T> (T x) { x.begin; };
-  requires<T> (T x) { x.end; };
+  requires<T> (T x) { x.len; }
+  requires<T> (T x) { x.data; }
+  requires<T> (T x) -> u8 { return *x.data; }
+  requires<T> (T x) { x.begin; }
+  requires<T> (T x) { x.end; }
 }
 
 pub using string_literal = typeof("");
@@ -77,7 +77,7 @@ pub struct string_view : std::span<u8>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this mut &, (u8*, u8*) range) -> string_view
+  pub fn [](this&, (u8*, u8*) range) -> string_view
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
 
@@ -85,7 +85,7 @@ pub struct string_view : std::span<u8>
   }
 
   #[lifetime(clone(this))]
-  pub fn [](this mut &, (u8*, u8*, void) range) -> string_view
+  pub fn [](this&, (u8*, u8*, void) range) -> string_view
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
 
@@ -177,7 +177,7 @@ pub struct string_view : std::span<u8>
 
     usize n;
     char codepoint;
-    u8 *beg, u8 *end
+    u8 *beg, u8 *end;
   }
 
   pub fn [](this &, char_iterator &iter) -> char
@@ -408,10 +408,10 @@ pub struct string_view : std::span<u8>
 
   pub struct iterator_pair<I, J>
   {
-    pub I first;
-    pub J second;
+    I first;
+    J second;
 
-    using std::Range;
+    using Range;
 
     pub iterator_pair(I first, J second)
       : first(first), second(second)
@@ -1548,16 +1548,20 @@ pub fn drop(String &str, usize n) -> string_view
   return string_view(i, str.end);
 }
 
-#[lifetime(poison(str))]
-pub fn drop!(string mut &str, usize n) -> void
+#[lifetime(poison(str), depend(str))]
+pub fn drop!(string mut &str, usize n) -> string mut &
 {
   str = drop(str, n);
+
+  return &str;
 }
 
-#[lifetime(poison(str))]
-pub fn drop_n!(string mut &str, usize n) -> void
+#[lifetime(poison(str), depend(str))]
+pub fn drop_n!(string mut &str, usize n) -> string mut &
 {
   str = drop_n(str, n);
+
+  return &str;
 }
 
 #[lifetime(follow(str.data))]
@@ -1576,22 +1580,48 @@ pub fn take(String &str, usize n) -> string_view
   return string_view(str.begin, i);
 }
 
-#[lifetime(poison(str))]
-pub fn take!(string mut &str, usize n) -> void
+#[lifetime(poison(str), depend(str))]
+pub fn take!(string mut &str, usize n) -> string mut &
 {
   str = take(str, n);
+
+  return &str;
 }
 
-#[lifetime(poison(str))]
-pub fn take_n!(string mut &str, usize n) -> void
+#[lifetime(poison(str), depend(str))]
+pub fn take_n!(string mut &str, usize n) -> string mut &
 {
   str = take_n(str, n);
+
+  return &str;
 }
 
 #[lifetime(follow(str.data))]
 pub fn substr(String &str, usize i, usize n) -> string_view
 {
   return str.drop(i).take(n);
+}
+
+#[lifetime(follow(str.data))]
+pub fn cut(String &haystack, char needle) -> (string_view, string_view)
+{
+  if (var i = find_first(haystack, needle); i != haystack.end)
+  {
+    return (string_view(haystack.begin, i), string_view(i + utf::len(needle), haystack.end));
+  }
+
+  return (string_view(haystack.data, haystack.len), string_view());
+}
+
+#[lifetime(follow(str.data))]
+pub fn cut(String &haystack, String &needle) -> (string_view, string_view)
+{
+  if (var i = find_first(haystack, needle); i != haystack.end)
+  {
+    return (string_view(haystack.begin, i), string_view(i + needle.len, haystack.end));
+  }
+
+  return (string_view(haystack.data, haystack.len), string_view());
 }
 
 #[lifetime(follow(str.data))]
@@ -1630,10 +1660,12 @@ pub fn trim(String &str) -> string_view
   return trim_right(trim_left(str));
 }
 
-#[lifetime(poison(str))]
-pub fn trim!(string mut &str) -> void
+#[lifetime(poison(str), depend(str))]
+pub fn trim!(string mut &str) -> string mut &
 {
   str = trim(str);
+
+  return &str;
 }
 
 pub fn starts_with(String &haystack, u8 needle) -> bool
@@ -1648,7 +1680,7 @@ pub fn starts_with(String &haystack, char needle) -> bool
 
 pub fn starts_with(String &haystack, String &needle) -> bool
 {
-  return haystack.len >= needle.len && haystack[0 .. needle.len] == needle;
+  return haystack.len >= needle.len && string_view(haystack.begin, needle.len) == needle;
 }
 
 pub fn ends_with(String &haystack, u8 needle) -> bool
@@ -1663,7 +1695,63 @@ pub fn ends_with(String &haystack, char needle) -> bool
 
 pub fn ends_with(String &haystack, String &needle) -> bool
 {
-  return haystack.len >= needle.len && haystack[haystack.len - needle.len .. haystack.len] == needle;
+  return haystack.len >= needle.len && string_view(haystack.end - needle.len, needle.len) == needle;
+}
+
+#[lifetime(follow(str.data))]
+pub fn strip_prefix(String &str, String &prefix) -> string_view
+{
+  if (str.starts_with(prefix))
+    return string_view(str.begin + prefix.len, str.end);
+
+  return string_view(str.data, str.len);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn strip_prefix!(string mut &str, String &prefix) -> string mut &
+{
+  str = strip_prefix(str, prefix);
+
+  return &str;
+}
+
+#[lifetime(follow(str.data))]
+pub fn strip_suffix(String &str, String &suffix) -> string_view
+{
+  if (str.ends_with(suffix))
+    return string_view(str.begin, str.end - suffix.len);
+
+  return string_view(str.data, str.len);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn strip_suffix!(string mut &str, String &suffix) -> string mut &
+{
+  str = strip_suffix(str, suffix);
+
+  return &str;
+}
+
+#[lifetime(follow(str.data))]
+pub fn chomp(String &str) -> string_view
+{
+  if (str.ends_with(cast<u8>('\n')))
+  {
+    if (str.ends_with("\r\n"))
+      return string_view(str.data, str.len - 2);
+
+    return string_view(str.data, str.len - 1);
+  }
+
+  return string_view(str.data, str.len);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn chomp!(string mut &str) -> string mut &
+{
+  str = chomp(str);
+
+  return &str;
 }
 
 pub fn gsub(String &&str, u8 from, u8 to) -> string
@@ -1694,10 +1782,13 @@ pub fn to_lowercase(String &&str) -> string
   return str;
 }
 
-pub fn to_lowercase!(string mut &str) -> void
+#[lifetime(depend(str))]
+pub fn to_lowercase!(string mut &str) -> string mut &
 {
   for(var mut &ch : str)
     ch = to_lowercase(ch);
+
+  return &str;
 }
 
 pub fn to_uppercase(String &&str) -> string
@@ -1707,10 +1798,13 @@ pub fn to_uppercase(String &&str) -> string
   return str;
 }
 
-pub fn to_uppercase!(string mut &str) -> void
+#[lifetime(depend(str))]
+pub fn to_uppercase!(string mut &str) -> string mut &
 {
   for(var mut &ch : str)
     ch = to_uppercase(ch);
+
+  return &str;
 }
 
 pub fn format(String &format, var & ...args) -> string

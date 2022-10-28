@@ -20,7 +20,7 @@ pub concept InputStream
     catch(std::error e)
     {
     }
-  };
+  }
 }
 
 pub concept OutputStream
@@ -33,16 +33,16 @@ pub concept OutputStream
     catch(std::error e)
     {
     }
-  };
+  }
 }
 
 pub concept InputReader
 {
-  requires<T> __is_match<InputStream, T>;
-  requires<T> (T is) { is.buffer; };
-  requires<T> (T is) { try { is.fetch(); } catch(std::error e) { } };
-  requires<T> (T is) { try { is.pack_and_fetch(); } catch(std::error e) { } };
-  requires<T> (T is, usize len) { is.discard(len); };
+  requires<T> __is_match<InputStream, T>
+  requires<T> (T is) { is.buffer; }
+  requires<T> (T is) { try { is.fetch(); } catch(std::error e) { } }
+  requires<T> (T is) { try { is.pack_and_fetch(); } catch(std::error e) { } }
+  requires<T> (T is, usize len) { is.discard(len); }
 }
 
 pub struct input_stream

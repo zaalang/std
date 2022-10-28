@@ -157,13 +157,13 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   #[lifetime(clone(lhs))]
   pub fn -(iterator lhs, usize rhs) -> iterator
   {
-    return iterator(lhs.buffer, lhs.cursor - rhs);
+    return iterator(lhs.cursor - rhs);
   }
 
   #[lifetime(clone(lhs))]
   pub fn +(iterator lhs, usize rhs) -> iterator
   {
-    return iterator(lhs.buffer, lhs.cursor + rhs);
+    return iterator(lhs.cursor + rhs);
   }
 
   #[lifetime(depend(this))]

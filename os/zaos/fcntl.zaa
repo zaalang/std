@@ -11,28 +11,27 @@ pub using mode_t = u32;
 pub using off_t = u64;
 pub using time_t = i64;
 
-pub const O_RDONLY = 0;
-pub const O_WRONLY = 1;
-pub const O_RDWR = 2;
+pub const O_RDONLY = 0x1;
+pub const O_WRONLY = 0x2;
+pub const O_RDWR = 0x3;
 
 pub const O_CREAT = 0o100;
 pub const O_EXCL = 0o200;
 pub const O_TRUNC = 0o1000;
 pub const O_APPEND = 0o2000;
+pub const O_DIRECTORY = 0o200000;
+pub const O_NOFOLLOW = 0o400000;
+
+pub const STDIN_FILENO = 0;
+pub const STDOUT_FILENO = 1;
+pub const STDERR_FILENO = 2;
+pub const STDROOT_FILENO = 4;
+pub const STDCWD_FILENO = 5;
 
 pub const EINVAL = -22;
+pub const EAGAIN = -11;
 
-pub enum stats
-{
-  pub const uid = 0x01;
-  pub const gid = 0x02;
-  pub const mode = 0x04;
-  pub const size = 0x08;
-  pub const mtime = 0x10;
-  pub const ctime = 0x20;
-}
-
-pub enum ftype
+pub enum ftype : u16
 {
   unknown,
   block_device,
@@ -42,6 +41,16 @@ pub enum ftype
   socket_dgram,
   socket_stream,
   symbolic_link,
+}
+
+pub enum stats
+{
+  pub const uid = 0x01;
+  pub const gid = 0x02;
+  pub const mode = 0x04;
+  pub const size = 0x08;
+  pub const mtime = 0x10;
+  pub const ctime = 0x20;
 }
 
 pub struct stat
@@ -79,9 +88,28 @@ pub fn ftype(stat &stat) -> ftype
 
     case 0xa000:
       return ftype::symbolic_link;
+
+    case 0xb000:
+      return ftype::socket_dgram;
+
+    case 0xc000:
+      return ftype::socket_stream;
   }
 
   return ftype::unknown;
+}
+
+pub struct dirent
+{
+  pub u32 rec_len;
+  pub ftype file_type;
+  pub u16 name_len;
+  pub u8[0] name;
+
+  pub dirent() = default;
+  pub dirent(dirent&) = default;
+  pub fn =(dirent mut &, stat &) -> dirent mut & = default;
+  pub ~dirent() = default;
 }
 
 pub struct pollfd
@@ -128,9 +156,9 @@ pub enum ioring_ops
   pub const write = 0x04;
   pub const ioctl = 0x05;
   pub const close = 0x06;
-  pub const fstat = 0x07;
-  pub const lstat = 0x08;
-  pub const select = 0x09;
+  pub const select = 0x07;
+  pub const dup = 0x08;
+  pub const dup2 = 0x09;
 }
 
 pub enum ioring_flags
@@ -273,12 +301,12 @@ pub fn ioring_prep_sqe_open(ioring_sqe mut *sqe, i32 dir, string path, u64 flags
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_stat(ioring_sqe mut *sqe, i32 fd, u64 flags, stat mut *statbuf) -> void
+pub fn ioring_prep_sqe_stat(ioring_sqe mut *sqe, i32 fd, stat mut *statbuf, u64 flags) -> void
 {
   sqe.op = ioring_ops::stat;
   sqe.args[0] = cast(fd);
-  sqe.args[1] = cast(flags);
-  sqe.args[2] = cast(statbuf);
+  sqe.args[1] = cast(statbuf);
+  sqe.args[2] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -326,6 +354,21 @@ pub fn ioring_prep_sqe_select(ioring_sqe mut *sqe, pollfd mut *fds, usize n, u64
   sqe.flags = ioring_flags::fin;
 }
 
+pub fn ioring_prep_sqe_dup(ioring_sqe mut *sqe, i32 oldfd) -> void
+{
+  sqe.op = ioring_ops::dup;
+  sqe.args[0] = cast(oldfd);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_dup2(ioring_sqe mut *sqe, i32 oldfd, i32 newfd) -> void
+{
+  sqe.op = ioring_ops::dup2;
+  sqe.args[0] = cast(oldfd);
+  sqe.args[1] = cast(newfd);
+  sqe.flags = ioring_flags::fin;
+}
+
 pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
 {
   if (dir < 0)
@@ -345,13 +388,23 @@ pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
   return result;
 }
 
-pub fn stat(ioring mut &ring, i32 fd, u64 flags, stat mut *statbuf) -> i32
+pub fn open(ioring mut &ring, string path, u64 flags, u32 mode) -> i32
+{
+  var dir = STDCWD_FILENO;
+
+  if (path.len > 0 && *path.data == cast('/'))
+    dir = STDROOT_FILENO;
+
+  return open(&mut ring, dir, path, flags, mode);
+}
+
+pub fn stat(ioring mut &ring, i32 fd, stat mut *statbuf, u64 flags) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_stat(sqe, fd, flags, statbuf);
+  ioring_prep_sqe_stat(sqe, fd, statbuf, flags);
   ioring_advance_sqe(&mut ring);
 
   if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
@@ -444,6 +497,38 @@ pub fn select(ioring mut &ring, pollfd mut *fds, usize n, u64 timeout) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_select(sqe, fds, n, timeout);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn dup(ioring mut &ring, i32 oldfd) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_dup(sqe, oldfd);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn dup2(ioring mut &ring, i32 oldfd, i32 newfd) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_dup2(sqe, oldfd, newfd);
   ioring_advance_sqe(&mut ring);
 
   if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)

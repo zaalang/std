@@ -74,8 +74,8 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
   #if (std::is_same<T, f32>)
   {
     var half_ulp = 1 << (std::F64::digits - std::F32::digits - 1);
-    
-    if (min_normal_e > result.value.e) 
+
+    if (min_normal_e > result.value.e)
       half_ulp <<= min_normal_e - result.value.e;
 
     if (significand == 0 && biased_e != 0 && result.value.e > min_normal_e)
@@ -92,7 +92,7 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
     result.upper.f = result.value.f + half_ulp;
     result.upper.e = result.value.e;
   }
-  
+
   #if (std::is_same<T, f64>)
   {
     if (significand == 0 && biased_e > 1)
@@ -148,7 +148,11 @@ fn f32(DiyFp fp) -> f32
   fp.e += std::F64::digits - std::F32::digits;
 
   if (fp.e < denormal_exponent)
-    return 0.0;
+  {
+    fp.f += 1 << (denormal_exponent - fp.e - 1);
+    fp.f >>= denormal_exponent - fp.e;
+    fp.e += denormal_exponent - fp.e;
+  }
 
   if (fp.e >= max_exponent)
     return __inf;
@@ -234,7 +238,7 @@ fn cached_power(usize index) -> DiyFp
     534,   561,   588,   614,   641,   667,   694,   720,   747,   774,  800,
     827,   853,   880,   907,   933,   960,   986,   1013,  1039,  1066
   ];
- 
+
   return DiyFp(Cached_Significands[index], Cached_Exponents[index]);
 }
 
@@ -535,8 +539,8 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
   if (rp < -348)
     rp = -348;
 
-  if (rp > 308)
-    rp = 308;
+  if (rp > 347)
+    rp = 347;
 
   if (x.value.f != 0)
   {
@@ -572,6 +576,17 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
       order += 1074;
 
     var prec = 64 - order;
+
+    if (prec + ulp_shift >= 64)
+    {
+      var k = prec + ulp_shift - 63;
+      x.value.f >>= k;
+      x.value.e += k;
+      error >>= k;
+      error += 1 + (1 << ulp_shift);
+      prec -= k;
+    }
+
     var rounded = DiyFp(x.value.f >> prec, x.value.e + prec);
 
     var precbits = (x.value.f & ((1 << prec) - 1)) * (1 << ulp_shift);

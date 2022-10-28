@@ -21,6 +21,7 @@ pub fn tuple<T>(T && ...elements) -> T
 //  return elements;
 //}
 
+#[lifetime(clone(elements))]
 pub fn tie<T>(T && ...elements)
   where !is_any_rvalue<typeof(elements)>
 {

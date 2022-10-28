@@ -286,6 +286,11 @@ pub const fn /<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
   return duration<ct::rep, ct::period>(lhs).count / duration<ct::rep, ct::period>(rhs).count;
 }
 
+pub const fn %<R, P>(duration<R, P> &lhs, R rhs) -> duration<R, P>
+{
+  return duration<R, P>(lhs.count % rhs);
+}
+
 pub const fn %<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
 {
   using ct = common_type<R1, P1, R2, P2>;

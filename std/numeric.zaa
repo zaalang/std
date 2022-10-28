@@ -4,17 +4,17 @@
 
 pub concept Int
 {
-  requires<T> numeric_traits<T>::is_integer;
+  requires<T> numeric_traits<T>::is_integer
 }
 
 pub concept Float
 {
-  requires<T> !numeric_traits<T>::is_integer;
+  requires<T> !numeric_traits<T>::is_integer
 }
 
 pub concept Numeric
 {
-  requires<T> { numeric_traits<T>::is_integer; };
+  requires<T> { numeric_traits<T>::is_integer; }
 }
 
 pub struct I8

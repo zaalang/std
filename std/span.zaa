@@ -7,11 +7,11 @@ import std.range : Range;
 
 pub concept Span<U>
 {
-  requires<T> (T x) { x.len; };
-  requires<T> (T x) { x.data; };
-  requires<T> (T x) -> U { return *x.data; };
-  requires<T> (T x) -> U { return x[x.begin]; };
-  requires<T> (T x) { x.end; };
+  requires<T> (T x) { x.len; }
+  requires<T> (T x) { x.data; }
+  requires<T> (T x) -> U { return *x.data; }
+  requires<T> (T x) -> U { return x[x.begin]; }
+  requires<T> (T x) { x.end; }
 }
 
 pub fn Span<T, N>(T[N] &&array)

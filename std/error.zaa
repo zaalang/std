@@ -67,6 +67,7 @@ pub enum errc : u32
   file_too_large = 27,
   no_space_remaining = 28,
   readonly_file_system = 30,
+  too_many_links = 31,
   argument_out_of_domain = 33,
   result_out_of_range = 34,
   name_too_long = 36,

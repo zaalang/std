@@ -10,20 +10,20 @@ import std.stdlib;
 
 pub concept Iterator
 {
-  requires<T> (T x) { ++x; };
-  requires<T> (T x, T y) { x == y; };
+  requires<T> (T x) { ++x; }
+  requires<T> (T x, T y) { x == y; }
 }
 
 pub concept RandomAccessIterator
 {
-  requires<T> __is_match<Iterator, T>;
-  requires<T> (T x, T y) { x - y; };
-  requires<T> (T x, usize y) { x + y; };
+  requires<T> __is_match<Iterator, T>
+  requires<T> (T x, T y) { x - y; }
+  requires<T> (T x, usize y) { x + y; }
 }
 
 pub concept Sentinal<I>
 {
-  requires<T> (T x, I y) { y == x; };
+  requires<T> (T x, I y) { y == x; }
 }
 
 pub fn distance<I>(I first, Sentinal<I> last) -> usize

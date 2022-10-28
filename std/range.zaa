@@ -13,8 +13,8 @@ import std.fmt;
 
 pub concept Range<U>
 {
-  requires<T> (T x) -> U { return x[x.begin]; };
-  requires<T> (T x) { x.end; };
+  requires<T> (T x) -> U { return x[x.begin]; }
+  requires<T> (T x) { x.end; }
 }
 
 pub fn Range<T, N>(T[N] &&array)
@@ -26,8 +26,8 @@ pub struct range_view<R, I, J>
 {
   R &&range;
 
-  pub I first;
-  pub J second;
+  I first;
+  J second;
 
   pub range_view(R &&range, I first, J second)
     : range(&range), first(first), second(second)
@@ -63,8 +63,8 @@ pub struct moveable_range_view<R, I, J>
 {
   R mut &range;
 
-  pub I first;
-  pub J second;
+  I first;
+  J second;
 
   pub moveable_range_view(R mut &range, I first, J second)
     : range(&range), first(first), second(second)
@@ -124,6 +124,11 @@ pub const fn is_all_ranges<Rs, T>() -> bool
 pub fn len<T>(Range<T> &&range) -> usize
 {
   return std::distance(range.begin, range.end);
+}
+
+pub fn empty<T>(Range<T> &&range) -> bool
+{
+  return range.begin == range.end;
 }
 
 pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
@@ -769,7 +774,13 @@ pub fn zip(var && ...ranges)
 #[lifetime(depend(range))]
 pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 {
-  return std::range_view<typeof(range)>(&&range, first, last);
+  return range_view<typeof(range)>(range, first, last);
+}
+
+#[lifetime(clone(range))]
+pub fn subrange<R, I, J>(range_view<R, I, J> &&range, I first, Sentinal<I> last)
+{
+  return range_view<R, I, J>(range.range, first, last);
 }
 
 #[lifetime(depend(range))]
