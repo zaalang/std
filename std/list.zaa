@@ -368,7 +368,7 @@ pub struct list<T, Allocator = std::allocator>
     ~Link() = default;
   }
 
-  struct Node : Link
+  struct Node : pub Link
   {
     Node()
       : value(void)

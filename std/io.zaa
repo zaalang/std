@@ -4,10 +4,10 @@
 
 import std.stdlib : assert;
 import std.memory : memcpy;
-import std.string;
+import std.string : String;
+import std.span : Span;
 import std.math;
 import std.vector;
-import std.span;
 import std.error;
 
 pub concept InputStream
@@ -34,6 +34,11 @@ pub concept OutputStream
     {
     }
   }
+}
+
+pub fn OutputStream<N>(u8[N] mut &array)
+{
+  return std::mutable_span(array.data, N);
 }
 
 pub concept InputReader

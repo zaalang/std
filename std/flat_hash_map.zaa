@@ -195,6 +195,8 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[lifetime(poison(this), depend(this))]
   pub fn insert(this mut &, value_type &&value) -> (iterator, bool)
   {
+    assert(!(cast<void*>(this._data) <= cast<void*>(&value) && cast<void*>(&value) < cast<void*>(this._data + this._len)));
+
     var pos = this.find_or_prepare_insert(value.key);
 
     if (pos.1)
@@ -209,6 +211,9 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
   {
+    #for(const k = 0; k < __tuple_len<Args>; ++k)
+      assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
+
     var pos = this.find_or_prepare_insert(key);
 
     if (pos.1)
@@ -223,6 +228,9 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
   {
+    #for(const k = 0; k < __tuple_len<Args>; ++k)
+      assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
+
     var pos = this.find_or_prepare_insert(key);
 
     if (pos.1)
@@ -240,6 +248,9 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[lifetime(poison(this))]
   pub fn insert(this mut &, Range<value_type> &&other) -> void
   {
+    #if (__is_same<flat_hash_map, typeof(other)>)
+      assert(&this != &other);
+
     #if (__is_rvalue<typeof(other)> && __is_same<flat_hash_map, typeof(other)>)
     {
       if (this.empty)

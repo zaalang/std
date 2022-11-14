@@ -22,7 +22,7 @@ pub concept String
 
 pub using string_literal = typeof("");
 
-pub struct string_ref : std::span<u8>
+pub struct string_ref : pub std::span<u8>
 {
   #[lifetime(clone(data))]
   pub string_ref(u8 *data, usize len)
@@ -40,7 +40,7 @@ pub struct string_ref : std::span<u8>
   pub ~string_ref() = default;
 }
 
-pub struct string_view : std::span<u8>
+pub struct string_view : pub std::span<u8>
 {
   #[lifetime(clone(data))]
   pub string_view(u8 *data, usize len)
@@ -97,7 +97,7 @@ pub struct string_view : std::span<u8>
     return string_literal(this.data, this.len);
   }
 
-  pub struct char_iterator : u8 *
+  pub struct char_iterator : pub u8 *
   {
     pub char_iterator() = default;
     pub char_iterator(char_iterator&) = default;
@@ -185,7 +185,7 @@ pub struct string_view : std::span<u8>
     return iter.codepoint;
   }
 
-  pub struct line_iterator : u8 *
+  pub struct line_iterator : pub u8 *
   {
     pub line_iterator() = default;
     pub line_iterator(line_iterator&) = default;
@@ -254,7 +254,7 @@ pub struct string_view : std::span<u8>
     return string_ref(iter.super, iter.m);
   }
 
-  pub struct word_iterator : u8 *
+  pub struct word_iterator : pub u8 *
   {
     pub word_iterator() = default;
     pub word_iterator(word_iterator&) = default;
@@ -315,7 +315,7 @@ pub struct string_view : std::span<u8>
     return string_ref(iter.super, iter.n);
   }
 
-  pub struct split_iterator : u8 *
+  pub struct split_iterator : pub u8 *
   {
     pub split_iterator() = default;
     pub split_iterator(split_iterator&) = default;
@@ -1141,7 +1141,7 @@ pub fn sprint<Args>(Span<u8> mut &os, Args & ...args) -> usize
 {
   try
   {
-    return std::print_to(&mut std::mutable_span(os.data, os.len), args...);
+    return std::print_to(&mut os, args...);
   }
   catch(std::error e)
   {
@@ -1153,7 +1153,7 @@ pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args) -
 {
   try
   {
-    return std::format_to(&mut std::mutable_span(os.data, os.len), format, args...);
+    return std::format_to(&mut os, format, args...);
   }
   catch(std::error e)
   {
@@ -1165,7 +1165,7 @@ pub fn sprintf<Args>(Span<u8> mut &os, String &format, Args & ...args) -> usize
 {
   try
   {
-    return std::format_to(&mut std::mutable_span(os.data, os.len), format, args...);
+    return std::format_to(&mut os, format, args...);
   }
   catch(std::error e)
   {

@@ -2,8 +2,10 @@
 // chrono clock
 //
 
+import std.fmt;
 import std.sys.clock;
 import chrono.duration;
+import chrono.format;
 
 pub struct time_point<Clock, Duration>
 {
@@ -45,6 +47,28 @@ pub fn -<Clock, D1, D2>(time_point<Clock, D1> &lhs, time_point<Clock, D2> &rhs)
   return lhs.time - rhs.time;
 }
 
+pub const fn ==<Clock, D1, D2>(time_point<Clock, D1> &lhs, time_point<Clock, D2> &rhs) -> bool
+{
+  return lhs.time == rhs.time;
+}
+
+pub const fn <=><Clock, D1, D2>(time_point<Clock, D1> &lhs, time_point<Clock, D2> &rhs) -> int
+{
+  return lhs.time <=> rhs.time;
+}
+
+pub const fn floor<To, Clock, Duration>(time_point<Clock, Duration> &tp) -> time_point<Clock, To>
+  where __is_instance<chrono::duration<var, var>, To>
+{
+  return time_point<Clock, To>(chrono::floor<To>(tp.time));
+}
+
+pub const fn ceil<To, Clock, Duration>(time_point<Clock, Duration> &tp) -> time_point<Clock, To>
+  where __is_instance<chrono::duration<var, var>, To>
+{
+  return time_point<Clock, To>(chrono::ceil<To>(tp.time));
+}
+
 pub const fn time_point_cast<To, Clock, Duration>(time_point<Clock, Duration> &tp) -> time_point<Clock, To>
 {
   return time_point<Clock, To>(chrono::duration_cast<To>(tp.time));
@@ -52,7 +76,7 @@ pub const fn time_point_cast<To, Clock, Duration>(time_point<Clock, Duration> &t
 
 pub struct system_clock
 {
-  pub using duration = chrono::nanoseconds_t;
+  pub using duration = chrono::nanoseconds;
   pub using time_point = chrono::time_point<system_clock, duration>;
 
   pub fn now() -> time_point
@@ -68,9 +92,24 @@ pub struct system_clock
   }
 }
 
+pub using system_time<Duration> = time_point<system_clock, Duration>;
+
+pub fn system_time<R, P>(chrono::duration<R, P> &time_since_epoch)
+{
+  return system_time<chrono::duration<R, P>>(time_since_epoch);
+}
+
+pub fn fmt<Duration>(std::OutputStream mut &os, std::fmt_context mut &ctx, time_point<system_clock, Duration> &tp) throws -> void
+{
+  var buf = [0; 256];
+  var len = chrono::fmt_to(&mut buf, "%F %T%z", tp);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
 pub struct steady_clock
 {
-  pub using duration = chrono::nanoseconds_t;
+  pub using duration = chrono::nanoseconds;
   pub using time_point = chrono::time_point<steady_clock, duration>;
 
   pub fn now() -> time_point
@@ -84,4 +123,25 @@ pub struct steady_clock
       std::panic("steady_clock failure");
     }
   }
+}
+
+pub struct local_t
+{
+  pub using duration = chrono::nanoseconds;
+  pub using time_point = chrono::time_point<local_t, duration>;
+}
+
+pub using local_time<Duration> = time_point<local_t, Duration>;
+
+pub fn local_time<R, P>(chrono::duration<R, P> &time_since_epoch)
+{
+  return local_time<chrono::duration<R, P>>(time_since_epoch);
+}
+
+pub fn fmt<Duration>(std::OutputStream mut &os, std::fmt_context mut &ctx, time_point<local_t, Duration> &tp) throws -> void
+{
+  var buf = [0; 256];
+  var len = chrono::fmt_to(&mut buf, "%Y-%m-%d %H:%M:%S", tp);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
 }

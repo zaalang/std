@@ -1,0 +1,304 @@
+//
+// chrono format
+//
+
+import std.io;
+import std.fmt;
+import std.math;
+import std.string;
+import chrono.duration : duration;
+import chrono.clock;
+import chrono.date;
+
+using std::String;
+using std::OutputStream;
+
+enum ShortWeekday
+{
+  Sun, Mon, Tue, Wed, Thu, Fri, Sat
+}
+
+enum LongWeekday
+{
+  Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
+}
+
+enum ShortMonth
+{
+  unknown, Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec
+}
+
+enum LongMonth
+{
+  unknown, January, February, March, April, May, June, July, August, September, October, November, December
+}
+
+fn make12(chrono::hours h)
+{
+  if (h <= 12.hours)
+  {
+    if (h == 0.hours)
+      return 12.hours;
+
+    return h;
+  }
+
+  return h - 12.hours;
+}
+
+fn fmt_to<R, P>(OutputStream mut &os, std::string_view format, chrono::year_month_day &date, chrono::weekday &weekday, chrono::duration<R, P> &time, std::string_view zone_name = std::string_view(), int zone_offset = 0) throws -> usize
+{
+  var written = 0;
+
+  for(var ch = format.begin, var end = format.end; ch != end; ++ch)
+  {
+    switch (*ch)
+    {
+      case '%':
+        switch (*++ch)
+        {
+          case '%':
+            written += os.write("%".data, 1);
+
+          case 'n':
+            written += os.write("\n".data, 1);
+
+          case 't':
+            written += os.write("\t".data, 1);
+
+          case 'H':
+            written += std::format_to(&mut os, "{:02d}", time.hours.count);
+
+          case 'I':
+            written += std::format_to(&mut os, "{:02d}", make12(time.abs.hours).count);
+
+          case 'M':
+            written += std::format_to(&mut os, "{:02d}", (time.abs.minutes % 60).count);
+
+          case 'S':
+            if ((time.abs % 1.seconds).count != 0)
+            {
+              if (time.abs % 60.seconds < 10.seconds)
+                written += os.write("0".data, 1);
+
+              written += std::format_to(&mut os, "{}", chrono::duration_cast<chrono::duration<f64, chrono::ratio<1, 1>>>(time.abs % 60.seconds).count);
+            }
+            else
+            {
+              written += std::format_to(&mut os, "{:02d}", (time.abs.seconds % 60).count);
+            }
+
+          case 'p':
+            if (time.hours.count < 12)
+              written += os.write("am".data, 2);
+            else
+              written += os.write("pm".data, 2);
+
+          case 'R':
+            written += fmt_to(&mut os, std::string_view("%H:%M"), date, weekday, time);
+
+          case 'T':
+            written += fmt_to(&mut os, std::string_view("%H:%M:%S"), date, weekday, time);
+
+          case 'r':
+            written += fmt_to(&mut os, std::string_view("%I:%M:%S %p"), date, weekday, time.floor<chrono::seconds>());
+
+          case 'X':
+            written += fmt_to(&mut os, std::string_view("%H:%M:%S"), date, weekday, time.floor<chrono::seconds>());
+
+          case 'C':
+            written += std::format_to(&mut os, "{:02d}", std::floor_div(cast<int>(date.year), 100));
+
+          case 'y':
+            written += std::format_to(&mut os, "{:02d}", std::abs(cast<int>(date.year)) % 100);
+
+          case 'Y':
+            written += std::format_to(&mut os, "{:04d}", cast<int>(date.year));
+
+          case 'b':
+          case 'h':
+            written += std::print_to(&mut os, std::meta::enumerator_name(cast<ShortMonth>(date.month)));
+
+          case 'B':
+            written += std::print_to(&mut os, std::meta::enumerator_name(cast<LongMonth>(date.month)));
+
+          case 'm':
+            written += std::format_to(&mut os, "{:02d}", cast<int>(date.month));
+
+          case 'd':
+            written += std::format_to(&mut os, "{:02d}", cast<int>(date.day));
+
+          case 'e':
+            written += std::format_to(&mut os, "{:>2d}", cast<int>(date.day));
+
+          case 'a':
+            written += std::print_to(&mut os, std::meta::enumerator_name(cast<ShortWeekday>(weekday)));
+
+          case 'A':
+            written += std::print_to(&mut os, std::meta::enumerator_name(cast<LongWeekday>(weekday)));
+
+          case 'u':
+            written += std::format_to(&mut os, "{:d}", 1 + (cast<int>(weekday) + 6) % 7);
+
+          case 'w':
+            written += std::format_to(&mut os, "{:d}", cast<int>(weekday));
+
+          case 'D':
+            written += fmt_to(&mut os, std::string_view("%m/%d/%y"), date, weekday, time);
+
+          case 'F':
+            written += fmt_to(&mut os, std::string_view("%Y-%m-%d"), date, weekday, time);
+
+          case 'x':
+            written += fmt_to(&mut os, std::string_view("%d/%m/%y"), date, weekday, time);
+
+          case 'z':
+            written += std::format_to(&mut os, "{:+05d}", zone_offset);
+
+          case 'Z':
+            written += std::format_to(&mut os, "{:d}", zone_name);
+
+          case 'c':
+            written += fmt_to(&mut os, std::string_view("%a %b %d %H:%M:%S %Y"), date, weekday, time.floor<chrono::seconds>());
+
+          case 'Q':
+            written += std::print_to(&mut os, time.count);
+
+          case 'q':
+            written += std::print_to(&mut os, chrono::duration_suffix<P>());
+        }
+
+      else:
+        written += os.write(ch, 1);
+    }
+  }
+
+  return written;
+}
+
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::duration<R, P> &duration) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(), chrono::weekday(), duration);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::system_time<Duration> &tp) throws -> usize
+{
+  let days = tp.floor<chrono::days>();
+  let date = chrono::year_month_day(chrono::local_time(days.time_since_epoch));
+  let weekday = chrono::weekday(date.as_local_time);
+  let time = tp - days;
+
+  return fmt_to(&mut os, std::string_view(format.data, format.len), date, weekday, time, std::string_view("UTC"), +0000);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::local_time<Duration> &tp) throws -> usize
+{
+  let days = tp.floor<chrono::days>();
+  let date = chrono::year_month_day(days);
+  let weekday = chrono::weekday(date.as_local_time);
+  let time = tp - days;
+
+  return fmt_to(&mut os, std::string_view(format.data, format.len), date, weekday, time);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::day &day) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(chrono::year(), chrono::month(), day), chrono::weekday(), 0.seconds);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month &month) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(chrono::year(), month, chrono::day()), chrono::weekday(), 0.seconds);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::year &year) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(year, chrono::month(), chrono::day()), chrono::weekday(), 0.seconds);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday &weekday) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(), weekday, 0.seconds);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday_indexed &day) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), day.weekday);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday_last &day) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), day.weekday);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_day &md) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(chrono::year(), md));
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_day_last &mdl) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(chrono::year(), mdl));
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_weekday &mw) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(chrono::year(), mw.month, chrono::day()), mw.weekday, 0.seconds);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_weekday_last &mwl) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(chrono::year(), mwl.month, chrono::day()), mwl.weekday, 0.seconds);
+}
+
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::year_month &ym) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(ym.year, ym.month, chrono::day()));
+}
+
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_day &ymd) throws -> usize
+{
+  let weekday = chrono::weekday(ymd.as_local_time);
+
+  return fmt_to(&mut os, std::string_view(format.data, format.len), ymd, weekday, 0.seconds);
+}
+
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_day_last &ymdl) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(ymdl));
+}
+
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_weekday &ymw) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(ymw.as_local_time));
+}
+
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_weekday_last &ymwl) throws -> usize
+{
+  return fmt_to(&mut os, std::string_view(format.data, format.len), chrono::year_month_day(ymwl.as_local_time));
+}
+
+pub fn format_to<T>(OutputStream mut &os, String &format, T &value) throws -> usize
+  where requires (T value) { try { fmt_to(&mut std::string(), std::string_view(), value); } catch(std::error) {}}
+{
+  var os = std::output_stream(&mut os);
+
+  return fmt_to(&mut os, std::string_view(format.data, format.len), value);
+}
+
+pub fn format<T>(String &format, T &value) -> std::string
+  where requires (T value) { try { fmt_to(&mut std::string(), std::string_view(), value); } catch(std::error) {}}
+{
+  var str = std::string();
+  var os = std::output_stream(&mut str);
+
+  try
+  {
+    fmt_to(&mut os, std::string_view(format.data, format.len), value);
+  }
+  catch(std::error)
+  {
+  }
+
+  return str;
+}

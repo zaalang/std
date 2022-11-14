@@ -8,7 +8,7 @@ import std.range : Range;
 import std.span : span, mutable_span;
 import std.type : as_const;
 
-pub struct array<T, N> : T[N]
+pub struct array<T, N> : pub T[N]
 {
   pub array() = default;
   pub array(array &&) = default;

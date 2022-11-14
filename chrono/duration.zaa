@@ -34,16 +34,14 @@ pub struct duration<R, P>
     return &lhs;
   }
 
-  pub fn +(duration mut &lhs) -> duration mut &
+  pub fn +(duration &lhs) -> duration
   {
-    return &lhs;
+    return lhs;
   }
 
-  pub fn -(duration mut &lhs) -> duration mut &
+  pub fn -(duration &lhs) -> duration
   {
-    lhs.count = -lhs.count;
-
-    return &lhs;
+    return -lhs.count;
   }
 
   pub fn ++(duration mut &lhs) -> duration mut &
@@ -69,16 +67,16 @@ pub struct duration<R, P>
   pub ~duration() = default;
 }
 
-pub using nanoseconds_t = duration<i64, ratio<1, 1000000000>>;
-pub using microseconds_t = duration<i64, ratio<1, 1000000>>;
-pub using milliseconds_t = duration<i64, ratio<1, 1000>>;
-pub using seconds_t = duration<i64, ratio<1, 1>>;
-pub using minutes_t = duration<i64, ratio<60, 1>>;
-pub using hours_t = duration<i64, ratio<3600, 1>>;
-pub using days_t = duration<i64, ratio<86400, 1>>;
-pub using weeks_t = duration<i64, ratio<604800, 1>>;
-pub using months_t = duration<i64, ratio<2629746, 1>>;
-pub using years_t = duration<i64, ratio<31556952, 1>>;
+pub using nanoseconds = duration<i64, ratio<1, 1000000000>>;
+pub using microseconds = duration<i64, ratio<1, 1000000>>;
+pub using milliseconds = duration<i64, ratio<1, 1000>>;
+pub using seconds = duration<i64, ratio<1, 1>>;
+pub using minutes = duration<i64, ratio<60, 1>>;
+pub using hours = duration<i64, ratio<3600, 1>>;
+pub using days = duration<i64, ratio<86400, 1>>;
+pub using weeks = duration<i64, ratio<604800, 1>>;
+pub using months = duration<i64, ratio<2629746, 1>>;
+pub using years = duration<i64, ratio<31556952, 1>>;
 
 pub const fn nanoseconds<T>(T count) -> duration<i64, ratio<1, 1000000000>>
   where __is_integral<T>
@@ -295,7 +293,34 @@ pub const fn %<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs)
 {
   using ct = common_type<R1, P1, R2, P2>;
 
-  return duration<ct::rep, ct::period>(lhs).count % duration<ct::rep, ct::period>(rhs).count;
+  return duration<ct::rep, ct::period>(duration<ct::rep, ct::period>(lhs).count % duration<ct::rep, ct::period>(rhs).count);
+}
+
+pub const fn abs<R, P>(duration<R, P> &lhs) -> duration<R, P>
+{
+  return (lhs.count < 0) ? -lhs : lhs;
+}
+
+pub const fn floor<To, R, P>(duration<R, P> &lhs) -> To
+  where __is_instance<duration<var, var>, To>
+{
+  var result = duration_cast<To>(lhs);
+
+  if (result > lhs)
+    result -= To(1);
+
+  return result;
+}
+
+pub const fn ceil<To, R, P>(duration<R, P> &lhs) -> To
+  where __is_instance<duration<var, var>, To>
+{
+  var result = duration_cast<To>(lhs);
+
+  if (result < lhs)
+    result += To(1);
+
+  return result;
 }
 
 pub const fn ==<R1, P1, R2, P2>(duration<R1, P1> &lhs, duration<R2, P2> &rhs) -> bool
@@ -334,7 +359,7 @@ pub fn duration_suffix<Period>()
 pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, duration<R, P> &duration) throws -> void
 {
   var buf = [0; 256];
-  var len = std::format_to(&mut std::mutable_span<u8>(buf.data, buf.len), "{}{}", duration.count, duration_suffix<P>);
+  var len = std::format_to(&mut buf, "{}{}", duration.count, duration_suffix<P>);
 
   std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
 }

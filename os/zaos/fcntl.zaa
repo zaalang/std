@@ -10,6 +10,8 @@ pub using gid_t = u32;
 pub using mode_t = u32;
 pub using off_t = u64;
 pub using time_t = i64;
+pub using dev_t = uintptr;
+pub using ino_t = uintptr;
 
 pub const O_RDONLY = 0x1;
 pub const O_WRONLY = 0x2;
@@ -21,6 +23,35 @@ pub const O_TRUNC = 0o1000;
 pub const O_APPEND = 0o2000;
 pub const O_DIRECTORY = 0o200000;
 pub const O_NOFOLLOW = 0o400000;
+
+pub const S_IUMSK = 0o7777;  // user settable bits
+
+pub const S_IRWXU = 0o700;   // read, write, execute: owner
+pub const S_IRUSR = 0o400;   // read permission: owner
+pub const S_IWUSR = 0o200;   // write permission: owner
+pub const S_IXUSR = 0o100;   // execute permission: owner
+pub const S_IRWXG = 0o070;   // read, write, execute: group
+pub const S_IRGRP = 0o040;   // read permission: group
+pub const S_IWGRP = 0o020;   // write permission: group
+pub const S_IXGRP = 0o010;   // execute permission: group
+pub const S_IRWXO = 0o007;   // read, write, execute: other
+pub const S_IROTH = 0o004;   // read permission: other
+pub const S_IWOTH = 0o002;   // write permission: other
+pub const S_IXOTH = 0o001;   // execute permission: other
+
+pub const S_ISUID = 0o4000;  // set user id on execution
+pub const S_ISGID = 0o2000;  // set group id on execution */
+pub const S_ISVTX = 0o1000;  // sticky bit
+
+pub const S_IFMT = 0xf000;   // type of file
+pub const S_IFDATA = 0xb000; // socket dgram
+pub const S_IFSOCK = 0xc000; // socket stream
+pub const S_IFLNK = 0xa000;  // symbolic link
+pub const S_IFREG = 0x8000;  // regular
+pub const S_IFBLK = 0x6000;  // block device
+pub const S_IFDIR = 0x4000;  // directory
+pub const S_IFCHR = 0x2000;  // character device
+pub const S_IFIFO = 0x1000;  // fifo
 
 pub const STDIN_FILENO = 0;
 pub const STDOUT_FILENO = 1;
@@ -51,6 +82,9 @@ pub enum stats
   pub const size = 0x08;
   pub const mtime = 0x10;
   pub const ctime = 0x20;
+  pub const btime = 0x40;
+  pub const inode = 0x100;
+  pub const device = 0x200;
 }
 
 pub struct stat
@@ -63,6 +97,10 @@ pub struct stat
 
   pub time_t mtime,
   pub time_t ctime,
+  pub time_t btime,
+
+  pub ino_t inode,
+  pub dev_t device,
 
   pub stat() = default;
   pub stat(stat&) = default;
@@ -72,27 +110,27 @@ pub struct stat
 
 pub fn ftype(stat &stat) -> ftype
 {
-  switch (stat.mode & 0xf000)
+  switch (stat.mode & S_IFMT)
   {
-    case 0x8000:
+    case S_IFREG:
       return ftype::regular_file;
 
-    case 0x6000:
+    case S_IFBLK:
       return ftype::block_device;
 
-    case 0x4000:
+    case S_IFDIR:
       return ftype::directory;
 
-    case 0x2000:
+    case S_IFCHR:
       return ftype::character_device;
 
-    case 0xa000:
+    case S_IFLNK:
       return ftype::symbolic_link;
 
-    case 0xb000:
+    case S_IFDATA:
       return ftype::socket_dgram;
 
-    case 0xc000:
+    case S_IFSOCK:
       return ftype::socket_stream;
   }
 
@@ -111,6 +149,9 @@ pub struct dirent
   pub fn =(dirent mut &, stat &) -> dirent mut & = default;
   pub ~dirent() = default;
 }
+
+pub const POLLIN = 0x001;
+pub const POLLOUT = 0x004;
 
 pub struct pollfd
 {
@@ -159,6 +200,11 @@ pub enum ioring_ops
   pub const select = 0x07;
   pub const dup = 0x08;
   pub const dup2 = 0x09;
+  pub const mkdir = 0x0a;
+  pub const rename = 0x0b;
+  pub const link = 0x0c;
+  pub const symlink = 0x0d;
+  pub const unlink = 0x0e;
 }
 
 pub enum ioring_flags
@@ -369,6 +415,63 @@ pub fn ioring_prep_sqe_dup2(ioring_sqe mut *sqe, i32 oldfd, i32 newfd) -> void
   sqe.flags = ioring_flags::fin;
 }
 
+pub fn ioring_prep_sqe_mkdir(ioring_sqe mut *sqe, i32 dir, string path, u64 flags, u32 mode) -> void
+{
+  sqe.op = ioring_ops::mkdir;
+  sqe.args[0] = cast(dir);
+  sqe.args[1] = cast(path.data);
+  sqe.args[2] = cast(path.len);
+  sqe.args[3] = cast(flags);
+  sqe.args[4] = cast(mode);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_rename(ioring_sqe mut *sqe, i32 olddir, string oldpath, i32 newdir, string newpath, u64 flags) -> void
+{
+  sqe.op = ioring_ops::rename;
+  sqe.args[0] = cast<uintptr>(olddir) << 32 | cast<uintptr>(newdir);
+  sqe.args[1] = cast(oldpath.data);
+  sqe.args[2] = cast(oldpath.len);
+  sqe.args[3] = cast(newpath.data);
+  sqe.args[4] = cast(newpath.len);
+  sqe.args[5] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_link(ioring_sqe mut *sqe, i32 olddir, string oldpath, i32 newdir, string newpath, u64 flags) -> void
+{
+  sqe.op = ioring_ops::link;
+  sqe.args[0] = cast<uintptr>(olddir) << 32 | cast<uintptr>(newdir);
+  sqe.args[1] = cast(oldpath.data);
+  sqe.args[2] = cast(oldpath.len);
+  sqe.args[3] = cast(newpath.data);
+  sqe.args[4] = cast(newpath.len);
+  sqe.args[5] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_symlink(ioring_sqe mut *sqe, i32 dir, string path, string target, u64 flags) -> void
+{
+  sqe.op = ioring_ops::symlink;
+  sqe.args[0] = cast(dir);
+  sqe.args[1] = cast(path.data);
+  sqe.args[2] = cast(path.len);
+  sqe.args[3] = cast(target.data);
+  sqe.args[4] = cast(target.len);
+  sqe.args[5] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_unlink(ioring_sqe mut *sqe, i32 dir, string path, u64 flags) -> void
+{
+  sqe.op = ioring_ops::unlink;
+  sqe.args[0] = cast(dir);
+  sqe.args[1] = cast(path.data);
+  sqe.args[2] = cast(path.len);
+  sqe.args[3] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
 pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
 {
   if (dir < 0)
@@ -539,4 +642,159 @@ pub fn dup2(ioring mut &ring, i32 oldfd, i32 newfd) -> i32
   ioring_advance_cqe(&mut ring);
 
   return result;
+}
+
+pub fn mkdir(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
+{
+  if (dir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_mkdir(sqe, dir, path, flags, mode);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn mkdir(ioring mut &ring, string path, u64 flags, u32 mode) -> i32
+{
+  var dir = STDCWD_FILENO;
+
+  if (path.len > 0 && *path.data == cast('/'))
+    dir = STDROOT_FILENO;
+
+  return mkdir(&mut ring, dir, path, flags, mode);
+}
+
+pub fn rename(ioring mut &ring, i32 olddir, string oldpath, i32 newdir, string newpath, u64 flags) -> i32
+{
+  if (olddir < 0 || newdir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_rename(sqe, olddir, oldpath, newdir, newpath, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn rename(ioring mut &ring, string oldpath, string newpath, u64 flags) -> i32
+{
+  var olddir = STDCWD_FILENO;
+
+  if (oldpath.len > 0 && *oldpath.data == cast('/'))
+    olddir = STDROOT_FILENO;
+
+  var newdir = STDCWD_FILENO;
+
+  if (newpath.len > 0 && *newpath.data == cast('/'))
+    newdir = STDROOT_FILENO;
+
+  return rename(&mut ring, olddir, oldpath, newdir, newpath, flags);
+}
+
+pub fn link(ioring mut &ring, i32 olddir, string oldpath, i32 newdir, string newpath, u64 flags) -> i32
+{
+  if (olddir < 0 || newdir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_link(sqe, olddir, oldpath, newdir, newpath, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn link(ioring mut &ring, string oldpath, string newpath, u64 flags) -> i32
+{
+  var olddir = STDCWD_FILENO;
+
+  if (oldpath.len > 0 && *oldpath.data == cast('/'))
+    olddir = STDROOT_FILENO;
+
+  var newdir = STDCWD_FILENO;
+
+  if (newpath.len > 0 && *newpath.data == cast('/'))
+    newdir = STDROOT_FILENO;
+
+  return link(&mut ring, olddir, oldpath, newdir, newpath, flags);
+}
+
+pub fn symlink(ioring mut &ring, i32 dir, string path, string target, u64 flags) -> i32
+{
+  if (dir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_symlink(sqe, dir, path, target, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn symlink(ioring mut &ring, string path, string target, u64 flags) -> i32
+{
+  var dir = STDCWD_FILENO;
+
+  if (path.len > 0 && *path.data == cast('/'))
+    dir = STDROOT_FILENO;
+
+  return symlink(&mut ring, dir, path, target, flags);
+}
+
+pub fn unlink(ioring mut &ring, i32 dir, string path, u64 flags) -> i32
+{
+  if (dir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_unlink(sqe, dir, path, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn unlink(ioring mut &ring, string path, u64 flags) -> i32
+{
+  var dir = STDCWD_FILENO;
+
+  if (path.len > 0 && *path.data == cast('/'))
+    dir = STDROOT_FILENO;
+
+  return unlink(&mut ring, dir, path, flags);
 }

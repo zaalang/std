@@ -13,7 +13,7 @@ enum mode
   readwrite = 0x01,
 }
 
-pub struct mmap_error_category : std::error_category
+pub struct mmap_error_category : pub std::error_category
 {
   fn instance() -> mmap_error_category *
   {

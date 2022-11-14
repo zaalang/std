@@ -176,5 +176,5 @@ pub const fn ceil_div<T>(T x, T y) -> T
 pub const fn floor_div<T>(T x, T y) -> T
   where __is_integral<T>
 {
-  return x / y - cast<T>(x % y == 0);
+  return x / y - cast<T>(x * y < 0 && x % y != 0);
 }

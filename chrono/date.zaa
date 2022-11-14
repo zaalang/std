@@ -1,0 +1,1242 @@
+//
+// chrono date
+//
+// based on https://github.com/HowardHinnant/date/blob/master/include/date/date.h
+//
+
+import std.fmt;
+import chrono.duration;
+
+pub enum day : pub u8
+{
+  pub day(u8 n)
+  {
+    this = cast<day>(n);
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return 1 <= cast<u8>(this) && cast<u8>(this) <= 31;
+  }
+
+  pub fn ++(this mut &) -> day mut &
+  {
+    this = cast<day>(cast<u8>(this) + 1);
+
+    return &this;
+  }
+
+  pub fn --(this mut &) -> day mut &
+  {
+    this = cast<day>(cast<u8>(this) - 1);
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::days &n) -> day mut &
+  {
+    this = cast<day>(cast<i64>(this) + n.count);
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::days &n) -> day mut &
+  {
+    this = cast<day>(cast<i64>(this) - n.count);
+
+    return &this;
+  }
+}
+
+pub const fn +(day lhs, chrono::days &rhs) -> day
+{
+  return cast<day>(cast<i64>(lhs) + rhs.count);
+}
+
+pub const fn -(day lhs, chrono::days &rhs) -> day
+{
+  return cast<day>(cast<i64>(lhs) - rhs.count);
+}
+
+pub const fn -(day lhs, day rhs) -> chrono::days
+{
+  return cast<i64>(lhs) - cast<i64>(rhs);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, day n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{:02}", cast<u8>(n));
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub enum month : pub u8
+{
+  january = 1,
+  february = 2,
+  march = 3,
+  april = 4,
+  may = 5,
+  june = 6,
+  july = 7,
+  august = 8,
+  september = 9,
+  october = 10,
+  november = 11,
+  december = 12,
+
+  const days = [ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 ];
+
+  pub month(u8 n)
+  {
+    this = cast<month>(n);
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return 1 <= cast<u8>(this) && cast<u8>(this) <= 12;
+  }
+
+  pub fn ++(this mut &) -> month mut &
+  {
+    this = cast<month>(cast<u8>(this) + 1);
+
+    return &this;
+  }
+
+  pub fn --(this mut &) -> month mut &
+  {
+    this = cast<month>(cast<u8>(this) - 1);
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::months &n) -> month mut &
+  {
+    this = cast<month>(cast<i64>(this) + n.count);
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::months &n) -> month mut &
+  {
+    this = cast<month>(cast<i64>(this) - n.count);
+
+    return &this;
+  }
+}
+
+pub const fn +(month lhs, chrono::months &rhs) -> month
+{
+  return cast<month>(cast<i64>(lhs) + rhs.count);
+}
+
+pub const fn -(month lhs, chrono::months &rhs) -> month
+{
+  return cast<month>(cast<i64>(lhs) - rhs.count);
+}
+
+pub const fn -(month lhs, month rhs) -> chrono::months
+{
+  return cast<i64>(lhs) - cast<i64>(rhs);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{:02}", cast<u8>(n));
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub enum year : pub i16
+{
+  pub year(i16 n)
+  {
+    this = cast<year>(n);
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return cast<i16>(this) > -32_768;
+  }
+
+  pub fn is_leap(this&) -> bool
+  {
+    return (cast<i16>(this) % 4 == 0) && (cast<i16>(this) % 100 != 0 || cast<i16>(this) % 400 == 0);
+  }
+
+  pub fn +(this &) -> year
+  {
+    return this;
+  }
+
+  pub fn -(this &) -> year
+  {
+    return -cast<i16>(this);
+  }
+
+  pub fn ++(this mut &) -> year mut &
+  {
+    this = cast<year>(cast<i16>(this) + 1);
+
+    return &this;
+  }
+
+  pub fn --(this mut &) -> year mut &
+  {
+    this = cast<year>(cast<i16>(this) - 1);
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::years &n) -> year mut &
+  {
+    this = cast<year>(cast<i64>(this) + n.count);
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::years &n) -> year mut &
+  {
+    this = cast<year>(cast<i64>(this) - n.count);
+
+    return &this;
+  }
+}
+
+pub const fn +(year lhs, chrono::years &rhs) -> year
+{
+  return cast<year>(cast<i64>(lhs) + rhs.count);
+}
+
+pub const fn -(year lhs, chrono::years &rhs) -> year
+{
+  return cast<year>(cast<i64>(lhs) - rhs.count);
+}
+
+pub const fn -(year lhs, year rhs) -> chrono::years
+{
+  return cast<i64>(lhs) - cast<i64>(rhs);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{:04}", cast<i16>(n));
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+struct last_spec
+{
+  last_spec() = default;
+  last_spec(last_spec&) = default;
+  pub ~last_spec() = default;
+}
+
+pub enum weekday : pub u8
+{
+  sunday = 0,
+  monday = 1,
+  tuesday = 2,
+  wednesday = 3,
+  thursday = 4,
+  friday = 5,
+  saturday = 6,
+
+  pub const last = last_spec();
+
+  pub weekday(u8 n)
+  {
+    this = cast<weekday>((n != 7) ? n : 0);
+  }
+
+  pub weekday(chrono::local_time<chrono::days> &tp)
+  {
+    let n = tp.time_since_epoch.count;
+
+    this = cast<weekday>((n >= -4 ? (n + 4) : (11 + (n % 7))) % 7);
+  }
+
+  pub fn =(this mut &, chrono::local_time<chrono::days> &tp) -> weekday mut &
+  {
+    this = weekday(tp);
+
+    return &this;
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return cast<u8>(this) <= 6;
+  }
+
+  pub fn ++(this mut &) -> weekday mut &
+  {
+    this = this + chrono::days(1);
+
+    return &this;
+  }
+
+  pub fn --(this mut &) -> weekday mut &
+  {
+    this = this - chrono::days(1);
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::days &n) -> weekday mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::days &n) -> weekday mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub fn [](this&, u8 index) -> weekday_indexed
+  {
+    return weekday_indexed(this, index);
+  }
+
+  pub fn [](this&, last_spec) -> weekday_last
+  {
+    return weekday_last(this);
+  }
+}
+
+pub const fn +(weekday lhs, chrono::days &rhs) -> weekday
+{
+  let n = cast<i64>(lhs) + rhs.count;
+  let dw = (n >= 0 ? n : n - 6) / 7;
+
+  return cast<weekday>(n - dw * 7);
+}
+
+pub const fn -(weekday lhs, chrono::days &rhs) -> weekday
+{
+  let n = cast<i64>(lhs) - rhs.count;
+  let dw = (n >= 0 ? n : n - 6) / 7;
+
+  return cast<weekday>(n - dw * 7);
+}
+
+pub const fn -(weekday lhs, weekday rhs) -> chrono::days
+{
+  let n = cast<i64>(lhs) - cast<i64>(rhs);
+  let dw = (n >= 0 ? n : n - 6) / 7;
+
+  return n - dw * 7;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday n) throws -> void
+{
+  switch (n)
+  {
+    #{
+      #for(const k : std::meta::enumerators_of($weekday))
+      {
+        -> { case $(weekday::#k): std::fmt_to(&mut os, &mut ctx, $(std::meta::name_of(k))); }
+      }
+    }
+
+    else:
+      std::fmt_to(&mut os, &mut ctx, cast<u8>(n));
+  }
+}
+
+pub struct weekday_indexed
+{
+  weekday day;
+  u8 index;
+
+  pub weekday_indexed(weekday day, u8 index)
+    : day(day), index(index)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.day.ok && 1 <= this.index && this.index <= 5;
+  }
+
+  pub fn weekday(this&)
+  {
+    return this.day;
+  }
+
+  pub fn index(this&)
+  {
+    return this.index;
+  }
+
+  pub const fn ==(weekday_indexed&, weekday_indexed&) -> bool = default;
+
+  pub weekday_indexed() = default;
+  pub weekday_indexed(weekday_indexed &) = default;
+  pub fn =(weekday_indexed mut &, weekday_indexed &) -> weekday_indexed mut & = default;
+  pub ~weekday_indexed() = default;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday_indexed n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}[{}]", n.day, n.index);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct weekday_last
+{
+  weekday day;
+
+  pub weekday_last(weekday day)
+    : day(day)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.day.ok;
+  }
+
+  pub fn weekday(this&)
+  {
+    return this.day;
+  }
+
+  pub const fn ==(weekday_last&, weekday_last&) -> bool = default;
+
+  pub weekday_last() = default;
+  pub weekday_last(weekday_last &) = default;
+  pub fn =(weekday_last mut &, weekday_last &) -> weekday_last mut & = default;
+  pub ~weekday_last() = default;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday_last n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}[last]", n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct month_day
+{
+  month month;
+  day day;
+
+  pub month_day(month month, day day)
+    : month(month), day(day)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.month.ok && 1 <= cast<u8>(this.day) && cast<u8>(this.day) <= month::days[cast<usize>(this.month) - 1];
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn day(this&)
+  {
+    return this.day;
+  }
+
+  pub const fn ==(month_day&, month_day&) -> bool = default;
+  pub const fn <=>(month_day&, month_day&) -> int = default;
+
+  pub month_day() = default;
+  pub month_day(month_day &) = default;
+  pub fn =(month_day mut &, month_day &) -> month_day mut & = default;
+  pub ~month_day() = default;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_day n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}", n.month, n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct month_day_last
+{
+  month month;
+
+  pub month_day_last(month month)
+    : month(month)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.month.ok;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub const fn ==(month_day_last&, month_day_last&) -> bool = default;
+  pub const fn <=>(month_day_last&, month_day_last&) -> int = default;
+
+  pub month_day_last() = default;
+  pub month_day_last(month_day_last &) = default;
+  pub fn =(month_day_last mut &, month_day_last &) -> month_day_last mut & = default;
+  pub ~month_day_last() = default;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_day_last n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/last", n.month);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct month_weekday
+{
+  month month;
+  weekday_indexed day;
+
+  pub month_weekday(month month, weekday_indexed day)
+    : month(month), day(day)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.month.ok && this.day.ok;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn weekday(this&)
+  {
+    return this.day.weekday;
+  }
+
+  pub fn index(this&)
+  {
+    return this.day.index;
+  }
+
+  pub fn day(this&)
+  {
+    return this.day;
+  }
+
+  pub const fn ==(month_weekday&, month_weekday&) -> bool = default;
+
+  pub month_weekday() = default;
+  pub month_weekday(month_weekday &) = default;
+  pub fn =(month_weekday mut &, month_weekday &) -> month_weekday mut & = default;
+  pub ~month_weekday() = default;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_weekday n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}", n.month, n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct month_weekday_last
+{
+  month month;
+  weekday_last day;
+
+  pub month_weekday_last(month month, weekday_last day)
+    : month(month), day(day)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.month.ok && this.day.ok;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn weekday(this&)
+  {
+    return this.day.weekday;
+  }
+
+  pub fn day(this&)
+  {
+    return this.day;
+  }
+
+  pub const fn ==(month_weekday_last&, month_weekday_last&) -> bool = default;
+
+  pub month_weekday_last() = default;
+  pub month_weekday_last(month_weekday_last &) = default;
+  pub fn =(month_weekday_last mut &, month_weekday_last &) -> month_weekday_last mut & = default;
+  pub ~month_weekday_last() = default;
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_weekday_last n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}", n.month, n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct year_month
+{
+  year year;
+  month month;
+
+  pub year_month(year year, month month)
+    : year(year), month(month)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.year.ok && this.month.ok;
+  }
+
+  pub fn year(this&)
+  {
+    return this.year;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn +=(this mut &, chrono::years &n) -> year_month mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::years &n) -> year_month mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::months &n) -> year_month mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::months &n) -> year_month mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub const fn ==(year_month&, year_month&) -> bool = default;
+  pub const fn <=>(year_month&, year_month&) -> int = default;
+
+  pub year_month() = default;
+  pub year_month(year_month &) = default;
+  pub fn =(year_month mut &, year_month &) -> year_month mut & = default;
+  pub ~year_month() = default;
+}
+
+pub const fn +(year_month &lhs, chrono::years &rhs) -> year_month
+{
+  return year_month(lhs.year + rhs, lhs.month);
+}
+
+pub const fn -(year_month &lhs, chrono::years &rhs) -> year_month
+{
+  return year_month(lhs.year - rhs, lhs.month);
+}
+
+pub const fn +(year_month &lhs, chrono::months &rhs) -> year_month
+{
+  let n = cast<i64>(lhs.month) - 1 + rhs.count;
+  let dy = (n >= 0 ? n : n - 11) / 12;
+
+  return year_month(lhs.year + chrono::years(dy), month(cast<u8>(n - dy * 12 + 1)));
+}
+
+pub const fn -(year_month &lhs, chrono::months &rhs) -> year_month
+{
+  let n = cast<i64>(lhs.month) - 1 - rhs.count;
+  let dy = (n >= 0 ? n : n - 11) / 12;
+
+  return year_month(lhs.year + chrono::years(dy), month(cast<u8>(n - dy * 12 + 1)));
+}
+
+pub const fn -(year_month &lhs, year_month &rhs) -> chrono::months
+{
+ return (lhs.year - rhs.year) + (lhs.month - rhs.month);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}", n.year, n.month);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct year_month_day
+{
+  year year;
+  month month;
+  day day;
+
+  pub year_month_day(year year, month month, day day)
+    : year(year), month(month), day(day)
+  {
+  }
+
+  pub year_month_day(year_month &ym, day day)
+    : year(ym.year), month(ym.month), day(day)
+  {
+  }
+
+  pub year_month_day(year year, month_day &md)
+    : year(year), month(md.month), day(md.day)
+  {
+  }
+
+  pub year_month_day(year year, month_day_last &mdl)
+    : year(year), month(mdl.month), day(year_month_day_last(year, mdl).day)
+  {
+  }
+
+  pub year_month_day(year_month_day_last &ymdl)
+    : year(ymdl.year), month(ymdl.month), day(ymdl.day)
+  {
+  }
+
+  pub year_month_day(chrono::local_time<chrono::days> &tp)
+  {
+    let n = tp.time_since_epoch.count + 719468;
+    let era = (n >= 0 ? n : n - 146096) / 146097;
+    let doe = (n - era * 146097);                               // [0, 146096]
+    let yoe = (doe - doe/1460 + doe/36524 - doe/146096) / 365;  // [0, 399]
+    let y = yoe + era * 400;
+    let doy = doe - (365*yoe + yoe/4 - yoe/100);                // [0, 365]
+    let mp = (5*doy + 2) / 153;                                 // [0, 11]
+    let d = doy - (153*mp+2)/5 + 1;                             // [1, 31]
+    let m = mp < 10 ? mp+3 : mp-9;                              // [1, 12]
+
+    this.year = chrono::year(cast<i16>(y) + cast<i16>(m <= 2));
+    this.month = chrono::month(cast<u8>(m));
+    this.day = chrono::day(cast<u8>(d));
+  }
+
+  pub fn =(this mut &, year_month_day_last &other) -> year_month_day mut &
+  {
+    this = year_month_day(other);
+
+    return &this;
+  }
+
+  pub fn =(this mut &, chrono::local_time<chrono::days> &tp) -> year_month_day mut &
+  {
+    this = year_month_day(tp);
+
+    return &this;
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.year.ok && this.month.ok && 1 <= cast<u8>(this.day) && this.day <= year_month_day_last(this.year, this.month).day;
+  }
+
+  pub fn year(this&)
+  {
+    return this.year;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn day(this&)
+  {
+    return this.day;
+  }
+
+  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  {
+    let d = cast<i64>(this.day);
+    let m = cast<i64>(this.month);
+    let y = cast<i64>(this.year) - cast<i64>(m <= 2);
+    let era = (y >= 0 ? y : y-399) / 400;
+    let yoe = y - era * 400;                              // [0, 399]
+    let doy = (153*(m > 2 ? m-3 : m+9) + 2)/5 + d - 1;    // [0, 365]
+    let doe = yoe * 365 + yoe/4 - yoe/100 + doy;          // [0, 146096]
+
+    return chrono::days(era * 146097 + doe - 719468);
+  }
+
+  pub fn +=(this mut &, chrono::years &n) -> year_month_day mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::years &n) -> year_month_day mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::months &n) -> year_month_day mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::months &n) -> year_month_day mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub const fn ==(year_month_day&, year_month_day&) -> bool = default;
+  pub const fn <=>(year_month_day&, year_month_day&) -> int = default;
+
+  pub year_month_day() = default;
+  pub year_month_day(year_month_day &) = default;
+  pub fn =(year_month_day mut &, year_month_day &) -> year_month_day mut & = default;
+  pub ~year_month_day() = default;
+}
+
+pub const fn +(year_month_day &lhs, chrono::years &rhs) -> year_month_day
+{
+  return year_month_day(lhs.year + rhs, lhs.month, lhs.day);
+}
+
+pub const fn -(year_month_day &lhs, chrono::years &rhs) -> year_month_day
+{
+  return year_month_day(lhs.year - rhs, lhs.month, lhs.day);
+}
+
+pub const fn +(year_month_day &lhs, chrono::months &rhs) -> year_month_day
+{
+  return year_month_day(year_month(lhs.year, lhs.month) + rhs, lhs.day);
+}
+
+pub const fn -(year_month_day &lhs, chrono::months &rhs) -> year_month_day
+{
+  return year_month_day(year_month(lhs.year, lhs.month) - rhs, lhs.day);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_day n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}/{}", n.year, n.month, n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct year_month_day_last
+{
+  year year;
+  month_day_last month_day_last;
+
+  pub year_month_day_last(year year, month_day_last &mdl)
+    : year(year), month_day_last(mdl)
+  {
+  }
+
+  pub year_month_day_last(year_month &ym)
+    : year(ym.year), month_day_last(ym.month)
+  {
+  }
+
+  pub year_month_day_last(year year, month month)
+    : year(year), month_day_last(month)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.year.ok && this.month_day_last.ok;
+  }
+
+  pub fn year(this&)
+  {
+    return this.year;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month_day_last.month;
+  }
+
+  pub fn month_day_last(this&)
+  {
+    return this.month_day_last;
+  }
+
+  pub fn weekday(this&)
+  {
+    return weekday(this.as_local_time);
+  }
+
+  pub fn day(this&)
+  {
+    if (this.month == month::february && !this.year.is_leap)
+      return day(28);
+
+    return day(month::days[cast<usize>(this.month) - 1]);
+  }
+
+  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  {
+    return year_month_day(this).as_local_time;
+  }
+
+  pub fn +=(this mut &, chrono::years &n) -> year_month_day_last mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::years &n) -> year_month_day_last mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::months &n) -> year_month_day_last mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::months &n) -> year_month_day_last mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub const fn ==(year_month_day_last&, year_month_day_last&) -> bool = default;
+  pub const fn <=>(year_month_day_last&, year_month_day_last&) -> int = default;
+
+  pub year_month_day_last() = default;
+  pub year_month_day_last(year_month_day_last &) = default;
+  pub fn =(year_month_day_last mut &, year_month_day_last &) -> year_month_day_last mut & = default;
+  pub ~year_month_day_last() = default;
+}
+
+pub const fn +(year_month_day_last &lhs, chrono::years &rhs) -> year_month_day_last
+{
+  return year_month_day_last(lhs.year + rhs, lhs.month_day_last);
+}
+
+pub const fn -(year_month_day_last &lhs, chrono::years &rhs) -> year_month_day_last
+{
+  return year_month_day_last(lhs.year - rhs, lhs.month_day_last);
+}
+
+pub const fn +(year_month_day_last &lhs, chrono::months &rhs) -> year_month_day_last
+{
+  return year_month_day_last(year_month(lhs.year, lhs.month) + rhs);
+}
+
+pub const fn -(year_month_day_last &lhs, chrono::months &rhs) -> year_month_day_last
+{
+  return year_month_day_last(year_month(lhs.year, lhs.month) - rhs);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_day_last n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}/last", n.year, n.month);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct year_month_weekday
+{
+  year year;
+  month month;
+  weekday_indexed day;
+
+  pub year_month_weekday(year year, month month, weekday_indexed day)
+    : year(year), month(month), day(day)
+  {
+  }
+
+  pub year_month_weekday(year_month &ym, weekday_indexed day)
+    : year(ym.year), month(ym.month), day(day)
+  {
+  }
+
+  pub year_month_weekday(chrono::local_time<chrono::days> &tp)
+  {
+    let wd = weekday(tp);
+    let ymd = year_month_day(tp);
+
+    this.year = ymd.year;
+    this.month = ymd.month;
+    this.day = wd[(cast<u8>(ymd.day) - 1) / 7 + 1];
+  }
+
+  pub fn =(this mut &, chrono::local_time<chrono::days> &tp) -> year_month_weekday mut &
+  {
+    this = year_month_weekday(tp);
+
+    return &this;
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    if (!this.year.ok || !this.month.ok || !this.day.ok)
+      return false;
+
+    if (this.day.index <= 4)
+      return true;
+
+    let tp = year_month_day(this.year, this.month, day(1)).as_local_time;
+    let days = this.day.weekday - weekday(tp) + chrono::days((this.day.index - 1) * 7 + 1);
+
+    return cast<u8>(days.count) <= cast<u8>(year_month_day_last(this.year, this.month).day);
+  }
+
+  pub fn year(this&)
+  {
+    return this.year;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn weekday(this&)
+  {
+    return this.day.weekday;
+  }
+
+  pub fn index(this&)
+  {
+    return this.day.index;
+  }
+
+  pub fn day(this&)
+  {
+    return this.day;
+  }
+
+  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  {
+    let tp = year_month_day(this.year, this.month, day(1)).as_local_time;
+
+    return tp + (this.day.weekday - weekday(tp) + chrono::days((this.day.index - 1) * 7));
+  }
+
+  pub fn +=(this mut &, chrono::years &n) -> year_month_weekday mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::years &n) -> year_month_weekday mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::months &n) -> year_month_weekday mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::months &n) -> year_month_weekday mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub const fn ==(year_month_weekday&, year_month_weekday&) -> bool = default;
+
+  pub year_month_weekday() = default;
+  pub year_month_weekday(year_month_weekday &) = default;
+  pub fn =(year_month_weekday mut &, year_month_weekday &) -> year_month_weekday mut & = default;
+  pub ~year_month_weekday() = default;
+}
+
+pub const fn +(year_month_weekday &lhs, chrono::years &rhs) -> year_month_weekday
+{
+  return year_month_weekday(lhs.year + rhs, lhs.month, lhs.day);
+}
+
+pub const fn -(year_month_weekday &lhs, chrono::years &rhs) -> year_month_weekday
+{
+  return year_month_weekday(lhs.year - rhs, lhs.month, lhs.day);
+}
+
+pub const fn +(year_month_weekday &lhs, chrono::months &rhs) -> year_month_weekday
+{
+  return year_month_weekday(year_month(lhs.year, lhs.month) + rhs, lhs.day);
+}
+
+pub const fn -(year_month_weekday &lhs, chrono::months &rhs) -> year_month_weekday
+{
+  return year_month_weekday(year_month(lhs.year, lhs.month) - rhs, lhs.day);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_weekday n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}/{}", n.year, n.month, n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}
+
+pub struct year_month_weekday_last
+{
+  year year;
+  month month;
+  weekday_last day;
+
+  pub year_month_weekday_last(year year, month month, weekday_last day)
+    : year(year), month(month), day(day)
+  {
+  }
+
+  pub year_month_weekday_last(year_month &ym, weekday_last day)
+    : year(ym.year), month(ym.month), day(day)
+  {
+  }
+
+  pub fn ok(this&) -> bool
+  {
+    return this.year.ok && this.month.ok && this.day.ok;
+  }
+
+  pub fn year(this&)
+  {
+    return this.year;
+  }
+
+  pub fn month(this&)
+  {
+    return this.month;
+  }
+
+  pub fn weekday(this&)
+  {
+    return this.day.weekday;
+  }
+
+  pub fn day(this&)
+  {
+    return this.day;
+  }
+
+  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  {
+    let tp = year_month_day_last(this.year, this.month).as_local_time;
+
+    return tp - (weekday(tp) - this.day.weekday);
+  }
+
+  pub fn +=(this mut &, chrono::years &n) -> year_month_weekday_last mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::years &n) -> year_month_weekday_last mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub fn +=(this mut &, chrono::months &n) -> year_month_weekday_last mut &
+  {
+    this = this + n;
+
+    return &this;
+  }
+
+  pub fn -=(this mut &, chrono::months &n) -> year_month_weekday_last mut &
+  {
+    this = this - n;
+
+    return &this;
+  }
+
+  pub const fn ==(year_month_weekday_last&, year_month_weekday_last&) -> bool = default;
+
+  pub year_month_weekday_last() = default;
+  pub year_month_weekday_last(year_month_weekday_last &) = default;
+  pub fn =(year_month_weekday_last mut &, year_month_weekday_last &) -> year_month_weekday_last mut & = default;
+  pub ~year_month_weekday_last() = default;
+}
+
+pub const fn +(year_month_weekday_last &lhs, chrono::years &rhs) -> year_month_weekday_last
+{
+  return year_month_weekday_last(lhs.year + rhs, lhs.month, lhs.day);
+}
+
+pub const fn -(year_month_weekday_last &lhs, chrono::years &rhs) -> year_month_weekday_last
+{
+  return year_month_weekday_last(lhs.year - rhs, lhs.month, lhs.day);
+}
+
+pub const fn +(year_month_weekday_last &lhs, chrono::months &rhs) -> year_month_weekday_last
+{
+  return year_month_weekday_last(year_month(lhs.year, lhs.month) + rhs, lhs.day);
+}
+
+pub const fn -(year_month_weekday_last &lhs, chrono::months &rhs) -> year_month_weekday_last
+{
+  return year_month_weekday_last(year_month(lhs.year, lhs.month) - rhs, lhs.day);
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_weekday_last n) throws -> void
+{
+  var buf = [0; 256];
+  var len = std::format_to(&mut buf, "{}/{}/{}", n.year, n.month, n.day);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(buf.data, len));
+}

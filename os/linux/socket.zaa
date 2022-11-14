@@ -50,7 +50,7 @@ pub struct sockaddr
   ~sockaddr() = default;
 }
 
-pub struct sockaddr_un : sockaddr
+pub struct sockaddr_un : pub sockaddr
 {
   pub u8[108] sun_path;
 
@@ -60,7 +60,7 @@ pub struct sockaddr_un : sockaddr
   pub ~sockaddr_un() = default;
 }
 
-pub struct in4_addr : u8[4]
+pub struct in4_addr : pub u8[4]
 {
   pub fn s_addr(this&&) { return &cast<u32&&>(this.super); }
 
@@ -74,7 +74,7 @@ pub struct in4_addr : u8[4]
 pub const in4addr_any = in6_addr([0,0,0,0]);
 pub const in4addr_loopback = in6_addr([255,255,255,255]);
 
-pub struct sockaddr_in4 : sockaddr
+pub struct sockaddr_in4 : pub sockaddr
 {
   pub u16 sin4_port;
   pub in4_addr sin4_addr;
@@ -86,7 +86,7 @@ pub struct sockaddr_in4 : sockaddr
   pub ~sockaddr_in4() = default;
 }
 
-pub struct in6_addr : u8[16]
+pub struct in6_addr : pub u8[16]
 {
   pub fn s6_addr(this&&) { return &this.super; }
   pub fn s6_addr16(this&&) { return &cast<u16[8]&&>(this.super); }
@@ -102,7 +102,7 @@ pub struct in6_addr : u8[16]
 pub const in6addr_any = in6_addr([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
 pub const in6addr_loopback = in6_addr([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]);
 
-pub struct sockaddr_in6 : sockaddr
+pub struct sockaddr_in6 : pub sockaddr
 {
   pub u16 sin6_port;
   pub u32 sin6_flowinfo;

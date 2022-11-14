@@ -70,7 +70,7 @@ pub struct Link
 
 pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
-  pub struct Node : Link
+  pub struct Node : pub Link
   {
     Node()
       : value(void)

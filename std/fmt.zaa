@@ -185,7 +185,7 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
         *--beg = cast('-');
   }
 
-  fmt_str(&mut os, &mut ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.len);
+  fmt_str(&mut os, &mut ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.ptr + str.len - beg);
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, u8 value) throws -> void
@@ -433,6 +433,33 @@ fn fmt_str(OutputStream mut &os, fmt_context mut &ctx, u8 mut *beg, u8 *start, u
     pad(&mut os, &mut ctx, padding_right);
 }
 
+fn cell_width(char ch) -> usize
+{
+  if (ch == 0)
+    return 0;
+
+  if (ch < 32 || (ch >= 0x7f && ch < 0xa0))
+    return 2;
+
+  if (std::is_non_spacing(ch))
+    return 0;
+
+  if (std::is_wide_spacing(ch))
+    return 2;
+
+  return 1;
+}
+
+fn cell_width(String &str) -> usize
+{
+  var x = 0;
+
+  for(var ch : str.chars)
+    x += cell_width(ch);
+
+  return x;
+}
+
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws -> void
 {
   if (ctx.spec.type == cast('?'))
@@ -462,13 +489,24 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
 
   if (ctx.spec.precision >= 0 || ctx.spec.width >= 0)
   {
-    length = str.chars.len;
+    length = cell_width(str);
 
     if (ctx.spec.precision >= 0 && cast(ctx.spec.precision) < length)
     {
-      str = str.take(cast(ctx.spec.precision));
+      var x = 0;
+      var j = str.chars.begin;
 
-      length = cast(ctx.spec.precision);
+      for(length = 0; j != str.chars.end; ++j)
+      {
+        x += cell_width(*j);
+
+        if (x > cast(ctx.spec.precision))
+          break;
+
+        length = x;
+      }
+
+      str = std::string_view(str.begin, j);
     }
   }
 

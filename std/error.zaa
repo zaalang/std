@@ -61,7 +61,9 @@ pub enum errc : u32
   bad_address = 14,
   device_busy = 16,
   already_exists = 17,
+  cross_device_link = 18,
   not_a_directory = 20,
+  is_a_directory = 21,
   invalid_argument = 22,
   resource_exhausted = 24,
   file_too_large = 27,
@@ -86,7 +88,7 @@ pub enum errc : u32
   }
 }
 
-pub struct system_error_category : error_category
+pub struct system_error_category : pub error_category
 {
   fn instance() -> system_error_category *
   {
