@@ -3,6 +3,12 @@
 //
 
 #[weak]
+extern fn __vdso_get_pid() -> i32;
+
+#[weak]
+extern fn __vdso_get_tid() -> i32;
+
+#[weak]
 extern fn __vdso_get_uid() -> u32;
 
 #[weak]
@@ -16,6 +22,16 @@ extern fn __vdso_get_egid() -> u32;
 
 #[weak]
 extern fn __vdso_exit_process(i32 rval) -> void;
+
+pub fn getpid() -> i32
+{
+  return __vdso_get_pid();
+}
+
+pub fn gettid() -> i32
+{
+  return __vdso_get_tid();
+}
 
 pub fn getuid() -> u32
 {

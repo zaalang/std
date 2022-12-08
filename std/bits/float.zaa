@@ -471,6 +471,9 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
 
   for(; ch != end; ++ch)
   {
+    if (*ch == cast('_'))
+      continue;
+
     if (*ch == cast('.'))
     {
       if (!gotdig || gotdot)
@@ -478,6 +481,7 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
 
       rp = dc;
       gotdot = true;
+
       continue;
     }
 
@@ -525,10 +529,20 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
     if (ch == end || !(cast('0') <= *ch && *ch <= cast('9')))
       return x;
 
-    for(; ch != end && (cast('0') <= *ch && *ch <= cast('9')); ++ch)
+    for(; ch != end; ++ch)
     {
-      if (x.value.e < 10000)
-        e10 = e10 * 10 + cast<int>(*ch -  cast('0'));
+      if (*ch == cast('_'))
+        continue;
+
+      if (cast('0') <= *ch && *ch <= cast('9'))
+      {
+        if (x.value.e < 10000)
+          e10 = e10 * 10 + cast<int>(*ch -  cast('0'));
+
+        continue;
+      }
+
+      break;
     }
 
     rp += sign * e10;

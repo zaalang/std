@@ -278,6 +278,13 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     }
   }
 
+  #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Key, Args>(this mut &, Key &&key, Args && ...args) -> T mut &
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &this[insert(&mut this, &&key, &&args...).0].value;
+  }
+
   #[lifetime(poison(this), consume(other))]
   pub fn merge(this mut &, flat_hash_map mut &other) -> void
   {

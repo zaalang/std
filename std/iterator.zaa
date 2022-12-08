@@ -14,9 +14,15 @@ pub concept Iterator
   requires<T> (T x, T y) { x == y; }
 }
 
-pub concept RandomAccessIterator
+pub concept BidirectionalIterator
 {
   requires<T> __is_match<Iterator, T>
+  requires<T> (T x) { --x; }
+}
+
+pub concept RandomAccessIterator
+{
+  requires<T> __is_match<BidirectionalIterator, T>
   requires<T> (T x, T y) { x - y; }
   requires<T> (T x, usize y) { x + y; }
 }
@@ -34,15 +40,15 @@ pub fn distance<I>(I first, Sentinal<I> last) -> usize
   }
   #else
   {
-    var result = 0;
+    var count = 0;
 
     while (first != last)
     {
       ++first;
-      ++result;
+      ++count;
     }
 
-    return result;
+    return count;
   }
 }
 

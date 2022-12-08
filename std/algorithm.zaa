@@ -3,9 +3,16 @@
 //
 
 import std.stdlib : assert;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 import std.type;
 import std.tuple;
-import std.range : Iterator, RandomAccessIterator, Sentinal, Range;
+
+pub import std.algorithm.heap;
+pub import std.algorithm.sort;
+pub import std.algorithm.reverse;
+pub import std.algorithm.rotate;
+pub import std.algorithm.iteration;
+pub import std.algorithm.partition;
 
 pub fn swap<T>(T mut &a, T mut &b)
 {
@@ -176,49 +183,6 @@ pub fn transform!<T, Func>(Range<T> mut &range, Func &func) -> void
   }
 }
 
-pub fn reverse!<I>(I first, I last) -> void
-{
-  for(; first != last && first != --last; ++first)
-  {
-    swap(&mut *first, &mut *last);
-  }
-}
-
-pub fn reverse!<T, Func>(Range<T> mut &range) -> void
-{
-  var first = range.begin;
-
-  for(var last = range.end; first != last && first != --last; ++first)
-  {
-    swap(&mut range[first], &mut range[last]);
-  }
-}
-
-pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
-{
-  if (first == last)
-    return first;
-
-  var tmp = &move *first;
-  var lm1 = move(first, last, std::next(first), last);
-  *lm1 = &move tmp;
-
-  return lm1;
-}
-
-pub fn rotate_right<I>(I first, I last) -> I
-{
-  if (first == last)
-    return last;
-
-  var lm1 = std::prev(last);
-  var tmp = &move *lm1;
-  var fp1 = move_backward(first, last, first, lm1);
-  *first = &move tmp;
-
-  return fp1;
-}
-
 pub fn min<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {
@@ -327,51 +291,22 @@ pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
   return result;
 }
 
-pub fn sort<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
-  where __is_match<RandomAccessIterator, I> && requires (I i, I j, Cmp &cmp) { cmp(*i, *j); *i = *j; }
-{
-  for(var i = first; i != last; ++i)
-  {
-    for(var j = first; j != i; ++j)
-    {
-      if (cmp(*i, *j))
-        swap(&mut *i, &mut *j);
-    }
-  }
-}
-
-pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
-{
-  var first = range.begin;
-
-  for(var i = first, var last = range.end; i != last; ++i)
-  {
-    for(var j = first; j != i; ++j)
-    {
-      if (cmp(range[i], range[j]))
-        swap(&mut range[i], &mut range[j]);
-    }
-  }
-}
-
 pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(*i, value); }
 {
-  var count = std::distance(first, last);
-
-  while (count > 0)
+  for(var len = std::distance(first, last); len > 0; )
   {
-    var m = count / 2;
+    var m = len / 2;
     var it = first + m;
 
     if (cmp(*it, value))
     {
       first = ++it;
-      count -= m + 1;
+      len -= m + 1;
     }
     else
     {
-      count = m;
+      len = m;
     }
   }
 
@@ -382,27 +317,43 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
   match (Value value) { T(value); }
   where requires (typeof(range) range, Value &value, Cmp &cmp) { lower_bound(range.begin, range.end, value, cmp); }
 {
-  return lower_bound(range.begin, range.end, value, cmp);
+  var first = range.begin;
+
+  for(var len = range.len; len > 0; )
+  {
+    var m = len / 2;
+    var it = first + m;
+
+    if (cmp(range[it], value))
+    {
+      first = ++it;
+      len -= m + 1;
+    }
+    else
+    {
+      len = m;
+    }
+  }
+
+  return first;
 }
 
 pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where __is_match<RandomAccessIterator, I> && requires (I i, Value &value, Cmp &cmp) { cmp(value, *i); }
 {
-  var count = std::distance(first, last);
-
-  while (count > 0)
+  for(var len = std::distance(first, last); len > 0; )
   {
-    var m = count / 2;
+    var m = len / 2;
     var it = first + m;
 
     if (!cmp(value, *it))
     {
       first = ++it;
-      count -= m + 1;
+      len -= m + 1;
     }
     else
     {
-      count = m;
+      len = m;
     }
   }
 
@@ -413,7 +364,25 @@ pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
   match (Value value) { T(value); }
   where requires (typeof(range) range, Value &value, Cmp &cmp) { upper_bound(range.begin, range.end, value, cmp); }
 {
-  return upper_bound(range.begin, range.end, value, cmp);
+  var first = range.begin;
+
+  for(var len = range.len; len > 0; )
+  {
+    var m = len / 2;
+    var it = first + m;
+
+    if (!cmp(value, range[it]))
+    {
+      first = ++it;
+      len -= m + 1;
+    }
+    else
+    {
+      len = m;
+    }
+  }
+
+  return first;
 }
 
 pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> (I, I)
@@ -426,7 +395,7 @@ pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
   match (Value value) { T(value); }
   where requires (typeof(range) range, Value &value, Cmp &cmp) { equal_range(range.begin, range.end, value, cmp); }
 {
-  return equal_range(range.begin, range.end, value, cmp);
+  return (lower_bound(&&range, value, cmp), upper_bound(&&range, value, cmp));
 }
 
 pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
@@ -444,7 +413,12 @@ pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = s
   match (Value value) { T(value); }
   where requires (typeof(range) range, Value &value, Cmp &cmp) { binary_search(range.begin, range.end, value, cmp); }
 {
-  return binary_search(range.begin, range.end, value, cmp);
+  var j = lower_bound(range, value, cmp);
+
+  if (j == range.end || cmp(value, range[j]))
+    return range.end;
+
+  return j;
 }
 
 pub fn count<I, Value>(I first, Sentinal<I> last, Value &value) -> usize
@@ -502,6 +476,33 @@ pub fn count_if<T, Pred>(Range<T> &&range, Pred &pred)
   return count;
 }
 
+pub fn count_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  var count = 0;
+
+  for(; first != last; ++first)
+  {
+    if (!pred(*first))
+      ++count;
+  }
+
+  return count;
+}
+
+pub fn count_if_not<T, Pred>(Range<T> &&range, Pred &pred)
+{
+  var count = 0;
+
+  for(var first = range.begin, var last = range.end; first != last; ++first)
+  {
+    if (!pred(range[first]))
+      ++count;
+  }
+
+  return count;
+}
+
 pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
   where __is_match<Iterator, I> && requires (I i, Value &value) { *i == value; }
 {
@@ -547,6 +548,31 @@ pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
   for(var last = range.end; first != last; ++first)
   {
     if (pred(range[first]))
+      return first;
+  }
+
+  return first;
+}
+
+pub fn find_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
+  where __is_match<Iterator, I> && requires (I i, Pred &pred) { pred(*i); }
+{
+  for (; first != last; ++first)
+  {
+    if (!pred(*first))
+      return first;
+  }
+
+  return first;
+}
+
+pub fn find_if_not<T, Pred>(Range<T> &&range, Pred &pred)
+{
+  var first = range.begin;
+
+  for(var last = range.end; first != last; ++first)
+  {
+    if (!pred(range[first]))
       return first;
   }
 

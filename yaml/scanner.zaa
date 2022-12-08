@@ -979,7 +979,7 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
   this.tokens.push_back(make_token(token::type::scalar, style, value, loc));
 }
 
-fn scan_plain(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> void
 {
   var loc = this.loc;
 
@@ -1169,7 +1169,7 @@ pub fn scan(scanner mut &this, InputReader mut &is) throws -> void
   if (ch == cast('\t'))
     this.tokens.push_back(make_token(token::type::bad_indent_character, this.loc));
 
-  return scan_plain(&mut this, &mut is);
+  return scan_plain_scalar(&mut this, &mut is);
 }
 
 pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token

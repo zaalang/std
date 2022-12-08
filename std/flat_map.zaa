@@ -230,6 +230,13 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     }
   }
 
+  #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Key, Args>(this mut &, Key &&key, Args && ...args) -> T mut &
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &this[insert(&mut this, &&key, &&args...).0].value;
+  }
+
   #[lifetime(poison(this), consume(other))]
   pub fn merge(this mut &, flat_map mut &other) -> void
   {
@@ -263,9 +270,9 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this))]
-  pub fn reserve(this mut &, usize capacity) -> void
+  pub fn reserve(this mut &, usize mincapacity) -> void
   {
-    this._tree.reserve(capacity);
+    this._tree.reserve(mincapacity);
   }
 
   #[lifetime(poison(this))]

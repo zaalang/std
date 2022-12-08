@@ -33,7 +33,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
     return &this;
   }
 
-  pub fn =<Y>(this mut &, null) -> delegate mut &
+  pub fn =(this mut &, null) -> delegate mut &
   {
     this._fx = null;
 

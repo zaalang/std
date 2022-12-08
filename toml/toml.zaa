@@ -19,11 +19,12 @@ pub enum errc : u32
   expected_block_mapping_key,
   expected_block_mapping_value,
   unmatched_bracket,
-  missing_comma,
+  expected_comma,
   duplicate_key,
   bad_escape,
   invalid_value,
   invalid_utf8,
+  unexpected_end_of_line,
   unexpected_end_of_stream,
 
   pub fn bool(errc code) -> bool
@@ -139,6 +140,21 @@ pub union node
     std::panic("invalid toml access");
   }
 
+  pub fn as_string(this &&)
+  {
+    return &(&&this).as_str;
+  }
+
+  pub fn as_array(this &&)
+  {
+    return &(&&this).as_vec;
+  }
+
+  pub fn as_object(this &&)
+  {
+    return &(&&this).as_map;
+  }
+
   pub fn []<Key>(this&, Key &key) -> node &
   {
     static const emptynode = #node();
@@ -154,8 +170,9 @@ pub union node
             return &array[cast<usize>(key.Integer)];
 
       case Map[map]:
-        if (var j = map.find(key); j != map.end)
-          return &map[j].value;
+        #if (requires (Key key) { node(key); })
+          if (var j = map.find(key); j != map.end)
+            return &map[j].value;
     }
 
     return &emptynode;
@@ -223,6 +240,11 @@ pub union node
   {
   }
 
+  pub node(#i64 integer)
+    : Integer(integer)
+  {
+  }
+
   pub node<T>(T integer)
     where __is_integral<T>
     : Integer(cast<i64>(integer))
@@ -240,12 +262,12 @@ pub union node
   }
 
   pub node(Range<node> &&array)
-    : Array(&&array)
+    : Array(std::vector<node>::from(&&array))
   {
   }
 
   pub node(Range<std::key_value_pair<node, node>> &&map)
-    : Map(&&map)
+    : Map(std::flat_hash_map<node, node>::from(&&map))
   {
   }
 
@@ -271,18 +293,18 @@ pub union node
         break;
     }
 
-    if (gotdig && gotdot)
-    {
-      var real = f64();
-      if (std::sscan(str, &mut real).len == str.len)
-        return real;
-    }
-
-    if (gotdig)
+    if (gotdig && !gotdot)
     {
       var integer = i64();
-      if (std::sscan(str, &mut integer).len == str.len)
+      if (var result = std::sscan(str, &mut integer); !result.error && result.len == str.len)
         return integer;
+    }
+
+    if (gotdig || gotdot)
+    {
+      var real = f64();
+      if (var result = std::sscan(str, &mut real); !result.error && result.len == str.len)
+        return real;
     }
 
     if (str == "true")

@@ -102,11 +102,7 @@ pub struct system_error_category : pub error_category
     return std::meta::enumerator_name(cast<errc>(value));
   }
 
-  system_error_category()
-    : super(error_category<system_error_category>)
-  {
-  }
-
+  system_error_category() = default;
   system_error_category(system_error_category &) = default;
   ~system_error_category() = default;
 }

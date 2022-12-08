@@ -196,6 +196,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
               if (thread.captures.len < n + 1)
               {
                 thread.captures.reserve(n + 1);
+
                 while (thread.captures.len < n + 1)
                   thread.captures.push_back(vm.text.end);
               }

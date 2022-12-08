@@ -97,7 +97,7 @@ pub struct moveable_range_view<R, I, J>
 }
 
 #[lifetime(consume(range))]
-pub fn move<R, I, J>(range_view<R, I, J> mut &range)
+pub fn move<R, I, J>(range_view<R, I, J> &&range)
 {
   return moveable_range_view(&mut range.range, range.begin, range.end);
 }
@@ -417,7 +417,7 @@ pub fn reverse<Rs, I, J>(zip_view<Rs, I, J> &&range)
 }
 
 #[lifetime(consume(range))]
-pub fn move<R, I, J>(reverse_view<R, I, J> mut &range)
+pub fn move<R, I, J>(reverse_view<R, I, J> &&range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -526,7 +526,97 @@ pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
 }
 
 #[lifetime(consume(range))]
-pub fn move<R, I, J, Pred>(filter_view<R, I, J, Pred> mut &range)
+pub fn move<R, I, J, Pred>(filter_view<R, I, J, Pred> &&range)
+{
+  return moveable_range_view(&mut range, range.begin, range.end);
+}
+
+pub struct take_view<R, I, J>
+{
+  R &&range;
+
+  pub take_iterator first;
+  pub take_sentinal second;
+
+  pub take_view(R &&range, I beg, J end, usize n)
+    : range(&range), first(beg, end, n)
+  {
+  }
+
+  pub ~take_view() = default;
+
+  pub struct take_iterator
+  {
+    pub I base;
+
+    take_iterator(I base, J end, usize n)
+      : base(base), end(end), n(n)
+    {
+    }
+
+    pub take_iterator() = default;
+    pub take_iterator(take_iterator &&) = default;
+    pub fn =(take_iterator mut &lhs, take_iterator &&rhs) -> take_iterator mut & = default;
+    pub ~take_iterator() = default;
+
+    pub fn ++(take_iterator mut &this) -> take_iterator mut &
+    {
+      --this.n;
+      ++this.base;
+
+      return &this;
+    }
+
+    pub fn ==(take_iterator &lhs, take_iterator &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+
+    pub fn ==(take_iterator &this, take_sentinal &) -> bool
+    {
+      return this.n == 0 || this.base == this.end;
+    }
+
+    J end;
+    usize n;
+  }
+
+  pub struct take_sentinal
+  {
+    pub take_sentinal() = default;
+    pub take_sentinal(take_sentinal &&) = default;
+    pub fn =(take_sentinal mut &lhs, take_sentinal &&rhs) -> take_sentinal mut & = default;
+    pub ~take_sentinal() = default;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(clone(this))]
+  pub fn [](this &&, take_iterator iter)
+  {
+    return &&(&&this.range)[iter.base];
+  }
+}
+
+#[lifetime(depend(range))]
+pub fn take_n<T>(Range<T> &&range, usize n)
+  where !__is_match<RandomAccessIterator, typeof(range.begin)>()
+{
+  return take_view<typeof(range)>(&&range, range.begin, range.end, n);
+}
+
+#[lifetime(consume(range))]
+pub fn move<R, I, J>(take_view<R, I, J> &&range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -791,6 +881,7 @@ pub fn drop_n<T>(Range<T> &&range, usize n)
 
 #[lifetime(depend(range))]
 pub fn take_n<T>(Range<T> &&range, usize n)
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
 {
   return subrange(&&range, range.begin, std::next(range.begin, n, range.end));
 }
@@ -799,6 +890,12 @@ pub fn take_n<T>(Range<T> &&range, usize n)
 pub fn front<T>(Range<T> &&range)
 {
   return &&(&&range)[range.begin];
+}
+
+#[lifetime(follow(range.[]))]
+pub fn nth<Range>(Range &&range, usize index)
+{
+  return &&(&&range)[std::next(range.begin, index)];
 }
 
 #[lifetime(follow(range.[]))]

@@ -1,0 +1,99 @@
+//
+// std algorithm partition
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
+{
+  var last = range.end;
+  var first = std::find_if_not(range, pred);
+
+  for(; first != last; ++first)
+    if (pred(range[first]))
+      return false;
+
+  return true;
+}
+
+pub fn partition!<T, Pred>(Range<T> mut &range, Pred &pred)
+{
+  var last = range.end;
+  var first = std::find_if_not(range, pred);
+
+  if (first == last)
+    return first;
+
+  for(var i = std::next(first); i != last; ++i)
+  {
+    if (pred(range[i]))
+    {
+      std::swap(&mut range[i], &mut range[first]);
+
+      ++first;
+    }
+  }
+
+  return first;
+}
+
+pub fn stable_partition!<T, Pred>(Range<T> mut &range, Pred &pred)
+{
+  var last = range.end;
+  var first = std::find_if_not(range, pred);
+
+  for(var it = first; it != last; )
+  {
+    for(; it != last && !pred(range[it]); ++it)
+      ;
+
+    if (it == last)
+      break;
+
+    var middle = it;
+
+    for(; it != last && pred(range[it]); ++it)
+      ;
+
+    std::rotate!(&mut std::subrange(range, first, it), middle);
+
+    first = std::next(first, std::distance(middle, it));
+  }
+
+  return first;
+}
+
+pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
+{
+  var first = range.begin;
+
+  #if (requires (typeof(range.begin) x, usize y) { x + y; })
+  {
+    for(var len = range.len; len > 0; )
+    {
+      var m = len / 2;
+      var it = first + m;
+
+      if (pred(range[it]))
+      {
+        first = ++it;
+        len -= m + 1;
+      }
+      else
+      {
+        len = m;
+      }
+    }
+  }
+  #else
+  {
+    for(var end = range.end; first != end; ++first)
+    {
+      if (!pred(range[first]))
+        break;
+    }
+  }
+
+  return first;
+}

@@ -1,0 +1,120 @@
+//
+// std algorithm rotate
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn rotate_left!<I>(I first, Sentinal<I> last) -> I
+{
+  if (first == last)
+    return first;
+
+  var tmp = &move *first;
+  var lm1 = std::move(first, last, std::next(first), last);
+  *lm1 = &move tmp;
+
+  return lm1;
+}
+
+pub fn rotate_left!<T>(Range<T> mut &range)
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first == last)
+    return first;
+
+  var tmp = &move std::launder(range)[first];
+
+  for(var src = std::next(first); src != last; )
+  {
+    range[first++] = &move range[src++];
+  }
+
+  range[first] = &move tmp;
+
+  return first;
+}
+
+pub fn rotate_right!<I>(I first, I last) -> I
+  where __is_match<BidirectionalIterator, I>()
+{
+  if (first == last)
+    return last;
+
+  var lm1 = std::prev(last);
+  var tmp = &move *lm1;
+  var fp1 = std::move_backward(first, last, first, lm1);
+  *first = &move tmp;
+
+  return fp1;
+}
+
+pub fn rotate_right!<T>(Range<T> mut &range)
+  where __is_match<BidirectionalIterator, typeof(range.end)>()
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first == last)
+    return last;
+
+  var src = std::prev(last);
+  var tmp = &move std::launder(range)[src];
+
+  for(; src != first; )
+  {
+    range[--last] = &move range[--src];
+  }
+
+  range[first] = &move tmp;
+
+  return last;
+}
+
+pub fn rotate!<T, I>(Range<T> mut &range, I middle) -> I
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first == middle)
+    return std::next(first, range.len);
+
+  if (middle == last)
+    return first;
+
+  for(var it = middle;; )
+  {
+    std::swap(&mut range[first++], &mut range[it++]);
+
+    if (it == last)
+      break;
+
+    if (first == middle)
+      middle = it;
+  }
+
+  if (first != middle)
+  {
+    var first = first;
+
+    for(var it = middle;; )
+    {
+      std::swap(&mut range[first++], &mut range[it++]);
+
+      if (it == last)
+      {
+        if (first == middle)
+          break;
+
+        it = middle;
+      }
+
+      if (first == middle)
+        middle = it;
+    }
+  }
+
+  return first;
+}

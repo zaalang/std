@@ -334,7 +334,7 @@ fn collapse(parse_context mut &ctx) -> void
     while (j != ctx.stack.begin && !is_marker(ctx.regex[*(j-1)]))
       --j;
 
-    std::rotate_right(ctx.regex.data + *j, ctx.regex.data + ctx.stack.back + 1);
+    std::rotate_right!(ctx.regex.data + *j, ctx.regex.data + ctx.stack.back + 1);
 
     alt.lhs = 1 + ctx.stack.back - *j;
     alt.len = ctx.regex.len - *j;

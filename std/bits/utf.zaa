@@ -112,19 +112,19 @@ pub fn len(char value) -> usize
 
 pub fn encode(u8 mut *ch, char value) -> usize
 {
-  if (value < 128)
+  if (value <= 0x7f)
   {
     return encode1(ch, value);
   }
-  else if (128 <= value && value < 2048)
+  else if (value <= 0x7ff)
   {
     return encode2(ch, value);
   }
-  else if (2048 <= value && value < 65536)
+  else if (value <= 0xffff)
   {
     return encode3(ch, value);
   }
-  else if (65536 <= value)
+  else if (value <= 0x10ffff)
   {
     return encode4(ch, value);
   }

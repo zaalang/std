@@ -285,6 +285,26 @@ pub struct string_view : pub std::span<u8>
       return &this;
     }
 
+    #[lifetime(depend(this))]
+    pub fn --(word_iterator mut &this) -> word_iterator mut &
+    {
+      var last = find_last_not_of(string_view(this.beg, this.super), this.delimiters);
+      var first = find_last_of(string_view(this.beg, last), this.delimiters);
+
+      if (first != last)
+      {
+        this.super = first + 1;
+      }
+      else
+      {
+        this.super = this.beg;
+      }
+
+      this.n = last - this.super + 1;
+
+      return &this;
+    }
+
     pub fn -(u8 *rhs, word_iterator &lhs) -> usize = delete;
     pub fn +(word_iterator &lhs, usize) -> word_iterator = delete;
     pub fn -(word_iterator &lhs, usize) -> word_iterator = delete;
@@ -299,14 +319,14 @@ pub struct string_view : pub std::span<u8>
       return lhs.n == 0;
     }
 
-    word_iterator(u8 *beg, u8 *end, String &delimiters)
-      : super(beg), end(end), delimiters(delimiters.data, delimiters.len)
+    word_iterator(u8 *beg, u8 *end, u8 *cursor, String &delimiters)
+      : super(cursor), beg(beg), end(end), delimiters(delimiters.data, delimiters.len)
     {
     }
 
     usize n;
     string_view delimiters;
-    u8 *end;
+    u8 *beg, u8 *end;
   }
 
   #[lifetime(clone(this))]
@@ -462,7 +482,7 @@ pub struct string_view : pub std::span<u8>
   #[lifetime(clone(this))]
   pub fn words(this &, String &delimiters = " \r\n\t")
   {
-    return iterator_pair(++word_iterator(this.begin, this.end, delimiters), end_iterator());
+    return iterator_pair(++word_iterator(this.begin, this.end, this.begin, delimiters), word_iterator(this.begin, this.end, this.end, delimiters));
   }
 
   #[lifetime(clone(this))]
@@ -489,8 +509,8 @@ pub struct string_view : pub std::span<u8>
     return iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator());
   }
 
-  #[lifetime(assign(this, clone(that)), depend(this))]
-  pub fn =(this mut &, string_ref &that) -> string_view mut &
+  #[lifetime(assign(this, follow(that.data)), depend(this))]
+  pub fn =(this mut &, String &that) -> string_view mut &
   {
     this.len = that.len;
     this.data = that.data;
@@ -625,6 +645,26 @@ pub struct string<Allocator = std::allocator, N = 24>
     return result;
   }
 
+  pub fn from(Range<char> &&other, Allocator &allocator = Allocator()) -> string
+  {
+    var result = string::with_capacity(other.len + other.len/16, allocator);
+
+    for(var ch : other)
+      result += ch;
+
+    return result;
+  }
+
+  pub fn from_utf8(Range<u8> &&other, Allocator &allocator = Allocator()) -> string
+  {
+    var result = string::with_capacity(other.len, allocator);
+
+    for(var ch : other)
+      result += ch;
+
+    return result;
+  }
+
   pub fn from_utf8(u8 *data, usize len, Allocator &allocator = Allocator()) -> string
   {
     return string(string_view(data, len), allocator);
@@ -735,18 +775,19 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
-  pub fn reserve(this mut &, usize capacity) -> void
+  pub fn reserve(this mut &, usize mincapacity) -> void
   {
-    if (this._capacity < capacity)
+    if (this._capacity < mincapacity)
     {
-      var data = cast<u8 mut *>(this._allocator.allocate(capacity, alignof<u8>));
+      var newdata = cast<u8 mut *>(this._allocator.allocate(mincapacity, alignof<u8>));
       
-      memcpy(data, this._data, this._len);
-      swap(&mut this._data, &mut data);
-      swap(&mut this._capacity, &mut capacity);
+      memcpy(newdata, this._data, this._len);
 
-      if (data != this._smallbuffer.data)
-        this._allocator.free(data, capacity);
+      if (this._data != this._smallbuffer.data)
+        this._allocator.free(this._data, this._capacity);
+
+      this._data = newdata;
+      this._capacity = mincapacity;
     }
   }
 
@@ -762,6 +803,21 @@ pub struct string<Allocator = std::allocator, N = 24>
   pub fn clear(this mut &) -> void
   {
     this._len = 0;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn back(this &&)
+  {
+    assert(this._len != 0);
+
+    return &cast<&&typeof(this)>(*(this._data + (this._len - 1)));
+  }
+
+  pub fn append_from_capacity(this mut &, usize count) -> void
+  {
+    assert(this._len + count <= this._capacity);
+
+    this._len += count;
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -1698,6 +1754,22 @@ pub fn ends_with(String &haystack, String &needle) -> bool
   return haystack.len >= needle.len && string_view(haystack.end - needle.len, needle.len) == needle;
 }
 
+#[lifetime(depend(str))]
+pub fn remove_prefix(string &str, usize n) -> string_view
+{
+  assert(n <= str.len);
+
+  return string_view(str.data + n, str.len - n);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn remove_prefix!(string mut &str, usize n) -> string mut &
+{
+  str = str.remove_prefix(n);
+
+  return &str;
+}
+
 #[lifetime(follow(str.data))]
 pub fn strip_prefix(String &str, String &prefix) -> string_view
 {
@@ -1711,6 +1783,22 @@ pub fn strip_prefix(String &str, String &prefix) -> string_view
 pub fn strip_prefix!(string mut &str, String &prefix) -> string mut &
 {
   str = strip_prefix(str, prefix);
+
+  return &str;
+}
+
+#[lifetime(depend(str))]
+pub fn remove_suffix(string &str, usize n) -> string_view
+{
+  assert(n <= str.len);
+
+  return string_view(str.data, str.len - n);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn remove_suffix!(string mut &str, usize n) -> string mut &
+{
+  str = str.remove_suffix(n);
 
   return &str;
 }
@@ -1733,9 +1821,31 @@ pub fn strip_suffix!(string mut &str, String &suffix) -> string mut &
 }
 
 #[lifetime(follow(str.data))]
+pub fn chop(String &str) -> string_view
+{
+  if (!str.empty)
+  {
+    if (str.ends_with("\r\n"))
+      return string_view(str.data, str.len - 2);
+
+    return string_view(str.data, str.len - 1);
+  }
+
+  return string_view(str.data, str.len);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn chop!(string mut &str) -> string mut &
+{
+  str = chop(str);
+
+  return &str;
+}
+
+#[lifetime(follow(str.data))]
 pub fn chomp(String &str) -> string_view
 {
-  if (str.ends_with(cast<u8>('\n')))
+  if (str.ends_with(cast<u8>('\n')) || str.ends_with(cast<u8>('\r')))
   {
     if (str.ends_with("\r\n"))
       return string_view(str.data, str.len - 2);

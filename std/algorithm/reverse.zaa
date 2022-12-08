@@ -1,0 +1,27 @@
+//
+// std algorithm reverse
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn reverse!<I>(I first, I last) -> void
+  where __is_match<BidirectionalIterator, I>()
+{
+  for(; first != last && first != --last; ++first)
+  {
+    std::swap(&mut *first, &mut *last);
+  }
+}
+
+pub fn reverse!<T>(Range<T> mut &range) -> void
+  where __is_match<BidirectionalIterator, typeof(range.end)>()
+{
+  var last = range.end;
+  var first = range.begin;
+
+  for(; first != last && first != --last; ++first)
+  {
+    std::swap(&mut range[first], &mut range[last]);
+  }
+}

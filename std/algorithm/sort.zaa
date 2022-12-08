@@ -1,0 +1,67 @@
+//
+// std algorithm sort
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn is_sorted<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first != last)
+  {
+    var next = first;
+    while (++next != last)
+    {
+      if (cmp(range[next], range[first]))
+        return false;
+
+      first = next;
+    }
+  }
+
+  return true;
+}
+
+#[lifetime(depend(range))]
+pub fn sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+{
+  var first = range.begin;
+
+  for(var i = first, var last = range.end; i != last; ++i)
+  {
+    for(var j = first; j != i; ++j)
+    {
+      if (cmp(range[i], range[j]))
+        std::swap(&mut range[i], &mut range[j]);
+    }
+  }
+
+  return &range;
+}
+
+pub fn partial_sort!<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> void
+{
+  var first = range.begin;
+
+  if (first == middle)
+    return;
+
+  var subrange = std::subrange(range, first, middle);
+
+  std::heapify(&mut subrange, cmp);
+
+  for(var i = middle, var end = range.end; i != end; ++i)
+  {
+    if (cmp(range[i], range[first]))
+    {
+      std::swap(&mut range[i], &mut range[first]);
+
+      std::sift_down_heap(&mut subrange, cmp);
+    }
+  }
+
+  std::sort_heap(&mut subrange, cmp);
+}

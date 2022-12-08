@@ -27,11 +27,7 @@ pub struct mmap_error_category : pub std::error_category
     return strerror(value, buffer, buflen);
   }
 
-  mmap_error_category()
-    : super(std::error_category<mmap_error_category>)
-  {
-  }
-
+  mmap_error_category() = default;
   mmap_error_category(mmap_error_category &) = default;
   ~mmap_error_category() = default;
 }

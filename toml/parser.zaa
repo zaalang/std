@@ -6,7 +6,6 @@ import toml;
 import toml.scanner;
 import std.io : InputReader;
 import std.vector;
-import std.flat_map;
 import std.scan;
 
 using toml::errc;
@@ -69,8 +68,8 @@ struct parse_context
 
 pub struct parse_result
 {
-  pub toml::errc error;
-  pub toml::mark mark;
+  pub errc error;
+  pub mark mark;
   pub node doc;
 
   pub parse_result() = default;
@@ -324,6 +323,9 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is) throws -> state
         case bad_escape:
           ctx.error = toml::errc::bad_escape;
 
+        case unexpected_end_of_line:
+          ctx.error = toml::errc::unexpected_end_of_line;
+
         case unexpected_end_of_stream:
           ctx.error = toml::errc::unexpected_end_of_stream;
 
@@ -404,7 +406,7 @@ fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
         ctx.consume_token(&mut is);
 
     else:
-      ctx.error = toml::errc::missing_comma;
+      ctx.error = toml::errc::expected_comma;
       ctx.state = state::errored;
   }
 
@@ -460,7 +462,7 @@ fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> sta
         ctx.consume_token(&mut is);
 
     else:
-      ctx.error = toml::errc::missing_comma;
+      ctx.error = toml::errc::expected_comma;
       ctx.state = state::errored;
   }
 

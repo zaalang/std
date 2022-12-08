@@ -312,6 +312,13 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Args>(this mut &, iterator position, Args && ...args) -> T mut &
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &this[insert(&mut this, position, &&args...)];
+  }
+
+  #[lifetime(poison(this), depend(this))]
   pub fn append<U>(this mut &, Range<U> &&other) -> iterator
     match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
@@ -410,23 +417,23 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this))]
-  pub fn reserve(this mut &, usize capacity) -> void
+  pub fn reserve(this mut &, usize mincapacity) -> void
   {
-    if (this._capacity < capacity)
+    if (this._capacity < mincapacity)
     {
-      capacity = std::ceil_pow2(capacity);
+      mincapacity = std::ceil_pow2(mincapacity);
 
-      var data = cast<T mut *>(this._allocator.allocate(capacity * sizeof<T>, alignof<T>));
+      var newdata = cast<T mut *>(this._allocator.allocate(mincapacity * sizeof<T>, alignof<T>));
 
-      uninitialised_move(&mut this, data, this._head, this._head + this._len);
+      uninitialised_move(&mut this, newdata, this._head, this._head + this._len);
       destruct(&mut this, this._head, this._head + this._len);
-      swap(&mut this._data, &mut data);
 
-      if (data && data != cast(this._smallbuffer.data))
-        this._allocator.free(data, this._capacity * sizeof<T>);
+      if (this._data && this._data != cast(this._smallbuffer.data))
+        this._allocator.free(this._data, this._capacity * sizeof<T>);
 
       this._head = 0;
-      this._capacity = capacity;
+      this._data = newdata;
+      this._capacity = mincapacity;
     }
   }
 

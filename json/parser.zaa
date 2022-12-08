@@ -1,0 +1,410 @@
+//
+// json parser
+//
+
+import json;
+import std.io : InputReader;
+import std.vector;
+import std.flat_map;
+import std.scan;
+
+using json::errc;
+using json::value;
+
+struct parse_context
+{
+  mark loc;
+
+  fn peek(this mut &, InputReader mut &is) throws -> u8
+  {
+    if (var buffer = is.fetch(); buffer.len != 0)
+      return buffer[0];
+
+    return 0;
+  }
+
+  fn peek(this mut &, InputReader mut &is, usize index) throws -> u8
+  {
+    if (var buffer = this.prefix(&mut is, index + 1); index < buffer.len)
+      return buffer[index];
+
+    return 0;
+  }
+
+  fn prefix(this mut &, InputReader mut &is, usize len) throws -> std::string_view
+  {
+    if (is.buffer.len < len)
+      is.pack_and_fetch();
+
+    return std::string_view(is.buffer.data, std::min(is.buffer.len, len));
+  }
+
+  fn eat(this mut &, InputReader mut &is) -> void
+  {
+    this.loc.column += 1;
+
+    if (is.buffer[0] == cast('\n'))
+    {
+      this.loc.line += 1;
+      this.loc.column = 0;
+    }
+
+    is.discard(1);
+  }
+
+  parse_context() = default;
+  ~parse_context() = default;
+}
+
+pub struct mark
+{
+  pub int line;
+  pub int column;
+
+  pub mark() = default;
+  pub mark(mark&) = default;
+  pub fn =(mark mut &, mark &&) -> mark mut & = default;
+  pub ~mark() = default;
+}
+
+pub struct parse_result
+{
+  pub errc error;
+  pub mark mark;
+  pub value value;
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
+}
+
+fn is_z(u8 ch) -> bool
+{
+  return ch == cast('\0');
+}
+
+fn is_alpha(u8 ch) -> bool
+{
+  return cast('0') <= ch && ch <= cast('9') || cast('a') <= ch && ch <= cast('z') || cast('A') <= ch && ch <= cast('Z') || ch == cast('_') || ch == cast('-');
+}
+
+fn is_digit(u8 ch) -> bool
+{
+  return cast('0') <= ch && ch <= cast('9');
+}
+
+fn is_whitespace(u8 ch) -> bool
+{
+  return ch == cast('\0') || ch == cast(' ') || ch == cast('\t') || ch == cast('\r') || ch == cast('\n');
+}
+
+fn is_blank(u8 ch) -> bool
+{
+  return ch == cast(' ') || ch == cast('\t');
+}
+
+fn is_break(u8 ch) -> bool
+{
+  return ch == cast('\r') || ch == cast('\n');
+}
+
+fn is_breakz(u8 ch) -> bool
+{
+  return ch == cast('\0') || ch == cast('\r') || ch == cast('\n');
+}
+
+fn skip_blank(parse_context mut &ctx, InputReader mut &is) throws -> void
+{
+  while (is_blank(ctx.peek(&mut is)))
+    ctx.eat(&mut is);
+}
+
+fn skip_break(parse_context mut &ctx, InputReader mut &is) throws -> void
+{
+  if (is_break(ctx.peek(&mut is)))
+  {
+    if (ctx.prefix(&mut is, 2) == "\r\n")
+      ctx.eat(&mut is);
+
+    ctx.eat(&mut is);
+  }
+}
+
+fn scan_to_next_token(parse_context mut &ctx, InputReader mut &is) throws -> void
+{
+  for(;;)
+  {
+    switch (ctx.peek(&mut is))
+    {
+      case ' ':
+      case '\t':
+        ctx.eat(&mut is);
+
+      case '\r':
+      case '\n':
+        skip_break(&mut ctx, &mut is);
+
+      else:
+        break;
+    }
+  }
+}
+
+fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+{
+  var mut &object = value.emplace_object();
+
+  ctx.eat(&mut is);
+
+  for(;;)
+  {
+    scan_to_next_token(&mut ctx, &mut is);
+
+    switch (ctx.peek(&mut is))
+    {
+      case '"':
+        ;
+
+      case '}':
+        break;
+
+      else:
+        return expected_quote;
+    }
+
+    var key = json::value();
+
+    if (var error = parse_string(&mut ctx, &mut is, &mut key); error)
+      return error;
+
+    scan_to_next_token(&mut ctx, &mut is);
+
+    switch (ctx.peek(&mut is))
+    {
+      case ':':
+        ctx.eat(&mut is);
+
+      else:
+        return expected_colon;
+    }
+
+    scan_to_next_token(&mut ctx, &mut is);
+
+    var element = json::value();
+
+    if (var error = parse_value(&mut ctx, &mut is, &mut element); error)
+      return error;
+
+    object.insert(&move key.as_str, &move element);
+
+    scan_to_next_token(&mut ctx, &mut is);
+
+    switch (ctx.peek(&mut is))
+    {
+      case ',':
+        ctx.eat(&mut is);
+
+      case '}':
+        break;
+
+      else:
+        return expected_comma;
+    }
+  }
+
+  ctx.eat(&mut is);
+
+  return cast(0);
+}
+
+fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+{
+  var mut &array = value.emplace_array();
+
+  ctx.eat(&mut is);
+
+  for(;;)
+  {
+    scan_to_next_token(&mut ctx, &mut is);
+
+    switch (ctx.peek(&mut is))
+    {
+      case ']':
+        break;
+    }
+
+    var element = json::value();
+
+    if (var error = parse_value(&mut ctx, &mut is, &mut element); error)
+      return error;
+
+    array.push_back(&move element);
+
+    scan_to_next_token(&mut ctx, &mut is);
+
+    switch (ctx.peek(&mut is))
+    {
+      case ',':
+        ctx.eat(&mut is);
+
+      case ']':
+        break;
+
+      else:
+        return expected_comma;
+    }
+  }
+
+  ctx.eat(&mut is);
+
+  return cast(0);
+}
+
+fn parse_string(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+{
+  var str = std::string();
+
+  ctx.eat(&mut is);
+
+  for(;;)
+  {
+    switch (var ch = ctx.peek(&mut is))
+    {
+      case '\r':
+      case '\n':
+        return unexpected_end_of_line;
+
+      case '\0':
+        return unexpected_end_of_stream;
+
+      case '"':
+        break;
+
+      case '\\':
+        switch (ctx.peek(&mut is, 1))
+        {
+          case 'b': str += cast<u8>('\x08');
+          case 't': str += cast<u8>('\t');
+          case 'n': str += cast<u8>('\n');
+          case 'f': str += cast<u8>('\x0c');
+          case 'r': str += cast<u8>('\x0d');
+          case '"': str += cast<u8>('"');
+          case '/': str += cast<u8>('/');
+          case '\'': str += cast<u8>('\'');
+          case '\\': str += cast<u8>('\\');
+
+          case 'u':
+            var length = 4;
+            var buffer = ctx.prefix(&mut is, length + 2);
+
+            var codepoint = ' ';
+            if (std::atoi(buffer.data + 2, buffer.end, &mut codepoint, 16).len != length)
+              return bad_escape;
+
+            for(var i = 0; i < buffer.len - 2; ++i)
+              ctx.eat(&mut is);
+
+            str += codepoint;
+
+          else:
+            return bad_escape;
+        }
+
+        ctx.eat(&mut is);
+        ctx.eat(&mut is);
+
+      else:
+        str += ch;
+        ctx.eat(&mut is);
+    }
+  }
+
+  value.emplace_string(&move str);
+
+  ctx.eat(&mut is);
+
+  return cast(0);
+}
+
+fn parse_plain_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+{
+  var j = 0;
+  var ch = ctx.peek(&mut is);
+
+  var numeric = false;
+  if (is_digit(ch) || ch == cast('.') || ch == cast('+') || ch == cast('-'))
+    numeric = true;
+
+  for(;;)
+  {
+    switch (ch)
+    {
+      case ' ':
+      case '\t':
+      case '\r':
+      case '\n':
+      case '\0':
+        break;
+
+      case ']':
+      case '}':
+      case ',':
+        break;
+
+      case '.':
+        if (!numeric)
+          break;
+    }
+
+    j += 1;
+    ch = ctx.peek(&mut is, j);
+  }
+
+  if (j == 0)
+    return invalid_value;
+
+  value = json::value::from(ctx.prefix(&mut is, j));
+
+  for(var i = 0; i < j; ++i)
+    ctx.eat(&mut is);
+
+  return cast(0);
+}
+
+fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+{
+  switch (ctx.peek(&mut is))
+  {
+    case '[':
+      return parse_array(&mut ctx, &mut is, &mut value);
+
+    case '{':
+      return parse_object(&mut ctx, &mut is, &mut value);
+
+    case '"':
+      return parse_string(&mut ctx, &mut is, &mut value);
+
+    case '\0':
+      return unexpected_end_of_stream;
+  }
+
+  return parse_plain_scalar(&mut ctx, &mut is, &mut value);
+}
+
+pub fn parse(InputReader mut &is) throws -> parse_result
+{
+  var result = parse_result();
+
+  var ctx = parse_context();
+
+  scan_to_next_token(&mut ctx, &mut is);
+
+  if (var error = parse_value(&mut ctx, &mut is, &mut result.value); error)
+  {
+    result.error = error;
+    result.mark = ctx.loc;
+  }
+
+  return result;
+}

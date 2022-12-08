@@ -90,8 +90,8 @@ struct parse_context
 
 pub struct parse_result
 {
-  pub yaml::errc error;
-  pub yaml::mark mark;
+  pub errc error;
+  pub mark mark;
   pub std::vector<node> docs;
 
   pub parse_result() = default;
@@ -606,7 +606,7 @@ fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
         ctx.consume_token(&mut is);
 
     else:
-      ctx.error = yaml::errc::missing_comma;
+      ctx.error = yaml::errc::expected_comma;
       ctx.state = state::errored;
   }
 
@@ -668,7 +668,7 @@ fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> sta
         ctx.consume_token(&mut is);
 
     else:
-      ctx.error = yaml::errc::missing_comma;
+      ctx.error = yaml::errc::expected_comma;
       ctx.state = state::errored;
   }
 

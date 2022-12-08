@@ -4,7 +4,7 @@
 
 import std.stdlib : assert;
 import std.memory : memset, memcpy, memmove;
-import std.algorithm : swap, find, find_if;
+import std.algorithm : swap, find, find_if, find_if_not, count, count_if, count_if_not, sort!, is_sorted;
 import std.range : Sentinal, Range;
 import std.span : span, mutable_span, moveable_span;
 import std.type : as_const;
@@ -307,6 +307,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Args>(this mut &, T *position, Args && ...args) -> T mut &
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &*insert(&mut this, position, &&args...);
+  }
+
+  #[lifetime(poison(this), depend(this))]
   pub fn append<U>(this mut &, Range<U> &&other) -> T mut *
     match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
@@ -379,7 +386,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this))]
-  pub fn take(this mut &, T *first, T *last) -> vector
+  pub fn take!(this mut &, T *first, T *last) -> vector
   {
     var result = vector::from(moveable_span(cast<T mut *>(first), cast<T mut *>(last)), this.allocator);
 
@@ -405,20 +412,20 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this))]
-  pub fn reserve(this mut &, usize capacity) -> void
+  pub fn reserve(this mut &, usize mincapacity) -> void
   {
-    if (this._capacity < capacity)
+    if (this._capacity < mincapacity)
     {
-      var data = cast<T mut *>(this._allocator.allocate(capacity * sizeof<T>, alignof<T>));
+      var newdata = cast<T mut *>(this._allocator.allocate(mincapacity * sizeof<T>, alignof<T>));
 
-      uninitialised_move(&mut this, data, this._data, this._data + this._len);
+      uninitialised_move(&mut this, newdata, this._data, this._data + this._len);
       destruct(&mut this, this._data, this._data + this._len);
-      swap(&mut this._data, &mut data);
 
-      if (data && data != cast(this._smallbuffer.data))
-        this._allocator.free(data, this._capacity * sizeof<T>);
+      if (this._data && this._data != cast(this._smallbuffer.data))
+        this._allocator.free(this._data, this._capacity * sizeof<T>);
 
-      this._capacity = capacity;
+      this._data = newdata;
+      this._capacity = mincapacity;
     }
   }
 

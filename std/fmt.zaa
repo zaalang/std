@@ -58,6 +58,9 @@ fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> voi
     case '\a':
       put(&mut os, &mut ctx, "\\a");
 
+    case '\b':
+      put(&mut os, &mut ctx, "\\b");
+
     case '\f':
       put(&mut os, &mut ctx, "\\f");
 
@@ -82,7 +85,7 @@ fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> voi
     case 0:
       put(&mut os, &mut ctx, "\\0");
 
-    case 1: case 2: case 3: case 4: case 5: case 6: case 8:
+    case 1: case 2: case 3: case 4: case 5: case 6:
     case 14: case 15: case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23: case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31:
       ctx.written += format_to(&mut os, "\\x{:02x}", cast<int>(value));
 
@@ -540,14 +543,19 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws -> 
   fmt(&mut os, &mut ctx, error.message(buf.data, buf.len));
 }
 
+fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, R fn(V...) &) throws -> void
+{
+  put(&mut os, &mut ctx, "fn&");
+}
+
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
 {
-  fmt(&mut os, &mut ctx, "null");
+  put(&mut os, &mut ctx, "null");
 }
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
 {
-  fmt(&mut os, &mut ctx, "void");
+  put(&mut os, &mut ctx, "void");
 }
 
 fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws -> void
@@ -681,6 +689,11 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   #if (__is_union<T>)
   {
     fmt_union(&mut os, &mut ctx, object);
+  }
+
+  #if (__is_lambda<T>)
+  {
+    put(&mut os, &mut ctx, "{ fn& }");
   }
 
   #if (__is_struct<T> || __is_vtable<T>)

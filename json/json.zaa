@@ -1,5 +1,5 @@
 //
-// yaml
+// json
 //
 
 import std.stdlib : assert;
@@ -9,28 +9,19 @@ import std.range : Range;
 import std.vector;
 import std.flat_hash_map;
 import std.scan;
-import yaml.parser;
+import std.fmt;
+import json.parser;
 
 pub enum errc : u32
 {
   internal_error = 1,
-  expected_document_start,
-  expected_sequence_entry,
-  expected_block_mapping_key,
+  expected_quote,
   expected_comma,
+  expected_colon,
   bad_escape,
-  bad_indent_character,
-  unknown_tag,
-  anchor_not_found,
-  invalid_null_value,
-  invalid_bool_value,
-  invalid_int_value,
-  invalid_float_value,
-  invalid_sequence_start,
-  invalid_mapping_start,
   invalid_value,
   invalid_utf8,
-  unexpected_document_indicator,
+  unexpected_end_of_line,
   unexpected_end_of_stream,
 
   pub fn bool(errc code) -> bool
@@ -39,15 +30,16 @@ pub enum errc : u32
   }
 }
 
-pub union node
+pub union value
 {
   pub Null,
   pub Real(f64),
-  pub Integer(i64),
+  pub Int64(i64),
+  pub UInt64(u64),
   pub Boolean(bool),
   pub String(std::string),
-  pub Array(std::vector<node>),
-  pub Map(std::flat_hash_map<node, node>),
+  pub Array(std::vector<value>),
+  pub Map(std::flat_hash_map<std::string, value>),
 
   pub fn bool(this&) -> bool
   {
@@ -64,9 +56,19 @@ pub union node
     return this.kind == typeof(this.kind)::Real;
   }
 
-  pub fn is_integer(this&) -> bool
+  pub fn is_int64(this&) -> bool
   {
     return this.kind == typeof(this.kind)::Integer;
+  }
+
+  pub fn is_uint64(this&) -> bool
+  {
+    return this.kind == typeof(this.kind)::Integer;
+  }
+
+  pub fn is_number(this&) -> bool
+  {
+    return this.is_real || this.is_int64 || this.is_uint64;
   }
 
   pub fn is_boolean(this&) -> bool
@@ -84,9 +86,19 @@ pub union node
     return this.kind == typeof(this.kind)::Array;
   }
 
-  pub fn is_map(this&) -> bool
+  pub fn is_object(this&) -> bool
   {
     return this.kind == typeof(this.kind)::Map;
+  }
+
+  pub fn is_primitive(this&) -> bool
+  {
+    return !is_array && !is_object;
+  }
+
+  pub fn is_structured(this&) -> bool
+  {
+    return is_array || is_object;
   }
 
   pub fn as<T>(this&)
@@ -99,10 +111,16 @@ pub union node
         #if (requires { T(f64()); })
           return T(real);
 
-      case Integer[integer]:
+      case Int64[integer]:
         #if (__is_arithmetic<T>)
           return cast<T>(integer);
         #if (requires { T(i64()); })
+          return T(integer);
+
+      case UInt64[integer]:
+        #if (__is_arithmetic<T>)
+          return cast<T>(integer);
+        #if (requires { T(u64()); })
           return T(integer);
 
       case Boolean[boolean]:
@@ -116,7 +134,7 @@ pub union node
           return T(string);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid json access");
   }
 
   pub fn as_str(this &&)
@@ -127,7 +145,7 @@ pub union node
         return &(&&string);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid json access");
   }
 
   pub fn as_vec(this &&)
@@ -138,7 +156,7 @@ pub union node
         return &(&&array);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid json access");
   }
 
   pub fn as_map(this &&)
@@ -149,7 +167,7 @@ pub union node
         return &(&&map);
     }
 
-    std::panic("invalid yaml access");
+    std::panic("invalid json access");
   }
 
   pub fn as_string(this &&)
@@ -167,9 +185,9 @@ pub union node
     return &(&&this).as_map;
   }
 
-  pub fn []<Key>(this&, Key &key) -> node &
+  pub fn []<Key>(this&, Key &key) -> value &
   {
-    static const emptynode = #node();
+    static const emptyvalue = #value();
 
     switch (this)
     {
@@ -177,25 +195,22 @@ pub union node
         #if (__is_integral<Key>)
           if (0 <= key && cast<usize>(key) < array.len)
             return &array[cast<usize>(key)];
-        #if (__is_same<Key, node>)
-          if (key.is_integer && 0 <= key.Integer && cast<usize>(key.Integer) < array.len)
-            return &array[cast<usize>(key.Integer)];
 
       case Map[map]:
-        #if (requires (Key key) { node(key); })
+        #if (requires (Key key) { std::string_view(key); })
           if (var j = map.find(key); j != map.end)
             return &map[j].value;
     }
 
-    return &emptynode;
+    return &emptyvalue;
   }
 
-  pub fn ==(node &lhs, null) -> bool
+  pub fn ==(value &lhs, null) -> bool
   {
     return lhs.is_null;
   }
 
-  pub fn ==<T>(node &lhs, T rhs) -> bool
+  pub fn ==<T>(value &lhs, T rhs) -> bool
     where __is_floating_point<T>
   {
     switch (lhs)
@@ -207,19 +222,22 @@ pub union node
     return false;
   }
 
-  pub fn ==<T>(node &lhs, T rhs) -> bool
+  pub fn ==<T>(value &lhs, T rhs) -> bool
     where __is_integral<T>
   {
     switch (lhs)
     {
-      case Integer[lhs]:
+      case Int64[lhs]:
         return lhs == cast<i64>(rhs);
+
+      case UInt64[lhs]:
+        return lhs == cast<u64>(rhs);
     }
 
     return false;
   }
 
-  pub fn ==(node &lhs, bool rhs) -> bool
+  pub fn ==(value &lhs, bool rhs) -> bool
   {
     switch (lhs)
     {
@@ -230,7 +248,7 @@ pub union node
     return false;
   }
 
-  pub fn ==(node &lhs, String &rhs) -> bool
+  pub fn ==(value &lhs, String &rhs) -> bool
   {
     switch (lhs)
     {
@@ -241,59 +259,118 @@ pub union node
     return false;
   }
 
-  pub node(null)
+  pub fn emplace_null(this mut &) -> void
+  {
+    this = Null();
+  }
+
+  pub fn emplace_real(this mut &, f64 value = 0.0) -> f64 mut &
+  {
+    this = Real(value);
+
+    return &this.Real;
+  }
+
+  pub fn emplace_int64(this mut &, i64 value = 0) -> i64 mut &
+  {
+    this = Int64(value);
+
+    return &this.Int64;
+  }
+
+  pub fn emplace_uint64(this mut &, u64 value = 0) -> u64 mut &
+  {
+    this = UInt64(value);
+
+    return &this.UInt64;
+  }
+
+  pub fn emplace_boolean(this mut &, bool value = false) -> bool mut &
+  {
+    this = Boolean(value);
+
+    return &this.Boolean;
+  }
+
+  pub fn emplace_string(this mut &, String &&value = "") -> std::string mut &
+  {
+    this = String(&&value);
+
+    return &this.String;
+  }
+
+  pub fn emplace_array(this mut &) -> std::vector<value> mut &
+  {
+    this = Array();
+
+    return &this.Array;
+  }
+
+  pub fn emplace_object(this mut &) -> std::flat_hash_map<std::string, value> mut &
+  {
+    this = Map();
+
+    return &this.Map;
+  }
+
+  pub value(null)
     : Null()
   {
   }
 
-  pub node(f64 real)
+  pub value(f64 real)
     : Real(real)
   {
   }
 
-  pub node<T>(T real)
+  pub value<T>(T real)
     where __is_floating_point<T>
     : Real(cast<f64>(real))
   {
   }
 
-  pub node(i64 integer)
-    : Integer(integer)
+  pub value(i64 integer)
+    : Int64(integer)
   {
   }
 
-  pub node(#i64 integer)
-    : Integer(integer)
+  pub value(#i64 integer)
+    : Int64(integer)
   {
   }
 
-  pub node<T>(T integer)
+  pub value<T>(T integer)
     where __is_integral<T>
-    : Integer(cast<i64>(integer))
+    : Int64(cast<i64>(integer))
   {
   }
 
-  pub node(bool boolean)
+  pub value(u64 integer)
+    : UInt64(integer)
+  {
+  }
+
+  pub value(bool boolean)
     : Boolean(boolean)
   {
   }
 
-  pub node(String &&string)
+  pub value(String &&string)
     : String(&&string)
   {
   }
 
-  pub node(Range<node> &&array)
-    : Array(std::vector<node>::from(&&array))
+  pub value(Range<value> &&array)
+    : Array(std::vector<value>::from(&&array))
   {
   }
 
-  pub node(Range<std::key_value_pair<node, node>> &&map)
-    : Map(std::flat_hash_map<node, node>::from(&&map))
+  pub value(Range<std::key_value_pair<std::string, value>> &&map)
+    : Map(std::flat_hash_map<std::string, value>::from(&&map))
   {
   }
 
-  pub fn from(String &str) -> node
+  pub fn from(String &str) -> value
   {
     var ch = str.begin;
     var end = str.end;
@@ -322,6 +399,13 @@ pub union node
         return integer;
     }
 
+    if (gotdig && !gotdot)
+    {
+      var integer = u64();
+      if (var result = std::sscan(str, &mut integer); !result.error && result.len == str.len)
+        return integer;
+    }
+
     if (gotdig || gotdot)
     {
       var real = f64();
@@ -329,7 +413,7 @@ pub union node
         return real;
     }
 
-    if (str == "~" || str == "null")
+    if (str == "null")
       return null;
 
     if (str == "true")
@@ -341,20 +425,20 @@ pub union node
     return str;
   }
 
-  pub node() = default;
-  pub node(node&&) = default;
-  pub fn =(node mut &, node &&) -> node mut & = default;
-  pub ~node() = default;
+  pub value() = default;
+  pub value(value&&) = default;
+  pub fn =(value mut &, value &&) -> value mut & = default;
+  pub ~value() = default;
 }
 
-pub fn ==(node &lhs, node &rhs) -> bool
+pub fn ==(value &lhs, value &rhs) -> bool
 {
   if (lhs.kind == rhs.kind)
   {
     switch (cast<int>(lhs.kind))
     {
       #{
-        #for(const k = 1; k != std::meta::fields_of($node).len; ++k)
+        #for(const k = 1; k != std::meta::fields_of($value).len; ++k)
           -> { case $(k): return lhs.$(k) == rhs.$(k); }
       }
     }
@@ -363,20 +447,53 @@ pub fn ==(node &lhs, node &rhs) -> bool
   return lhs.kind == rhs.kind;
 }
 
-pub fn <=>(node &lhs, node &rhs) -> int
+pub fn <=>(value &lhs, value &rhs) -> int
 {
   if (lhs.kind == rhs.kind)
   {
     switch (cast<int>(lhs.kind))
     {
       #{
-        #for(const k = 1; k != std::meta::fields_of($node).len; ++k)
+        #for(const k = 1; k != std::meta::fields_of($value).len; ++k)
           -> { case $(k): return lhs.$(k) <=> rhs.$(k); }
       }
     }
   }
 
   return lhs.kind <=> rhs.kind;
+}
+
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, value &value) throws -> void
+{
+  switch (value)
+  {
+    case Null:
+      ctx.written += std::print_to(&mut os, "null");
+
+    case Real[real]:
+      ctx.written += std::print_to(&mut os, real);
+
+    case Int64[integer]:
+      ctx.written += std::print_to(&mut os, integer);
+
+    case UInt64[integer]:
+      ctx.written += std::print_to(&mut os, integer);
+
+    case Boolean[boolean]:
+      ctx.written += std::print_to(&mut os, boolean);
+
+    case String[string]:
+      ctx.written += std::format_to(&mut os, "{:?}", string);
+
+    case Array[array]:
+      ctx.written += std::print_to(&mut os, array);
+
+    case Map[map]:
+      ctx.written += std::print_to(&mut os, map);
+
+    else:
+      ctx.written += std::print_to(&mut os, "undefined");
+  }
 }
 
 pub fn load_from_str(String &src) -> parse_result

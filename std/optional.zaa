@@ -111,6 +111,14 @@ pub union optional<T, Allocator = std::allocator>
     new<optional>(&this)(&&args..., allocator?: allocator);
   }
 
+  pub fn emplace<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator()) -> T mut &
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    insert(&mut this, &&args..., allocator?: allocator);
+
+    return &this.Some;
+  }
+
   pub fn clear(this mut &)
   {
     optional::~optional(&mut this);

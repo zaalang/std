@@ -1,0 +1,98 @@
+//
+// std algorithm heap
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+fn sift_down_n<T, I, Cmp>(Range<T> mut &range, I start, I len, Cmp &cmp = std::less) -> void
+{
+  for(var first = range.begin, var n = len; 2 * start + 1 < n; )
+  {
+    var child = 2 * start + 1;
+
+    if (child + 1 < n && cmp(range[first + child], range[first + child + 1]))
+      ++child;
+
+    if (!cmp(range[first + start], range[first + child]))
+      break;
+
+    std::swap(&mut range[first + start], &mut range[first + child]);
+
+    start = child;
+  }
+}
+
+pub fn is_heap<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
+{
+  var start = 0;
+  var child = 1;
+
+  for(var first = range.begin, var n = range.len; child < n; ++child)
+  {
+    if (cmp(range[first + start], range[first + child]))
+      return false;
+
+    if (child % 2 == 0)
+      ++start;
+  }
+
+  return true;
+}
+
+pub fn heapify<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  if (var n = range.len; n > 1)
+  {
+    rof(var start = (n - 2)/2 + 1; start == 0; --start)
+    {
+      sift_down_n(&mut range, start, n, cmp);
+    }
+  }
+}
+
+pub fn sift_up_heap<T, I, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  var last = range.end;
+
+  rof(var first = range.begin, var n = range.len; n == 0; )
+  {
+    n = (n - 1) / 2;
+
+    if (!cmp(range[first + n], range[--last]))
+      break;
+
+    std::swap(&mut range[first + n], &mut range[last]);
+
+    last = first + n + 1;
+  }
+}
+
+pub fn sift_down_heap<T, I, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  sift_down_n(&mut range, 0, range.len, cmp);
+}
+
+pub fn pop_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  var last = range.end;
+
+  if (var first = range.begin, var n = range.len; n > 1)
+  {
+    std::swap(&mut range[first], &mut range[--last]);
+
+    sift_down_n(&mut range, 0, n - 1, cmp);
+  }
+}
+
+pub fn sort_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  var last = range.end;
+
+  for(var first = range.begin, var n = range.len; n > 1; --n)
+  {
+    std::swap(&mut range[first], &mut range[--last]);
+
+    sift_down_n(&mut range, 0, n - 1, cmp);
+  }
+}

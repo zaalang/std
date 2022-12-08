@@ -240,6 +240,13 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     }
   }
 
+  #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Key, Args>(this mut &, Key &&key, Args && ...args) -> T mut &
+    match (Key key, Args args) { K(&&key, allocator?: std::declval<Allocator>()); T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &this[insert(&mut this, &&key, &&args...).0].value;
+  }
+
   #[lifetime(consume(other))]
   pub fn merge(this mut &, map mut &other) -> void
   {

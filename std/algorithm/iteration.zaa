@@ -1,0 +1,60 @@
+//
+// std algorithm iteration
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub enum iteration_continue
+{
+  yes,
+  no,
+}
+
+pub fn each<T, Func>(Range<T> &&range, Func &&func) -> void
+  where !requires (Func func, T v) { func(v) == iteration_continue(); }
+{
+  for(var &&i : range)
+  {
+    func(&&i);
+  }
+}
+
+pub fn each<T, Func>(Range<T> &&range, Func &&func) -> bool
+  where requires (Func func, T v) { func(v) == iteration_continue(); }
+{
+  var all = true;
+
+  for(var &&i : range)
+  {
+    if (func(&&i) != iteration_continue::yes)
+    {
+      all = false;
+
+      break;
+    }
+  }
+
+  return all;
+}
+
+pub fn sum<T>(Range<T> &range, T seed = T()) -> T
+{
+  var result = seed;
+
+  for(var &i : range)
+    result += i;
+
+  return result;
+}
+
+pub fn accumulate<S, T, Func>(Range<T> &range, S seed, Func &&func) -> S
+  match (Func func, S s, T i) { s = func(&move s, i); }
+{
+  var result = seed;
+
+  for(var &i : range)
+    result = func(&move result, i);
+
+  return result;
+}

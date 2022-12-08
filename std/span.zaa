@@ -36,6 +36,12 @@ pub struct span<T>
   {
   }
 
+  #[lifetime(clone(span))]
+  pub span(Span<T> &span)
+    : len(span.len), data(span.data)
+  {
+  }
+
   pub fn empty(this &) -> bool
   {
     return this.len == 0;
@@ -328,7 +334,7 @@ pub struct moveable_span<T>
 }
 
 #[lifetime(consume(span))]
-pub fn move<T>(mutable_span<T> mut &span)
+pub fn move<T>(mutable_span<T> &&span)
 {
   return moveable_span(span.data, span.len);
 }
@@ -336,7 +342,19 @@ pub fn move<T>(mutable_span<T> mut &span)
 #[lifetime(clone(span))]
 pub fn subspan<T>(Span<T> &&span, usize offset, usize count)
 {
-  return span[std::min(offset, span.len) .. std::min(offset + count, span.len)];
+  return (&&span)[offset .. offset + count];
+}
+
+#[lifetime(depend(span))]
+pub fn first_n<T>(Span<T> &&span, usize n)
+{
+  return subspan(&&span, 0, n);
+}
+
+#[lifetime(depend(span))]
+pub fn last_n<T>(Span<T> &&span, usize n)
+{
+  return subspan(&&span, span.len - n, n);
 }
 
 pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize

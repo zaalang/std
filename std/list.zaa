@@ -218,6 +218,13 @@ pub struct list<T, Allocator = std::allocator>
   }
 
   #[lifetime(depend(this))]
+  pub fn emplace<Args>(this mut &, iterator position, Args && ...args) -> T mut &
+    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &insert(&mut this, position.cursor, &&args...).value;
+  }
+
+  #[lifetime(depend(this))]
   pub fn append<U>(this mut &, Range<U> &&other) -> iterator
     match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {

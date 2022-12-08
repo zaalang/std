@@ -62,7 +62,7 @@ pub const STDCWD_FILENO = 5;
 pub const EINVAL = -22;
 pub const EAGAIN = -11;
 
-pub enum ftype : u16
+pub enum ftype
 {
   unknown,
   block_device,
@@ -140,9 +140,19 @@ pub fn ftype(stat &stat) -> ftype
 pub struct dirent
 {
   pub u32 rec_len;
-  pub ftype file_type;
+  pub u16 file_type;
   pub u16 name_len;
-  pub u8[0] name;
+  pub u8[0] file_name;
+
+  pub fn name(this&) -> std::string_view
+  {
+    return std::string_view(this.file_name.data, cast<usize>(this.name_len));
+  }
+
+  pub fn ftype(this&) -> ftype
+  {
+    return cast<ftype>(this.file_type);
+  }
 
   pub dirent() = default;
   pub dirent(dirent&) = default;

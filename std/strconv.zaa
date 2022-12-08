@@ -156,19 +156,19 @@ pub fn ctoa(u8 mut *beg, u8 mut *end, char value) -> strconv_result
   
   result.ptr = beg;
 
-  if (value < 128 && end - beg >= 1)
+  if (value <= 0x7f && end - beg >= 1)
   {
     result.len = utf::encode1(beg, value);
   }
-  else if (128 <= value && value < 2048 && end - beg >= 2)
+  else if (0x7f < value && value <= 0x7ff && end - beg >= 2)
   {
     result.len = utf::encode2(beg, value);
   }
-  else if (2048 <= value && value < 65536 && end - beg >= 3)
+  else if (0x7ff < value && value <= 0xffff && end - beg >= 3)
   {
     result.len = utf::encode3(beg, value);
   }
-  else if (65536 <= value && end - beg >= 4)
+  else if (0xffff < value && value <= 0x10ffff && end - beg >= 4)
   {
     result.len = utf::encode4(beg, value);
   }
@@ -547,7 +547,7 @@ pub fn atoi(u8 *beg, u8 *end, u64 mut &value, int base = 10) -> strconv_result
 
 pub fn atoi(u8 *beg, u8 *end, char mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, &mut cast<usize mut &>(value), base);
+  return atoi(beg, end, &mut cast<u32 mut &>(value), base);
 }
 
 pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
