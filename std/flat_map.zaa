@@ -275,7 +275,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     this._tree.reserve(mincapacity);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     this._tree.clear();

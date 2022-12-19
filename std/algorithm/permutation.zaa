@@ -1,0 +1,102 @@
+//
+// std algorithm permutations
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn next_permutation<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> bool
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first == last)
+    return false;
+
+  var i = last;
+
+  if (first == --i)
+    return false;
+
+  for (;;)
+  {
+    var i1 = i;
+
+    if (cmp(range[--i], range[i1]))
+    {
+      var j = last;
+      while (!cmp(range[i], range[--j]))
+        ;
+
+      std::swap(&mut range[i], &mut range[j]);
+
+      std::reverse!(&mut range.subrange(i1, last));
+
+      return true;
+    }
+
+    if (i == first)
+      break;
+  }
+
+  std::reverse!(&mut range.subrange(first, last));
+
+  return false;
+}
+
+pub fn next_partial_permutation<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> bool
+{
+  std::reverse!(&mut range.subrange(middle, range.end));
+
+  return next_permutation(&mut range);
+}
+
+pub fn next_combination<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> bool
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first == middle || middle == last)
+    return false;
+
+  var i = first;
+
+  if (++i == last)
+    return false;
+
+  i = middle;
+
+  for(;;)
+  {
+    if (i == first)
+      break;
+
+    var i1 = last;
+
+    if (cmp(range[--i], range[--i1]))
+    {
+      var j = middle;
+      while (!cmp(range[i], range[j]))
+        ++j;
+
+      std::swap(&mut range[i], &mut range[j]);
+
+      if (++i != middle && ++j != last)
+      {
+        std::rotate(&mut range.subrange(i, last), j);
+
+        i1 = middle;
+        for(; j != last; ++j)
+          ++i1;
+
+        std::rotate(&mut range.subrange(middle, last), i1);
+      }
+
+      return true;
+    }
+  }
+
+  std::rotate(&mut range, middle);
+
+  return false;
+}

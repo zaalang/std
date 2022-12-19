@@ -5,6 +5,7 @@
 import std.io;
 import std.string;
 import std.sys.fd;
+import std.atomic;
 import std.fmt;
 
 using std::fd;
@@ -52,6 +53,24 @@ pub struct file
     return this.fd.write_at(offset, data, len);
   }
 
+  pub fn putc(this mut &, u8 ch) throws -> usize
+  {
+    return this.fd.write(&ch, 1);
+  }
+
+  pub fn putc(this mut &, char ch) throws -> usize
+  {
+    var buf = [0; 8];
+    var len = std::ctoa(buf.data, buf.end, ch).len;
+
+    return this.fd.write(buf.data, len);
+  }
+  
+  pub fn puts(this mut &, String &str) throws -> usize
+  {
+    return this.fd.write(str.data, str.len);
+  }
+  
   pub fn print(this mut &, var & ...args) throws -> usize
   {
     return std::print_to(&mut this, args..., '\n');
@@ -76,6 +95,8 @@ pub struct file
   {
     fd.close();
   }
+
+  file(#file&) = default;
 
   std::fd fd;
 }
@@ -149,13 +170,15 @@ pub struct StdIn
   }
 
   StdIn() = default;
-  StdIn(StdIn&) = default;
+  StdIn(#StdIn&) = default;
   ~StdIn() = default;
 }
 
-pub fn stdin_raw -> file
+pub fn stdin_raw -> file mut &
 {
-  return file(fd(STDIN));
+  static instance = #file(fd(STDIN));
+
+  return &instance;
 }
 
 pub fn stdin -> StdIn mut &
@@ -169,9 +192,52 @@ pub struct StdOut
 {
   pub fn write(this mut &, u8 *data, usize len) -> usize
   {
+    if (len == 0)
+      return 0;
+
+    if (*(data + len - 1) == cast('\n') || this.buffer.len < this.n + len)
+      return write_cold(&mut this, data, len);
+
+    std::memcpy(this.buffer.data + this.n, data, len);
+
+    this.n += len;
+
+    return len;
+  }
+
+  fn write_cold(this mut &, u8 *data, usize len) -> usize
+  {
     try
     {
-      return fd(STDOUT).write(data, len);
+      if (this.n != 0 && this.n + len < this.buffer.len)
+      {
+        std::memcpy(this.buffer.data + this.n, data, len);
+
+        fd(STDOUT).write(this.buffer.data, this.n + len);
+      }
+      else
+      {
+        if (this.n != 0)
+          fd(STDOUT).write(this.buffer.data, this.n);
+
+        fd(STDOUT).write(data, len);
+      }
+
+      this.n = 0;
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+
+    return len;
+  }
+
+  pub fn putc(this mut &, u8 ch) -> usize
+  {
+    try
+    {
+      return this.write(&ch, 1);
     }
     catch(std::error e)
     {
@@ -179,11 +245,26 @@ pub struct StdOut
     }
   }
 
-  pub fn putc(this mut &, u8 ch) -> usize
+  pub fn putc(this mut &, char ch) -> usize
   {
     try
     {
-      return write(&mut this, &ch, 1);
+      var buf = [0; 8];
+      var len = std::ctoa(buf.data, buf.end, ch).len;
+
+      return this.write(buf.data, len);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  pub fn puts(this mut &, String &str) -> usize
+  {
+    try
+    {
+      return this.write(str.data, str.len);
     }
     catch(std::error e)
     {
@@ -214,7 +295,7 @@ pub struct StdOut
       return 0;
     }
   }
-  
+
   pub fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
   {
     try
@@ -226,26 +307,158 @@ pub struct StdOut
       return 0;
     }
   }
-  
+
   pub fn flush(this mut &) -> void
   {
+    try
+    {
+      if (this.n != 0)
+      {
+        fd(STDOUT).write(this.buffer.data, this.n);
+
+        this.n = 0;
+      }
+    }
+    catch(std::error e)
+    {
+    }
   }
-  
+
+  usize n;
+  u8[256] buffer;
+
+  std::ticket_lock lock; // TODO: use reentrant lock
+
   StdOut() = default;
-  StdOut(StdOut&) = default;
+  StdOut(#StdOut&) = default;
   ~StdOut() = default;
 }
 
-pub fn stdout_raw -> file
+pub struct StdOutLocked
 {
-  return file(fd(STDOUT));
+  pub fn write(this mut &, u8 *data, usize len) -> usize
+  {
+    return this.inner.write(data, len);
+  }
+
+  pub fn putc(this mut &, u8 ch) -> usize
+  {
+    return this.inner.putc(ch);
+  }
+
+  pub fn putc(this mut &, char ch) -> usize
+  {
+    return this.inner.putc(ch);
+  }
+
+  pub fn puts(this mut &, String &str) -> usize
+  {
+    return this.inner.puts(str);
+  }
+
+  pub fn print(this mut &, var & ...args) -> usize
+  {
+    return this.inner.print(args...);
+  }
+
+  pub fn printf(this mut &, String &format, var & ...args) -> usize
+  {
+    return this.inner.printf(format, args...);
+  }
+
+  pub fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
+  {
+    return this.inner.printf(format, args...);
+  }
+
+  pub fn flush(this mut &) -> void
+  {
+    return this.inner.flush();
+  }
+
+  StdOut mut &inner;
+
+  StdOutLocked(StdOut mut &inner)
+    : inner(&inner)
+  {
+    inner.lock.lock();
+  }
+
+  pub ~StdOutLocked()
+  {
+    inner.lock.unlock();
+  }
 }
 
-pub fn stdout -> StdOut mut &
+pub struct StdOutLocker
+{
+  pub fn lock(this mut &) -> StdOutLocked
+  {
+    return StdOutLocked(&mut this.inner);
+  }
+
+  pub fn write(this mut &, u8 *data, usize len) -> usize
+  {
+    return this.lock().write(data, len);
+  }
+
+  pub fn putc(this mut &, u8 ch) -> usize
+  {
+    return this.lock().putc(ch);
+  }
+
+  pub fn putc(this mut &, char ch) -> usize
+  {
+    return this.lock().putc(ch);
+  }
+
+  pub fn puts(this mut &, String &str) -> usize
+  {
+    return this.lock().puts(str);
+  }
+
+  pub fn print(this mut &, var & ...args) -> usize
+  {
+    return this.lock().print(args...);
+  }
+
+  pub fn printf(this mut &, String &format, var & ...args) -> usize
+  {
+    return this.lock().printf(format, args...);
+  }
+
+  pub fn printf(this mut &, #std::string_literal format, var & ...args) -> usize
+  {
+    return this.lock().printf(format, args...);
+  }
+
+  pub fn flush(this mut &) -> void
+  {
+    return this.lock().flush();
+  }
+
+  StdOut mut &inner;
+
+  StdOutLocker(StdOut mut &inner)
+    : inner(&inner)
+  {
+  }
+
+  pub ~StdOutLocker() = default;
+}
+
+pub fn stdout_raw -> file mut &
+{
+  static instance = #file(fd(STDOUT));
+
+  return &instance;
+}
+
+pub fn stdout -> StdOutLocker
 {
   static instance = #StdOut();
 
-  return &instance;
+  return StdOutLocker(&mut instance);
 }
 
 pub struct StdErr
@@ -261,7 +474,46 @@ pub struct StdErr
       return 0;
     }
   }
+  
+  pub fn putc(this mut &, u8 ch) -> usize
+  {
+    try
+    {
+      return this.write(&ch, 1);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
 
+  pub fn putc(this mut &, char ch) -> usize
+  {
+    try
+    {
+      var buf = [0; 8];
+      var len = std::ctoa(buf.data, buf.end, ch).len;
+
+      return this.write(buf.data, len);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+  
+  pub fn puts(this mut &, String &str) -> usize
+  {
+    try
+    {
+      return this.write(str.data, str.len);
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+  
   pub fn print(this mut &, var & ...args) -> usize
   {
     try
@@ -303,13 +555,15 @@ pub struct StdErr
   }
 
   StdErr() = default;
-  StdErr(StdErr&) = default;
+  StdErr(#StdErr&) = default;
   ~StdErr() = default;
 }
 
-pub fn stderr_raw -> file
+pub fn stderr_raw -> file mut &
 {
-  return file(fd(STDERR));
+  static instance = #file(fd(STDERR));
+
+  return &instance;
 }
 
 pub fn stderr -> StdErr mut &
@@ -319,62 +573,152 @@ pub fn stderr -> StdErr mut &
   return &instance;
 }
 
+pub fn putc(u8 ch) -> usize
+{
+  return stdout.lock().inner.putc(ch);
+}
+
+pub fn putc(char ch) -> usize
+{
+  return stdout.lock().inner.putc(ch);
+}
+
+pub fn fputc(StdOutLocked &&os, u8 ch) -> usize
+{
+  return os.inner.putc(ch);
+}
+
+pub fn fputc(StdOutLocker &&os, u8 ch) -> usize
+{
+  return os.lock().inner.putc(ch);
+}
+
+pub fn fputc(StdOutLocked &&os, char ch) -> usize
+{
+  return os.inner.putc(ch);
+}
+
+pub fn fputc(StdOutLocker &&os, char ch) -> usize
+{
+  return os.lock().inner.putc(ch);
+}
+
+pub fn fputc(StdErr &&os, u8 ch) -> usize
+{
+  return os.putc(ch);
+}
+
+pub fn fputc(StdErr &&os, char ch) -> usize
+{
+  return os.putc(ch);
+}
+
+pub fn fputc(file &&os, u8 ch) throws -> usize
+{
+  return os.putc(ch);
+}
+
+pub fn fputc(file &&os, char ch) throws -> usize
+{
+  return os.putc(ch);
+}
+
+pub fn puts(String &str) -> usize
+{
+  return stdout.lock().inner.puts(str);
+}
+
+pub fn fputs(StdOutLocked &&os, String &str) -> usize
+{
+  return os.inner.puts(str);
+}
+
+pub fn fputs(StdOutLocker &&os, String &str) -> usize
+{
+  return os.lock().inner.puts(str);
+}
+
+pub fn fputs(StdErr &&os, String &str) -> usize
+{
+  return os.puts(str);
+}
+
+pub fn fputs(file &&os, String &str) throws -> usize
+{
+  return os.puts(str);
+}
+
 pub fn print(var & ...args) -> usize
 {
-  return stdout.print(args...);
+  return stdout.lock().inner.print(args...);
 }
 
 pub fn printf(String &format, var & ...args) -> usize
 {
-  return stdout.printf(format, args...);
+  return stdout.lock().inner.printf(format, args...);
 }
 
 pub fn printf(#std::string_literal format, var & ...args) -> usize
 {
-  return stdout.printf(format, args...);
+  return stdout.lock().inner.printf(format, args...);
 }
 
-pub fn fprint(StdOut mut &os, var & ...args) -> usize
+pub fn fprint(StdOutLocked &&os, var & ...args) -> usize
+{
+  return os.inner.print(args...);
+}
+
+pub fn fprint(StdOutLocker &&os, var & ...args) -> usize
+{
+  return os.lock().inner.print(args...);
+}
+
+pub fn fprintf(StdOutLocked &&os, String &format, var & ...args) -> usize
+{
+  return os.inner.printf(format, args...);
+}
+
+pub fn fprintf(StdOutLocker &&os, String &format, var & ...args) -> usize
+{
+  return os.lock().inner.printf(format, args...);
+}
+
+pub fn fprintf(StdOutLocked &&os, #std::string_literal format, var & ...args) -> usize
+{
+  return os.inner.printf(format, args...);
+}
+
+pub fn fprintf(StdOutLocker &&os, #std::string_literal format, var & ...args) -> usize
+{
+  return os.lock().inner.printf(format, args...);
+}
+
+pub fn fprint(StdErr &&os, var & ...args) -> usize
 {
   return os.print(args...);
 }
 
-pub fn fprintf(StdOut mut &os, String &format, var & ...args) -> usize
+pub fn fprintf(StdErr &&os, String &format, var & ...args) -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprintf(StdOut mut &os, #std::string_literal format, var & ...args) -> usize
+pub fn fprintf(StdErr &&os, #std::string_literal format, var & ...args) -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprint(StdErr mut &os, var & ...args) -> usize
+pub fn fprint(file &&os, var & ...args) throws -> usize
 {
   return os.print(args...);
 }
 
-pub fn fprintf(StdErr mut &os, String &format, var & ...args) -> usize
+pub fn fprintf(file &&os, String &format, var & ...args) throws -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprintf(StdErr mut &os, #std::string_literal format, var & ...args) -> usize
-{
-  return os.printf(format, args...);
-}
-
-pub fn fprint(file mut &os, var & ...args) throws -> usize
-{
-  return os.print(args...);
-}
-
-pub fn fprintf(file mut &os, String &format, var & ...args) throws -> usize
-{
-  return os.printf(format, args...);
-}
-
-pub fn fprintf(file mut &os, #std::string_literal format, var & ...args) throws -> usize
+pub fn fprintf(file &&os, #std::string_literal format, var & ...args) throws -> usize
 {
   return os.printf(format, args...);
 }

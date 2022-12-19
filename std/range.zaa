@@ -402,6 +402,7 @@ pub struct reverse_view<R, I, J>
   }
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn reverse<T>(Range<T> &&range)
   where requires (typeof(range) range) { --range.end; }
@@ -409,6 +410,7 @@ pub fn reverse<T>(Range<T> &&range)
   return reverse_view<typeof(range)>(&&range, range.begin, range.end);
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn reverse<Rs, I, J>(zip_view<Rs, I, J> &&range)
   where requires (typeof(range) range) { --range.end; }
@@ -416,6 +418,7 @@ pub fn reverse<Rs, I, J>(zip_view<Rs, I, J> &&range)
   return reverse_view<typeof(range)>(&&range, range.begin, std::next(range.begin, range.len));
 }
 
+#[nodiscard]
 #[lifetime(consume(range))]
 pub fn move<R, I, J>(reverse_view<R, I, J> &&range)
 {
@@ -425,13 +428,13 @@ pub fn move<R, I, J>(reverse_view<R, I, J> &&range)
 pub struct filter_view<R, I, J, Pred>
 {
   R &&range;
+  Pred _pred;
 
   pub filter_iterator<I> first;
   pub filter_iterator<J> second;
 
   pub filter_view(R &&range, I beg, J end, Pred &&pred)
-    : range(&range), first(beg, end, range, _pred), second(end, range, _pred),
-      _pred(&&pred)
+    : range(&range), _pred(&&pred), first(beg, end, range, _pred), second(end, range, _pred),
   {
   }
 
@@ -515,16 +518,16 @@ pub struct filter_view<R, I, J, Pred>
   {
     return &&(&&this.range)[iter.base];
   }
-
-  Pred _pred;
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
 {
   return filter_view<typeof(range)>(&&range, range.begin, range.end, &&pred);
 }
 
+#[nodiscard]
 #[lifetime(consume(range))]
 pub fn move<R, I, J, Pred>(filter_view<R, I, J, Pred> &&range)
 {
@@ -608,6 +611,7 @@ pub struct take_view<R, I, J>
   }
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn take_n<T>(Range<T> &&range, usize n)
   where !__is_match<RandomAccessIterator, typeof(range.begin)>()
@@ -615,6 +619,7 @@ pub fn take_n<T>(Range<T> &&range, usize n)
   return take_view<typeof(range)>(&&range, range.begin, range.end, n);
 }
 
+#[nodiscard]
 #[lifetime(consume(range))]
 pub fn move<R, I, J>(take_view<R, I, J> &&range)
 {
@@ -710,6 +715,7 @@ pub struct transform_view<R, I, J, Func>
   Func _func;
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn transform<T, Func>(Range<T> &&range, Func &&func)
 {
@@ -854,6 +860,7 @@ pub struct zip_view<Rs, I, J>
   }
 }
 
+#[nodiscard]
 #[lifetime(depend(ranges))]
 pub fn zip(var && ...ranges)
   where is_all_ranges<typeof(ranges)>
@@ -861,24 +868,28 @@ pub fn zip(var && ...ranges)
   return zip_view(ranges, std::tuple((ranges.begin)...), std::tuple((ranges.end)...));
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 {
   return range_view<typeof(range)>(range, first, last);
 }
 
+#[nodiscard]
 #[lifetime(clone(range))]
 pub fn subrange<R, I, J>(range_view<R, I, J> &&range, I first, Sentinal<I> last)
 {
   return range_view<R, I, J>(range.range, first, last);
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn drop_n<T>(Range<T> &&range, usize n)
 {
   return subrange(&&range, std::next(range.begin, n, range.end), range.end);
 }
 
+#[nodiscard]
 #[lifetime(depend(range))]
 pub fn take_n<T>(Range<T> &&range, usize n)
   where __is_match<RandomAccessIterator, typeof(range.begin)>()

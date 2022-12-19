@@ -293,7 +293,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return iterator(this._tree.erase(first.cursor, last.cursor));
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     this._tree.clear();

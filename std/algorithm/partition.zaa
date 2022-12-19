@@ -17,7 +17,7 @@ pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
   return true;
 }
 
-pub fn partition!<T, Pred>(Range<T> mut &range, Pred &pred)
+pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
 {
   var last = range.end;
   var first = std::find_if_not(range, pred);
@@ -38,7 +38,7 @@ pub fn partition!<T, Pred>(Range<T> mut &range, Pred &pred)
   return first;
 }
 
-pub fn stable_partition!<T, Pred>(Range<T> mut &range, Pred &pred)
+pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
 {
   var last = range.end;
   var first = std::find_if_not(range, pred);

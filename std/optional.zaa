@@ -119,7 +119,8 @@ pub union optional<T, Allocator = std::allocator>
     return &this.Some;
   }
 
-  pub fn clear(this mut &)
+  #[lifetime(launder(this))]
+  pub fn clear(this mut &) -> void
   {
     optional::~optional(&mut this);
     new<optional>(&this)();

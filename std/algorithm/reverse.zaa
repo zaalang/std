@@ -5,7 +5,7 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
-pub fn reverse!<I>(I first, I last) -> void
+pub fn reverse<I>(I first, I last) -> void
   where __is_match<BidirectionalIterator, I>()
 {
   for(; first != last && first != --last; ++first)
@@ -14,7 +14,8 @@ pub fn reverse!<I>(I first, I last) -> void
   }
 }
 
-pub fn reverse!<T>(Range<T> mut &range) -> void
+#[lifetime(depend(range))]
+pub fn reverse!<T>(Range<T> mut &range)
   where __is_match<BidirectionalIterator, typeof(range.end)>()
 {
   var last = range.end;
@@ -24,4 +25,6 @@ pub fn reverse!<T>(Range<T> mut &range) -> void
   {
     std::swap(&mut range[first], &mut range[last]);
   }
+
+  return &range;
 }

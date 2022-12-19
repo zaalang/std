@@ -1,0 +1,24 @@
+//
+// std algorithm unique
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn unique<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first == last)
+    return last;
+
+  var next = first;
+  while (++first != last)
+  {
+    if (!cmp(range[next], range[first]) && ++next != first)
+      range[next] = &move range[first];
+  }
+
+  return ++next;
+}

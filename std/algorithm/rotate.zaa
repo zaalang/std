@@ -5,7 +5,7 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
-pub fn rotate_left!<I>(I first, Sentinal<I> last) -> I
+pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
 {
   if (first == last)
     return first;
@@ -17,7 +17,7 @@ pub fn rotate_left!<I>(I first, Sentinal<I> last) -> I
   return lm1;
 }
 
-pub fn rotate_left!<T>(Range<T> mut &range)
+pub fn rotate_left<T>(Range<T> mut &range)
 {
   var last = range.end;
   var first = range.begin;
@@ -37,7 +37,7 @@ pub fn rotate_left!<T>(Range<T> mut &range)
   return first;
 }
 
-pub fn rotate_right!<I>(I first, I last) -> I
+pub fn rotate_right<I>(I first, I last) -> I
   where __is_match<BidirectionalIterator, I>()
 {
   if (first == last)
@@ -51,7 +51,7 @@ pub fn rotate_right!<I>(I first, I last) -> I
   return fp1;
 }
 
-pub fn rotate_right!<T>(Range<T> mut &range)
+pub fn rotate_right<T>(Range<T> mut &range)
   where __is_match<BidirectionalIterator, typeof(range.end)>()
 {
   var last = range.end;
@@ -73,7 +73,7 @@ pub fn rotate_right!<T>(Range<T> mut &range)
   return last;
 }
 
-pub fn rotate!<T, I>(Range<T> mut &range, I middle) -> I
+pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
 {
   var last = range.end;
   var first = range.begin;

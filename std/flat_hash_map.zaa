@@ -168,6 +168,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     var hash = this._hash(key);
     var hash2 = H2(hash);
     var index = hash & this._capacity;
+    var offset = 1;
 
     while (true)
     {
@@ -180,7 +181,8 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       if (is_empty(this._ctrl + index))
         break;
 
-      index = (index + 1) & this._capacity;
+      index = (index + offset) & this._capacity;
+      offset += 1;
     }
 
     return this.end;
@@ -385,24 +387,27 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   fn find_first_non_full(this mut &, usize hash) -> usize
   {
     var index = hash & this._capacity;
+    var offset = 1;
 
     while (true)
     {
       if (is_empty(this._ctrl + index) || is_deleted(this._ctrl + index))
         return index;
 
-      index = (index + 1) & this._capacity;
+      index = (index + offset) & this._capacity;
+      offset += 1;
     }
   }
 
   fn find_or_prepare_insert<Key>(this mut &, Key &key) -> (usize, bool)
   {
-    if (this.empty)
+    if (this._capacity == 0)
       resize(&mut this, 1);
 
     var hash = this._hash(key);
     var hash2 = H2(hash);
     var index = hash & this._capacity;
+    var offset = 1;
 
     while (true)
     {
@@ -415,7 +420,8 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       if (is_empty(this._ctrl + index))
         break;
 
-      index = (index + 1) & this._capacity;
+      index = (index + offset) & this._capacity;
+      offset += 1;
     }
 
     index = this.find_first_non_full(hash);
@@ -446,7 +452,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     }
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     for(var i = 0; i != this._capacity; ++i)

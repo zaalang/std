@@ -66,6 +66,7 @@ pub struct hash
 
   pub hash() = default;
   pub hash(hash&) = default;
+  pub fn =(hash mut &, hash &) -> hash mut & = default;
   pub ~hash() = default;
 }
 

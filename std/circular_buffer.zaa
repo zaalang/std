@@ -449,7 +449,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
       this.push_back();
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     erase(&mut this, this.begin, this._len);

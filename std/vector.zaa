@@ -386,7 +386,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this))]
-  pub fn take!(this mut &, T *first, T *last) -> vector
+  pub fn take(this mut &, T *first, T *last) -> vector
   {
     var result = vector::from(moveable_span(cast<T mut *>(first), cast<T mut *>(last)), this.allocator);
 
@@ -451,7 +451,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     }
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     erase(&mut this, this._data, this._len);
@@ -610,6 +610,14 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 pub fn hash<T>(var &hasher, vector<T> &vec) -> usize
 {
   return hasher.combine_contiguous(vec.data, vec.len);
+}
+
+#[lifetime(poison(span), depend(span))]
+pub fn remove_suffix!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
+{
+  span.erase(span.end - n, n);
+
+  return &span;
 }
 
 #[lifetime(poison(range))]

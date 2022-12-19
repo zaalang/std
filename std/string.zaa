@@ -8,6 +8,7 @@ import std.algorithm : swap;
 import std.memory : memcpy, memmove, memchr, memrchr, memcmp;
 import std.unicode : is_whitespace, to_uppercase, to_lowercase;
 import std.range : Sentinal, Range;
+import std.type : as_const;
 import std.bits.utf as utf;
 import std.fmt;
 
@@ -564,7 +565,7 @@ pub struct string_stream
 
   pub fn discard(this mut &, usize len) -> void
   {
-    this.buffer.remove_prefix(len);
+    this.buffer.remove_prefix!(len);
   }
 
   pub fn read(this mut &, u8 mut *data, usize len) -> usize
@@ -573,7 +574,7 @@ pub struct string_stream
 
     std::memcpy(data, this.buffer.data, bytes);
 
-    this.buffer.remove_prefix(bytes);
+    this.buffer.remove_prefix!(bytes);
 
     return bytes;
   }
@@ -799,7 +800,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     this._len = size;
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     this._len = 0;
@@ -1588,6 +1589,7 @@ pub fn replace_all(string mut &str, String &from, String &to) -> usize
   return count;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn drop(String &str, usize n) -> string_view
 {
@@ -1620,6 +1622,7 @@ pub fn drop_n!(string mut &str, usize n) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn take(String &str, usize n) -> string_view
 {
@@ -1652,13 +1655,15 @@ pub fn take_n!(string mut &str, usize n) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn substr(String &str, usize i, usize n) -> string_view
 {
   return str.drop(i).take(n);
 }
 
-#[lifetime(follow(str.data))]
+#[nodiscard]
+#[lifetime(follow(haystack.data))]
 pub fn cut(String &haystack, char needle) -> (string_view, string_view)
 {
   if (var i = find_first(haystack, needle); i != haystack.end)
@@ -1669,7 +1674,8 @@ pub fn cut(String &haystack, char needle) -> (string_view, string_view)
   return (string_view(haystack.data, haystack.len), string_view());
 }
 
-#[lifetime(follow(str.data))]
+#[nodiscard]
+#[lifetime(follow(haystack.data))]
 pub fn cut(String &haystack, String &needle) -> (string_view, string_view)
 {
   if (var i = find_first(haystack, needle); i != haystack.end)
@@ -1680,6 +1686,7 @@ pub fn cut(String &haystack, String &needle) -> (string_view, string_view)
   return (string_view(haystack.data, haystack.len), string_view());
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn trim_left(String &str) -> string_view
 {
@@ -1694,6 +1701,15 @@ pub fn trim_left(String &str) -> string_view
   return string_view(i, str.end);
 }
 
+#[lifetime(poison(str), depend(str))]
+pub fn trim_left!(string mut &str) -> string mut &
+{
+  str = trim_left(str);
+
+  return &str;
+}
+
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn trim_right(String &str) -> string_view
 {
@@ -1710,6 +1726,15 @@ pub fn trim_right(String &str) -> string_view
   return string_view(str.begin, j);
 }
 
+#[lifetime(poison(str), depend(str))]
+pub fn trim_right!(string mut &str) -> string mut &
+{
+  str = trim_right(str);
+
+  return &str;
+}
+
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn trim(String &str) -> string_view
 {
@@ -1754,14 +1779,6 @@ pub fn ends_with(String &haystack, String &needle) -> bool
   return haystack.len >= needle.len && string_view(haystack.end - needle.len, needle.len) == needle;
 }
 
-#[lifetime(depend(str))]
-pub fn remove_prefix(string &str, usize n) -> string_view
-{
-  assert(n <= str.len);
-
-  return string_view(str.data + n, str.len - n);
-}
-
 #[lifetime(poison(str), depend(str))]
 pub fn remove_prefix!(string mut &str, usize n) -> string mut &
 {
@@ -1770,6 +1787,7 @@ pub fn remove_prefix!(string mut &str, usize n) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn strip_prefix(String &str, String &prefix) -> string_view
 {
@@ -1787,14 +1805,6 @@ pub fn strip_prefix!(string mut &str, String &prefix) -> string mut &
   return &str;
 }
 
-#[lifetime(depend(str))]
-pub fn remove_suffix(string &str, usize n) -> string_view
-{
-  assert(n <= str.len);
-
-  return string_view(str.data, str.len - n);
-}
-
 #[lifetime(poison(str), depend(str))]
 pub fn remove_suffix!(string mut &str, usize n) -> string mut &
 {
@@ -1803,6 +1813,7 @@ pub fn remove_suffix!(string mut &str, usize n) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn strip_suffix(String &str, String &suffix) -> string_view
 {
@@ -1820,6 +1831,7 @@ pub fn strip_suffix!(string mut &str, String &suffix) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn chop(String &str) -> string_view
 {
@@ -1842,6 +1854,7 @@ pub fn chop!(string mut &str) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 #[lifetime(follow(str.data))]
 pub fn chomp(String &str) -> string_view
 {
@@ -1864,6 +1877,7 @@ pub fn chomp!(string mut &str) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 pub fn gsub(String &&str, u8 from, u8 to) -> string
 {
   var str = string(&&str);
@@ -1871,6 +1885,7 @@ pub fn gsub(String &&str, u8 from, u8 to) -> string
   return str;
 }
 
+#[nodiscard]
 pub fn gsub(String &&str, char from, char to) -> string
 {
   var str = string(&&str);
@@ -1878,6 +1893,7 @@ pub fn gsub(String &&str, char from, char to) -> string
   return str;
 }
 
+#[nodiscard]
 pub fn gsub(String &&str, String &from, String &to) -> string
 {
   var str = string(&&str);
@@ -1885,6 +1901,7 @@ pub fn gsub(String &&str, String &from, String &to) -> string
   return str;
 }
 
+#[nodiscard]
 pub fn to_lowercase(String &&str) -> string
 {
   var str = string(&&str);
@@ -1901,6 +1918,7 @@ pub fn to_lowercase!(string mut &str) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 pub fn to_uppercase(String &&str) -> string
 {
   var str = string(&&str);
@@ -1917,6 +1935,7 @@ pub fn to_uppercase!(string mut &str) -> string mut &
   return &str;
 }
 
+#[nodiscard]
 pub fn format(String &format, var & ...args) -> string
 {
   var str = string();
@@ -1924,6 +1943,7 @@ pub fn format(String &format, var & ...args) -> string
   return str;
 }
 
+#[nodiscard]
 pub fn format(#string_literal format, var & ...args) -> string
 {
   var str = string();

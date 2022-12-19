@@ -116,6 +116,12 @@ pub const fn max<T>(T x, T y) -> T
   return __max(x, y);
 }
 
+pub const fn clamp<T>(T value, T lower, T upper) -> T
+  where __is_arithmetic<T>
+{
+  return __max(lower, __min(value, upper));
+}
+
 pub fn add_with_carry<T>(T x, T y) -> (T, T)
   where __is_integral<T>
 {

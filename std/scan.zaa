@@ -18,6 +18,11 @@ pub struct scan_result
   pub usize count;
   pub std::errc error;
 
+  pub const fn bool(this&) -> bool
+  {
+    return !this.error;
+  }
+
   pub scan_result() = default;
   pub scan_result(scan_result&) = default;
   pub fn =(scan_result mut &, scan_result&) -> scan_result mut & = default;
@@ -36,7 +41,7 @@ pub struct scan_context
 
 fn scan(std::string_view is, scan_context mut &ctx, bool mut &value) -> void
 {
-  var str = std::atob(is.data, is.end, value);
+  var str = std::atob(is.data, is.end, &mut value);
 
   ctx.error = str.error;
   ctx.cursor += str.len;
@@ -44,7 +49,7 @@ fn scan(std::string_view is, scan_context mut &ctx, bool mut &value) -> void
 
 fn scan(std::string_view is, scan_context mut &ctx, char mut &value) -> void
 {
-  var str = std::atoc(is.data, is.end, value);
+  var str = std::atoc(is.data, is.end, &mut value);
 
   ctx.error = str.error;
   ctx.cursor += str.len;
@@ -71,7 +76,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
   if (is.len != 0 && is[0] == cast('+'))
   {
     ctx.cursor += 1;
-    is.remove_prefix(1);
+    is.remove_prefix!(1);
   }
 
   if (is.len > 1 && is[0] == cast('0'))
@@ -84,7 +89,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
         {
           base = 2;
           ctx.cursor += 2;
-          is.remove_prefix(2);
+          is.remove_prefix!(2);
         }
 
       case 'o':
@@ -92,7 +97,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
         {
           base = 8;
           ctx.cursor += 2;
-          is.remove_prefix(2);
+          is.remove_prefix!(2);
         }
 
       case 'x':
@@ -101,7 +106,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
         {
           base = 16;
           ctx.cursor += 2;
-          is.remove_prefix(2);
+          is.remove_prefix!(2);
         }
     }
   }
@@ -167,7 +172,7 @@ fn scan_flt<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
   if (is.len != 0 && is[0] == cast('+'))
   {
     ctx.cursor += 1;
-    is.remove_prefix(1);
+    is.remove_prefix!(1);
   }
 
   var str = std::atof(is.data, is.end, &mut value);
@@ -249,8 +254,14 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
     {
       case ' ':
       case '\t':
-      case '\n':
         while (sv != str.end && std::is_whitespace(*sv))
+          ++sv;
+        ++ch;
+
+      case '\n':
+        while (sv != str.end && std::is_whitespace(*sv) && *sv != cast('\n'))
+          ++sv;
+        if (sv != str.end)
           ++sv;
         ++ch;
 
@@ -297,7 +308,11 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
                 ++len;
 
             case '\n':
-              len = str.end;
+              len = beg;
+              while (len != str.end && *len != cast('\n'))
+                ++len;
+              if (len != beg && *(len - 1) == cast('\r'))
+                --len;
 
             else:
               len = beg;

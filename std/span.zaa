@@ -3,6 +3,7 @@
 //
 
 import std.stdlib : assert;
+import std.algorithm : swap, find, find_if, find_if_not, count, count_if, count_if_not, sort!, is_sorted;
 import std.range : Range;
 
 pub concept Span<U>
@@ -107,21 +108,6 @@ pub struct span<T>
     return span(range.0, range.1 + 1);
   }
 
-  pub fn remove_prefix(this mut &, usize n) -> void
-  {
-    assert(n <= this.len);
-
-    this.len -= n;
-    this.data += n;
-  }
-
-  pub fn remove_suffix(this mut &, usize n) -> void
-  {
-    assert(n <= this.len);
-
-    this.len -= n;
-  }
-
   #[lifetime(clone(that))]
   pub span(mutable_span<T> &that)
     : len(that.len), data(that.data)
@@ -137,7 +123,6 @@ pub struct span<T>
   }
 
   pub span() = default;
-  pub span(span &that) = default;
   pub fn =(this mut &, span &that) -> span mut & = default;
   pub ~span() = default;
 }
@@ -256,21 +241,6 @@ pub struct mutable_span<T>
     return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1 + 1));
   }
 
-  pub fn remove_prefix(this mut &, usize n) -> void
-  {
-    assert(n <= this.len);
-
-    this.len -= n;
-    this.data += n;
-  }
-
-  pub fn remove_suffix(this mut &, usize n) -> void
-  {
-    assert(n <= this.len);
-
-    this.len -= n;
-  }
-
   pub mutable_span() = default;
   pub mutable_span(mutable_span &that) = default;
   pub fn =(this mut &, mutable_span &that) -> mutable_span mut & = default;
@@ -339,22 +309,90 @@ pub fn move<T>(mutable_span<T> &&span)
   return moveable_span(span.data, span.len);
 }
 
-#[lifetime(clone(span))]
+pub fn remove_prefix!<T>(span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
+}
+
+pub fn remove_suffix!<T>(span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+pub fn remove_prefix!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
+}
+
+pub fn remove_suffix!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+#[nodiscard]
+#[lifetime(follow(span.data))]
+pub fn remove_prefix<T>(Span<T> &&span, usize n)
+{
+  return (&&span)[n .. span.len];
+}
+
+#[nodiscard]
+#[lifetime(follow(span.data))]
+pub fn remove_suffix<T>(Span<T> &&span, usize n)
+{
+  return (&&span)[0 .. span.len - n];
+}
+
+#[nodiscard]
+#[lifetime(follow(span.data))]
+pub fn all<T>(Span<T> &&span)
+{
+  return (&&span)[0 .. span.len];
+}
+
+#[nodiscard]
+#[lifetime(follow(span.data))]
+pub fn head<T>(Span<T> &&span)
+{
+  return &(&&span)[0];
+}
+
+#[nodiscard]
+#[lifetime(follow(span.data))]
+pub fn tail<T>(Span<T> &&span)
+{
+  return (&&span)[1 .. span.len];
+}
+
+#[nodiscard]
+#[lifetime(follow(span.data))]
 pub fn subspan<T>(Span<T> &&span, usize offset, usize count)
 {
   return (&&span)[offset .. offset + count];
 }
 
-#[lifetime(depend(span))]
+#[nodiscard]
+#[lifetime(follow(span.data))]
 pub fn first_n<T>(Span<T> &&span, usize n)
 {
-  return subspan(&&span, 0, n);
+  return (&&span)[0 .. n];
 }
 
-#[lifetime(depend(span))]
+#[nodiscard]
+#[lifetime(follow(span.data))]
 pub fn last_n<T>(Span<T> &&span, usize n)
 {
-  return subspan(&&span, span.len - n, n);
+  return (&&span)[span.len - n .. span.len];
 }
 
 pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize
@@ -363,7 +401,7 @@ pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize
 
   std::memcpy(data, span.data, bytes);
 
-  span.remove_prefix(bytes);
+  span.remove_prefix!(bytes);
 
   return bytes;
 }
@@ -374,7 +412,7 @@ pub fn write(std::mutable_span<u8> mut &span, u8 *data, usize len) -> usize
 
   std::memcpy(span.data, data, bytes);
 
-  span.remove_prefix(bytes);
+  span.remove_prefix!(bytes);
 
   return bytes;
 }
