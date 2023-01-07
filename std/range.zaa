@@ -17,6 +17,7 @@ pub concept Range<U>
   requires<T> (T x) { x.end; }
 }
 
+#[lifetime(depend(array))]
 pub fn Range<T, N>(T[N] &&array)
 {
   return &(&&array);

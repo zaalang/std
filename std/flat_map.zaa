@@ -7,6 +7,7 @@ import std.stdlib : assert;
 import std.range : Sentinal, Range;
 import std.type : as_const;
 import std.pair;
+import std.optional;
 
 pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
@@ -106,6 +107,37 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn [](this &&, value_type *iter)
   {
     return &(&&this)._tree[iter];
+  }
+
+  #[lifetime(depend(this))]
+  pub fn []<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    var j = this.find(key);
+
+    std::assert(j != this.end);
+
+    return &this[j].value;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get<Key>(this &, Key &key) -> std::optional<T&>
+    match (Key key) { K(key); }
+  {
+    if (var j = this.find(key); j != this.end)
+      return Some(&this[j].value);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get<Key>(this mut &, Key &key) -> std::optional<T mut &>
+    match (Key key) { K(key); }
+  {
+    if (var j = this.find(key); j != this.end)
+      return Some(&this[j].value);
+
+    return None;
   }
 
   #[lifetime(depend(this))]
@@ -267,6 +299,16 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn erase(this mut &, value_type *first, value_type *last) -> value_type *
   {
     return this._tree.erase(first, last);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take(this mut &, value_type *first, value_type *last) -> flat_map
+  {
+    var result = flat_map::from(std::moveable_range_view(&mut this, first, last), this.allocator);
+
+    erase(&mut this, first, last);
+
+    return result;
   }
 
   #[lifetime(poison(this))]

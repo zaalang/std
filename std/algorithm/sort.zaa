@@ -78,7 +78,7 @@ pub fn sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
 #[lifetime(depend(range))]
 pub fn partial_sort!<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less)
 {
-  partial_sort(&mut range, cmp);
+  partial_sort(&mut range, middle, cmp);
 
   return &range;
 }

@@ -10,6 +10,7 @@ import std.span : span, mutable_span;
 import std.type : as_const;
 import std.pair;
 import std.hash;
+import std.optional;
 
 pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Allocator = std::allocator>
 {
@@ -156,6 +157,37 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub fn [](this &&, iterator iter)
   {
     return &cast<&&typeof(this)>(*cast<value_type mut *>(iter.data));
+  }
+
+  #[lifetime(depend(this))]
+  pub fn []<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    var j = this.find(key);
+
+    std::assert(j != this.end);
+
+    return &this[j].value;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get<Key>(this &, Key &key) -> std::optional<T&>
+    match (Key key) { K(key); }
+  {
+    if (var j = this.find(key); j != this.end)
+      return Some(&this[j].value);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get<Key>(this mut &, Key &key) -> std::optional<T mut &>
+    match (Key key) { K(key); }
+  {
+    if (var j = this.find(key); j != this.end)
+      return Some(&this[j].value);
+
+    return None;
   }
 
   #[lifetime(depend(this))]
@@ -333,6 +365,16 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     }
 
     return iterator(last.ctrl, last.data);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take(this mut &, iterator first, iterator last) -> flat_hash_map
+  {
+    var result = flat_hash_map::from(std::moveable_range_view(&mut this, first, last), this.allocator);
+
+    erase(&mut this, first, last);
+
+    return result;
   }
 
   fn take(this mut &, flat_hash_map mut &other) -> void

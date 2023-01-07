@@ -3,6 +3,7 @@
 //
 
 import std.stdlib;
+import std.bits.malloc as heap;
 
 pub struct mem_result
 {
@@ -15,9 +16,6 @@ pub struct mem_result
   pub ~mem_result() = default;
 }
 
-extern fn mem_alloc(usize size) -> mem_result;
-extern fn mem_free(void *addr, usize size) -> void;
-
 pub struct allocator
 {
   pub allocator() = default;
@@ -27,17 +25,29 @@ pub struct allocator
 
   pub fn allocate(this mut &, usize size, usize alignment) -> void mut *
   {
-    var memory = mem_alloc(size);
+    var alloc = heap::allocate(size, alignment);
 
-    if (memory.errno != 0)
+    if (!alloc.addr)
       std::panic("memory allocation failure");
 
-    return memory.addr;
+    return alloc.addr;
+  }
+
+  pub fn allocate(this mut &, usize mut &size, usize alignment) -> void mut *
+  {
+    var alloc = heap::allocate(size, alignment);
+
+    if (!alloc.addr)
+      std::panic("memory allocation failure");
+
+    size = alloc.size;
+
+    return alloc.addr;
   }
 
   pub fn free(this mut &, void *addr, usize size) -> void
   {
-    mem_free(addr, size);
+    heap::free(addr);
   }
 
   pub fn ==(this &, allocator &) -> bool

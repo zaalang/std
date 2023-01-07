@@ -52,57 +52,115 @@ pub union optional<T, Allocator = std::allocator>
     return this.kind == typeof(this.kind)::Some;
   }
 
-  pub fn value(this &&)
-  {
-    std::assert(this.is_some);
+  #if __is_reference<T>
 
-    return &(&&this.Some);
-  }
+    #[lifetime(clone(this))]
+    pub fn value(this &&)
+    {
+      std::assert(this.is_some);
 
-  pub fn value_or<U>(this &&, U &&default) -> T
-    match (U default) { T(default); }
-  {
-    return (this.is_some) ? &&this.Some : T(&&default);
-  }
+      return &*this.Some;
+    }
 
-  #[lifetime(consume(this))]
-  pub fn unwrap(this mut &) -> T
-  {
-    std::assert(this.is_some);
+    pub fn value_or<U>(this &&, U &&default) -> std::remove_reference<T>
+      match (U default) { std::remove_reference<T>(default); }
+    {
+      return (this.is_some) ? *this.Some : std::remove_reference<T>(&&default);
+    }
 
-    return &move this.Some;
-  }
+    #[lifetime(clone(this))]
+    pub fn unwrap(this mut &)
+    {
+      std::assert(this.is_some);
 
-  #[lifetime(consume(this))]
-  pub fn ?!(this mut &) -> T
-  {
-    std::assert(this.is_some);
+      return &*this.Some;
+    }
 
-    return &move this.Some;
-  }
+    #[lifetime(clone(this))]
+    pub fn ?!(this mut &)
+    {
+      std::assert(this.is_some);
 
-  #[lifetime(consume(this))]
-  pub fn unwrap_or<U>(this mut &, U &&default) -> T
-    match (U default) { T(default); }
-  {
-    return (this.is_some) ? &move this.Some : T(&&default);
-  }
+      return &*this.Some;
+    }
 
-  #[lifetime(consume(this))]
-  pub fn ??<U>(this mut &, U &&default) -> T
-    match (U default) { T(default); }
-  {
-    return (this.is_some) ? &move this.Some : T(&&default);
-  }
+    #[lifetime(clone(this),depend(default))]
+    pub fn unwrap_or(this mut &, std::remove_reference<T> &&default)
+    {
+      return (this.is_some) ? &*this.Some : &default;
+    }
 
-  #[lifetime(consume(this))]
-  pub fn expect(this mut &, String &msg) -> T
-  {
-    if (!this.is_some)
-      std::panic(msg);
+    #[lifetime(clone(this),depend(default))]
+    pub fn ??(this mut &, std::remove_reference<T> &&default)
+    {
+      return (this.is_some) ? *this.Some : &default;
+    }
 
-    return &move this.Some;
-  }
+    #[lifetime(clone(this))]
+    pub fn expect(this mut &, String &msg)
+    {
+      if (!this.is_some)
+        std::panic(msg);
+
+      return &*this.Some;
+    }
+
+  #else
+
+    #[lifetime(depend(this))]
+    pub fn value(this &&)
+    {
+      std::assert(this.is_some);
+
+      return &(&&this.Some);
+    }
+
+    pub fn value_or<U>(this &&, U &&default) -> T
+      match (U default) { T(default); }
+    {
+      return (this.is_some) ? &&this.Some : T(&&default);
+    }
+
+    #[lifetime(consume(this))]
+    pub fn unwrap(this mut &) -> T
+    {
+      std::assert(this.is_some);
+
+      return &move this.Some;
+    }
+
+    #[lifetime(consume(this))]
+    pub fn ?!(this mut &) -> T
+    {
+      std::assert(this.is_some);
+
+      return &move this.Some;
+    }
+
+    #[lifetime(consume(this))]
+    pub fn unwrap_or<U>(this mut &, U &&default) -> T
+      match (U default) { T(default); }
+    {
+      return (this.is_some) ? &move this.Some : T(&&default);
+    }
+
+    #[lifetime(consume(this))]
+    pub fn ??<U>(this mut &, U &&default) -> T
+      match (U default) { T(default); }
+    {
+      return (this.is_some) ? &move this.Some : T(&&default);
+    }
+
+    #[lifetime(consume(this))]
+    pub fn expect(this mut &, String &msg) -> T
+    {
+      if (!this.is_some)
+        std::panic(msg);
+
+      return &move this.Some;
+    }
+
+  #end
 
   pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
     match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
@@ -136,7 +194,7 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optiona
   switch (optional)
   {
     case Some[v]:
-      ctx.written += std::format_to(&mut os, "Some({})", v);
+      ctx.written += std::format_to(&mut os, "Some({})", optional.value);
 
     case None:
       ctx.written += std::format_to(&mut os, "None");
@@ -151,4 +209,15 @@ pub fn scan<T>(std::string_view is, std::scan_context mut &ctx, std::optional<T>
 
   if (!ctx.error)
     optional = v;
+}
+
+pub fn transform<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<typeof(func(&&optional.value))>
+{
+  switch (optional)
+  {
+    case Some[v]:
+      return func((&&optional).value);
+  }
+
+  return None;
 }

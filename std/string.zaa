@@ -1075,7 +1075,7 @@ pub struct string<Allocator = std::allocator, N = 24>
       if (capacity < 2*this._capacity)
         capacity = 2*this._capacity;
 
-      var data = cast<u8 mut *>(this._allocator.allocate(capacity, alignof<u8>));
+      var data = cast<u8 mut *>(this._allocator.allocate(&mut capacity, alignof<u8>));
 
       memcpy(data, this._data, position);
       memcpy(data + position, src, len);

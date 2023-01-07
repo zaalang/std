@@ -1,0 +1,453 @@
+//
+// malloc
+//
+
+import std.stdio;
+import std.stdlib;
+import std.atomic.ticketlock;
+
+struct mem_result
+{
+  u32 errno;
+  usize size;
+  void mut *addr;
+
+  mem_result() = default;
+  mem_result(mem_result&) = default;
+  ~mem_result() = default;
+}
+
+extern fn mem_alloc(usize size) -> mem_result;
+extern fn mem_free(void *addr, usize size) -> void;
+
+struct heap
+{
+  const KLASSES = [
+    1, 2, 3, 4, 5, 6, 7, 8,
+    9, 10, 12, 15,
+    18, 20, 25, 31,
+    36, 42, 50, 63,
+    72, 84, 102, 127,
+    146, 170, 204, 255,
+    292, 340, 409, 511,
+    584, 682, 818, 1023,
+    1169, 1364, 1637, 2047,
+    2340, 2730, 3276, 4095,
+    4680, 5460, 6552, 8191,
+  ];
+
+  const PAGE_SIZE = 4096;
+
+  const SECRET = 0xdecdbead;
+
+  struct header
+  {
+    uintptr secret;
+  }
+
+  struct prefix
+  {
+    region mut *region;
+  }
+
+  struct entry
+  {
+    entry mut *next;
+  }
+
+  struct region
+  {
+    usize size;
+    void mut *addr;
+
+    usize klass;
+    entry mut *firstfree;
+
+    region mut *next;
+    region mut *prev;
+
+    region() = default;
+    ~region() = default;
+  }
+
+  region mut *filled;
+  region mut *[48] active;
+  region mut *firstfree;
+
+  std::shared_ticket_lock lock;
+
+  fn size_of_klass(usize i) -> usize
+  {
+    return KLASSES[i] << 4;
+  }
+
+  fn size_to_klass(usize n) -> usize
+  {
+    n = (n + sizeof<prefix> - 1) >> 4;
+
+    if (n < 10)
+      return n;
+
+    if (n > 8190)
+      return 63;
+
+    n += 1;
+
+    var i = cast<usize>(60 - __clz(n))*4 + 8;
+
+    if (n > KLASSES[i+1])
+      i += 2;
+
+    if (n > KLASSES[i])
+      i += 1;
+
+    return i;
+  }
+
+  fn enqueue(region mut * mut &head, region mut *region) -> void
+  {
+    if (head)
+    {
+      region.prev = head.prev;
+      region.next = head;
+
+      region.prev.next = region;
+      region.next.prev = region;
+    }
+    else
+    {
+      region.prev = region.next = region;
+
+      head = region;
+    }
+  }
+
+  fn dequeue(region mut * mut &head, region mut *region) -> void
+  {
+    if (region.next != region)
+    {
+      region.prev.next = region.next;
+      region.next.prev = region.prev;
+
+      if (head == region)
+        head = region.next;
+    }
+    else
+    {
+      head = null;
+    }
+
+    region.next = region.prev = null;
+  }
+
+  fn push<T>(T mut * mut &head, T mut *node) -> void
+  {
+    node.next = head;
+
+    head = node;
+  }
+
+  fn pop<T>(T mut * mut &head) -> T mut *
+  {
+    var node = head;
+
+    if (node)
+      head = node.next;
+
+    return node;
+  }
+
+  fn grow_regions_freelist(heap mut &heap) -> void
+  {
+    var memory = mem_alloc(2*PAGE_SIZE);
+
+    if (memory.errno != 0)
+      return;
+
+    var prev = &heap.firstfree;
+    for(var addr = cast<uintptr>(memory.addr); addr + sizeof<region> <= cast<uintptr>(memory.addr) + memory.size; addr += sizeof<region>)
+    {
+      *prev = cast<region mut *>(addr);
+
+      prev = &prev.next;
+    }
+  }
+
+  fn new_region(heap mut &heap, mem_result allocation, usize klass) -> region mut *
+  {
+    if (!heap.firstfree)
+      grow_regions_freelist(&mut heap);
+
+    var region = pop(&mut heap.firstfree);
+
+    if (!region)
+      return null;
+
+    region.size = allocation.size;
+    region.addr = allocation.addr;
+    region.firstfree = null;
+    region.klass = klass;
+
+    return region;
+  }
+
+  struct allocation
+  {
+    usize size;
+    void mut *addr;
+
+    allocation() = default;
+    allocation(allocation&) = default;
+    ~allocation() = default;
+  }
+
+  fn allocate(heap mut &heap, usize size, usize alignment) -> allocation
+  {
+    var result = allocation();
+
+    var entry = null<entry mut *>();
+    var region = null<region mut *>();
+
+    var sz = size;
+
+    if (alignment > 16)
+      sz += alignment;
+
+    var sc = size_to_klass(sz);
+
+    switch (sc)
+    {
+      case 0 ..= 47:
+        sz = size_of_klass(sc);
+
+        heap.lock.lock_shared();
+
+        region = heap.active[sc];
+
+        while (region)
+        {
+          if (entry = std::volatile_load(&region.firstfree))
+          {
+            if (!std::atomic_cmpxchg_weak(&region.firstfree, entry, entry.next))
+              continue;
+
+            break;
+          }
+
+          region = region.next;
+
+          if (region == heap.active[sc])
+            break;
+        }
+
+        heap.lock.unlock_shared();
+
+        if (!entry)
+        {
+          var memory = mem_alloc(std::align_up(8*sz, PAGE_SIZE));
+
+          if (memory.errno != 0)
+            return result;
+
+          cast<header mut *>(memory.addr).secret = SECRET;
+
+          heap.lock.lock();
+
+          region = heap.active[sc];
+
+          if (region && !region.firstfree)
+          {
+            region.firstfree = cast<entry mut *>(~0);
+            dequeue(&mut heap.active[sc], region);
+            enqueue(&mut heap.filled, region);
+          }
+
+          if (region = heap.new_region(memory, sc); !region)
+          {
+            heap.lock.unlock();
+            mem_free(memory.addr, memory.size);
+
+            return result;
+          }
+
+          var prev = &region.firstfree;
+          for(var addr = cast<uintptr>(memory.addr) + sizeof<header>; addr + sz <= cast<uintptr>(memory.addr) + memory.size; addr += sz)
+          {
+            *prev = cast<entry mut *>(addr);
+
+            prev = &prev.next;
+          }
+
+          entry = pop(&mut region.firstfree);
+
+          enqueue(&mut heap.active[sc], region);
+
+          heap.lock.unlock();
+        }
+
+      case 63:
+        var memory = mem_alloc(size + sizeof<header> + sizeof<prefix>);
+
+        if (memory.errno != 0)
+          return result;
+
+        sz = memory.size;
+
+        cast<header mut *>(memory.addr).secret = SECRET;
+
+        heap.lock.lock();
+
+        if (region = heap.new_region(memory, 63); !region)
+        {
+          heap.lock.unlock();
+          mem_free(memory.addr, memory.size);
+
+          return result;
+        }
+
+        entry = cast<entry mut *>(cast<uintptr>(region.addr) + sizeof<header>);
+
+        enqueue(&mut heap.filled, region);
+
+        heap.lock.unlock();
+
+      else:
+        std::panic("unhandled klass");
+    }
+
+    cast<prefix mut *>(entry).region = region;
+
+    result.addr = cast<void mut *>(std::align_up(cast<uintptr>(entry) + sizeof<prefix>, alignment));
+    result.size = sz - (cast<uintptr>(result.addr) - cast<uintptr>(entry));
+
+    return result;
+  }
+
+  fn free(heap mut &heap, void *addr) -> void
+  {
+    var region = (cast<prefix mut *>(addr) - 1).region;
+
+    std::assert(region, "bad free address");
+    std::assert(region.addr, "bad free address");
+    std::assert(*cast<uintptr*>(region.addr) == SECRET, "heap corruption");
+
+    switch (region.klass)
+    {
+      case 0 ..= 47:
+        var sc = region.klass;
+        var sz = size_of_klass(region.klass);
+        var offset = (cast<uintptr>(addr) - (cast<uintptr>(region.addr) + sizeof<header>)) / sz * sz;
+
+        if (region.firstfree == cast<entry*>(~0))
+        {
+          heap.lock.lock();
+
+          region.firstfree = null;
+          dequeue(&mut heap.filled, region);
+          enqueue(&mut heap.active[region.klass], region);
+
+          heap.lock.unlock();
+        }
+
+        var entry = cast<entry mut *>(cast<uintptr>(region.addr) + sizeof<header> + offset);
+
+        while (true)
+        {
+          entry.next = std::volatile_load(&region.firstfree);
+
+          if (std::atomic_cmpxchg_weak(&region.firstfree, entry.next, entry))
+            break;
+        }
+
+      case 63:
+        mem_free(region.addr, region.size);
+
+        heap.lock.lock();
+
+        dequeue(&mut heap.filled, region);
+
+        push(&mut heap.firstfree, region);
+
+        heap.lock.unlock();
+
+      else:
+        std::panic("heap corruption");
+    }
+  }
+
+  fn instance() -> heap mut &
+  {
+    static instance = #heap();
+
+    return &instance;
+  }
+
+  heap() = default;
+  heap(#heap&) = default;
+  ~heap() = default;
+}
+
+fn dump(heap &&heap) -> void
+{
+  heap.lock.lock();
+
+  var available = 0;
+  for(var free = heap.firstfree; free; free = free.next)
+    available += 1;
+
+  std::print("available regions: ", available);
+
+  std::print("filled regions:");
+
+  for(var region = heap.filled; region; )
+  {
+    if (region.klass < 63)
+      std::print("  ", region, ": ", region.addr, " [", region.size, "], ", (region.size - sizeof<heap::header>) / heap::size_of_klass(region.klass), " [x", heap::size_of_klass(region.klass), "] used");
+    else
+      std::print("  ", region, ": ", region.addr, " [", region.size, "]");
+
+    region = region.next;
+
+    if (region == heap.filled)
+      break;
+  }
+
+  if (!heap.filled)
+    std::print("  <none>");
+
+  std::print("active regions:");
+
+  for(var i = 0; i < 48; ++i)
+  {
+    for(var region = heap.active[i]; region; )
+    {
+      var cnt = 0;
+      for(var free = region.firstfree; free; free = free.next)
+        cnt += 1;
+
+      std::print("  ", region, ": ", region.addr, " [", region.size, "], ", cnt, " [x", heap::size_of_klass(region.klass), "] free");
+
+      region = region.next;
+
+      if (region == heap.active[i])
+        break;
+    }
+  }
+
+  heap.lock.unlock();
+}
+
+pub fn allocate(usize size, usize alignment) -> heap::allocation
+{
+  return heap::allocate(&mut heap::instance, size, alignment);
+}
+
+pub fn free(void *addr) -> void
+{
+  heap::free(&mut heap::instance, addr);
+}
+
+pub fn dump() -> void
+{
+  dump(heap::instance);
+}

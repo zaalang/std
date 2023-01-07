@@ -8,6 +8,7 @@ import std.algorithm : swap;
 import std.range : Sentinal, Range;
 import std.type : as_const;
 import std.bits.tree as Tree;
+import std.optional;
 
 pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 {
@@ -126,6 +127,37 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn [](this &&, iterator iter)
   {
     return &cast<&&typeof(this)>(cast<node_type mut *>(iter.cursor).value);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn []<Key>(this &&, Key &key)
+    match (Key key) { K(key); }
+  {
+    var j = this.find(key);
+
+    std::assert(j != this.end);
+
+    return &this[j].value;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get<Key>(this &, Key &key) -> std::optional<T&>
+    match (Key key) { K(key); }
+  {
+    if (var j = this.find(key); j != this.end)
+      return Some(&this[j].value);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get<Key>(this mut &, Key &key) -> std::optional<T mut &>
+    match (Key key) { K(key); }
+  {
+    if (var j = this.find(key); j != this.end)
+      return Some(&this[j].value);
+
+    return None;
   }
 
   #[lifetime(depend(this))]
@@ -291,6 +323,16 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn erase(this mut &, iterator first, iterator last) -> iterator
   {
     return iterator(this._tree.erase(first.cursor, last.cursor));
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take(this mut &, iterator first, iterator last) -> map
+  {
+    var result = map::from(std::moveable_range_view(&mut this, first, last), this.allocator);
+
+    erase(&mut this, first, last);
+
+    return result;
   }
 
   #[lifetime(launder(this), poison(this))]

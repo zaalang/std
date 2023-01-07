@@ -129,7 +129,7 @@ pub fn move_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
   return dst;
 }
 
-pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, Func &func) -> O
+pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, Func &&func) -> O
 {
   while (first != last)
   {
@@ -141,7 +141,7 @@ pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, 
   return dst;
 }
 
-pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &func) -> O
+pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &&func) -> O
 {
   while (first != last)
   {
@@ -153,7 +153,7 @@ pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &func)
   return end;
 }
 
-pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &func) -> O
+pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &&func) -> O
 {
   while (n > 0)
   {
@@ -167,7 +167,7 @@ pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &fu
   return dst;
 }
 
-pub fn transform<O, I, Func>(I first, Sentinal<I> last, Func &func) -> void
+pub fn transform<O, I, Func>(I first, Sentinal<I> last, Func &&func) -> void
 {
   for(; first != last; ++first)
   {
@@ -176,7 +176,7 @@ pub fn transform<O, I, Func>(I first, Sentinal<I> last, Func &func) -> void
 }
 
 #[lifetime(depend(range))]
-pub fn transform!<T, Func>(Range<T> mut &range, Func &func)
+pub fn transform!<T, Func>(Range<T> mut &range, Func &&func)
 {
   var first = range.begin;
 

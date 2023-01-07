@@ -22,3 +22,8 @@ pub fn unique<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 
   return ++next;
 }
+
+pub fn unique!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
+{
+  return std::subrange(range, range.begin, unique(&mut range, cmp));
+}
