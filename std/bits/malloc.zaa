@@ -4,7 +4,7 @@
 
 import std.stdio;
 import std.stdlib;
-import std.atomic.ticketlock;
+import std.atomic.spinlock;
 
 struct mem_result
 {
@@ -50,7 +50,7 @@ struct heap
     region mut *region;
   }
 
-  struct entry
+  struct entry : pub prefix
   {
     entry mut *next;
   }
@@ -66,6 +66,10 @@ struct heap
     region mut *next;
     region mut *prev;
 
+    entry mut *pending;
+
+    u8[8] pad;
+
     region() = default;
     ~region() = default;
   }
@@ -74,7 +78,7 @@ struct heap
   region mut *[48] active;
   region mut *firstfree;
 
-  std::shared_ticket_lock lock;
+  std::spin_lock lock;
 
   fn size_of_klass(usize i) -> usize
   {
@@ -142,9 +146,13 @@ struct heap
 
   fn push<T>(T mut * mut &head, T mut *node) -> void
   {
-    node.next = head;
+    while (true)
+    {
+      node.next = std::volatile_load(&head);
 
-    head = node;
+      if (std::atomic_cmpxchg_weak(&head, node.next, node))
+        break;
+    }
   }
 
   fn pop<T>(T mut * mut &head) -> T mut *
@@ -168,7 +176,6 @@ struct heap
     for(var addr = cast<uintptr>(memory.addr); addr + sizeof<region> <= cast<uintptr>(memory.addr) + memory.size; addr += sizeof<region>)
     {
       *prev = cast<region mut *>(addr);
-
       prev = &prev.next;
     }
   }
@@ -191,6 +198,24 @@ struct heap
     return region;
   }
 
+  fn reap(heap mut &heap, region mut *region) -> void
+  {
+    for(var entry = std::atomic_xchg(&region.pending, null); entry; )
+    {
+      var next = entry.next;
+
+      push(&mut region.firstfree, entry);
+
+      if (!entry.next)
+      {
+        dequeue(&mut heap.filled, region);
+        enqueue(&mut heap.active[region.klass], region);
+      }
+
+      entry = next;
+    }
+  }
+
   struct allocation
   {
     usize size;
@@ -205,8 +230,8 @@ struct heap
   {
     var result = allocation();
 
-    var entry = null<entry mut *>();
     var region = null<region mut *>();
+    var entry = null<entry mut *>();
 
     var sz = size;
 
@@ -220,27 +245,39 @@ struct heap
       case 0 ..= 47:
         sz = size_of_klass(sc);
 
-        heap.lock.lock_shared();
+        heap.lock.lock();
 
-        region = heap.active[sc];
-
-        while (region)
+        if (region = heap.active[sc]; !region)
         {
-          if (entry = std::volatile_load(&region.firstfree))
+          for(region = heap.filled; region; )
           {
-            if (!std::atomic_cmpxchg_weak(&region.firstfree, entry, entry.next))
-              continue;
+            var head = heap.filled;
+            var next = region.next;
 
-            break;
+            if (region.pending && region.klass == sc)
+              reap(&mut heap, region);
+
+            if (next == head)
+              break;
+
+            region = next;
           }
-
-          region = region.next;
-
-          if (region == heap.active[sc])
-            break;
         }
 
-        heap.lock.unlock_shared();
+        if (region = heap.active[sc])
+        {
+          reap(&mut heap, region);
+
+          entry = pop(&mut region.firstfree);
+
+          if (!region.firstfree)
+          {
+            dequeue(&mut heap.active[sc], region);
+            enqueue(&mut heap.filled, region);
+          }
+        }
+
+        heap.lock.unlock();
 
         if (!entry)
         {
@@ -252,15 +289,6 @@ struct heap
           cast<header mut *>(memory.addr).secret = SECRET;
 
           heap.lock.lock();
-
-          region = heap.active[sc];
-
-          if (region && !region.firstfree)
-          {
-            region.firstfree = cast<entry mut *>(~0);
-            dequeue(&mut heap.active[sc], region);
-            enqueue(&mut heap.filled, region);
-          }
 
           if (region = heap.new_region(memory, sc); !region)
           {
@@ -274,7 +302,7 @@ struct heap
           for(var addr = cast<uintptr>(memory.addr) + sizeof<header>; addr + sz <= cast<uintptr>(memory.addr) + memory.size; addr += sz)
           {
             *prev = cast<entry mut *>(addr);
-
+            prev.region = region;
             prev = &prev.next;
           }
 
@@ -315,12 +343,44 @@ struct heap
         std::panic("unhandled klass");
     }
 
-    cast<prefix mut *>(entry).region = region;
-
     result.addr = cast<void mut *>(std::align_up(cast<uintptr>(entry) + sizeof<prefix>, alignment));
     result.size = sz - (cast<uintptr>(result.addr) - cast<uintptr>(entry));
 
+    (cast<prefix mut *>(result.addr) - 1).region = region;
+
     return result;
+  }
+
+  fn siphon(heap mut &heap, usize size) -> entry mut *
+  {
+    var region = null<region mut *>();
+    var entries = null<entry mut *>();
+
+    var sc = size_to_klass(size);
+
+    switch (sc)
+    {
+      case 0 ..= 47:
+
+        heap.lock.lock();
+
+        if (region = heap.active[sc])
+        {
+          reap(&mut heap, region);
+
+          std::swap(&mut entries, &mut region.firstfree);
+
+          dequeue(&mut heap.active[sc], region);
+          enqueue(&mut heap.filled, region);
+        }
+
+        heap.lock.unlock();
+
+      else:
+        std::panic("unhandled klass");
+    }
+
+    return entries;
   }
 
   fn free(heap mut &heap, void *addr) -> void
@@ -336,28 +396,10 @@ struct heap
       case 0 ..= 47:
         var sc = region.klass;
         var sz = size_of_klass(region.klass);
-        var offset = (cast<uintptr>(addr) - (cast<uintptr>(region.addr) + sizeof<header>)) / sz * sz;
+        var slot = (cast<uintptr>(addr) - (cast<uintptr>(region.addr) + sizeof<header>)) / sz;
+        var entry = cast<entry mut *>(cast<uintptr>(region.addr) + sizeof<header> + slot * sz);
 
-        if (region.firstfree == cast<entry*>(~0))
-        {
-          heap.lock.lock();
-
-          region.firstfree = null;
-          dequeue(&mut heap.filled, region);
-          enqueue(&mut heap.active[region.klass], region);
-
-          heap.lock.unlock();
-        }
-
-        var entry = cast<entry mut *>(cast<uintptr>(region.addr) + sizeof<header> + offset);
-
-        while (true)
-        {
-          entry.next = std::volatile_load(&region.firstfree);
-
-          if (std::atomic_cmpxchg_weak(&region.firstfree, entry.next, entry))
-            break;
-        }
+        push(&mut region.pending, entry);
 
       case 63:
         mem_free(region.addr, region.size);
@@ -365,7 +407,6 @@ struct heap
         heap.lock.lock();
 
         dequeue(&mut heap.filled, region);
-
         push(&mut heap.firstfree, region);
 
         heap.lock.unlock();
@@ -373,6 +414,41 @@ struct heap
       else:
         std::panic("heap corruption");
     }
+  }
+
+  fn reap(heap mut &heap) -> void
+  {
+    heap.lock.lock();
+
+    for(var region = heap.filled; region; )
+    {
+      var head = heap.filled;
+      var next = region.next;
+
+      reap(&mut heap, region);
+
+      if (next == head)
+        break;
+
+      region = next;
+    }
+
+    for(var i = 0; i < 48; ++i)
+    {
+      for(var region = heap.active[i]; region; )
+      {
+        var next = region.next;
+
+        reap(&mut heap, region);
+
+        if (next == heap.active[i])
+          break;
+
+        region = next;
+      }
+    }
+
+    heap.lock.unlock();
   }
 
   fn instance() -> heap mut &
@@ -395,7 +471,7 @@ fn dump(heap &&heap) -> void
   for(var free = heap.firstfree; free; free = free.next)
     available += 1;
 
-  std::print("available regions: ", available);
+  std::print("available regions: \n  ", available);
 
   std::print("filled regions:");
 
@@ -417,15 +493,25 @@ fn dump(heap &&heap) -> void
 
   std::print("active regions:");
 
+  var active = false;
+
   for(var i = 0; i < 48; ++i)
   {
+    if (heap.active[i])
+      active = true;
+
     for(var region = heap.active[i]; region; )
     {
       var cnt = 0;
       for(var free = region.firstfree; free; free = free.next)
         cnt += 1;
 
-      std::print("  ", region, ": ", region.addr, " [", region.size, "], ", cnt, " [x", heap::size_of_klass(region.klass), "] free");
+      var used = (region.size - sizeof<heap::header>) / heap::size_of_klass(region.klass) - cnt;
+
+      if (used == 0)
+        std::print("  ", region, ": ", region.addr, " [", region.size, "], ", cnt, " [x", heap::size_of_klass(region.klass), "] free");
+      else
+        std::print("  ", region, ": ", region.addr, " [", region.size, "], ", cnt, " [x", heap::size_of_klass(region.klass), "] free, ", used, " used");
 
       region = region.next;
 
@@ -434,17 +520,160 @@ fn dump(heap &&heap) -> void
     }
   }
 
+  if (!active)
+    std::print("  <none>");
+
+  std::print("pending free:");
+
+  var pending = false;
+
+  for(var region = heap.filled; region; )
+  {
+    if (region.pending)
+      pending = true;
+
+    for(var entry = region.pending; entry; entry = entry.next)
+      std::print("  ", region, ": ", entry, " [", heap::size_of_klass(region.klass), "]");
+
+    region = region.next;
+
+    if (region == heap.filled)
+      break;
+  }
+
+  for(var i = 0; i < 48; ++i)
+  {
+    for(var region = heap.active[i]; region; )
+    {
+      if (region.pending)
+        pending = true;
+
+      for(var entry = region.pending; entry; entry = entry.next)
+        std::print("  ", region, ": ", entry, " [", heap::size_of_klass(region.klass), "]");
+
+      region = region.next;
+
+      if (region == heap.active[i])
+        break;
+    }
+  }
+
+  if (!pending)
+    std::print("  <none>");
+
   heap.lock.unlock();
+}
+
+struct tcache
+{
+  const N = 8;
+
+  std::spin_lock[N] locks;
+  heap::entry mut *[40][N] entries;
+
+  fn push<T>(T mut * mut &head, T mut *node) -> void
+  {
+    node.next = head;
+
+    head = node;
+  }
+
+  fn pop<T>(T mut * mut &head) -> T mut *
+  {
+    var node = head;
+
+    if (node)
+      head = node.next;
+
+    return node;
+  }
+
+  fn get(tcache mut &tcache, usize size, usize alignment) -> heap::allocation
+  {
+    var result = heap::allocation();
+
+    if (alignment > 16)
+      return result;
+
+    var sc = heap::size_to_klass(size);
+
+    if (sc >= 40)
+      return result;
+
+    for(var i = 0; i < N; ++i)
+    {
+      static thread_local n = #usize(0);
+
+      if (!tcache.locks[n].try_lock())
+      {
+        n = (n + 1) % N;
+
+        continue;
+      }
+
+      if (!tcache.entries[n][sc])
+      {
+        tcache.entries[n][sc] = heap::siphon(&mut heap::instance, size);
+      }
+
+      if (tcache.entries[n][sc])
+      {
+        result.addr = &pop(&mut tcache.entries[n][sc]).next;
+        result.size = heap::size_of_klass(sc) - sizeof<heap::prefix>;
+      }
+
+      tcache.locks[n].unlock();
+
+      break;
+    }
+
+    return result;
+  }
+
+  fn reap(tcache mut &tcache) -> void
+  {
+    for(var n = 0; n < N; ++n)
+    {
+      tcache.locks[n].lock();
+
+      for(var sc = 0; sc < 40; ++sc)
+      {
+        while (tcache.entries[n][sc])
+          heap::free(&mut heap::instance, &pop(&mut tcache.entries[n][sc]).next);
+      }
+
+      tcache.locks[n].unlock();
+    }
+  }
+
+  fn instance() -> tcache mut &
+  {
+    static instance = #tcache();
+
+    return &instance;
+  }
+
+  tcache() = default;
+  tcache(#tcache&) = default;
+  ~tcache() = default;
 }
 
 pub fn allocate(usize size, usize alignment) -> heap::allocation
 {
+  if (var allocation = tcache::get(&mut tcache::instance, size, alignment); allocation.addr)
+    return allocation;
+
   return heap::allocate(&mut heap::instance, size, alignment);
 }
 
 pub fn free(void *addr) -> void
 {
   heap::free(&mut heap::instance, addr);
+}
+
+pub fn reap() -> void
+{
+  heap::reap(&mut heap::instance);
 }
 
 pub fn dump() -> void

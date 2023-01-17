@@ -1070,23 +1070,22 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     if (this._capacity < this._len + len)
     {
-      var capacity = this._len + len;
+      var newcapacity = this._len + len;
 
-      if (capacity < 2*this._capacity)
-        capacity = 2*this._capacity;
+      if (newcapacity < 2*this._capacity)
+        newcapacity = 2*this._capacity;
 
-      var data = cast<u8 mut *>(this._allocator.allocate(&mut capacity, alignof<u8>));
+      var newdata = cast<u8 mut *>(this._allocator.allocate(&mut newcapacity, alignof<u8>));
 
-      memcpy(data, this._data, position);
-      memcpy(data + position, src, len);
-      memcpy(data + position + len, this._data + position, this._len - position);
+      memcpy(newdata, this._data, position);
+      memcpy(newdata + position, src, len);
+      memcpy(newdata + position + len, this._data + position, this._len - position);
 
-      swap(&mut this._data, &mut data);
+      if (this._data != this._smallbuffer.data)
+        this._allocator.free(this._data, this._capacity);
 
-      if (data != this._smallbuffer.data)
-        this._allocator.free(data, this._capacity);
-
-      this._capacity = capacity;
+      this._data = newdata;
+      this._capacity = newcapacity;
     }
     else
     {

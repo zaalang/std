@@ -6,24 +6,22 @@ import std.stdlib;
 
 pub struct delegate<R(V), Throws = void, N = 24>
 {
-  u64[(N+7)/8] storage;
+  u64[(N+7)/8] _storage;
   R fn(void*, V mut &) throws(Throws) *_fx;
-
-  pub const is_throwing = !__is_same<Throws, void>;
-
-  pub fn ()(this&, V ...v) throws(is_throwing) -> R
-  {
-    return this._fx(cast<void*>(this.storage.data), v);
-  }
 
   pub delegate<Y>(Y &&fx)
   {
     std::assert(__is_trivial_copy<Y>, "delegate must be trivial copy");
     std::assert(__is_trivial_destroy<Y>, "delegate must be trivial destroy");
-    std::assert(sizeof<Y> <= sizeof(storage), "delegate too large for storage");
+    std::assert(sizeof<Y> <= sizeof(_storage), "delegate too large for storage");
 
-    cast<Y mut &>(storage) = &&fx;
-    _fx = fn(void *data, V mut &v) -> R { return cast<typeof(fx) mut *>(data)(v...); };
+    new<Y>(cast<Y mut *>(_storage.data))(&&fx);
+    _fx = fn(void *data, V mut &v) -> R { return cast<Y mut *>(data)(v...); };
+  }
+
+  pub fn ()(this&, V ...v) throws(Throws) -> R
+  {
+    return this._fx(this._storage.data, v);
   }
 
   pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
@@ -55,3 +53,121 @@ pub struct delegate<R(V), Throws = void, N = 24>
   pub fn =(delegate mut &, delegate &) -> delegate mut & = default;
   pub ~delegate() = default;
 }
+/*
+pub struct delegate<R(V), Throws = void, N = 24>
+{
+  Fx *_fx;
+  u64[(N+7)/8] _storage;
+
+  vtable Fx
+  {
+    fn invoke(void *, V mut &) throws(Throws) -> R;
+    fn exchange(void mut *this, void mut *other) -> void;
+    fn destroy(void mut *) -> void;
+  }
+
+  struct Holder<Y>
+  {
+    Y callable;
+
+    fn fx(this&) -> Fx *
+    {
+      return &Fx();
+    }
+
+    fn invoke(void *this, V mut &v) throws(Throws) -> R
+    {
+      return cast<Holder<Y> mut *>(this).callable(v...);
+    }
+
+    fn exchange(void mut *this, void mut *other) -> void
+    {
+      new<Holder<Y>>(this)(&move *cast<Holder<Y> mut *>(other));
+    }
+
+    fn destroy(void mut *this) -> void
+    {
+      cast<Holder<Y> mut *>(this).~Holder();
+    }
+
+    Holder(Y &&fx)
+      : callable(&&fx)
+    {
+    }
+
+    Holder(Holder &&) = default;
+    ~Holder() = default;
+  }
+
+  pub delegate() = default;
+  pub delegate(#delegate&) = default;
+
+  pub delegate<Y>(Y &&fx)
+  {
+    std::assert(sizeof<Holder<Y>> <= sizeof(_storage), "delegate too large for storage");
+
+    _fx = new<Holder<Y>>(cast<void mut *>(_storage.data))(&&fx).fx;
+  }
+
+  pub fn bool(this&) -> bool
+  {
+    return this._fx != null;
+  }
+
+  pub fn ==(this&, null) -> bool
+  {
+    return this._fx == null;
+  }
+
+  pub fn ()(this&, V ...v) throws(Throws) -> R
+  {
+    return this._fx.invoke(this._storage.data, v);
+  }
+
+  pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
+  {
+    this = delegate(&&fx);
+
+    return &this;
+  }
+
+  pub fn =(this mut &, null) -> delegate mut &
+  {
+    this = delegate();
+
+    return &this;
+  }
+
+  pub delegate(delegate &&other)
+    where __is_rvalue<typeof(other)>
+  {
+    this._fx = other._fx;
+
+    if (this._fx)
+      this._fx.exchange(this._storage.data, other._storage.data);
+  }
+
+  pub fn =(delegate mut &this, delegate &&other) -> delegate mut &
+    where __is_rvalue<typeof(other)>
+  {
+    if (&this != &other)
+    {
+      if (this._fx)
+        this._fx.destroy(this._storage.data);
+
+      this._fx = other._fx;
+
+      if (this._fx)
+        this._fx.exchange(this._storage.data, other._storage.data);
+    }
+
+    return &this;
+  }
+
+  pub ~delegate()
+  {
+    if (this._fx)
+      this._fx.destroy(this._storage.data);
+  }
+}
+*/
