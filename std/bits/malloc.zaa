@@ -66,9 +66,7 @@ struct heap
     region mut *next;
     region mut *prev;
 
-    entry mut *pending;
-
-    u8[8] pad;
+    u8[16] pad;
 
     region() = default;
     ~region() = default;
@@ -76,6 +74,7 @@ struct heap
 
   region mut *filled;
   region mut *[48] active;
+  entry mut *[48] pending;
   region mut *firstfree;
 
   std::spin_lock lock;
@@ -198,18 +197,21 @@ struct heap
     return region;
   }
 
-  fn reap(heap mut &heap, region mut *region) -> void
+  fn reap(heap mut &heap, entry mut * mut &pending) -> void
   {
-    for(var entry = std::atomic_xchg(&region.pending, null); entry; )
+    for(var entry = std::atomic_xchg(&pending, null); entry; )
     {
       var next = entry.next;
+      var region = entry.region;
 
       push(&mut region.firstfree, entry);
 
       if (!entry.next)
       {
+        var sc = region.klass;
+
         dequeue(&mut heap.filled, region);
-        enqueue(&mut heap.active[region.klass], region);
+        enqueue(&mut heap.active[sc], region);
       }
 
       entry = next;
@@ -247,27 +249,10 @@ struct heap
 
         heap.lock.lock();
 
-        if (region = heap.active[sc]; !region)
-        {
-          for(region = heap.filled; region; )
-          {
-            var head = heap.filled;
-            var next = region.next;
-
-            if (region.pending && region.klass == sc)
-              reap(&mut heap, region);
-
-            if (next == head)
-              break;
-
-            region = next;
-          }
-        }
+        reap(&mut heap, &mut heap.pending[sc]);
 
         if (region = heap.active[sc])
         {
-          reap(&mut heap, region);
-
           entry = pop(&mut region.firstfree);
 
           if (!region.firstfree)
@@ -364,10 +349,10 @@ struct heap
 
         heap.lock.lock();
 
+        reap(&mut heap, &mut heap.pending[sc]);
+
         if (region = heap.active[sc])
         {
-          reap(&mut heap, region);
-
           std::swap(&mut entries, &mut region.firstfree);
 
           dequeue(&mut heap.active[sc], region);
@@ -399,7 +384,7 @@ struct heap
         var slot = (cast<uintptr>(addr) - (cast<uintptr>(region.addr) + sizeof<header>)) / sz;
         var entry = cast<entry mut *>(cast<uintptr>(region.addr) + sizeof<header> + slot * sz);
 
-        push(&mut region.pending, entry);
+        push(&mut heap.pending[sc], entry);
 
       case 63:
         mem_free(region.addr, region.size);
@@ -420,28 +405,40 @@ struct heap
   {
     heap.lock.lock();
 
-    for(var region = heap.filled; region; )
+    for(var sc = 0; sc < 48; ++sc)
     {
-      var head = heap.filled;
-      var next = region.next;
-
-      reap(&mut heap, region);
-
-      if (next == head)
-        break;
-
-      region = next;
+      reap(&mut heap, &mut heap.pending[sc]);
     }
 
-    for(var i = 0; i < 48; ++i)
+    heap.lock.unlock();
+  }
+
+  fn trim(heap mut &heap) -> void
+  {
+    heap.lock.lock();
+
+    for(var sc = 0; sc < 48; ++sc)
     {
-      for(var region = heap.active[i]; region; )
+      reap(&mut heap, &mut heap.pending[sc]);
+
+      for(var region = heap.active[sc]; region; )
       {
+        var head = heap.active[sc];
         var next = region.next;
 
-        reap(&mut heap, region);
+        var cnt = 0;
+        for(var free = region.firstfree; free; free = free.next)
+          cnt += 1;
 
-        if (next == heap.active[i])
+        if (cnt == (region.size - sizeof<heap::header>) / heap::size_of_klass(region.klass))
+        {
+          mem_free(region.addr, region.size);
+
+          dequeue(&mut heap.active[sc], region);
+          push(&mut heap.firstfree, region);
+        }
+
+        if (next == head)
           break;
 
         region = next;
@@ -495,12 +492,12 @@ fn dump(heap &&heap) -> void
 
   var active = false;
 
-  for(var i = 0; i < 48; ++i)
+  for(var sc = 0; sc < 48; ++sc)
   {
-    if (heap.active[i])
+    if (heap.active[sc])
       active = true;
 
-    for(var region = heap.active[i]; region; )
+    for(var region = heap.active[sc]; region; )
     {
       var cnt = 0;
       for(var free = region.firstfree; free; free = free.next)
@@ -515,7 +512,7 @@ fn dump(heap &&heap) -> void
 
       region = region.next;
 
-      if (region == heap.active[i])
+      if (region == heap.active[sc])
         break;
     }
   }
@@ -527,35 +524,13 @@ fn dump(heap &&heap) -> void
 
   var pending = false;
 
-  for(var region = heap.filled; region; )
+  for(var sc = 0; sc < 48; ++sc)
   {
-    if (region.pending)
+    if (heap.pending[sc])
       pending = true;
 
-    for(var entry = region.pending; entry; entry = entry.next)
-      std::print("  ", region, ": ", entry, " [", heap::size_of_klass(region.klass), "]");
-
-    region = region.next;
-
-    if (region == heap.filled)
-      break;
-  }
-
-  for(var i = 0; i < 48; ++i)
-  {
-    for(var region = heap.active[i]; region; )
-    {
-      if (region.pending)
-        pending = true;
-
-      for(var entry = region.pending; entry; entry = entry.next)
-        std::print("  ", region, ": ", entry, " [", heap::size_of_klass(region.klass), "]");
-
-      region = region.next;
-
-      if (region == heap.active[i])
-        break;
-    }
+    for(var entry = heap.pending[sc]; entry; entry = entry.next)
+      std::print("  ", entry.region, ": ", entry, " [", heap::size_of_klass(entry.region.klass), "]");
   }
 
   if (!pending)
@@ -674,6 +649,11 @@ pub fn free(void *addr) -> void
 pub fn reap() -> void
 {
   heap::reap(&mut heap::instance);
+}
+
+pub fn trim() -> void
+{
+  heap::trim(&mut heap::instance);
 }
 
 pub fn dump() -> void
