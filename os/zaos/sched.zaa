@@ -1,0 +1,96 @@
+//
+// sched
+//
+
+pub struct arg
+{
+  pub u8 *beg;
+  pub u8 *end;
+
+  pub arg(u8 *beg, u8 *end)
+    : beg(beg), end(end)
+  {
+  }
+
+  pub arg(u8 *data, usize len)
+    : beg(data), end(data + len)
+  {
+  }
+
+  pub arg(typeof("") &str)
+    : beg(str.data), end(str.data + str.len)
+  {
+  }
+
+  pub arg() = default;
+  pub arg(arg&) = default;
+  pub fn =(arg mut &, arg &) -> arg mut & = default;
+  pub ~arg() = default;
+}
+
+pub struct attr
+{
+  pub const stdin = 0;
+  pub const stdout = 1;
+  pub const stderr = 2;
+  pub const stdroot = 4;
+  pub const stdcwd = 5;
+
+  pub int type;
+  pub int value;
+
+  pub attr(int type, int value)
+    : type(type), value(value)
+  {
+  }
+
+  pub attr() = default;
+  pub attr(attr&) = default;
+  pub fn =(attr mut &, attr &) -> attr mut & = default;
+  pub ~attr() = default;
+}
+
+pub const WNOHANG = 0x1;
+pub const WNOWAIT = 0x2;
+
+#[weak]
+extern fn __vdso_create_process(arg *argv, usize argc, arg *envp, usize envc, attr *attrs, usize n, u64 flags) -> i32;
+
+#[weak]
+extern fn __vdso_create_thread(void *entry, void *parameter, u64 flags) -> i32;
+
+#[weak]
+extern fn __vdso_wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32;
+
+#[weak]
+extern fn __vdso_exit_thread(i32 rval) -> void;
+
+#[weak]
+extern fn __vdso_exit_process(i32 rval) -> void;
+
+pub fn create_process(arg *argv, usize argc, arg *envp, usize envc, attr *attrs, usize n, u64 flags) -> i32
+{
+  return __vdso_create_process(argv, argc, envp, envc, attrs, n, flags);
+}
+
+pub fn create_thread(void *entry, void *parameter, u64 flags) -> i32
+{
+  return __vdso_create_thread(entry, parameter, flags);
+}
+
+pub fn wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32
+{
+  return __vdso_wait(id, rvalbuf, flags);
+}
+
+#[noreturn]
+pub fn exit_thread(i32 rval) -> void
+{
+  return __vdso_exit_thread(rval);
+}
+
+#[noreturn]
+pub fn exit_process(i32 rval) -> void
+{
+  return __vdso_exit_process(rval);
+}

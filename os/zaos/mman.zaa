@@ -35,7 +35,7 @@ pub struct mmvec
 extern fn __vdso_get_pagesize() -> usize;
 
 #[weak]
-extern fn __vdso_mmap(i32 fd, mmvec *mmvs, usize n, u64 flags, void mut * mut *addrbuf) -> i32;
+extern fn __vdso_mmap(i32 fd, mmvec *mmvs, usize n, void mut * mut *addrbuf, u64 flags) -> i32;
 
 #[weak]
 extern fn __vdso_munmap(void *addr, usize length) -> i32;
@@ -45,9 +45,9 @@ pub fn get_pagesize() -> usize
   return __vdso_get_pagesize();
 }
 
-pub fn mmap(i32 fd, mmvec *mmvs, usize n, u64 flags, void mut * mut *addrbuf) -> i32
+pub fn mmap(i32 fd, mmvec *mmvs, usize n, void mut * mut *addrbuf, u64 flags) -> i32
 {
-  return __vdso_mmap(fd, mmvs, n, flags, addrbuf);
+  return __vdso_mmap(fd, mmvs, n, addrbuf, flags);
 }
 
 pub fn munmap(void *addr, usize length) -> i32

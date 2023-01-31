@@ -56,6 +56,7 @@ pub enum errc : u32
   no_such_device = 6,
   format_error = 8,
   bad_descriptor = 9,
+  no_such_process = 10,
   would_block = 11,
   permission_denied = 13,
   bad_address = 14,
