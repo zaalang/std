@@ -622,7 +622,7 @@ pub fn remove_suffix!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
 
 #[lifetime(poison(range))]
 pub fn erase<T, Value>(vector<T> mut &range, Value &value) -> usize
-  match (Value value) { T(value); }
+  match (T u, Value v) { u == v; }
 {
   var n = range.len;
 

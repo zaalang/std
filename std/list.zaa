@@ -466,7 +466,7 @@ pub fn hash<T>(var &hasher, list<T> &lst) -> usize
 
 #[lifetime(poison(lst))]
 pub fn erase<T, Value>(list<T> mut &lst, Value &value) -> usize
-  match (Value value) { T(value); }
+  match (T u, Value v) { u == v; }
 {
   var n = lst.len;
   var first = lst.begin;

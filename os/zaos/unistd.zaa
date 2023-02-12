@@ -21,7 +21,7 @@ extern fn __vdso_get_gid() -> u32;
 extern fn __vdso_get_egid() -> u32;
 
 #[weak]
-extern fn __vdso_exit_process(i32 rval) -> void;
+extern fn __vdso_process_exit(i32 rval) -> void;
 
 pub fn getpid() -> i32
 {
@@ -56,5 +56,5 @@ pub fn getegid() -> u32
 #[noreturn]
 pub fn exit(i32 rval) -> void
 {
-  return __vdso_exit_process(rval);
+  return __vdso_process_exit(rval);
 }

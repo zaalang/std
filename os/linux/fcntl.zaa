@@ -56,6 +56,10 @@ pub const S_ISUID = 0o04000;
 pub const S_ISGID = 0o02000;
 pub const S_ISVTX = 0o01000;
 
+pub const STDIN_FILENO = 0;
+pub const STDOUT_FILENO = 1;
+pub const STDERR_FILENO = 2;
+
 pub struct iovec
 {
   pub u8 mut *data;

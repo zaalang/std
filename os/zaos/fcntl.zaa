@@ -163,21 +163,29 @@ pub struct dirent
 pub const POLLIN = 0x001;
 pub const POLLOUT = 0x004;
 
-pub struct pollfd
-{
-  pub i32 fd;
-  pub u16 events;
-  pub u16 revents;
+pub const POLLFD = 0x1;
+pub const POLLTHREAD = 0x2;
 
-  pub pollfd(i32 fd, u16 events)
-    : fd(fd), events(events)
+pub const EPOLL_CTL_ADD = 0x1;
+pub const EPOLL_CTL_MOD = 0x2;
+pub const EPOLL_CTL_DEL = 0x3;
+
+pub struct pollevt
+{
+  pub i32 id;
+  pub u16 type;
+  pub u16 mask;
+  pub uintptr user_data;
+
+  pub pollevt(i32 id, u16 type, u16 mask, uintptr user_data)
+    : id(id), type(type), mask(mask), user_data(user_data)
   {
   }
 
-  pub pollfd() = default;
-  pub pollfd(pollfd&) = default;
-  pub fn =(pollfd mut &, pollfd &) -> pollfd mut & = default;
-  pub ~pollfd() = default;
+  pub pollevt() = default;
+  pub pollevt(pollevt&) = default;
+  pub fn =(pollevt mut &, pollevt &) -> pollevt mut & = default;
+  pub ~pollevt() = default;
 }
 
 pub struct string
@@ -215,6 +223,9 @@ pub enum ioring_ops
   pub const link = 0x0c;
   pub const symlink = 0x0d;
   pub const unlink = 0x0e;
+  pub const epoll_create = 0x10;
+  pub const epoll_ctl = 0x11;
+  pub const epoll_wait = 0x12;
 }
 
 pub enum ioring_flags
@@ -401,10 +412,10 @@ pub fn ioring_prep_sqe_close(ioring_sqe mut *sqe, i32 fd) -> void
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_select(ioring_sqe mut *sqe, pollfd mut *fds, usize n, u64 timeout) -> void
+pub fn ioring_prep_sqe_select(ioring_sqe mut *sqe, pollevt mut *evts, usize n, u64 timeout) -> void
 {
   sqe.op = ioring_ops::select;
-  sqe.args[0] = cast(fds);
+  sqe.args[0] = cast(evts);
   sqe.args[1] = cast(n);
   sqe.args[2] = cast(timeout);
   sqe.flags = ioring_flags::fin;
@@ -479,6 +490,33 @@ pub fn ioring_prep_sqe_unlink(ioring_sqe mut *sqe, i32 dir, string path, u64 fla
   sqe.args[1] = cast(path.data);
   sqe.args[2] = cast(path.len);
   sqe.args[3] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_epoll_create(ioring_sqe mut *sqe, u64 flags) -> void
+{
+  sqe.op = ioring_ops::epoll_create;
+  sqe.args[0] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_epoll_ctl(ioring_sqe mut *sqe, i32 fd, i32 op, pollevt *evt, u64 flags) -> void
+{
+  sqe.op = ioring_ops::epoll_ctl;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(op);
+  sqe.args[2] = cast(evt);
+  sqe.args[3] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_epoll_wait(ioring_sqe mut *sqe, i32 fd, pollevt mut *evts, usize n, u64 timeout) -> void
+{
+  sqe.op = ioring_ops::epoll_wait;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(evts);
+  sqe.args[2] = cast(n);
+  sqe.args[3] = cast(timeout);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -606,10 +644,10 @@ pub fn close(ioring mut &ring, i32 fd) -> i32
   return result;
 }
 
-pub fn select(ioring mut &ring, pollfd mut *fds, usize n, u64 timeout) -> i32
+pub fn select(ioring mut &ring, pollevt mut *evts, usize n, u64 timeout) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_select(sqe, fds, n, timeout);
+  ioring_prep_sqe_select(sqe, evts, n, timeout);
   ioring_advance_sqe(&mut ring);
 
   if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
@@ -807,4 +845,52 @@ pub fn unlink(ioring mut &ring, string path, u64 flags) -> i32
     dir = STDROOT_FILENO;
 
   return unlink(&mut ring, dir, path, flags);
+}
+
+pub fn epoll_create(ioring mut &ring, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_epoll_create(sqe, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn epoll_ctl(ioring mut &ring, i32 fd, i32 op, pollevt *evt, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_epoll_ctl(sqe, fd, op, evt, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn epoll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize n, u64 timeout) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_epoll_wait(sqe, fd, evts, n, timeout);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
 }

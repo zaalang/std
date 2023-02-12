@@ -50,7 +50,7 @@ pub struct error
 pub enum errc : u32
 {
   not_permitted = 1,
-  file_not_found = 2,
+  not_found = 2,
   interrupted = 4,
   io_error = 5,
   no_such_device = 6,

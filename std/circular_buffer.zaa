@@ -552,7 +552,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
 #[lifetime(poison(range))]
 pub fn erase<T, Value>(circular_buffer<T> mut &range, Value &value) -> usize
-  match (Value value) { T(value); }
+  match (T u, Value v) { u == v; }
 {
   var n = range.len;
 

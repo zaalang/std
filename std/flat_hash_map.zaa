@@ -161,7 +161,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(depend(this))]
   pub fn []<Key>(this &&, Key &key)
-    match (Key key) { K(key); }
+    match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
     var j = this.find(key);
 
@@ -172,7 +172,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(depend(this))]
   pub fn get<Key>(this &, Key &key) -> std::optional<T&>
-    match (Key key) { K(key); }
+    match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
     if (var j = this.find(key); j != this.end)
       return Some(&this[j].value);
@@ -182,7 +182,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(depend(this))]
   pub fn get<Key>(this mut &, Key &key) -> std::optional<T mut &>
-    match (Key key) { K(key); }
+    match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
     if (var j = this.find(key); j != this.end)
       return Some(&this[j].value);
@@ -192,7 +192,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(depend(this))]
   pub fn find<Key>(this &&, Key &key)
-    match (Key key) { K(key); }
+    match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
     if (this.empty)
       return this.end;
@@ -221,7 +221,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   }
 
   pub fn contains<Key>(this &, Key &key) -> bool
-    match (Key key) { K(key); }
+    match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
     return this.find(key) != this.end;
   }
