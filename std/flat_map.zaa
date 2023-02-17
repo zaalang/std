@@ -28,9 +28,11 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
   pub fn =(this mut &, flat_map &&other) -> flat_map mut &
   {
+    std::launder(other);
+
     if (&this != &other)
     {
       clear(&mut this);
@@ -103,7 +105,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return this._tree.end;
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(iter, this), depend(this))]
   pub fn [](this &&, value_type *iter)
   {
     return &(&&this)._tree[iter];
@@ -144,14 +146,14 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub fn lower_bound<Key>(this &&, Key &key)
     match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
-    return std::lower_bound(&&this._tree, key, fn [this](var &lhs, var &rhs) { return this.cmp(lhs.key, rhs); });
+    return std::lower_bound(&&this._tree, key, fn [var &cmp = this.cmp](var &lhs, var &rhs) { return cmp(lhs.key, rhs); });
   }
 
   #[lifetime(depend(this))]
   pub fn upper_bound<Key>(this &&, Key &key)
     match (K u, Key v, Cmp cmp) { cmp(v, u); }
   {
-    return std::upper_bound(&&this._tree, key, fn [this](var &lhs, var &rhs) { return this.cmp(lhs, rhs.key); });
+    return std::upper_bound(&&this._tree, key, fn [var &cmp = this.cmp](var &lhs, var &rhs) { return cmp(lhs, rhs.key); });
   }
 
   #[lifetime(depend(this))]
@@ -289,19 +291,19 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return 1;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn erase(this mut &, value_type *position) -> value_type *
   {
     return this._tree.erase(position);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
   pub fn erase(this mut &, value_type *first, value_type *last) -> value_type *
   {
     return this._tree.erase(first, last);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, value_type *first, value_type *last) -> flat_map
   {
     var result = flat_map::from(std::moveable_range_view(&mut this, first, last), this.allocator);

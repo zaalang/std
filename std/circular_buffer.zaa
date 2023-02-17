@@ -30,7 +30,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     insert(&mut this, this.end, &&other);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
   pub fn =<M>(this mut &, circular_buffer<T, Allocator, M> &&other) -> circular_buffer mut &
   {
     if (&this != &other)
@@ -144,7 +144,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     usize cursor;
   }
 
-  pub fn ==(iterator &lhs, iterator &rhs) -> bool
+  pub fn ==(iterator lhs, iterator rhs) -> bool
   {
     return lhs.cursor == rhs.cursor;
   }
@@ -154,13 +154,13 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return lhs.cursor - rhs.cursor;
   }
 
-  #[lifetime(clone(lhs))]
+  #[lifetime(depend(*lhs))]
   pub fn -(iterator lhs, usize rhs) -> iterator
   {
     return iterator(lhs.cursor - rhs);
   }
 
-  #[lifetime(clone(lhs))]
+  #[lifetime(depend(*lhs))]
   pub fn +(iterator lhs, usize rhs) -> iterator
   {
     return iterator(lhs.cursor + rhs);
@@ -178,7 +178,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return iterator(this._head + this._len);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(iter, this), depend(this))]
   pub fn [](this &&, iterator iter)
   {
     return &cast<&&typeof(this)>(*(this._data + iter.cursor & (this._capacity - 1)));
@@ -238,7 +238,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     this._len += 1;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<Args>(this mut &, iterator position, Args && ...args) -> iterator
     match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
@@ -253,7 +253,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
       if (var index = position.cursor - this._head; index != 0)
       {
         pop_front(&mut this);
-        position.cursor = this._head + index - 1;
+        position = iterator(this._head + index - 1);
       }
     }
 
@@ -273,7 +273,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return iterator(index);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<U>(this mut &, iterator position, Range<U> &&other) -> iterator
     match (U u) { T(u, allocator?: std::declval<Allocator>()); }
   {
@@ -286,6 +286,8 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
         return this.take(&mut other);
     }
 
+    var index = position.cursor;
+
     for(var it = position, var first = other.begin, var last = other.end; first != last; ++it, ++first)
     {
       it = insert(&mut this, it, (&&other)[first]);
@@ -294,24 +296,27 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
         break;
     }
 
-    return position;
+    return iterator(index);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<I>(this mut &, iterator position, I first, Sentinal<I> last) -> iterator
     where requires (I i) { T(*i); }
   {
-    var slot = ensure_space(&mut this, position, std::distance(first, last));
+    var index = position.cursor;
 
-    for(var it = slot; first != last; ++it, ++first)
+    for(var it = position; first != last; ++it, ++first)
     {
-      new<T>(it)(*first, allocator?: this.allocator);
+      it = insert(&mut this, it, *first);
+
+      if (it.cursor == this._head + this._len)
+        break;
     }
 
-    return slot;
+    return iterator(index);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn emplace<Args>(this mut &, iterator position, Args && ...args) -> T mut &
     match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
   {
@@ -373,19 +378,19 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return result;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn erase(this mut &, iterator position) -> iterator
   {
     return erase(&mut this, position, 1);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
   pub fn erase(this mut &, iterator first, iterator last) -> iterator
   {
     return erase(&mut this, first, last.cursor - first.cursor);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn erase(this mut &, iterator position, usize count) -> iterator
   {
     assert(this._head <= position.cursor && position.cursor + count <= this._head + this._len);
@@ -466,6 +471,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     assert(this._capacity == 0 || this._capacity & (this._capacity - 1) == 0);
   }
 
+  #[lifetime(poison(this), poison(other))]
   fn take<M>(this mut &, circular_buffer<T, Allocator, M> mut &other) -> iterator
   {
     assert(this.empty);

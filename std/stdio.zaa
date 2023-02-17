@@ -101,6 +101,7 @@ pub struct file
   std::fd fd;
 }
 
+#[lifetime(poison(buf))]
 pub fn read_into(file mut &fd, std::vector<u8> mut &buf, usize maxread = ~0) throws
 {
   var size = cast<usize>(fd.stat().size);
@@ -114,6 +115,7 @@ pub fn read_into(file mut &fd, std::vector<u8> mut &buf, usize maxread = ~0) thr
   return &buf;
 }
 
+#[lifetime(poison(buf))]
 pub fn read_into(file mut &fd, std::string mut &buf, usize maxread = ~0) throws
 {
   var size = cast<usize>(fd.stat().size);

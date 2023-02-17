@@ -31,9 +31,11 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
   pub fn =(this mut &, flat_hash_map &&other) -> flat_hash_map mut &
   {
+    std::launder(other);
+
     if (&this != &other)
     {
       clear(&mut this);
@@ -110,7 +112,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn ++(iterator mut &this) -> iterator mut &
     {
       ++this.ctrl;
@@ -153,7 +155,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return iterator(this._ctrl + this._capacity, this._data + this._capacity);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(iter, this), depend(this))]
   pub fn [](this &&, iterator iter)
   {
     return &cast<&&typeof(this)>(*cast<value_type mut *>(iter.data));
@@ -344,7 +346,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return 1;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn erase(this mut &, iterator position) -> iterator
   {
     var index = position.data - this._data;
@@ -356,18 +358,20 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return iterator(this._ctrl + index, this._data + index);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
   pub fn erase(this mut &, iterator first, iterator last) -> iterator
   {
+    var index = last.data - this._data;
+
     while (first != last)
     {
       this.erase(first++);
     }
 
-    return iterator(last.ctrl, last.data);
+    return iterator(this._ctrl + index, this._data + index);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, iterator first, iterator last) -> flat_hash_map
   {
     var result = flat_hash_map::from(std::moveable_range_view(&mut this, first, last), this.allocator);
@@ -377,6 +381,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return result;
   }
 
+  #[lifetime(poison(this), poison(other))]
   fn take(this mut &, flat_hash_map mut &other) -> void
   {
     assert(this.empty);
@@ -389,6 +394,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     swap(&mut this.growth_left, &mut other.growth_left);
   }
 
+  #[lifetime(poison(this))]
   fn resize(this mut &, usize n) -> void
   {
     var capacity = (n < 16) ? 15 : ~0 >> __clz(n);

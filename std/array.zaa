@@ -64,7 +64,7 @@ pub struct array<T, N> : pub T[N]
     return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (T*, T*) range) -> span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
@@ -72,7 +72,7 @@ pub struct array<T, N> : pub T[N]
     return span(range.0, range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (T*, T*, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
@@ -80,7 +80,7 @@ pub struct array<T, N> : pub T[N]
     return span(range.0, range.1 + 1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this mut &, (T*, T*) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
@@ -88,7 +88,7 @@ pub struct array<T, N> : pub T[N]
     return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1));
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this mut &, (T*, T*, void) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);

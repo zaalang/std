@@ -25,19 +25,19 @@ pub struct span<T>
   pub usize len;
   pub T *data;
 
-  #[lifetime(clone(data))]
+  #[lifetime(depend(*data))]
   pub span(T *data, usize len)
     : len(len), data(data)
   {
   }
 
-  #[lifetime(clone(beg))]
+  #[lifetime(depend(*beg))]
   pub span(T *beg, T *end)
     : len(end - beg), data(beg)
   {
   }
 
-  #[lifetime(clone(span))]
+  #[lifetime(depend(*span.data))]
   pub span(Span<T> &span)
     : len(span.len), data(span.data)
   {
@@ -48,19 +48,19 @@ pub struct span<T>
     return this.len == 0;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &) -> T *
   { 
     return this.data;
   }
   
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &) -> T *
   { 
     return this.data + this.len;
   }
   
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &, usize index) -> T &
   {
     assert(index < this.len);
@@ -68,7 +68,7 @@ pub struct span<T>
     return &*(this.data + index);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
@@ -76,7 +76,7 @@ pub struct span<T>
     return span(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 < this.len && range.1 + 1 <= this.len);
@@ -84,7 +84,7 @@ pub struct span<T>
     return span(this.data + range.0, this.data + range.1 + 1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(iter, this), depend(*this))]
   pub fn [](this &, T *iter)
   {
     assert(this.data <= iter && iter < this.data + this.len);
@@ -92,7 +92,7 @@ pub struct span<T>
     return &*iter;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (T*, T*) range) -> span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
@@ -100,7 +100,7 @@ pub struct span<T>
     return span(range.0, range.1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (T*, T*, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
@@ -108,13 +108,13 @@ pub struct span<T>
     return span(range.0, range.1 + 1);
   }
 
-  #[lifetime(clone(that))]
+  #[lifetime(depend(*that))]
   pub span(mutable_span<T> &that)
     : len(that.len), data(that.data)
   {
   }
 
-  #[lifetime(assign(this, clone(that)), depend(this))]
+  #[lifetime(assign(this, depend(*that)), depend(this))]
   pub fn =(this mut &, mutable_span<T> &that) -> span mut &
   {
     this.len = that.len;
@@ -132,13 +132,13 @@ pub struct mutable_span<T>
   pub usize len;
   pub T mut *data;
 
-  #[lifetime(clone(data))]
+  #[lifetime(depend(*data))]
   pub mutable_span(T mut *data, usize len)
     : len(len), data(data)
   {
   }
 
-  #[lifetime(clone(beg))]
+  #[lifetime(depend(*beg))]
   pub mutable_span(T mut *beg, T mut *end)
     : len(end - beg), data(beg)
   {
@@ -149,19 +149,19 @@ pub struct mutable_span<T>
     return this.len == 0;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.data;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.data + this.len;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, usize index)
   {
     assert(index < this.len);
@@ -169,7 +169,7 @@ pub struct mutable_span<T>
     return &*(this.data + index);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
@@ -177,7 +177,7 @@ pub struct mutable_span<T>
     return span(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
@@ -185,7 +185,7 @@ pub struct mutable_span<T>
     return span(this.data + range.0, this.data + range.1 + 1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
@@ -193,7 +193,7 @@ pub struct mutable_span<T>
     return mutable_span(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
@@ -201,7 +201,7 @@ pub struct mutable_span<T>
     return mutable_span(this.data + range.0, this.data + range.1 + 1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(iter, this), depend(*this))]
   pub fn [](this &&, T *iter)
   {
     assert(this.data <= iter && iter < this.data + this.len);
@@ -209,7 +209,7 @@ pub struct mutable_span<T>
     return &*(this.data + (iter - this.data));
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (T*, T*) range) -> span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
@@ -217,7 +217,7 @@ pub struct mutable_span<T>
     return span(range.0, range.1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (T*, T*, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
@@ -225,7 +225,7 @@ pub struct mutable_span<T>
     return span(range.0, range.1 + 1);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this mut &, (T*, T*) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
@@ -233,7 +233,7 @@ pub struct mutable_span<T>
     return mutable_span(cast<T mut *>(range.0), cast<T mut *>(range.1));
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this mut &, (T*, T*, void) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
@@ -252,13 +252,13 @@ pub struct moveable_span<T>
   pub usize len;
   pub T mut *data;
 
-  #[lifetime(clone(data))]
+  #[lifetime(depend(*data))]
   pub moveable_span(T mut *data, usize len)
     : len(len), data(data)
   {
   }
 
-  #[lifetime(clone(beg))]
+  #[lifetime(depend(*beg))]
   pub moveable_span(T mut *beg, T mut *end)
     : len(end - beg), data(beg)
   {
@@ -269,19 +269,19 @@ pub struct moveable_span<T>
     return this.len == 0;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.data;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.data + this.len;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, usize index)
   {
     assert(index < this.len);
@@ -289,7 +289,7 @@ pub struct moveable_span<T>
     return &cast<&&typeof(this)>(*(this.data + index));
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(iter, this), depend(*this))]
   pub fn [](this &&, T *iter)
   {
     assert(this.data <= iter && iter < this.data + this.len);
@@ -340,59 +340,64 @@ pub fn remove_suffix!<T>(mutable_span<T> mut &span, usize n) -> void
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn remove_prefix<T>(Span<T> &&span, usize n)
 {
   return (&&span)[n .. span.len];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn remove_suffix<T>(Span<T> &&span, usize n)
 {
   return (&&span)[0 .. span.len - n];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn all<T>(Span<T> &&span)
 {
   return (&&span)[0 .. span.len];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn head<T>(Span<T> &&span)
 {
-  return &(&&span)[0];
+  return &&(&&span)[0];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn tail<T>(Span<T> &&span)
 {
   return (&&span)[1 .. span.len];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn subspan<T>(Span<T> &&span, usize offset, usize count)
 {
   return (&&span)[offset .. offset + count];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn first_n<T>(Span<T> &&span, usize n)
 {
   return (&&span)[0 .. n];
 }
 
 #[nodiscard]
-#[lifetime(follow(span.data))]
+#[lifetime(depend(*span.[]))]
 pub fn last_n<T>(Span<T> &&span, usize n)
 {
   return (&&span)[span.len - n .. span.len];
+}
+
+pub fn as_literal<T>(Span<T> &span)
+{
+  return __array_literal(span.data, span.len);
 }
 
 pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize

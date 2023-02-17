@@ -102,7 +102,7 @@ fn build(std::string_literal pattern, options flags)
   if (var r = compile(ast, &mut program, flags); r != cast<errc>(0))
     std::panic("regex compile error : ", r);
 
-  return [program.data .. program.data + program.len];
+  return [ program.data : program.len ];
 }
 
 fn match<Args>(std::span<u32> program, std::string_view text) -> bool

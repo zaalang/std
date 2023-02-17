@@ -30,6 +30,7 @@ pub struct range_view<R, I, J>
   I first;
   J second;
 
+  #[lifetime(repose(first, range), repose(second, range))]
   pub range_view(R &&range, I first, J second)
     : range(&range), first(first), second(second)
   {
@@ -40,19 +41,19 @@ pub struct range_view<R, I, J>
   pub fn =(range_view mut &, range_view &) -> range_view mut & = default;
   pub ~range_view() = default;
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(iter, this), depend(*this))]
   pub fn []<I>(this &&, I iter)
     match (typeof(this) this, I iter) { this.range[iter]; }
   {
@@ -67,6 +68,7 @@ pub struct moveable_range_view<R, I, J>
   I first;
   J second;
 
+  #[lifetime(repose(first, range), repose(second, range))]
   pub moveable_range_view(R mut &range, I first, J second)
     : range(&range), first(first), second(second)
   {
@@ -77,19 +79,19 @@ pub struct moveable_range_view<R, I, J>
   pub fn =(moveable_range_view mut &, moveable_range_view &) -> moveable_range_view mut & = default;
   pub ~moveable_range_view() = default;
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(repose(iter, this), depend(*this))]
   pub fn []<I>(this &&, I iter)
     match (typeof(this) this, I iter) { this.range[iter]; }
   {
@@ -384,19 +386,19 @@ pub struct reverse_view<R, I, J>
     return reverse_iterator<I>(lhs.base - rhs);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, reverse_iterator<J> iter)
   {
     return &&(&&this.range)[std::prev(iter.base)];
@@ -502,19 +504,19 @@ pub struct filter_view<R, I, J, Pred>
     Pred &pred;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, filter_iterator<I> iter)
   {
     return &&(&&this.range)[iter.base];
@@ -593,19 +595,19 @@ pub struct take_view<R, I, J>
     pub ~take_sentinal() = default;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, take_iterator iter)
   {
     return &&(&&this.range)[iter.base];
@@ -695,19 +697,19 @@ pub struct transform_view<R, I, J, Func>
     return transform_iterator<I>(lhs.base + rhs);
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, transform_iterator<I> iter)
   {
     return &&this._func((&&this.range)[iter.base]);
@@ -837,19 +839,19 @@ pub struct zip_view<Rs, I, J>
     return lhs;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.first;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn end(this &&)
   {
     return this.second;
   }
 
-  #[lifetime(clone(this))]
+  #[lifetime(depend(*this))]
   pub fn [](this &&, zip_iterator iter)
   {
     fn deref(Rs && ...rs, I && ...is)
@@ -870,14 +872,14 @@ pub fn zip(var && ...ranges)
 }
 
 #[nodiscard]
-#[lifetime(depend(range))]
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
 pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 {
   return range_view<typeof(range)>(range, first, last);
 }
 
 #[nodiscard]
-#[lifetime(clone(range))]
+#[lifetime(repose(first, range), repose(last, range), depend(*range))]
 pub fn subrange<R, I, J>(range_view<R, I, J> &&range, I first, Sentinal<I> last)
 {
   return range_view<R, I, J>(range.range, first, last);
@@ -898,19 +900,19 @@ pub fn take_n<T>(Range<T> &&range, usize n)
   return subrange(&&range, range.begin, std::next(range.begin, n, range.end));
 }
 
-#[lifetime(follow(range.[]))]
+#[lifetime(depend(*range.[]))]
 pub fn front<T>(Range<T> &&range)
 {
   return &&(&&range)[range.begin];
 }
 
-#[lifetime(follow(range.[]))]
+#[lifetime(depend(*range.[]))]
 pub fn nth<Range>(Range &&range, usize index)
 {
   return &&(&&range)[std::next(range.begin, index)];
 }
 
-#[lifetime(follow(range.[]))]
+#[lifetime(depend(*range.[]))]
 pub fn []<Range>(Range &&range, usize index)
   where requires(Range range) { Range::[](range, range.begin); } && __is_match<RandomAccessIterator, typeof(range.begin)>
 {

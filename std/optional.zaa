@@ -54,7 +54,7 @@ pub union optional<T, Allocator = std::allocator>
 
   #if __is_reference<T>
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn value(this &&)
     {
       std::assert(this.is_some);
@@ -68,7 +68,7 @@ pub union optional<T, Allocator = std::allocator>
       return (this.is_some) ? *this.Some : std::remove_reference<T>(&&default);
     }
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn unwrap(this mut &)
     {
       std::assert(this.is_some);
@@ -76,7 +76,7 @@ pub union optional<T, Allocator = std::allocator>
       return &*this.Some;
     }
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn ?!(this mut &)
     {
       std::assert(this.is_some);
@@ -84,19 +84,19 @@ pub union optional<T, Allocator = std::allocator>
       return &*this.Some;
     }
 
-    #[lifetime(clone(this),depend(default))]
+    #[lifetime(depend(*this),depend(default))]
     pub fn unwrap_or(this mut &, std::remove_reference<T> &&default)
     {
       return (this.is_some) ? &*this.Some : &default;
     }
 
-    #[lifetime(clone(this),depend(default))]
+    #[lifetime(depend(*this),depend(default))]
     pub fn ??(this mut &, std::remove_reference<T> &&default)
     {
       return (this.is_some) ? *this.Some : &default;
     }
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn expect(this mut &, String &msg)
     {
       if (!this.is_some)

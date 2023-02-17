@@ -29,9 +29,11 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
   pub fn =(this mut &, map &&other) -> map mut &
   {
+    std::launder(other);
+
     if (&this != &other)
     {
       clear(&mut this);
@@ -84,14 +86,14 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn ++(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.next;
       return &this;
     }
 
-    #[lifetime(clone(this))]
+    #[lifetime(depend(*this))]
     pub fn --(iterator mut &this) -> iterator mut &
     {
       this.cursor = this.cursor.prev;
@@ -123,7 +125,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return iterator(&this._tree.root);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(iter, this), depend(this))]
   pub fn [](this &&, iterator iter)
   {
     return &cast<&&typeof(this)>(cast<node_type mut *>(iter.cursor).value);
@@ -313,19 +315,19 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return 1;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn erase(this mut &, iterator position) -> iterator
   {
     return iterator(this._tree.erase(position.cursor, position.cursor.next));
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
   pub fn erase(this mut &, iterator first, iterator last) -> iterator
   {
     return iterator(this._tree.erase(first.cursor, last.cursor));
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, iterator first, iterator last) -> map
   {
     var result = map::from(std::moveable_range_view(&mut this, first, last), this.allocator);

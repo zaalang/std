@@ -23,37 +23,37 @@ pub struct strconv_result
 
 const digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 
-pub fn itoa(u8 mut *beg, u8 mut *end, bool value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, bool value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<usize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, u8 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, u8 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<usize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, u16 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, u16 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<usize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, u32 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, u32 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<usize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, u64 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, u64 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<usize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, char value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, char value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<usize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, usize value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, usize value, int base = 10) -> strconv_result
 {
   std::assert(2 <= base && base < cast(digits.len));
   
@@ -62,7 +62,7 @@ pub fn itoa(u8 mut *beg, u8 mut *end, usize value, int base = 10) -> strconv_res
   var i = 0;
   let b = cast<usize>(base);
 
-  rof(var ch = end; ch == beg; --ch, ++i)
+  rof(var ch = beg + (end - beg); ch == beg; --ch, ++i)
   {
     let x = value / b;
 
@@ -85,27 +85,27 @@ pub fn itoa(u8 mut *beg, u8 mut *end, usize value, int base = 10) -> strconv_res
   return result;
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, i8 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, i8 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<isize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, i16 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, i16 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<isize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, i32 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, i32 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<isize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, i64 value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, i64 value, int base = 10) -> strconv_result
 {
   return itoa(beg, end, cast<isize>(value), base);
 }
 
-pub fn itoa(u8 mut *beg, u8 mut *end, isize value, int base = 10) -> strconv_result
+pub fn itoa(u8 mut *beg, u8 *end, isize value, int base = 10) -> strconv_result
 {
   var result = strconv_result();
 
@@ -129,7 +129,7 @@ pub fn itoa(u8 mut *beg, u8 mut *end, isize value, int base = 10) -> strconv_res
   return result;
 }
 
-pub fn btoa(u8 mut *beg, u8 mut *end, bool value) -> strconv_result
+pub fn btoa(u8 mut *beg, u8 *end, bool value) -> strconv_result
 { 
   const true_str = "true";
   const false_str = "false";
@@ -150,7 +150,7 @@ pub fn btoa(u8 mut *beg, u8 mut *end, bool value) -> strconv_result
   return result;
 }
 
-pub fn ctoa(u8 mut *beg, u8 mut *end, char value) -> strconv_result
+pub fn ctoa(u8 mut *beg, u8 *end, char value) -> strconv_result
 {  
   var result = strconv_result();
   
@@ -215,7 +215,7 @@ fn ftoa_round(u8 mut *digits, int mut &K, usize mut &len, int prec) -> void
   }
 }
 
-fn ftoa_scientific(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
+fn ftoa_scientific(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
 {
   var result = strconv_result();
 
@@ -302,7 +302,7 @@ fn ftoa_scientific(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, i
   return result;  
 }
 
-fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
+fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
 {
   var result = strconv_result();
 
@@ -393,7 +393,7 @@ fn ftoa_fixed(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int si
   return result;
 }
 
-fn ftoa_general(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
+fn ftoa_general(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
 {
   var exp = cast<int>(len) + K - 1;
 
@@ -403,7 +403,7 @@ fn ftoa_general(u8 mut *beg, u8 mut *end, u8 mut *digits, int K, usize len, int 
     return ftoa_fixed(beg, end, digits, K, len, signbit, prec >= 0 ? std::max(prec - exp - 1, 1) : prec);
 }
 
-fn ftoa_special<T>(u8 mut *beg, u8 mut *end, T value) -> strconv_result
+fn ftoa_special<T>(u8 mut *beg, u8 *end, T value) -> strconv_result
 {
   const nan_str = "-NaN";
   const inf_str = "-Inf";
@@ -430,7 +430,7 @@ fn ftoa_special<T>(u8 mut *beg, u8 mut *end, T value) -> strconv_result
   return result;
 }
 
-pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value, char fmt = ' ', int prec = -1) -> strconv_result
+pub fn ftoa(u8 mut *beg, u8 *end, f32 value, char fmt = ' ', int prec = -1) -> strconv_result
 {
   if (!std::is_finite(value))
     return ftoa_special(beg, end, value);
@@ -453,7 +453,7 @@ pub fn ftoa(u8 mut *beg, u8 mut *end, f32 value, char fmt = ' ', int prec = -1) 
   return ftoa_general(beg, end, digits.data, K, len, std::signbit(value), prec);
 }
 
-pub fn ftoa(u8 mut *beg, u8 mut *end, f64 value, char fmt = ' ', int prec = -1) -> strconv_result
+pub fn ftoa(u8 mut *beg, u8 *end, f64 value, char fmt = ' ', int prec = -1) -> strconv_result
 {
   if (!std::is_finite(value))
     return ftoa_special(beg, end, value);
@@ -542,12 +542,31 @@ pub fn atoi(u8 *beg, u8 *end, u32 mut &value, int base = 10) -> strconv_result
 
 pub fn atoi(u8 *beg, u8 *end, u64 mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, &mut cast<usize mut &>(value), base);
+  var v = usize(0);
+  var result = atoi(beg, end, &mut v, base);
+
+  if (!result.error)
+  {
+    value = cast(v);
+  }
+
+  return result;
 }
 
 pub fn atoi(u8 *beg, u8 *end, char mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, &mut cast<u32 mut &>(value), base);
+  var v = usize(0);
+  var result = atoi(beg, end, &mut v, base);
+
+  if (!result.error)
+  {
+    if (v <= 4_294_967_295)
+      value = cast(v);
+    else
+      result.error = std::errc::result_out_of_range;
+  }
+
+  return result;
 }
 
 pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
@@ -648,7 +667,15 @@ pub fn atoi(u8 *beg, u8 *end, i32 mut &value, int base = 10) -> strconv_result
 
 pub fn atoi(u8 *beg, u8 *end, i64 mut &value, int base = 10) -> strconv_result
 {
-  return atoi(beg, end, &mut cast<isize mut &>(value), base);
+  var v = isize(0);
+  var result = atoi(beg, end, &mut v, base);
+
+  if (!result.error)
+  {
+    value = cast(v);
+  }
+
+  return result;
 }
 
 pub fn atoi(u8 *beg, u8 *end, isize mut &value, int base = 10) -> strconv_result
