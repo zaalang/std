@@ -256,7 +256,8 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(node);
   }
 
-  #[lifetime(repose(position, this), depend(this))]
+  #[lifetime(repose(position, this), repose(first, other), repose(other, this), depend(this))]
+  //#[lifetime(repose(position, this), repose(position, other), repose(first, this), repose(first, other), repose(other, this), repose(this, other), depend(this))]
   pub fn splice(this mut &, iterator position, list mut &other, iterator first) -> iterator
   {
     assert(this.allocator == other.allocator);
@@ -271,7 +272,8 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(node);
   }
 
-  #[lifetime(repose(position, this), depend(this))]
+  #[lifetime(repose(position, this), repose(first, other), repose(last, other), depend(this))]
+  //#[lifetime(repose(position, this), repose(position, other), repose(first, this), repose(first, other), repose(last, this), repose(last, other), repose(other, this), repose(this, other), depend(this))]
   pub fn splice(this mut &, iterator position, list mut &other, iterator first, iterator last) -> iterator
   {
     assert(this.allocator == other.allocator);
@@ -395,7 +397,6 @@ pub struct list<T, Allocator = std::allocator>
     this._root.next = this._root.prev = &this._root;
   }
 
-  #[lifetime(repose(position, this))]
   fn insert<Args>(this mut &, Link *position, Args && ...args) -> Node mut *
   {
     var node = new<Node>(this._allocator.allocate(sizeof<Node>, alignof<Node>));
@@ -411,7 +412,6 @@ pub struct list<T, Allocator = std::allocator>
     return node;
   }
 
-  #[lifetime(repose(position, this), repose(first, other), repose(last, other))]
   fn splice(this mut &, Link *position, list mut &other, Link *first, Link *last, usize count) -> Link mut *
   {
     var node = cast<Link mut *>(first);
@@ -431,7 +431,6 @@ pub struct list<T, Allocator = std::allocator>
     return node;
   }
 
-  #[lifetime(repose(first, this), repose(last, this))]
   fn erase(this mut &, Link *first, Link *last) -> Link mut *
   {
     var count = 0;

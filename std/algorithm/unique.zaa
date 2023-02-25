@@ -5,6 +5,7 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
+#[lifetime(depend(range))]
 pub fn unique<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 {
   var last = range.end;
@@ -23,6 +24,7 @@ pub fn unique<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
   return ++next;
 }
 
+#[lifetime(depend(range))]
 pub fn unique!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 {
   return std::subrange(range, range.begin, unique(&mut range, cmp));

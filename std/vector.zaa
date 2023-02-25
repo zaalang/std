@@ -276,7 +276,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
         return this.take(&mut other);
     }
 
-    var slot = ensure_space(&mut this, position, other.len);
+    var slot = ensure_space(&mut this, position, std::count(other));
 
     for(var it = slot, var first = other.begin, var last = other.end; first != last; ++it, ++first)
     {

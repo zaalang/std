@@ -124,27 +124,46 @@ pub const fn is_all_ranges<Rs, T>() -> bool
   return true;
 }
 
-pub fn len<T>(Range<T> &&range) -> usize
-{
-  return std::distance(range.begin, range.end);
-}
-
 pub fn empty<T>(Range<T> &&range) -> bool
 {
   return range.begin == range.end;
 }
 
+pub fn len<T>(Range<T> &&range) -> usize
+  where requires (typeof(range) range) { range.end - range.begin; }
+{
+  return std::distance(range.begin, range.end);
+}
+
+pub static fn count<T>(Range<T> &&range) -> usize
+{
+  #if (requires (typeof(range) range) { range.len; })
+    return range.len;
+
+  return std::distance(range.begin, range.end);
+}
+
 pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
   where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] == y[y.begin]; }
 {
-  if (lhs.len != rhs.len)
-    return false;
+  #if (requires (typeof(lhs) lhs, typeof(rhs) rhs) { lhs.len == rhs.len; })
+    if (lhs.len != rhs.len)
+      return false;
 
-  for(var i = lhs.begin, var j = rhs.begin, var end = lhs.end; i != end; ++i, ++j)
+  var i = lhs.begin;
+  var j = rhs.begin;
+
+  for(var endi = lhs.end, var endj = rhs.end; j != endj; ++i, ++j)
   {
+    if (i == endi)
+      return false;
+
     if (!(lhs[i] == rhs[j]))
       return false;
   }
+
+  if (i != lhs.end)
+    return false;
 
   return true;
 }
@@ -278,13 +297,6 @@ pub struct iota_view<I, J>
   pub fn [](this &&, iota_iterator<I> iter)
   {
     return iter.n;
-  }
-
-  pub fn len(this &) -> usize
-  {
-    #std::assert(is_bounded, "unbounded");
-
-    return cast<usize>(this.second.n - this.first.n);
   }
 }
 

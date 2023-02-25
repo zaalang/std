@@ -5,6 +5,7 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
+#[lifetime(repose(last, range), depend(range))]
 pub fn is_sorted_until<T, I, Cmp>(Range<T> &range, I last, Cmp &cmp = std::less) -> I
 {
   var first = range.begin;

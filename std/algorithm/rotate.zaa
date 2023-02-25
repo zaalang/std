@@ -17,6 +17,7 @@ pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
   return lm1;
 }
 
+#[lifetime(depend(range))]
 pub fn rotate_left<T>(Range<T> mut &range)
 {
   var last = range.end;
@@ -51,6 +52,7 @@ pub fn rotate_right<I>(I first, I last) -> I
   return fp1;
 }
 
+#[lifetime(depend(range))]
 pub fn rotate_right<T>(Range<T> mut &range)
   where __is_match<BidirectionalIterator, typeof(range.end)>()
 {
@@ -73,13 +75,14 @@ pub fn rotate_right<T>(Range<T> mut &range)
   return last;
 }
 
+#[lifetime(repose(middle, range), depend(range))]
 pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
 {
   var last = range.end;
   var first = range.begin;
 
   if (first == middle)
-    return std::next(first, range.len);
+    return std::next(first, std::count(range));
 
   if (middle == last)
     return first;

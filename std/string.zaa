@@ -650,7 +650,7 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn from(Range<char> &&other, Allocator &allocator = Allocator()) -> string
   {
-    var result = string::with_capacity(other.len + other.len/16, allocator);
+    var result = string(allocator);
 
     for(var ch : other)
       result += ch;
@@ -660,7 +660,10 @@ pub struct string<Allocator = std::allocator, N = 24>
 
   pub fn from_utf8(Range<u8> &&other, Allocator &allocator = Allocator()) -> string
   {
-    var result = string::with_capacity(other.len, allocator);
+    var result = string(allocator);
+
+    #if (requires (typeof(other) other) { other.len; })
+      result.reserve(other.len);
 
     for(var ch : other)
       result += ch;

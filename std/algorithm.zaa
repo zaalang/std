@@ -326,7 +326,7 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
 {
   var first = range.begin;
 
-  for(var len = range.len; len > 0; )
+  for(var len = std::count(range); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -373,7 +373,7 @@ pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
 {
   var first = range.begin;
 
-  for(var len = range.len; len > 0; )
+  for(var len = std::count(range); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);

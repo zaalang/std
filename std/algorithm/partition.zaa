@@ -17,6 +17,7 @@ pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
   return true;
 }
 
+#[lifetime(depend(range))]
 pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
 {
   var last = range.end;
@@ -38,6 +39,7 @@ pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
   return first;
 }
 
+#[lifetime(depend(range))]
 pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
 {
   var last = range.end;
@@ -64,13 +66,14 @@ pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
   return first;
 }
 
+#[lifetime(depend(range))]
 pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
 {
   var first = range.begin;
 
   #if (requires (typeof(range.begin) x, usize y) { x + y; })
   {
-    for(var len = range.len; len > 0; )
+    for(var len = std::count(range); len > 0; )
     {
       var m = len / 2;
       var it = first + m;
