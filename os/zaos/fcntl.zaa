@@ -207,6 +207,32 @@ pub struct string
   pub ~string() = default;
 }
 
+pub struct msg
+{
+  pub u8 mut *bytes;
+  pub usize nbytes;
+  pub i32 mut *fds;
+  pub usize nfds;
+
+  pub msg() = default;
+  pub msg(msg&) = default;
+  pub fn =(msg mut &, msg &) -> msg mut & = default;
+  pub ~msg() = default;
+}
+
+pub struct cmsg
+{
+  pub u8 *bytes;
+  pub usize nbytes;
+  pub i32 *fds;
+  pub usize nfds;
+
+  pub cmsg() = default;
+  pub cmsg(cmsg&) = default;
+  pub fn =(cmsg mut &, cmsg &) -> cmsg mut & = default;
+  pub ~cmsg() = default;
+}
+
 pub enum ioring_ops
 {
   pub const open = 0x01;
@@ -226,6 +252,12 @@ pub enum ioring_ops
   pub const epoll_create = 0x10;
   pub const epoll_ctl = 0x11;
   pub const epoll_wait = 0x12;
+  pub const event_create = 0x13;
+  pub const buffer_create = 0x14;
+  pub const channel_create = 0x15;
+  pub const channel_read = 0x16;
+  pub const channel_write = 0x17;
+  pub const channel_call = 0x18;
 }
 
 pub enum ioring_flags
@@ -517,6 +549,63 @@ pub fn ioring_prep_sqe_epoll_wait(ioring_sqe mut *sqe, i32 fd, pollevt mut *evts
   sqe.args[1] = cast(evts);
   sqe.args[2] = cast(n);
   sqe.args[3] = cast(timeout);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_event_create(ioring_sqe mut *sqe, u64 value, u64 maxvalue, u64 flags) -> void
+{
+  sqe.op = ioring_ops::event_create;
+  sqe.args[0] = cast(value);
+  sqe.args[1] = cast(maxvalue);
+  sqe.args[2] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_buffer_create(ioring_sqe mut *sqe, i32[2] mut *fds, usize size, u64 flags) -> void
+{
+  sqe.op = ioring_ops::buffer_create;
+  sqe.args[0] = cast(fds);
+  sqe.args[1] = cast(size);
+  sqe.args[2] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_channel_create(ioring_sqe mut *sqe, i32[2] mut *fds, u64 flags) -> void
+{
+  sqe.op = ioring_ops::channel_create;
+  sqe.args[0] = cast(fds);
+  sqe.args[1] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_channel_read(ioring_sqe mut *sqe, i32 fd, i32 mut *sid, msg mut *buffer, usize mut *outbytes, usize mut *outfds) -> void
+{
+  sqe.op = ioring_ops::channel_read;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(sid);
+  sqe.args[2] = cast(buffer);
+  sqe.args[3] = cast(outbytes);
+  sqe.args[4] = cast(outfds);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_channel_write(ioring_sqe mut *sqe, i32 fd, i32 sid, cmsg *msg) -> void
+{
+  sqe.op = ioring_ops::channel_write;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(sid);
+  sqe.args[2] = cast(msg);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_channel_call(ioring_sqe mut *sqe, i32 fd, cmsg mut *msg, msg mut *buffer, usize mut *outbytes, usize mut *outfds) -> void
+{
+  sqe.op = ioring_ops::channel_call;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(msg);
+  sqe.args[2] = cast(buffer);
+  sqe.args[3] = cast(outbytes);
+  sqe.args[4] = cast(outfds);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -883,6 +972,111 @@ pub fn epoll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize n, u64 time
 {
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_epoll_wait(sqe, fd, evts, n, timeout);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn event_create(ioring mut &ring, u64 value, u64 maxvalue, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_event_create(sqe, value, maxvalue, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn buffer_create(ioring mut &ring, i32[2] mut *fds, usize size, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_buffer_create(sqe, fds, size, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn channel_create(ioring mut &ring, i32[2] mut *fds, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_channel_create(sqe, fds, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn channel_read(ioring mut &ring, i32 fd, i32 mut *sid, msg mut *buffer, usize mut *outbytes, usize mut *outfds) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_channel_read(sqe, fd, sid, buffer, outbytes, outfds);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn channel_write(ioring mut &ring, i32 fd, i32 sid, cmsg *msg) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_channel_write(sqe, fd, sid, msg);
+  ioring_advance_sqe(&mut ring);
+
+  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
+    return result;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn channel_call(ioring mut &ring, i32 fd, cmsg mut *msg, msg mut *buffer, usize mut *outbytes, usize mut *outfds) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_channel_call(sqe, fd, msg, buffer, outbytes, outfds);
   ioring_advance_sqe(&mut ring);
 
   if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)

@@ -13,7 +13,7 @@ import std.fmt;
 
 pub concept Range<U>
 {
-  requires<T> (T x) -> U { return x[x.begin]; }
+  requires<T> (T x) -> U { return && x[x.begin]; }
   requires<T> (T x) { x.end; }
 }
 

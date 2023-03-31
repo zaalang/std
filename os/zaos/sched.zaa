@@ -35,6 +35,8 @@ pub struct attr
   pub const stderr = 2;
   pub const stdroot = 4;
   pub const stdcwd = 5;
+  pub const fn dupfd(i32 fd) -> i32 { return fd; }
+  pub const enddup = 255;
 
   pub int type;
   pub int value;

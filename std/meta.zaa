@@ -17,7 +17,6 @@ pub struct meta
     DeclScoped,
     DeclRef,
     TypeName,
-    DeclName,
     TypeOf,
     Import,
     Using,

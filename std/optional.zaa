@@ -24,13 +24,13 @@ pub union optional<T, Allocator = std::allocator>
   }
 
   pub optional<Args>(Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
     : Some(&&args..., allocator?: allocator)
   {
   }
 
   pub fn =<Args>(this mut &, Args && ...args) -> optional mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     this.insert(&&args...);
 
@@ -163,14 +163,14 @@ pub union optional<T, Allocator = std::allocator>
   #end
 
   pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     optional::~optional(&mut this);
     new<optional>(&this)(&&args..., allocator?: allocator);
   }
 
   pub fn emplace<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator()) -> T mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     insert(&mut this, &&args..., allocator?: allocator);
 

@@ -34,3 +34,56 @@ pub struct spin_lock
   pub spin_lock(#spin_lock&) = default;
   pub ~spin_lock() = default;
 }
+
+pub struct shared_spin_lock
+{
+  u32 state;
+
+  pub fn lock(this mut &) -> void
+  {
+    for(;;)
+    {
+      if (std::atomic_cmpxchg_weak(&this.state, 0, 1 << 31))
+        break;
+
+      while (std::atomic_load(&this.state, std::memory_order::relaxed) != 0)
+        __relax();
+    }
+  }
+
+  pub fn try_lock(this mut &) -> bool
+  {
+    return std::atomic_cmpxchg_strong(&this.state, 0, 1 << 31);
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    std::atomic_store(&this.state, 0, std::memory_order::release);
+  }
+
+  pub fn lock_shared(this mut &) -> void
+  {
+    for(;;)
+    {
+      if (std::atomic_add(&this.state, 1) & (1 << 31) == 0)
+        break;
+
+      while (std::atomic_load(&this.state, std::memory_order::relaxed) & (1 << 31) != 0)
+        __relax();
+    }
+  }
+
+  pub fn try_lock_shared(this mut &) -> bool
+  {
+    return std::atomic_add(&this.state, 1) & (1 << 31) == 0;
+  }
+
+  pub fn unlock_shared(this mut &) -> void
+  {
+    std::atomic_sub(&this.state, 1, std::memory_order::release);
+  }
+
+  pub shared_spin_lock() = default;
+  pub shared_spin_lock(#shared_spin_lock&) = default;
+  pub ~shared_spin_lock() = default;
+}

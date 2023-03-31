@@ -225,7 +225,7 @@ fn negate(klass mut &cc) -> void
       foldup = (foldup >> hi) << hi;
     }
 
-    cc.flags ^= options::foldcase;
+    cc.flags &= ~options::foldcase;
   }
 
   var next = 0;
@@ -432,13 +432,13 @@ fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
     cc.add_range('0', '9');
     cc.add_range('A', 'Z');
     cc.add_range('a', 'z');
-    cc.flags ^= options::foldcase;
+    cc.flags &= ~options::foldcase;
   }
   else if (sv == ":alpha")
   {
     cc.add_range('A', 'Z');
     cc.add_range('a', 'z');
-    cc.flags ^= options::foldcase;
+    cc.flags &= ~options::foldcase;
   }
   else if (sv == ":digit")
   {
@@ -468,14 +468,14 @@ fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
     cc.add_range('A', 'Z');
     cc.add_range('_', '_');
     cc.add_range('a', 'z');
-    cc.flags ^= options::foldcase;
+    cc.flags &= ~options::foldcase;
   }
   else if (sv == ":xdigit")
   {
     cc.add_range('0', '9');
     cc.add_range('A', 'F');
     cc.add_range('a', 'f');
-    cc.flags ^= options::foldcase;
+    cc.flags &= ~options::foldcase;
   }
   else
   {
@@ -503,7 +503,7 @@ fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
         cc.add_range('\n', '\n');
       cc.add_range(11, 47);
       cc.add_range(58, 0x10FFFF);
-      cc.flags ^= options::foldcase;
+      cc.flags &= ~options::foldcase;
 
     case 's':
       cc.add_range('\r', '\r');
@@ -518,7 +518,7 @@ fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
       cc.add_range(0, 8);
       cc.add_range(14, 31);
       cc.add_range(33, 0x10FFFF);
-      cc.flags ^= options::foldcase;
+      cc.flags &= ~options::foldcase;
 
     case 'w':
       cc.add_range('a', 'z');
@@ -526,7 +526,7 @@ fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
       cc.add_range('0', '9');
       cc.add_range('_', '_');
       cc.add_range(128, 0x10FFFF);
-      cc.flags ^= options::foldcase;
+      cc.flags &= ~options::foldcase;
 
     case 'W':
       cc.add_range(0, 9);
@@ -718,7 +718,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
             if (s != end && *s == 'i')
             {
               if (sign < 0)
-                newflags ^= options::foldcase;
+                newflags &= ~options::foldcase;
               else
                 newflags |= options::foldcase;
             }
@@ -726,7 +726,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
             if (s != end && *s == 'm')
             {
               if (sign < 0)
-                newflags ^= options::multiline;
+                newflags &= ~options::multiline;
               else
                 newflags |= options::multiline;
             }

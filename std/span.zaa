@@ -10,11 +10,12 @@ pub concept Span<U>
 {
   requires<T> (T x) { x.len; }
   requires<T> (T x) { x.data; }
-  requires<T> (T x) -> U { return *x.data; }
-  requires<T> (T x) -> U { return x[x.begin]; }
+  requires<T> (T x) -> U { return && *x.data; }
+  requires<T> (T x) -> U { return && x[x.begin]; }
   requires<T> (T x) { x.end; }
 }
 
+#[lifetime(depend(array))]
 pub fn Span<T, N>(T[N] &&array)
 {
   return &(&&array);
@@ -141,6 +142,12 @@ pub struct mutable_span<T>
   #[lifetime(depend(*beg))]
   pub mutable_span(T mut *beg, T mut *end)
     : len(end - beg), data(beg)
+  {
+  }
+
+  #[lifetime(depend(*span.data))]
+  pub mutable_span(Span<T> mut &span)
+    : len(span.len), data(span.data)
   {
   }
 
@@ -337,6 +344,30 @@ pub fn remove_suffix!<T>(mutable_span<T> mut &span, usize n) -> void
   assert(n <= span.len);
 
   span.len -= n;
+}
+
+#[lifetime(depend(array))]
+pub fn []<T, N>(T[N] &array, (usize, usize) range) -> span<T>
+{
+  return span(array)[range];
+}
+
+#[lifetime(depend(array))]
+pub fn []<T, N>(T[N] &array, (usize, usize, void) range) -> span<T>
+{
+  return span(array)[range];
+}
+
+#[lifetime(depend(array))]
+pub fn []<T, N>(T[N] mut &array, (usize, usize) range) -> mutable_span<T>
+{
+  return mutable_span(&mut array)[range];
+}
+
+#[lifetime(depend(array))]
+pub fn []<T, N>(T[N] mut &array, (usize, usize, void) range) -> mutable_span<T>
+{
+  return mutable_span(&mut array)[range];
 }
 
 #[nodiscard]

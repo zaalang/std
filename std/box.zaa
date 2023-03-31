@@ -1,0 +1,99 @@
+//
+// std.box
+//
+
+import std.stdlib;
+import std.memory;
+import std.string : String;
+import std.fmt;
+import std.scan;
+
+pub struct box<T, Allocator = std::allocator>
+{
+  T mut *inner;
+
+  pub fn *(this &&)
+  {
+    return &cast<&&typeof(this)>(*this.inner);
+  }
+
+  pub box(T &&value, Allocator &allocator = Allocator())
+    : inner(void), _allocator(allocator)
+  {
+    inner = new<T>(_allocator.allocate(sizeof<T>, alignof<T>))(&&value, allocator?: allocator);
+  }
+
+  pub box<Args>(Args && ...args, Allocator &allocator = Allocator())
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    : inner(void), _allocator(allocator)
+  {
+    inner = new<T>(_allocator.allocate(sizeof<T>, alignof<T>))(&&args..., allocator?: allocator);
+  }
+
+  pub box(box &&other, Allocator &allocator = Allocator())
+    where __is_rvalue<typeof(other)>
+    : inner(void), _allocator(allocator)
+  {
+    std::assert(this._allocator == other._allocator);
+
+    inner = other.release();
+  }
+
+  pub fn from_raw(T mut *ptr, Allocator &allocator = Allocator()) -> box
+  {
+    return box(ptr, allocator);
+  }
+
+  pub fn =(box mut &this, box &&other) -> box mut &
+    where __is_rvalue<typeof(other)>
+  {
+    std::assert(this._allocator == other._allocator);
+
+    reset(&mut this, other.release());
+
+    return &this;
+  }
+
+  pub fn release(this mut &) -> T mut *
+  {
+    var ptr = this.inner;
+
+    this.inner = null;
+
+    return ptr;
+  }
+
+  pub ~box()
+  {
+    reset(&mut this);
+  }
+
+  fn reset(this mut &, T mut *ptr = null) -> void
+  {
+    if (this.inner)
+    {
+      T::~T(&mut *this.inner);
+
+      this._allocator.free(this.inner, sizeof<T>);
+    }
+
+    this.inner = ptr;
+  }
+
+  box(T mut *ptr, Allocator &allocator = Allocator())
+    : inner(ptr), _allocator(allocator)
+  {
+  }
+
+  Allocator _allocator;
+}
+
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::box<T> &boxed) throws -> void
+{
+  ctx.written += std::print_to(&mut os, *boxed);
+}
+
+pub fn scan<T>(std::string_view is, std::scan_context mut &ctx, std::box<T> mut &boxed) -> void
+{
+  std::scan_to(is, &mut ctx, &mut *boxed);
+}

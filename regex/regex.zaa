@@ -39,9 +39,11 @@ pub enum options
   foldcase = 0x1,         // case-insensitive match
   multiline = 0x2,        // treat ^ and $ as only matching beginning and end of line
 
+  pub const fn bool(options lhs) -> bool { return cast<isize>(lhs) != 0; }
+
+  pub const fn ~(options lhs) -> options { return cast<options>(~cast<isize>(lhs)); }
+  pub const fn &(options lhs, options rhs) -> options { return cast<options>(cast<isize>(lhs) & cast<isize>(rhs)); }
   pub const fn |(options lhs, options rhs) -> options { return cast<options>(cast<isize>(lhs) | cast<isize>(rhs)); }
-  pub const fn ^(options lhs, options rhs) -> options { return cast<options>(cast<isize>(lhs) & ~cast<isize>(rhs)); }
-  pub const fn &(options lhs, options rhs) -> bool { return cast<isize>(lhs) & cast<isize>(rhs) == cast<isize>(rhs); }
 }
 
 pub enum opcode

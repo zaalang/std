@@ -86,14 +86,43 @@ pub struct file
     return std::format_to(&mut this, format, args...);
   }
 
+  pub file()
+  {
+  }
+
   pub file(fd fd)
     : fd(fd)
   {
   }
 
+  pub file(file &&other)
+    where __is_rvalue<typeof(other)>
+  {
+    std::swap(&mut fd, &mut other.fd);
+  }
+
+  pub fn =(file mut &this, file &&other) -> file mut &
+    where __is_rvalue<typeof(other)>
+  {
+    this.close();
+
+    std::swap(&mut this.fd, &mut other.fd);
+
+    return &this;
+  }
+
+  pub fn close(this mut &) -> void
+  {
+    if (this.fd)
+      this.fd.close();
+
+    this.fd = fd();
+  }
+
   pub ~file()
   {
-    fd.close();
+    if (fd)
+      fd.close();
   }
 
   file(#file&) = default;

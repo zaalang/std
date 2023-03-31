@@ -83,7 +83,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   pub fn from<U>(Range<U> &&other, Allocator &allocator = Allocator()) -> vector
-    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
     where !__is_same<U, T>
   {
     var result = vector(allocator);
@@ -237,7 +237,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     #for(const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
@@ -251,7 +251,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<Args>(this mut &, T *position, Args && ...args) -> T mut *
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     #for(const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
@@ -265,7 +265,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<U>(this mut &, T *position, Range<U> &&other) -> T mut *
-    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
   {
     #if (__is_same<vector, typeof(other)>)
       assert(&this != &other);
@@ -305,14 +305,14 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn emplace<Args>(this mut &, T *position, Args && ...args) -> T mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return &*insert(&mut this, position, &&args...);
   }
 
   #[lifetime(poison(this), depend(this))]
   pub fn append<U>(this mut &, Range<U> &&other) -> T mut *
-    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
   {
     return insert(&mut this, this.end, &&other);
   }

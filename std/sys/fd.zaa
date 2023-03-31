@@ -130,15 +130,27 @@ pub struct fd
     return handle;
   }
 
+  pub fn bool(this&) -> bool
+  {
+    return this.fd != ~0;
+  }
+
+  pub fn ==(fd lhs, fd rhs) -> bool
+  {
+    return lhs.fd == rhs.fd;
+  }
+
   pub fd(uintptr fd)
     : fd(fd)
   {
   }
 
+  pub fd() = default;
   pub fd(fd&) = default;
+  pub fn =(fd mut &, fd &) -> fd mut & = default;
   pub ~fd() = default;
 
-  uintptr fd;  
+  uintptr fd = ~0;
 }
 
 pub fn stat(fd &fd) throws -> filestat

@@ -57,7 +57,7 @@ pub struct list<T, Allocator = std::allocator>
   }
 
   pub fn from<U>(Range<U> &&other, Allocator &allocator = Allocator()) -> list
-    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
     where !__is_same<U, T>
   {
     var result = list(allocator);
@@ -157,28 +157,28 @@ pub struct list<T, Allocator = std::allocator>
 
   #[lifetime(depend(this))]
   pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, this.begin.cursor, &&args...).value;
   }
 
   #[lifetime(depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, this.end.cursor, &&args...).value;
   }
 
   #[lifetime(repose(position, this), depend(this))]
   pub fn insert<Args>(this mut &, iterator position, Args && ...args) -> iterator
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return iterator(insert(&mut this, position.cursor, &&args...));
   }
 
   #[lifetime(repose(position, this), depend(this))]
   pub fn insert<U>(this mut &, iterator position, Range<U> &&other) -> iterator
-    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
   {
     #if (__is_rvalue<typeof(other)> && __is_same<list, typeof(other)>)
     {
@@ -221,14 +221,14 @@ pub struct list<T, Allocator = std::allocator>
 
   #[lifetime(repose(position, this), depend(this))]
   pub fn emplace<Args>(this mut &, iterator position, Args && ...args) -> T mut &
-    match (Args args) { T(&&args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, position.cursor, &&args...).value;
   }
 
   #[lifetime(depend(this))]
   pub fn append<U>(this mut &, Range<U> &&other) -> iterator
-    match (U u) { T(u, allocator?: std::declval<Allocator>()); }
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
   {
     return insert(&mut this, this.end, &&other);
   }

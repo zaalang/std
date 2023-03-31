@@ -56,7 +56,7 @@ pub struct allocator
   }
 
   pub fn new<T, Args>(Args && ...args) -> T mut *
-    match (Args args) { T(&&args...); }
+    match (Args args) { T(&move args...); }
   {
     return new<T>(allocator().allocate(sizeof<T>, alignof<T>))(&&args...);
   }
