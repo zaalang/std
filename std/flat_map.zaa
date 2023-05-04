@@ -303,6 +303,26 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return this._tree.erase(first, last);
   }
 
+  #[lifetime(poison(this))]
+  pub fn take_erase<Key>(this mut &, Key &key) -> T
+  {
+    var result = &move std::launder(this[key]);
+
+    erase(&mut this, key);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_erase(this mut &, value_type *position) -> T
+  {
+    var result = &move std::launder(this[position].value);
+
+    erase(&mut this, position);
+
+    return result;
+  }
+
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, value_type *first, value_type *last) -> flat_map
   {

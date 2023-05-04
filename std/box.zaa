@@ -10,51 +10,61 @@ import std.scan;
 
 pub struct box<T, Allocator = std::allocator>
 {
-  T mut *inner;
+  struct Bx
+  {
+    T value;
+
+    Bx<Args>(Args && ...args, Allocator &allocator)
+      : value(void), _allocator(allocator)
+    {
+      new<T>(&value)(&&args..., allocator?: _allocator);
+    }
+
+    Allocator _allocator;
+  }
+
+  Bx mut *inner;
 
   pub fn *(this &&)
   {
-    return &cast<&&typeof(this)>(*this.inner);
+    return &cast<&&typeof(this)>(this.inner.value);
   }
 
   pub box(T &&value, Allocator &allocator = Allocator())
-    : inner(void), _allocator(allocator)
+    : inner(void)
   {
-    inner = new<T>(_allocator.allocate(sizeof<T>, alignof<T>))(&&value, allocator?: allocator);
+    inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&value, allocator?: allocator);
   }
 
   pub box<Args>(Args && ...args, Allocator &allocator = Allocator())
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
-    : inner(void), _allocator(allocator)
+    : inner(void)
   {
-    inner = new<T>(_allocator.allocate(sizeof<T>, alignof<T>))(&&args..., allocator?: allocator);
+    inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&args..., allocator?: allocator);
   }
 
-  pub box(box &&other, Allocator &allocator = Allocator())
+  pub box(box &&other)
     where __is_rvalue<typeof(other)>
-    : inner(void), _allocator(allocator)
+    : inner(void)
   {
-    std::assert(this._allocator == other._allocator);
-
-    inner = other.release();
+    inner = release(&move other);
   }
 
-  pub fn from_raw(T mut *ptr, Allocator &allocator = Allocator()) -> box
+  pub fn adopt(Bx mut *ptr) -> box
   {
-    return box(ptr, allocator);
+    return box(ptr);
   }
 
   pub fn =(box mut &this, box &&other) -> box mut &
     where __is_rvalue<typeof(other)>
   {
-    std::assert(this._allocator == other._allocator);
-
-    reset(&mut this, other.release());
+    reset(&mut this, release(&move other));
 
     return &this;
   }
 
-  pub fn release(this mut &) -> T mut *
+  pub static fn release(box &&this) -> Bx mut *
+    where __is_rvalue<typeof(this)>
   {
     var ptr = this.inner;
 
@@ -63,29 +73,36 @@ pub struct box<T, Allocator = std::allocator>
     return ptr;
   }
 
-  pub ~box()
-  {
-    reset(&mut this);
-  }
-
-  fn reset(this mut &, T mut *ptr = null) -> void
+  pub static fn reset(this mut &, Bx mut *ptr = null) -> void
   {
     if (this.inner)
     {
-      T::~T(&mut *this.inner);
+      T::~T(&mut this.inner.value);
 
-      this._allocator.free(this.inner, sizeof<T>);
+      destroy(this.inner);
     }
 
     this.inner = ptr;
   }
 
-  box(T mut *ptr, Allocator &allocator = Allocator())
-    : inner(ptr), _allocator(allocator)
+  fn destroy(Bx mut *ptr) -> void
+  {
+    var allocator = &move ptr._allocator;
+
+    Allocator::~Allocator(&mut ptr._allocator);
+
+    allocator.free(ptr, sizeof<Bx>);
+  }
+
+  box(Bx mut *ptr)
+    : inner(ptr)
   {
   }
 
-  Allocator _allocator;
+  pub ~box()
+  {
+    reset(&mut this);
+  }
 }
 
 pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::box<T> &boxed) throws -> void

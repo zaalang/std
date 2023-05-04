@@ -371,6 +371,26 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return iterator(this._ctrl + index, this._data + index);
   }
 
+  #[lifetime(poison(this))]
+  pub fn take_erase<Key>(this mut &, Key &key) -> T
+  {
+    var result = &move std::launder(this[key]);
+
+    erase(&mut this, key);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_erase(this mut &, iterator position) -> T
+  {
+    var result = &move std::launder(this[position].value);
+
+    erase(&mut this, position);
+
+    return result;
+  }
+
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, iterator first, iterator last) -> flat_hash_map
   {

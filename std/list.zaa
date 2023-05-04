@@ -339,6 +339,16 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(erase(&mut this, first.cursor, last.cursor));
   }
 
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_erase(this mut &, iterator position) -> T
+  {
+    var result = &move std::launder(this[position]);
+
+    erase(&mut this, position);
+
+    return result;
+  }
+
   #[lifetime(poison(this), depend(this))]
   pub fn drop_n!(this mut &, usize n) -> list mut &
   {

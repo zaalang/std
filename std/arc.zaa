@@ -1,0 +1,229 @@
+//
+// std.arc
+//
+
+import std.stdlib;
+import std.memory;
+import std.atomic;
+import std.optional;
+import std.string : String;
+import std.fmt;
+import std.scan;
+
+pub struct arc<T, Allocator = std::allocator>
+{
+  struct Ac
+  {
+    i32 refcnt;
+    i32 weakcnt;
+
+    T value;
+
+    Ac<Args>(Args && ...args, Allocator &allocator)
+      : value(void), _allocator(allocator)
+    {
+      refcnt = 1;
+      weakcnt = 1;
+      new<T>(&value)(&&args..., allocator?: _allocator);
+    }
+
+    Allocator _allocator;
+  }
+
+  pub struct weak
+  {
+    Ac mut *inner;
+
+    weak(Ac mut *ptr)
+      : inner(ptr)
+    {
+    }
+
+    pub fn upgrade(this mut &) -> std::optional<arc>
+    {
+      if (!this.inner)
+        return None;
+
+      for(;;)
+      {
+        var refcnt = std::volatile_load(&this.inner.refcnt);
+
+        if (refcnt == 0)
+          return None;
+
+        if (!std::atomic_cmpxchg_weak(&this.inner.refcnt, refcnt, refcnt + 1))
+          continue;
+
+        return arc(this.inner);
+      }
+    }
+
+    pub weak() = default;
+
+    pub weak(weak &&other)
+      : inner(void)
+    {
+      if (inner = cast<Ac mut *>(other.inner))
+      {
+        #if (__is_rvalue<typeof(other)>)
+          other.inner = null;
+        #else
+          std::atomic_add(&this.inner.weakcnt, 1, std::memory_order::relaxed);
+      }
+    }
+
+    pub fn =(weak mut &this, weak &&other) -> weak mut &
+    {
+      if (&this != &other)
+      {
+        reset(&mut this, cast<Ac mut *>(other.inner));
+
+        if (this.inner)
+        {
+          #if (__is_rvalue<typeof(other)>)
+            other.inner = null;
+          #else
+            std::atomic_add(&this.inner.weakcnt, 1, std::memory_order::relaxed);
+        }
+      }
+
+      return &this;
+    }
+
+    pub static fn reset(this mut &, Ac mut *ptr = null) -> void
+    {
+      if (this.inner)
+      {
+        if (std::atomic_sub(&this.inner.weakcnt, 1) == 1)
+          destroy(this.inner);
+      }
+
+      this.inner = ptr;
+    }
+
+    pub ~weak()
+    {
+      reset(&mut this);
+    }
+  }
+
+  Ac mut *inner;
+
+  pub fn *(this &&)
+  {
+    #if (__is_const<T>)
+      return &cast<T&>(this.inner.value);
+
+    return &this.inner.value;
+  }
+
+  pub arc(T &&value, Allocator &allocator = Allocator())
+    : inner(void)
+  {
+    inner = new<Ac>(Allocator(allocator).allocate(sizeof<Ac>, alignof<Ac>))(&&value, allocator: allocator);
+  }
+
+  pub arc<Args>(Args && ...args, Allocator &allocator = Allocator())
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    : inner(void)
+  {
+    inner = new<Ac>(Allocator(allocator).allocate(sizeof<Ac>, alignof<Ac>))(&&args..., allocator: allocator);
+  }
+
+  pub arc(arc &&other)
+    : inner(void)
+  {
+    if (inner = cast<Ac mut *>(other.inner))
+    {
+      #if (__is_rvalue<typeof(other)>)
+        other.inner = null;
+      #else
+        std::atomic_add(&this.inner.refcnt, 1, std::memory_order::relaxed);
+    }
+  }
+
+  pub fn adopt(Ac mut *ptr) -> arc
+  {
+    return arc(ptr);
+  }
+
+  pub fn =(arc mut &this, arc &&other) -> arc mut &
+  {
+    if (&this != &other)
+    {
+      reset(&mut this, cast<Ac mut *>(other.inner));
+
+      if (this.inner)
+      {
+        #if (__is_rvalue<typeof(other)>)
+          other.inner = null;
+        #else
+          std::atomic_add(&this.inner.refcnt, 1, std::memory_order::relaxed);
+      }
+    }
+
+    return &this;
+  }
+
+  pub static fn downgrade(this &) -> weak
+  {
+    std::atomic_add(&cast<Ac mut *>(this.inner).weakcnt, 1, std::memory_order::relaxed);
+
+    return weak(cast<Ac mut *>(this.inner));
+  }
+
+  pub static fn release(arc &&this) -> Ac mut *
+    where __is_rvalue<typeof(this)>
+  {
+    var ptr = this.inner;
+
+    this.inner = null;
+
+    return ptr;
+  }
+
+  pub static fn reset(this mut &, Ac mut *ptr = null) -> void
+  {
+    if (this.inner)
+    {
+      if (std::atomic_sub(&this.inner.refcnt, 1) == 1)
+      {
+        T::~T(&mut this.inner.value);
+
+        if (std::atomic_sub(&this.inner.weakcnt, 1) == 1)
+          destroy(this.inner);
+      }
+    }
+
+    this.inner = ptr;
+  }
+
+  fn destroy(Ac mut *ptr) -> void
+  {
+    var allocator = &move ptr._allocator;
+
+    Allocator::~Allocator(&mut ptr._allocator);
+
+    allocator.free(ptr, sizeof<Ac>);
+  }
+
+  arc(Ac mut *ptr)
+    : inner(ptr)
+  {
+  }
+
+  pub ~arc()
+  {
+    reset(&mut this);
+  }
+}
+
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::arc<T> &arced) throws -> void
+{
+  ctx.written += std::print_to(&mut os, *arced);
+}
+
+pub fn scan<T>(std::string_view is, std::scan_context mut &ctx, std::arc<T> mut &arced) -> void
+{
+  std::scan_to(is, &mut ctx, &mut *arced);
+}

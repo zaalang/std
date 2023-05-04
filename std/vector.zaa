@@ -384,6 +384,26 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return this._data + index;
   }
 
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_erase(this mut &, T *position) -> T
+  {
+    var result = &move std::launder(this[position]);
+
+    erase(&mut this, position);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_swap_erase(this mut &, T *position) -> T
+  {
+    var result = &move std::launder(this[position]);
+
+    swap_erase(&mut this, position);
+
+    return result;
+  }
+
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, T *first, T *last) -> vector
   {
