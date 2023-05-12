@@ -304,7 +304,7 @@ struct heap
         if (memory.errno != 0)
           return result;
 
-        sz = memory.size;
+        sz = memory.size - sizeof<header>;
 
         cast<header mut *>(memory.addr).secret = SECRET;
 
