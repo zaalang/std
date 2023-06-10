@@ -82,7 +82,7 @@ pub fn len(u8 *beg, u8 *end, bool mut &valid) -> usize
 
   var state = 0;
   var codepoint = char(0);
-  for(var ch = beg; ch != end; ++ch)
+  for (var ch = beg; ch != end; ++ch)
   {
     if (decode(&mut state, &mut codepoint, *ch) == ACCEPT)
       ++len;

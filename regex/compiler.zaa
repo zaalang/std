@@ -138,7 +138,7 @@ fn emit_anychar(compile_context mut &ctx, var &any) -> void
     emit_select_rune(&mut ctx, 128, 0x10FFFF);
   }
 
-  for(var i = n; i < ctx.program.len - 3; i += get_width(ctx.program[i]))
+  for (var i = n; i < ctx.program.len - 3; i += get_width(ctx.program[i]))
   {
     set_fin(&mut ctx.program[i], false);
     set_out(&mut ctx.program[i], ctx.program.len);
@@ -159,7 +159,7 @@ fn emit_literal(compile_context mut &ctx, var &lit) -> void
     var buf = [0; 8];
     var str = std::ctoa(buf.data, buf.data + buf.len, lit.rune);
 
-    for(var i = 0; i < str.len; ++i)
+    for (var i = 0; i < str.len; ++i)
       emit_select_byte(&mut ctx, buf[i], buf[i]);
   }
 }
@@ -170,7 +170,7 @@ fn emit_klass(compile_context mut &ctx, var &cc) -> void
   var n = ctx.program.len;
   var m = ctx.program.len;
 
-  for(var &range : cc.runes)
+  for (var &range : cc.runes)
   {
     if (cc.flags & options::foldcase)
     {
@@ -201,7 +201,7 @@ fn emit_klass(compile_context mut &ctx, var &cc) -> void
 
   if (cc.flags & options::foldcase)
   {
-    for(var lo = std::ctz(folded); lo < 26; lo = std::ctz(folded))
+    for (var lo = std::ctz(folded); lo < 26; lo = std::ctz(folded))
     {
       var hi = lo + std::ctz(~(folded >> lo));
       m = ctx.program.len;
@@ -210,7 +210,7 @@ fn emit_klass(compile_context mut &ctx, var &cc) -> void
     }
   }
 
-  for(var i = n; i < m; i += get_width(ctx.program[i]))
+  for (var i = n; i < m; i += get_width(ctx.program[i]))
   {
     set_fin(&mut ctx.program[i], false);
     set_out(&mut ctx.program[i], ctx.program.len);
@@ -221,7 +221,7 @@ fn emit_repeat(compile_context mut &ctx, var &rep, expr *first, expr *last) -> v
 {
   var n = ctx.program.len;
 
-  for(var i = 0; i < rep.min; ++i)
+  for (var i = 0; i < rep.min; ++i)
   {
     n = ctx.program.len;
     emit(&mut ctx, first, last);
@@ -229,14 +229,14 @@ fn emit_repeat(compile_context mut &ctx, var &rep, expr *first, expr *last) -> v
 
   if (rep.max != ~0)
   {
-    for(var i = 0; i < rep.max - rep.min; ++i)
+    for (var i = 0; i < rep.max - rep.min; ++i)
     {
       emit_fork(&mut ctx, 0xFFFFFF);
 
       emit(&mut ctx, first, last);
     }
 
-    for(var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
+    for (var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
     {
       if (get_out(ctx.program[i]) == 0xFFFFFF)
         set_out(&mut ctx.program[i], ctx.program.len);
@@ -251,7 +251,7 @@ fn emit_repeat(compile_context mut &ctx, var &rep, expr *first, expr *last) -> v
     {
       emit(&mut ctx, first, last);
 
-      for(var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
+      for (var i = n; i < ctx.program.len; i += get_width(ctx.program[i]))
       {
         if (get_out(ctx.program[i]) == ctx.program.len)
           set_out(&mut ctx.program[i], n);
@@ -281,7 +281,7 @@ fn emit_alternate(compile_context mut &ctx, var &alt, expr *first1, expr *last1,
     set_out(&mut ctx.program[n], ctx.program.len);
   }
 
-  for(var i = n + 1; i < m; i += get_width(ctx.program[i]))
+  for (var i = n + 1; i < m; i += get_width(ctx.program[i]))
   {
     if (get_out(ctx.program[i]) == m)
       set_out(&mut ctx.program[i], ctx.program.len);
@@ -299,7 +299,7 @@ fn emit_capture(compile_context mut &ctx, var &cap, expr *first, expr *last) -> 
 
 fn emit(compile_context mut &ctx, expr *first, expr *last) -> void
 {
-  for(var op = first; op != last; op += op.len)
+  for (var op = first; op != last; op += op.len)
   {
     switch (*op)
     {
@@ -445,7 +445,7 @@ pub fn compile(std::vector<expr> &regex, std::vector<u32> mut &program, options 
 
 pub fn dump(std::vector<u32> &program) -> void
 {
-  for(var index = 5; index < program.len; )
+  for (var index = 5; index < program.len; )
   {
     var op = get_op(program[index]);
     var fin = get_fin(program[index]);

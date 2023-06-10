@@ -125,7 +125,7 @@ fn match<Args>(std::span<u32> program, std::string_view text, Args mut & ...args
 
   if (vm.execute(program, captures))
   {
-    #for(var mut &arg : args, const i = 2;; i += 2)
+    #for (var mut &arg : args, const i = 2;; i += 2)
     {
       std::sscan(std::string_view(captures[i], captures[i+1]), &mut arg);
     }
@@ -144,7 +144,7 @@ fn find<Args>(std::span<u32> program, std::string_view text, Args mut & ...args)
 
   if (vm.execute(program, &mut captures))
   {
-    #for(var mut &arg : args, const i = 2;; i += 2)
+    #for (var mut &arg : args, const i = 2;; i += 2)
     {
       std::sscan(std::string_view(captures[i], captures[i+1]), &mut arg);
     }

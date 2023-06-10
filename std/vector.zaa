@@ -239,7 +239,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    #for(const k = 0; k < __tuple_len<Args>; ++k)
+    #for (const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
 
     var slot = ensure_space(&mut this, this.end, 1);
@@ -253,7 +253,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   pub fn insert<Args>(this mut &, T *position, Args && ...args) -> T mut *
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    #for(const k = 0; k < __tuple_len<Args>; ++k)
+    #for (const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
 
     var slot = ensure_space(&mut this, position, 1);
@@ -278,7 +278,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     var slot = ensure_space(&mut this, position, std::count(other));
 
-    for(var it = slot, var first = other.begin, var last = other.end; first != last; ++it, ++first)
+    for (var it = slot, var first = other.begin, var last = other.end; first != last; ++it, ++first)
     {
       new<T>(it)((&&other)[first], allocator?: this.allocator);
     }
@@ -295,7 +295,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     var slot = ensure_space(&mut this, position, std::distance(first, last));
 
-    for(var it = slot; first != last; ++it, ++first)
+    for (var it = slot; first != last; ++it, ++first)
     {
       new<T>(it)(*first, allocator?: this.allocator);
     }

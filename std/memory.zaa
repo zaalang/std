@@ -39,7 +39,7 @@ pub fn memrchr(void *src, u8 ch, usize size) -> usize
 {
   var s = cast<u8*>(src) + size;
 
-  for(var n = size; n != 0; --n)
+  for (var n = size; n != 0; --n)
   {
     if (*--s == ch)
       return n - 1;
@@ -54,7 +54,7 @@ pub fn memcmp(void *lhs, void *rhs, usize size) -> int
   var l = cast<u8*>(lhs);
   var r = cast<u8*>(rhs);
 
-  for(; n != 0 && *l == *r; --n, ++l, ++r)
+  for (; n != 0 && *l == *r; --n, ++l, ++r)
     ;
 
   return n != 0 ? cast<int>(*l) - cast<int>(*r) : 0;

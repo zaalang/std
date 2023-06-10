@@ -172,7 +172,7 @@ struct heap
       return;
 
     var prev = &heap.firstfree;
-    for(var addr = cast<uintptr>(memory.addr); addr + sizeof<region> <= cast<uintptr>(memory.addr) + memory.size; addr += sizeof<region>)
+    for (var addr = cast<uintptr>(memory.addr); addr + sizeof<region> <= cast<uintptr>(memory.addr) + memory.size; addr += sizeof<region>)
     {
       *prev = cast<region mut *>(addr);
       prev = &prev.next;
@@ -199,7 +199,7 @@ struct heap
 
   fn reap(heap mut &heap, entry mut * mut &pending) -> void
   {
-    for(var entry = std::atomic_xchg(&pending, null); entry; )
+    for (var entry = std::atomic_xchg(&pending, null); entry; )
     {
       var next = entry.next;
       var region = entry.region;
@@ -284,7 +284,7 @@ struct heap
           }
 
           var prev = &region.firstfree;
-          for(var addr = cast<uintptr>(memory.addr) + sizeof<header>; addr + sz <= cast<uintptr>(memory.addr) + memory.size; addr += sz)
+          for (var addr = cast<uintptr>(memory.addr) + sizeof<header>; addr + sz <= cast<uintptr>(memory.addr) + memory.size; addr += sz)
           {
             *prev = cast<entry mut *>(addr);
             prev.region = region;
@@ -405,7 +405,7 @@ struct heap
   {
     heap.lock.lock();
 
-    for(var sc = 0; sc < 48; ++sc)
+    for (var sc = 0; sc < 48; ++sc)
     {
       reap(&mut heap, &mut heap.pending[sc]);
     }
@@ -417,17 +417,17 @@ struct heap
   {
     heap.lock.lock();
 
-    for(var sc = 0; sc < 48; ++sc)
+    for (var sc = 0; sc < 48; ++sc)
     {
       reap(&mut heap, &mut heap.pending[sc]);
 
-      for(var region = heap.active[sc]; region; )
+      for (var region = heap.active[sc]; region; )
       {
         var head = heap.active[sc];
         var next = region.next;
 
         var cnt = 0;
-        for(var free = region.firstfree; free; free = free.next)
+        for (var free = region.firstfree; free; free = free.next)
           cnt += 1;
 
         if (cnt == (region.size - sizeof<heap::header>) / heap::size_of_klass(region.klass))
@@ -465,14 +465,14 @@ fn dump(heap &&heap) -> void
   heap.lock.lock();
 
   var available = 0;
-  for(var free = heap.firstfree; free; free = free.next)
+  for (var free = heap.firstfree; free; free = free.next)
     available += 1;
 
   std::print("available regions: \n  ", available);
 
   std::print("filled regions:");
 
-  for(var region = heap.filled; region; )
+  for (var region = heap.filled; region; )
   {
     if (region.klass < 63)
       std::print("  ", region, ": ", region.addr, " [", region.size, "], ", (region.size - sizeof<heap::header>) / heap::size_of_klass(region.klass), " [x", heap::size_of_klass(region.klass), "] used");
@@ -492,15 +492,15 @@ fn dump(heap &&heap) -> void
 
   var active = false;
 
-  for(var sc = 0; sc < 48; ++sc)
+  for (var sc = 0; sc < 48; ++sc)
   {
     if (heap.active[sc])
       active = true;
 
-    for(var region = heap.active[sc]; region; )
+    for (var region = heap.active[sc]; region; )
     {
       var cnt = 0;
-      for(var free = region.firstfree; free; free = free.next)
+      for (var free = region.firstfree; free; free = free.next)
         cnt += 1;
 
       var used = (region.size - sizeof<heap::header>) / heap::size_of_klass(region.klass) - cnt;
@@ -524,12 +524,12 @@ fn dump(heap &&heap) -> void
 
   var pending = false;
 
-  for(var sc = 0; sc < 48; ++sc)
+  for (var sc = 0; sc < 48; ++sc)
   {
     if (heap.pending[sc])
       pending = true;
 
-    for(var entry = heap.pending[sc]; entry; entry = entry.next)
+    for (var entry = heap.pending[sc]; entry; entry = entry.next)
       std::print("  ", entry.region, ": ", entry, " [", heap::size_of_klass(entry.region.klass), "]");
   }
 
@@ -575,7 +575,7 @@ struct tcache
     if (sc >= 40)
       return result;
 
-    for(var i = 0; i < N; ++i)
+    for (var i = 0; i < N; ++i)
     {
       static thread_local n = #usize(0);
 
@@ -607,11 +607,11 @@ struct tcache
 
   fn reap(tcache mut &tcache) -> void
   {
-    for(var n = 0; n < N; ++n)
+    for (var n = 0; n < N; ++n)
     {
       tcache.locks[n].lock();
 
-      for(var sc = 0; sc < 40; ++sc)
+      for (var sc = 0; sc < 40; ++sc)
       {
         while (tcache.entries[n][sc])
           heap::free(&mut heap::instance, &pop(&mut tcache.entries[n][sc]).next);

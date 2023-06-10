@@ -377,3 +377,69 @@ pub struct mutable_file
   }
 
 #end
+
+#if __cfg("os.zaos")
+
+  import os.zaos.mman : *;
+  import os.zaos.fcntl : *;
+
+  extern fn thread_ring() -> os::ioring mut &;
+
+  fn strerror(uintptr value, u8 mut *buffer, usize buflen) -> std::string_view
+  {
+    return std::meta::enumerator_name(cast<std::errc>(value));
+  }
+
+  fn open_file(std::string_view path, mode mode) throws -> int
+  {
+    var fd = open(&mut thread_ring, string(path.data, path.len), (mode == mode::readonly) ? O_RDONLY : O_RDWR, 0o666);
+
+    if (fd < 0)
+      throw mmap_error(cast<uintptr>(-fd));
+
+    return fd;
+  }
+
+  fn map_file(int fd, u64 offset, usize mut &length, mode mode) throws -> u8 mut *
+  {
+    if (length == 0)
+    {
+      var fs = stat();
+      if (var result = stat(&mut thread_ring, fd, &fs, stats::size); result < 0)
+      {
+        close(&mut thread_ring, fd);
+
+        throw mmap_error(cast<uintptr>(-result));
+      }
+
+      length = cast<usize>(fs.size - offset);
+    }
+
+    var mmvec = os::mmvec();
+    mmvec.offset = offset;
+    mmvec.length = length;
+    mmvec.flags = 0;
+    mmvec.prot = (mode == mode::readonly) ? prot::readonly : prot::readwrite;
+
+    var addr = null<u8 mut *>();
+    if (var result = os::mmap(fd, &mmvec, 1, &addr, 0); result < 0)
+    {
+      close(&mut thread_ring, fd);
+
+      throw mmap_error(cast<uintptr>(-result));
+    }
+
+    return addr;
+  }
+
+  fn unmap(void *addr, usize length) -> void
+  {
+    munmap(addr, length);
+  }
+
+  fn close_file(int fd) -> void
+  {
+    close(&mut thread_ring, fd);
+  }
+
+#end

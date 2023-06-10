@@ -14,7 +14,7 @@ pub enum iteration_continue
 pub fn each<T, Func>(Range<T> &&range, Func &&func) -> void
   where !requires (Func func, T v) { func(v) == iteration_continue(); }
 {
-  for(var &&i : range)
+  for (var &&i : range)
   {
     func(&&i);
   }
@@ -25,7 +25,7 @@ pub fn each<T, Func>(Range<T> &&range, Func &&func) -> bool
 {
   var all = true;
 
-  for(var &&i : range)
+  for (var &&i : range)
   {
     if (func(&&i) != iteration_continue::yes)
     {
@@ -42,7 +42,7 @@ pub fn sum<T>(Range<T> &range, T seed = T()) -> T
 {
   var result = seed;
 
-  for(var &i : range)
+  for (var &i : range)
     result += i;
 
   return result;
@@ -53,7 +53,7 @@ pub fn accumulate<S, T, Func>(Range<T> &range, S seed, Func &&func) -> S
 {
   var result = seed;
 
-  for(var &i : range)
+  for (var &i : range)
     result = func(&move result, i);
 
   return result;

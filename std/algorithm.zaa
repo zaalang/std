@@ -49,7 +49,7 @@ pub fn fill_n<O, T, N>(O dst, Sentinal<O> end, T &value, N n) -> O
 
 pub fn fill<T>(Range<T> mut &range, T &value) -> void
 {
-  for(var mut &element : range)
+  for (var mut &element : range)
     element = value;
 }
 
@@ -169,7 +169,7 @@ pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &&f
 
 pub fn transform<O, I, Func>(I first, Sentinal<I> last, Func &&func) -> void
 {
-  for(; first != last; ++first)
+  for (; first != last; ++first)
   {
     *first = func(&move *first);
   }
@@ -180,7 +180,7 @@ pub fn transform!<T, Func>(Range<T> mut &range, Func &&func)
 {
   var first = range.begin;
 
-  for(var last = range.end; first != last; ++first)
+  for (var last = range.end; first != last; ++first)
   {
     range[first] = func(&move std::launder(range[first]));
   }
@@ -205,7 +205,7 @@ pub fn min<Args>(Args & ...args)
 {
   var &result = args.0;
 
-  #for(const k = 1; k < __tuple_len<Args>; ++k)
+  #for (const k = 1; k < __tuple_len<Args>; ++k)
   {
     if (args.#k < result)
       &result = &args.#k;
@@ -219,7 +219,7 @@ pub fn max<Args>(Args & ...args)
 {
   var &result = args.0;
 
-  #for(const k = 1; k < __tuple_len<Args>; ++k)
+  #for (const k = 1; k < __tuple_len<Args>; ++k)
   {
     if (result < args.#k)
       &result = &args.#k;
@@ -238,7 +238,7 @@ pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 
   if (first != last)
   {
-    for(++first; first != last; ++first)
+    for (++first; first != last; ++first)
     {
       if (cmp(*first, *result))
         result = first;
@@ -255,7 +255,7 @@ pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 
   if (var first = range.begin, var last = range.end; first != last)
   {
-    for(++first; first != last; ++first)
+    for (++first; first != last; ++first)
     {
       if (cmp(range[first], range[result]))
         result = first;
@@ -271,7 +271,7 @@ pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 
   if (first != last)
   {
-    for(++first; first != last; ++first)
+    for (++first; first != last; ++first)
     {
       if (cmp(*result, *first))
         result = first;
@@ -288,7 +288,7 @@ pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 
   if (var first = range.begin, var last = range.end; first != last)
   {
-    for(++first; first != last; ++first)
+    for (++first; first != last; ++first)
     {
       if (cmp(range[result], range[first]))
         result = first;
@@ -301,7 +301,7 @@ pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
 pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where requires (I i, Value &v, Cmp &cmp) { cmp(*i, v); }
 {
-  for(var len = std::distance(first, last); len > 0; )
+  for (var len = std::distance(first, last); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -326,7 +326,7 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
 {
   var first = range.begin;
 
-  for(var len = std::count(range); len > 0; )
+  for (var len = std::count(range); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -348,7 +348,7 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
 pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   where requires (I i, Value &v, Cmp &cmp) { cmp(v, *i); }
 {
-  for(var len = std::distance(first, last); len > 0; )
+  for (var len = std::distance(first, last); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -373,7 +373,7 @@ pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
 {
   var first = range.begin;
 
-  for(var len = std::count(range); len > 0; )
+  for (var len = std::count(range); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -433,7 +433,7 @@ pub fn count<I, Value>(I first, Sentinal<I> last, Value &value) -> usize
 {
   var count = 0;
 
-  for(; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (*first == value)
       ++count;
@@ -447,7 +447,7 @@ pub fn count<T, Value>(Range<T> &&range, Value &value) -> usize
 {
   var count = 0;
 
-  for(var first = range.begin, var last = range.end; first != last; ++first)
+  for (var first = range.begin, var last = range.end; first != last; ++first)
   {
     if (range[first] == value)
       ++count;
@@ -461,7 +461,7 @@ pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
 {
   var count = 0;
 
-  for(; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (pred(*first))
       ++count;
@@ -474,7 +474,7 @@ pub fn count_if<T, Pred>(Range<T> &&range, Pred &pred) -> usize
 {
   var count = 0;
 
-  for(var first = range.begin, var last = range.end; first != last; ++first)
+  for (var first = range.begin, var last = range.end; first != last; ++first)
   {
     if (pred(range[first]))
       ++count;
@@ -488,7 +488,7 @@ pub fn count_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
 {
   var count = 0;
 
-  for(; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (!pred(*first))
       ++count;
@@ -501,7 +501,7 @@ pub fn count_if_not<T, Pred>(Range<T> &&range, Pred &pred) -> usize
 {
   var count = 0;
 
-  for(var first = range.begin, var last = range.end; first != last; ++first)
+  for (var first = range.begin, var last = range.end; first != last; ++first)
   {
     if (!pred(range[first]))
       ++count;
@@ -513,7 +513,7 @@ pub fn count_if_not<T, Pred>(Range<T> &&range, Pred &pred) -> usize
 pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
   where __is_match<Iterator, I> && requires (I i, Value &v) { *i == v; }
 {
-  for(; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (*first == value)
       return first;
@@ -528,7 +528,7 @@ pub fn find<T, Value>(Range<T> &&range, Value &value)
 {
   var first = range.begin;
 
-  for(var last = range.end; first != last; ++first)
+  for (var last = range.end; first != last; ++first)
   {
     if (range[first] == value)
       return first;
@@ -554,7 +554,7 @@ pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
 {
   var first = range.begin;
 
-  for(var last = range.end; first != last; ++first)
+  for (var last = range.end; first != last; ++first)
   {
     if (pred(range[first]))
       return first;
@@ -580,7 +580,7 @@ pub fn find_if_not<T, Pred>(Range<T> &&range, Pred &pred)
 {
   var first = range.begin;
 
-  for(var last = range.end; first != last; ++first)
+  for (var last = range.end; first != last; ++first)
   {
     if (!pred(range[first]))
       return first;
@@ -596,7 +596,7 @@ pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
 
   if (first != last)
   {
-    for(var i = first; ++i != last; )
+    for (var i = first; ++i != last; )
     {
       if (!(*i == value))
         *first++ = &move *i;
@@ -614,7 +614,7 @@ pub fn remove<T, Value>(Range<T> &&range, Value &value)
 
   if (var last = range.end; first != last)
   {
-    for(var i = first; ++i != last; )
+    for (var i = first; ++i != last; )
     {
       if (!(range[i] == value))
         range[first++] = &move range[i];
@@ -631,7 +631,7 @@ pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
 
   if (first != last)
   {
-    for(var i = first; ++i != last; )
+    for (var i = first; ++i != last; )
     {
       if (!pred(*i))
         *first++ = &move *i;
@@ -648,7 +648,7 @@ pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
 
   if (var last = range.end; first != last)
   {
-    for(var i = first; ++i != last; )
+    for (var i = first; ++i != last; )
     {
       if (!pred(range[i]))
         range[first++] = &move range[i];

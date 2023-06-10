@@ -17,7 +17,7 @@ pub struct hash
   {
     var seed = 0;
 
-    #for(var &item : items)
+    #for (var &item : items)
       mix(&mut seed, hash(item));
 
     return seed;
@@ -27,7 +27,7 @@ pub struct hash
   {
     var seed = 0;
 
-    for( ; first != last; ++first)
+    for ( ; first != last; ++first)
       mix(&mut seed, hash(range[first]));
 
     return seed;
@@ -42,15 +42,15 @@ pub struct hash
       var data = cast<u8*>(first);
       var len = count * sizeof<T>;
 
-      for( ; len >= 8; data += 8, len -= 8)
+      for ( ; len >= 8; data += 8, len -= 8)
         mix(&mut seed, hash(*cast<usize*>(data)));
 
-      for( ; len != 0; data += 1, len -= 1)
+      for ( ; len != 0; data += 1, len -= 1)
         mix(&mut seed, hash(*data));
     }
     else
     {
-      for( ; count != 0; ++first, --count)
+      for ( ; count != 0; ++first, --count)
         mix(&mut seed, hash(*first));
     }
 
@@ -191,7 +191,7 @@ pub fn hash<T>(var &hasher, T &object) -> usize
 {
   var seed = 0;
 
-  #for(const k : std::meta::fields_of($T))
+  #for (const k : std::meta::fields_of($T))
     seed = hasher.combine(seed, object.#k);
 
   return seed;
@@ -202,7 +202,7 @@ pub fn hash<T>(var &hasher, T &object) -> usize
 {
   var seed = 0;
 
-  #for(const k = 1; k != std::meta::fields_of($T).len; ++k)
+  #for (const k = 1; k != std::meta::fields_of($T).len; ++k)
     if (object.kind == cast(k))
       seed = hasher(object.#k);
 

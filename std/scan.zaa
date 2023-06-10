@@ -327,7 +327,7 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
         switch (arg)
         {
           #{
-            #for(const k = 0; k < std::tuple_len<Args>; ++k)
+            #for (const k = 0; k < std::tuple_len<Args>; ++k)
             {
               -> {
                 case $(k):

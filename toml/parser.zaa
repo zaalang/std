@@ -91,7 +91,7 @@ fn merge(node mut &lhs, node mut &rhs) -> bool
       array.append(&move rhs.as_vec);
 
     case Map[map]:
-      for(var mut &it : rhs.as_map)
+      for (var mut &it : rhs.as_map)
       {
         if (var j = map.insert(&move it); !j.1)
         {
@@ -222,7 +222,7 @@ fn block_mapping_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
     ctx.consume_token(&mut is);
   }
 
-  for(;;)
+  for (;;)
   {
     switch (ctx.tok.type)
     {

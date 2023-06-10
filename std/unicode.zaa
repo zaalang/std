@@ -154,7 +154,6 @@ pub fn to_uppercase(char ch) -> caseconv_result
   return result;
 }
 
-
 pub fn is_non_spacing(char ch) -> bool
 {
   // non-spacing characters
@@ -213,16 +212,16 @@ pub fn is_non_spacing(char ch) -> bool
   if (nonspacing[0].0 <= ch && ch <= nonspacing[nonspacing.len - 1].1)
   {
     var lo = 0;
-    var hi = nonspacing.len - 1;
+    var hi = nonspacing.len;
 
-    while (hi >= lo)
+    while (hi > lo)
     {
       var mid = (lo + hi) / 2;
 
       if (ch > nonspacing[mid].1)
         lo = mid + 1;
       else if (ch < nonspacing[mid].0)
-        hi = mid - 1;
+        hi = mid;
       else
         return true;
     }
@@ -250,16 +249,16 @@ pub fn is_wide_spacing(char ch) -> bool
   if (widespacing[0].0 <= ch && ch <= widespacing[widespacing.len - 1].1)
   {
     var lo = 0;
-    var hi = widespacing.len - 1;
+    var hi = widespacing.len;
 
-    while (hi >= lo)
+    while (hi > lo)
     {
       var mid = (lo + hi) / 2;
 
       if (ch > widespacing[mid].1)
         lo = mid + 1;
       else if (ch < widespacing[mid].0)
-        hi = mid - 1;
+        hi = mid;
       else
         return true;
     }

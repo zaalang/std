@@ -38,7 +38,7 @@ pub struct bigint<N>
   {
     var sum = std::add_with_carry(this.bits[0], y);
     
-    for(var i = 0; i != this.n; ++i)
+    for (var i = 0; i != this.n; ++i)
     {
       this.bits[i] = sum.0;
       
@@ -60,7 +60,7 @@ pub struct bigint<N>
   {
     var mul = std::mul_with_carry(this.bits[0], y);
 
-    for(var i = 0; i != this.n; ++i)
+    for (var i = 0; i != this.n; ++i)
     {
       this.bits[i] = mul.0;
       
@@ -83,14 +83,14 @@ pub struct bigint<N>
     var offset = cast<usize>(shift) / 64;
     shift %= 64;
 
-    for(var i = this.n + 1; i != 0; --i)
+    for (var i = this.n + 1; i != 0; --i)
     {
       this.bits[i + offset] = this.bits[i] << shift + this.bits[i - 1] >> (64 - shift);
     }
 
     this.bits[offset] = this.bits[0] << shift;
 
-    for(var i = 0; i != offset; ++i)
+    for (var i = 0; i != offset; ++i)
       this.bits[i] = 0;
 
     this.n += offset + 1;
@@ -106,7 +106,7 @@ pub struct bigint<N>
     if (this.n != that.n)
       return false;
     
-    for(var i = 0; i != this.n; ++i)
+    for (var i = 0; i != this.n; ++i)
       if (this.bits[i] != that.bits[0])
         return false;
       
@@ -131,7 +131,7 @@ pub struct bigint<N>
 
 pub fn mulexp<N>(bigint<N> mut &x, int exp) -> void
 {
-  for(; exp > 16; exp -= 16)
+  for (; exp > 16; exp -= 16)
     x *= std::pow(10, 16);
 
   x *= std::pow(10, exp);
@@ -145,7 +145,7 @@ pub fn divmod<N>(bigint<N> mut &x, bigint<N> &y) -> u64
   {
     var sum = std::sub_with_borrow(x.bits[0], y.bits[0]);
 
-    for(var i = 0; i != x.n; ++i)
+    for (var i = 0; i != x.n; ++i)
     {
       x.bits[i] = sum.0;
 
@@ -172,7 +172,7 @@ pub fn absdiff<N>(bigint<N> &x, bigint<N> &y) -> bigint<N>
 
   var sum = std::sub_with_carry(x.bits[0], y.bits[0]);
 
-  for(var i = 0; i != x.n; ++i)
+  for (var i = 0; i != x.n; ++i)
   {
     result.bits[i] = sum.0;
 
@@ -181,7 +181,7 @@ pub fn absdiff<N>(bigint<N> &x, bigint<N> &y) -> bigint<N>
 
   result.bits[x.n] = sum.0 - sum.1;
 
-  for(var i = 0; i <= x.n; ++i)
+  for (var i = 0; i <= x.n; ++i)
   {
     if (result.bits[i] != 0)
       result.n = i;

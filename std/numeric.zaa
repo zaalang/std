@@ -22,6 +22,9 @@ pub struct I8
   pub const min = -128;
   pub const max = 127;
   
+  pub const radix = 2;
+  pub const digits = 7;
+
   pub const is_signed = true;
   pub const is_integer = true;
 }
@@ -30,6 +33,9 @@ pub struct I16
 {
   pub const min = -32_768;
   pub const max = 32_767;
+
+  pub const radix = 2;
+  pub const digits = 15;
 
   pub const is_signed = true;
   pub const is_integer = true;
@@ -40,6 +46,9 @@ pub struct I32
   pub const min = -2_147_483_648;
   pub const max = 2_147_483_647;
 
+  pub const radix = 2;
+  pub const digits = 31;
+
   pub const is_signed = true;
   pub const is_integer = true;
 }
@@ -48,6 +57,9 @@ pub struct I64
 {
   pub const min = -9_223_372_036_854_775_808;
   pub const max = 9_223_372_036_854_775_807;
+
+  pub const radix = 2;
+  pub const digits = 63;
 
   pub const is_signed = true;
   pub const is_integer = true;
@@ -58,6 +70,9 @@ pub struct U8
   pub const min = 0;
   pub const max = 255;
   
+  pub const radix = 2;
+  pub const digits = 8;
+
   pub const is_signed = false;
   pub const is_integer = true;
 }
@@ -66,6 +81,9 @@ pub struct U16
 {
   pub const min = 0;
   pub const max = 65_535;
+
+  pub const radix = 2;
+  pub const digits = 16;
 
   pub const is_signed = false;
   pub const is_integer = true;
@@ -76,6 +94,9 @@ pub struct U32
   pub const min = 0;
   pub const max = 4_294_967_295;
 
+  pub const radix = 2;
+  pub const digits = 32;
+
   pub const is_signed = false;
   pub const is_integer = true;
 }
@@ -84,6 +105,9 @@ pub struct U64
 {
   pub const min = 0;
   pub const max = 18_446_744_073_709_551_615;
+
+  pub const radix = 2;
+  pub const digits = 64;
 
   pub const is_signed = false;
   pub const is_integer = true;
@@ -155,6 +179,11 @@ pub struct numeric_traits<T>
 {
   pub const min = type_traits::min;
   pub const max = type_traits::max;
+  pub const smallest = type_traits::smallest;
+  pub const epsilon = type_traits::epsilon;
+
+  pub const radix = type_traits::radix;
+  pub const digits = type_traits::digits;
 
   pub const is_signed = type_traits::is_signed;
   pub const is_integer = type_traits::is_integer;

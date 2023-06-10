@@ -1,0 +1,214 @@
+//
+// lml quaternion
+//
+
+import std.math;
+import lml.vector : Vector;
+
+pub struct quaternion<T, V = lml::vector<T, 3>>
+{
+  pub T scalar;
+  pub V vector;
+
+  pub using vector_t = Vector<quaternion<T, V>, f32, 4>;
+
+  pub quaternion(T w, T x, T y, T z)
+    : scalar(w), vector(x, y, z)
+  {
+  }
+
+  pub quaternion(T w, V &vector)
+    : scalar(w), vector(vector)
+  {
+  }
+
+  pub quaternion(V &axis, T angle)
+    : scalar(std::cos(0.5*angle)), vector(axis * std::sin(0.5*angle))
+  {
+  }
+
+  pub quaternion(V &xaxis, V &yaxis, V &zaxis)
+  {
+    using T;
+    using std::sqrt;
+
+    let sx = get<0>(xaxis);
+    let sy = get<1>(yaxis);
+    let sz = get<2>(zaxis);
+
+    if (sx + sy + sz > T(0.0))
+    {
+      let s = sqrt(sx + sy + sz + T(1.0));
+      let t = T(0.5) / s;
+
+      scalar = T(0.5) * s;
+      vector = V(get<2>(yaxis) - get<1>(zaxis), get<0>(zaxis) - get<2>(xaxis), get<1>(xaxis) - get<0>(yaxis)) * t;
+    }
+    else if (sx > sy && sx > sz)
+    {
+      let s = sqrt(sx - sy - sz + T(1.0));
+      let t = T(0.5) / s;
+
+      scalar = T(0.5) * s;
+      vector = V(get<0>(yaxis) + get<1>(xaxis), get<2>(xaxis) + get<0>(zaxis), get<2>(yaxis) - get<1>(zaxis)) * t;
+    }
+    else if (sy > sz)
+    {
+      let s = sqrt(-sx + sy - sz + T(1.0));
+      let t = T(0.5) / s;
+
+      scalar = T(0.5) * s;
+      vector = V(get<0>(yaxis) + get<1>(xaxis), get<1>(zaxis) + get<2>(yaxis), get<0>(zaxis) - get<2>(xaxis)) * t;
+    }
+    else
+    {
+      let s = sqrt(-sx - sy + sz + T(1.0));
+      let t = T(0.5) / s;
+
+      scalar = T(0.5) * s;
+      vector = V(get<0>(zaxis) + get<2>(xaxis), get<1>(zaxis) + get<2>(yaxis), get<1>(xaxis) - get<0>(yaxis)) * t;
+    }
+  }
+
+  pub const fn w(this&) -> T
+  {
+    return this.scalar;
+  }
+
+  pub const fn x(this&) -> T
+  {
+    return get<0>(this.vector);
+  }
+
+  pub const fn y(this&&) -> T
+  {
+    return get<1>(this.vector);
+  }
+
+  pub const fn z(this&&) -> T
+  {
+    return get<2>(this.vector);
+  }
+
+  // Euler
+  pub const fn ax(this&) -> T
+  {
+    using T;
+    using std::atan2;
+
+    var &&w = this.scalar;
+    var &&x = get<0>(this.vector);
+    var &&y = get<1>(this.vector);
+    var &&z = get<2>(this.vector);
+
+    return atan2(2.0*(y*z + x*w), w*w - x*x - y*y + z*z);
+  }
+
+  pub const fn ay(this&) -> T
+  {
+    using T;
+    using std::asin;
+    using std::clamp;
+
+    var &&w = this.scalar;
+    var &&x = get<0>(this.vector);
+    var &&y = get<1>(this.vector);
+    var &&z = get<2>(this.vector);
+
+    return asin(clamp(2.0*(y*w - x*z)/(w*w + x*x + y*y + z*z), T(-1.0), T(1.0)));
+  }
+
+  pub const fn az(this&) -> T
+  {
+    using T;
+    using std::atan2;
+
+    var &&w = this.scalar;
+    var &&x = get<0>(this.vector);
+    var &&y = get<1>(this.vector);
+    var &&z = get<2>(this.vector);
+
+    return atan2(2.0*(x*y + z*w), w*w + x*x - y*y - z*z);
+  }
+
+  // Basis
+  pub fn xaxis(this&) -> V
+  {
+    var &&w = this.scalar;
+    var &&x = get<0>(this.vector);
+    var &&y = get<1>(this.vector);
+    var &&z = get<2>(this.vector);
+
+    return V(w*w + x*x - y*y - z*z, 2.0*(x*y + z*w), 2.0*(x*z - y*w));
+  }
+
+  pub fn yaxis(this&) -> V
+  {
+    var &&w = this.scalar;
+    var &&x = get<0>(this.vector);
+    var &&y = get<1>(this.vector);
+    var &&z = get<2>(this.vector);
+
+    return V(2.0*(x*y - z*w), w*w - x*x + y*y - z*z, 2.0*(y*z + x*w));
+  }
+
+  pub fn zaxis(this&) -> V
+  {
+    var &&w = this.scalar;
+    var &&x = get<0>(this.vector);
+    var &&y = get<1>(this.vector);
+    var &&z = get<2>(this.vector);
+
+    return V(2.0*(x*z + y*w), 2.0*(y*z - x*w), w*w - x*x - y*y + z*z);
+  }
+
+  pub fn get<i>(quaternion &this) -> T
+  {
+    #if (i == 0)
+      return this.scalar;
+    #else
+      return get<i-1>(this.vector);
+  }
+
+  pub quaternion() = default;
+  pub quaternion(quaternion&&) = default;
+  pub fn =(quaternion mut &, quaternion &&) -> quaternion mut & = default;
+  pub ~quaternion() = default;
+}
+
+/// conjugate a quaternion
+pub const fn conjugate<T, V>(quaternion<T, V> &q) -> quaternion<T, V>
+{
+  return quaternion<T, V>(q.w, -q.x, -q.y, -q.z);
+}
+
+/// quaternion between two unit vectors
+pub const fn rotation<T, V>(Vector<V, T, 3> &u, Vector<V, T, 3> &v) -> quaternion<T, V>
+{
+  var costheta = dot(u, v);
+
+  var axis = orthogonal(u, v);
+
+  return normalise(quaternion<T, V>(T(1.0) + costheta, axis));
+}
+
+/// quaternion multiplication
+pub const fn *<T, V>(quaternion<T, V> &u, quaternion<T, V> &v) -> quaternion<T, V>
+{
+  return quaternion<T, V>(u.w*v.w - dot(u.vector, v.vector), u.w*v.vector + v.w*u.vector + cross(u.vector, v.vector));
+}
+
+/// quaternion slerp
+pub const fn slerp<T, V>(quaternion<T, V> &lower, quaternion<T, V> &upper, T alpha) -> quaternion<T, V>
+{
+  var costheta = dot(lower, upper);
+
+  var flip = std::copysign(T(1.0), costheta);
+
+  if (costheta < -T(0.95) || costheta > T(0.95))
+    return lerp(lower, flip*upper, alpha);
+
+  var theta = std::acos(flip*costheta);
+
+  return (std::sin(theta*(1.0-alpha))*lower + std::sin(theta*alpha)*flip*upper) / std::sin(theta);
+}

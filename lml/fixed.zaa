@@ -1,0 +1,454 @@
+//
+// lml fixed
+//
+
+import std.math;
+import std.numeric;
+import std.fmt;
+
+pub struct fixed<R = i32, P = 0>
+{
+  pub R value;
+
+  pub using rep = R;
+  pub const exponent = P;
+
+  pub struct numeric_traits
+  {
+    pub const min = #fixed(std::numeric_traits<R>::min, P);
+    pub const max = #fixed(std::numeric_traits<R>::max, P);
+    pub const smallest = #fixed(1, P);
+    pub const epsilon = #fixed(1, P);
+
+    pub const is_signed = std::numeric_traits<R>::is_signed;
+    pub const is_integer = false;
+  }
+
+
+  pub fixed<T>(T value)
+    where __is_integral<T>
+    : value(fixed_cast<fixed>(fixed<T, 0>(value, 0)).value)
+  {
+  }
+
+  pub fixed<T>(T value)
+    where __is_floating_point<T>
+    : value(cast<R>(value * std::pow(2.0, -exponent)))
+  {
+  }
+
+  pub fixed<R2, P2>(fixed<R2, P2> value)
+    : value(fixed_cast<fixed>(value).value)
+  {
+  }
+
+  pub fn =<R2, P2>(fixed mut &lhs, fixed<R2, P2> &rhs) -> fixed mut &
+  {
+    lhs.value = fixed_cast<fixed>(rhs).value;
+
+    return &lhs;
+  }
+
+  pub fn as<T>(this&) -> T
+  {
+    #if (__is_floating_point<T>)
+      return cast<T>(this.value) * std::pow(2.0, exponent);
+    #else
+      return fixed_cast<fixed<T, 0>>(this).to_rep;
+  }
+
+  pub fn from_rep(R value) -> fixed
+  {
+    return fixed(value, exponent);
+  }
+
+  pub fn to_rep(this&) -> R
+  {
+    return this.value;
+  }
+
+  fixed(R value, #int exp)
+    : value(value)
+  {
+    std::assert(exp == P);
+  }
+
+  pub fn ==(fixed &, fixed &) -> bool = default;
+  pub fn <=>(fixed &, fixed &) -> int = default;
+
+  pub fixed() = default;
+  pub fixed(fixed &) = default;
+  pub fn =(fixed mut &, fixed &) -> fixed mut & = default;
+  pub ~fixed() = default;
+}
+
+struct common_type<R1, P1, R2, P2>
+{
+  #if (sizeof<R2> < sizeof<R1>)
+    using rep = R1;
+  #else
+    using rep = R2;
+  #end
+}
+
+pub const fn fixed_cast<To, R2, P2>(fixed<R2, P2> other) -> To
+{
+  using R1 = To::rep;
+  const P1 = To::exponent;
+
+  using ct = common_type<R1, P1, R2, P2>;
+
+  #if (P2 < P1)
+    return To(cast<R1>(cast<ct::rep>(other.value) / std::pow(2, P1 - P2)), P1);
+  #else
+    return To(cast<R1>(cast<ct::rep>(other.value) * std::pow(2, P2 - P1)), P1);
+}
+
+pub const fn -<R, P>(fixed<R, P> lhs)
+{
+  return fixed<R, P>(-lhs.value, P);
+}
+
+pub const fn +<T, R, P>(T lhs, fixed<R, P> rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs + rhs.as<T>;
+}
+
+pub const fn +<R, P, T>(fixed<R, P> lhs, T rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs.as<T> + rhs;
+}
+
+pub const fn +<R, P>(R lhs, fixed<R, P> rhs)
+{
+  return fixed(lhs, 0) + rhs;
+}
+
+pub const fn +<R, P>(fixed<R, P> lhs, R rhs)
+{
+  return lhs + fixed(rhs, 0);
+}
+
+pub const fn +<R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = std::min(P1, P2);
+
+  return fixed<ct::rep, exp>(fixed<ct::rep, exp>(lhs).value + fixed<ct::rep, exp>(rhs).value, exp);
+}
+
+pub const fn -<T, R, P>(T lhs, fixed<R, P> rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs - rhs.as<T>;
+}
+
+pub const fn -<R, P, T>(fixed<R, P> lhs, T rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs.as<T> - rhs;
+}
+
+pub const fn -<R, P>(R lhs, fixed<R, P> rhs)
+{
+  return fixed(lhs, 0) - rhs;
+}
+
+pub const fn -<R, P>(fixed<R, P> lhs, R rhs)
+{
+  return lhs - fixed(rhs, 0);
+}
+
+pub const fn -<R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = std::min(P1, P2);
+
+  return fixed<ct::rep, exp>(fixed<ct::rep, exp>(lhs).value - fixed<ct::rep, exp>(rhs).value, exp);
+}
+
+pub const fn *<T, R, P>(T lhs, fixed<R, P> rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs * rhs.as<T>;
+}
+
+pub const fn *<R, P, T>(fixed<R, P> lhs, T rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs.as<T> * rhs;
+}
+
+pub const fn *<R, P>(R lhs, fixed<R, P> rhs)
+{
+  return fixed(lhs, 0) * rhs;
+}
+
+pub const fn *<R, P>(fixed<R, P> lhs, R rhs)
+{
+  return lhs * fixed(rhs, 0);
+}
+
+pub const fn *<R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = P1 + P2;
+
+  return fixed<ct::rep, exp>(fixed<ct::rep, P1>(lhs).value * fixed<ct::rep, P2>(rhs).value, exp);
+}
+
+pub const fn /<T, R, P>(T lhs, fixed<R, P> rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs / rhs.as<T>;
+}
+
+pub const fn /<R, P, T>(fixed<R, P> lhs, T rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs.as<T> / rhs;
+}
+
+pub const fn /<R, P>(R lhs, fixed<R, P> rhs)
+{
+  return fixed(lhs, 0) / rhs;
+}
+
+pub const fn /<R, P>(fixed<R, P> lhs, R rhs)
+{
+  return lhs / fixed(rhs, 0);
+}
+
+pub const fn /<R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = P1 - P2;
+
+  return fixed<ct::rep, exp>(fixed<ct::rep, P1>(lhs).value / fixed<ct::rep, P2>(rhs).value, exp);
+}
+
+pub const fn %<T, R, P>(T lhs, fixed<R, P> rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs % rhs.as<T>;
+}
+
+pub const fn %<R, P, T>(fixed<R, P> lhs, T rhs) -> T
+  where __is_floating_point<T>
+{
+  return lhs.as<T> % rhs;
+}
+
+pub const fn %<R, P>(R lhs, fixed<R, P> rhs)
+{
+  return fixed(lhs, 0) % rhs;
+}
+
+pub const fn %<R, P>(fixed<R, P> lhs, R rhs)
+{
+  return lhs % fixed(rhs, 0);
+}
+
+pub const fn %<R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = P1;
+
+  return fixed<ct::rep, exp>(fixed<ct::rep, P1>(lhs).value % fixed<ct::rep, P2>(rhs).value, exp);
+}
+
+pub const fn ==<R, P>(R lhs, fixed<R, P> rhs) -> bool
+{
+  return fixed<R, P>(lhs) == rhs;
+}
+
+pub const fn ==<R, P>(fixed<R, P> lhs, R rhs) -> bool
+{
+  return lhs == fixed<R, P>(rhs);
+}
+
+pub const fn ==<R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs) -> bool
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = std::max(P1, P2);
+
+  return fixed<ct::rep, exp>(lhs).value == fixed<ct::rep, exp>(rhs).value;
+}
+
+pub const fn <=><R, P>(R lhs, fixed<R, P> rhs) -> int
+{
+  return fixed<R, P>(lhs) <=> rhs;
+}
+
+pub const fn <=><R, P>(fixed<R, P> lhs, R rhs) -> int
+{
+  return lhs <=> fixed<R, P>(rhs);
+}
+
+pub const fn <=><R1, P1, R2, P2>(fixed<R1, P1> lhs, fixed<R2, P2> rhs) -> int
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = std::max(P1, P2);
+
+  return fixed<ct::rep, exp>(lhs).value <=> fixed<ct::rep, exp>(rhs).value;
+}
+
+pub const fn abs<R, P>(fixed<R, P> x)
+{
+  return fixed<R, P>(__abs(x.value), P);
+}
+
+pub const fn absdiff<R1, P1, R2, P2>(fixed<R1, P1> x, fixed<R2, P2> y)
+{
+  return (x < y) ? y - x : x - y;
+}
+
+pub const fn floor<R, P>(fixed<R, P> x)
+{
+  #if (P < 0)
+    return fixed<R, 0>(x.value >> -P, 0);
+  #else
+    return fixed<R, 0>(x.value, 0);
+}
+
+pub const fn ceil<R, P>(fixed<R, P> x)
+{
+  #if (P < 0)
+    return fixed<R, 0>((x.value + (std::pow(2, -P) - 1)) >> -P, 0);
+  #else
+    return fixed<R, 0>(x.value, 0);
+}
+
+pub const fn round<R, P>(fixed<R, P> x)
+{
+  #if (P < 0)
+    return fixed<R, 0>((x.value + std::pow(2, -P)/2 - 1) >> -P, 0);
+  #else
+    return fixed<R, 0>(x.value, 0);
+}
+
+pub const fn trunc<R, P>(fixed<R, P> x)
+{
+  #if (P < 0)
+    return fixed<R, 0>(x.value / std::pow(2, -P), 0);
+  #else
+    return fixed<R, 0>(x.value, 0);
+}
+
+pub const fn fract<R, P>(fixed<R, P> x)
+{
+  return x - trunc(x);
+}
+
+pub const fn fcmp<R, P, T>(fixed<R, P> x, T y) -> bool
+{
+  return absdiff(x, fixed<R, P>(y)).value == 0;
+}
+
+pub const fn min<R1, P1, R2, P2>(fixed<R1, P1> x, fixed<R2, P2> y)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = std::min(P1, P2);
+
+  return fixed<ct::rep, exp>(__min(fixed<ct::rep, exp>(x).value, fixed<ct::rep, exp>(y).value), exp);
+}
+
+pub const fn max<R1, P1, R2, P2>(fixed<R1, P1> x, fixed<R2, P2> y)
+{
+  using ct = common_type<R1, P1, R2, P2>;
+  const exp = std::min(P1, P2);
+
+  return fixed<ct::rep, exp>(__max(fixed<ct::rep, exp>(x).value, fixed<ct::rep, exp>(y).value), exp);
+}
+
+pub const fn sqrt<R, P>(fixed<R, P> x)
+{
+  std::assert(P & 1 == 0);
+  std::assert(x.value >= 0);
+
+  var c = 0;
+  var d = 1 << (std::numeric_traits<R>::digits - 1);
+  var x = x.value;
+
+  while (d > x)
+    d >>= 2;
+
+  while (d != 0)
+  {
+    if (x >= c + d)
+    {
+      x -= c + d;
+      c = (c >> 1) + d;
+    }
+    else
+    {
+      c >>= 1;
+    }
+
+    d >>= 2;
+  }
+
+  return fixed<R, P/2>(c, P/2);
+}
+
+pub const fn sin<R, P>(fixed<R, P> x)
+{
+  const PI = #fixed<R, 2*P>(3.14159265358979323846264338);
+  const TWOPI = #fixed<R, 2*P>(6.28318530717958647692528676);
+  const INVHALFPI = #fixed<R, P>(1.0/1.57079632679489661923132169);
+
+  x = (x % TWOPI) * INVHALFPI;
+
+  if (x < 0)
+    x += 4;
+
+  var sign = +1;
+
+  if (x > 2)
+    sign = -1;
+
+  if (x > 2)
+    x -= 2;
+
+  if (x > 1)
+    x = 2 - x;
+
+  var xx = fixed<R, P>(x * x);
+
+  return sign * x * fixed<R, P>(PI - xx * fixed<R, P>(TWOPI - 5 - xx * fixed<R, P>(PI - 3)))/2;
+}
+
+pub const fn cos<R, P>(fixed<R, P> x)
+{
+  const PI = #fixed<R, 2*P>(3.14159265358979323846264338);
+  const TWOPI = #fixed<R, 2*P>(6.28318530717958647692528676);
+  const QUATPI = #fixed<R, 2*P>(0.785398163397448309615660845);
+  const INVHALFPI = #fixed<R, P>(1.0/1.57079632679489661923132169);
+
+  x = (x % TWOPI) * INVHALFPI;
+
+  if (x < 0)
+    x += 4;
+
+  var sign = +1;
+
+  if (x > 1 && !(x > 3))
+    sign = -1;
+
+  if (x > 2)
+    x -= 2;
+
+  if (x > 1)
+    x = 2 - x;
+
+  var xx = fixed<R, P>(x * x);
+
+  return sign * (1 - xx * fixed<R, P>((2 - QUATPI) - xx * fixed<R, P>(1 - QUATPI)));
+}
+
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, fixed<R, P> &fixed) throws -> void
+{
+  std::fmt_to(&mut os, &mut ctx, fixed.as<f64>);
+}

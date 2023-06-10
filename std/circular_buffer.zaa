@@ -288,7 +288,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
     var index = position.cursor;
 
-    for(var it = position, var first = other.begin, var last = other.end; first != last; ++it, ++first)
+    for (var it = position, var first = other.begin, var last = other.end; first != last; ++it, ++first)
     {
       it = insert(&mut this, it, (&&other)[first]);
 
@@ -305,7 +305,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     var index = position.cursor;
 
-    for(var it = position; first != last; ++it, ++first)
+    for (var it = position; first != last; ++it, ++first)
     {
       it = insert(&mut this, it, *first);
 

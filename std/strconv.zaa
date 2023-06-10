@@ -578,7 +578,7 @@ pub fn atoi(u8 *beg, u8 *end, usize mut &value, int base = 10) -> strconv_result
   var v = 0;
   var ch = beg;
 
-  for(; ch != end; ++ch)
+  for (; ch != end; ++ch)
   {
     var d = 0;
 
@@ -722,7 +722,7 @@ fn atof_special<T>(u8 *beg, u8 *end, T mut &value) -> usize
   const inf_strs = [ "infinity", "INFINITY", "inf", "Inf", "INF" ];
   const nan_strs = [ "NaN", "NAN", "nan" ];
 
-  for(var &str : inf_strs)
+  for (var &str : inf_strs)
   {
     if (end - beg < str.len)
       continue;
@@ -734,7 +734,7 @@ fn atof_special<T>(u8 *beg, u8 *end, T mut &value) -> usize
     }
   }
 
-  for(var &str : nan_strs)
+  for (var &str : nan_strs)
   {
     if (end - beg < str.len)
       break;
@@ -820,7 +820,7 @@ pub fn atob(u8 *beg, u8 *end, bool mut &value) -> strconv_result
 
   result.ptr = beg;
 
-  for(var &str : true_strs)
+  for (var &str : true_strs)
   {
     if (end - beg < str.len)
       break;
@@ -833,7 +833,7 @@ pub fn atob(u8 *beg, u8 *end, bool mut &value) -> strconv_result
     }
   }
 
-  for(var &str : false_strs)
+  for (var &str : false_strs)
   {
     if (end - beg < str.len)
       break;
@@ -859,7 +859,7 @@ pub fn atoc(u8 *beg, u8 *end, char mut &value) -> strconv_result
   var ch = beg;
   var state = 0;
 
-  for(; ch != end; )
+  for (; ch != end; )
   {
     if (utf::decode(&mut state, &mut v, *ch) != utf::REJECT)
       ++ch;

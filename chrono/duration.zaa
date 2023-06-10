@@ -209,7 +209,7 @@ pub const fn years<T>(T count) -> duration<i64, ratio<31556952, 1>>
 
 const fn gcd<T>(T m, T n) -> T
 {
-  while(n != 0)
+  while (n != 0)
   {
     var rem = m % n;
     m = n;

@@ -30,18 +30,68 @@ pub fn is_sorted<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
   return is_sorted_until(range, range.end, cmp) == range.end;
 }
 
-pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
   var first = range.begin;
 
-  for(var i = first, var last = range.end; i != last; ++i)
+  for (var i = first, var last = range.end; i != last; ++i)
   {
-    for(var j = first; j != i; ++j)
+    for (var j = first; j != i; ++j)
     {
       if (cmp(range[i], range[j]))
         std::swap(&mut range[i], &mut range[j]);
     }
   }
+}
+
+fn insertion_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (first != last)
+  {
+    std::swap(&mut range[first], &mut range[std::min_element(range, cmp)]);
+
+    for (var i = first; ++i != last; first = i)
+      for (var j = i; cmp(range[j], range[first]); --j, --first)
+        std::swap(&mut range[first], &mut range[j]);
+  }
+}
+
+fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp, int maxdepth) -> void
+{
+  var last = range.end;
+  var first = range.begin;
+
+  if (last - first < 16)
+  {
+    insertion_sort(&mut range, cmp);
+  }
+  else if (maxdepth == 0)
+  {
+    partial_sort(&mut range, last);
+  }
+  else
+  {
+    var pivot = first;
+    var middle = std::next(first);
+
+    for (var i = middle; i != last; ++i)
+      if (cmp(range[i], range[pivot]))
+        std::swap(&mut range[i], &mut range[middle++]);
+
+    std::swap(&mut range[first], &mut range[middle - 1]);
+
+    intro_sort(&mut std::subrange(range, first, middle - 1), cmp, maxdepth - 1);
+    intro_sort(&mut std::subrange(range, middle, last), cmp, maxdepth - 1);
+  }
+}
+
+pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+{
+  intro_sort(&mut range, cmp, (63 - __clz(cast<u64>(range.len))) * 2);
 }
 
 pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> void
@@ -55,7 +105,7 @@ pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::le
 
   std::heapify(&mut subrange, cmp);
 
-  for(var i = middle, var end = range.end; i != end; ++i)
+  for (var i = middle, var end = range.end; i != end; ++i)
   {
     if (cmp(range[i], range[first]))
     {

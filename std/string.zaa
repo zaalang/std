@@ -118,7 +118,7 @@ pub struct string_view : pub std::span<u8>
       this.n = 0;
 
       var state = 0;
-      for(var ch = this.super; ch != this.end; ++ch)
+      for (var ch = this.super; ch != this.end; ++ch)
       {
         this.n += 1;
 
@@ -135,7 +135,7 @@ pub struct string_view : pub std::span<u8>
       this.n = utf::len_prev(this.beg, this.super);
 
       var state = 0;
-      for(var ch = this.super - this.n; ch != this.super; ++ch)
+      for (var ch = this.super - this.n; ch != this.super; ++ch)
       {
         utf::decode(&mut state, &mut this.codepoint, *ch);
       }
@@ -652,7 +652,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     var result = string(allocator);
 
-    for(var ch : other)
+    for (var ch : other)
       result += ch;
 
     return result;
@@ -665,7 +665,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     #if (requires (typeof(other) other) { other.len; })
       result.reserve(other.len);
 
-    for(var ch : other)
+    for (var ch : other)
       result += ch;
 
     return result;
@@ -1314,7 +1314,7 @@ pub fn find_first(String &&haystack, u8 *pos, String &needle)
 
   if (needle.len <= haystack.len - n)
   {
-    for(var i = haystack.data + n, var end = haystack.end + 1 - needle.len; i != end; ++i)
+    for (var i = haystack.data + n, var end = haystack.end + 1 - needle.len; i != end; ++i)
     {
       if (memcmp(i, needle.data, needle.len) == 0)
         return i;
@@ -1335,9 +1335,9 @@ pub fn find_first_of(String &&haystack, u8 *pos, String &needle)
 {
   var n = pos - haystack.data;
 
-  for(var i = haystack.data + n, var end = haystack.end; i != end; ++i)
+  for (var i = haystack.data + n, var end = haystack.end; i != end; ++i)
   {
-    for(var j = needle.begin; j != needle.end; )
+    for (var j = needle.begin; j != needle.end; )
     {
       var k = utf::len_next(j, needle.end);
 
@@ -1362,10 +1362,10 @@ pub fn find_first_not_of(String &&haystack, u8 *pos, String &needle)
 {
   var n = pos - haystack.data;
 
-  for(var i = haystack.data + n, var end = haystack.end; i != end; ++i)
+  for (var i = haystack.data + n, var end = haystack.end; i != end; ++i)
   {
     var found = true;
-    for(var j = needle.begin; j != needle.end; )
+    for (var j = needle.begin; j != needle.end; )
     {
       var k = utf::len_next(j, needle.end);
 
@@ -1444,7 +1444,7 @@ pub fn find_last_of(String &&haystack, u8 *pos, String &needle)
 
   rof(var i = haystack.data + n, var end = haystack.data; i == end; --i)
   {
-    for(var j = needle.begin; j != needle.end; )
+    for (var j = needle.begin; j != needle.end; )
     {
       var k = utf::len_next(j, needle.end);
 
@@ -1472,7 +1472,7 @@ pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
   rof(var i = haystack.data + n, var end = haystack.data; i == end; --i)
   {
     var found = true;
-    for(var j = needle.begin; j != needle.end; )
+    for (var j = needle.begin; j != needle.end; )
     {
       var k = utf::len_next(j, needle.end);
 
@@ -1601,7 +1601,7 @@ pub fn drop(String &str, usize n) -> string_view
 {
   var i = str.chars.begin;
 
-  for(; i != str.end; ++i)
+  for (; i != str.end; ++i)
   {
     if (n == 0)
       break;
@@ -1634,7 +1634,7 @@ pub fn take(String &str, usize n) -> string_view
 {
   var i = str.chars.begin;
 
-  for(; i != str.end; ++i)
+  for (; i != str.end; ++i)
   {
     if (n == 0)
       break;
@@ -1698,7 +1698,7 @@ pub fn trim_left(String &str) -> string_view
 {
   var i = str.chars.begin;
 
-  for(; i != str.end; ++i)
+  for (; i != str.end; ++i)
   {
     if (!is_whitespace(*i))
       break;
@@ -1918,7 +1918,7 @@ pub fn to_lowercase(String &&str) -> string
 #[lifetime(depend(str))]
 pub fn to_lowercase!(string mut &str) -> string mut &
 {
-  for(var mut &ch : str)
+  for (var mut &ch : str)
     ch = to_lowercase(ch);
 
   return &str;
@@ -1935,7 +1935,7 @@ pub fn to_uppercase(String &&str) -> string
 #[lifetime(depend(str))]
 pub fn to_uppercase!(string mut &str) -> string mut &
 {
-  for(var mut &ch : str)
+  for (var mut &ch : str)
     ch = to_uppercase(ch);
 
   return &str;

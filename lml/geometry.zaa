@@ -1,0 +1,184 @@
+//
+// lml geometry
+//
+
+import std.math;
+import lml.matrix : matrix;
+import lml.vector : vector;
+import lml.point : Point;
+
+/// distance between two points squared
+pub const fn distsqr<T, N>(Point<T, N> &a, Point<T, N> &b) -> T
+{
+  return normsqr(vec(a, b));
+}
+
+/// distance between two points
+pub const fn dist<T, N>(Point<T, N> &a, Point<T, N> &b) -> T
+{
+  return norm(vec(a, b));
+}
+
+/// area of triangle
+pub const fn area<T>(Point<T, 2> &a, Point<T, 2> &b, Point<T, 2> &c) -> T
+{
+  using T;
+  using std::abs;
+
+  return abs(perp(vec(a, b), vec(a, c))) * T(0.5);
+}
+
+pub const fn area<T>(Point<T, 3> &a, Point<T, 3> &b, Point<T, 3> &c) -> T
+{
+  using T;
+  using std::abs;
+
+  return norm(cross(vec(a, b), vec(a, c))) * T(0.5);
+}
+
+/// coincident points
+pub const fn coincident<T, N>(Point<T, N> &a, Point<T, N> &b) -> bool
+{
+  using T;
+  using std::fcmp;
+
+  return fcmp(distsqr(a, b), 0.0);
+}
+
+/// collinear points
+pub const fn collinear<T, N>(Point<T, N> &a, Point<T, N> &b, Point<T, N> &c) -> bool
+{
+  using T;
+  using std::fcmp;
+
+  return fcmp(area(a, b, c), 0.0);
+}
+
+/// orientation of xy triangle, clockwise < 0, anticlockwise > 0
+pub const fn orientation<T>(Point<T, 2> &a, Point<T, 2> &b, Point<T, 2> &c) -> T
+{
+  using T;
+  using std::fcmp;
+
+  var result = perp(vec(a, b), vec(a, c));
+
+  return fcmp(result, 0.0) ? T(0.0) : result;
+}
+
+/// centroid of xy triangle
+pub const fn centroid<T>(Point<T, 2> &a, Point<T, 2> &b, Point<T, 2> &c) -> typeof(a)
+{
+  return typeof(a)((get<0>(a) + get<0>(b) + get<0>(c))/T(3.0), (get<1>(a) + get<1>(b) + get<1>(c))/T(3.0));
+}
+
+/// quadrant index for point around the origin
+pub const fn quadrant<T, N>(Point<T, N> &pt) -> int
+{
+  var result = 0;
+
+  #for(const i = 0; i < N; ++i)
+    result += cast(get<i>(pt) < 0.0) * (1 << i);
+
+  return result;
+}
+
+/// normal
+pub const fn normal<T>(Point<T, 2> &a, Point<T, 2> &b) -> lml::vector<T, 2>
+{
+  return normalise(perp(vec(b, a)));
+}
+
+pub const fn normal<T>(Point<T, 3> &a, Point<T, 3> &b, Point<T, 3> &c) -> lml::vector<T, 3>
+{
+  return normalise(cross(vec(a, b), vec(a, c)));
+}
+
+/// slope
+pub const fn slope<T>(Point<T, 2> &a, Point<T, 2> &b) -> T
+{
+  return (get<1>(b) - get<1>(a)) / (get<0>(b) - get<0>(a));
+}
+
+/// azimuth
+pub const fn azimuth<T, N>(Point<T, N> &a, Point<T, N> &b) -> T
+{
+  return theta(vec(a, b));
+}
+
+/// rotate
+pub const fn rotate<T>(Point<T, 2> &pt, T yaw) -> typeof(pt)
+{
+  using T;
+  using std::sin;
+  using std::cos;
+
+  var x = cos(yaw)*get<0>(pt) - sin(yaw)*get<1>(pt);
+  var y = sin(yaw)*get<0>(pt) + cos(yaw)*get<1>(pt);
+
+  return typeof(pt)(x, y);
+}
+
+pub const fn rotatex<T>(Point<T, 3> &pt, T roll) -> typeof(pt)
+{
+  using T;
+  using std::sin;
+  using std::cos;
+
+  var x = get<0>(pt);
+  var y = cos(roll)*get<1>(pt) - sin(roll)*get<2>(pt);
+  var z = sin(roll)*get<1>(pt) + cos(roll)*get<2>(pt);
+
+  return typeof(pt)(x, y, z);
+}
+
+pub const fn rotatey<T>(Point<T, 3> &pt, T pitch) -> typeof(pt)
+{
+  using T;
+  using std::sin;
+  using std::cos;
+
+  var x = cos(pitch)*get<0>(pt) + sin(pitch)*get<2>(pt);
+  var y = get<1>(pt);
+  var z = -sin(pitch)*get<0>(pt) + cos(pitch)*get<2>(pt);
+
+  return typeof(pt)(x, y, z);
+}
+
+pub const fn rotatez<T>(Point<T, 3> &pt, T yaw) -> typeof(pt)
+{
+  using T;
+  using std::sin;
+  using std::cos;
+
+  var x = cos(yaw)*get<0>(pt) - sin(yaw)*get<1>(pt);
+  var y = sin(yaw)*get<0>(pt) + cos(yaw)*get<1>(pt);
+  var z = get<2>(pt);
+
+  return typeof(pt)(x, y, z);
+}
+
+/// nearest point on line
+pub const fn nearest_on_line<T, N>(Point<T, N> &a, Point<T, N> &b, Point<T, N> &pt) -> typeof(a)
+{
+  var u = vec(a, b);
+
+  return a + dot(vec(a, pt), u)/dot(u, u) * u;
+}
+
+/// nearest point on segment
+pub const fn nearest_on_segment<T, N>(Point<T, N> &a, Point<T, N> &b, Point<T, N> &pt) -> typeof(a)
+{
+  var u = vec(a, b);
+
+  var dot_ta = dot(vec(a, pt), u);
+
+  if (dot_ta <= 0.0)
+    return a;
+
+  var dot_tb = dot(vec(pt, b), u);
+
+  if (dot_tb <= 0.0)
+    return b;
+
+  return a + dot_ta/(dot_ta + dot_tb) * u;
+}

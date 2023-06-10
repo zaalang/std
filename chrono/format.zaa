@@ -50,7 +50,7 @@ fn fmt_to<R, P>(OutputStream mut &os, std::string_view format, chrono::year_mont
 {
   var written = 0;
 
-  for(var ch = format.begin, var end = format.end; ch != end; ++ch)
+  for (var ch = format.begin, var end = format.end; ch != end; ++ch)
   {
     switch (*ch)
     {

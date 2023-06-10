@@ -10,7 +10,7 @@ pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
   var last = range.end;
   var first = std::find_if_not(range, pred);
 
-  for(; first != last; ++first)
+  for (; first != last; ++first)
     if (pred(range[first]))
       return false;
 
@@ -26,7 +26,7 @@ pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
   if (first == last)
     return first;
 
-  for(var i = std::next(first); i != last; ++i)
+  for (var i = std::next(first); i != last; ++i)
   {
     if (pred(range[i]))
     {
@@ -45,9 +45,9 @@ pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
   var last = range.end;
   var first = std::find_if_not(range, pred);
 
-  for(var it = first; it != last; )
+  for (var it = first; it != last; )
   {
-    for(; it != last && !pred(range[it]); ++it)
+    for (; it != last && !pred(range[it]); ++it)
       ;
 
     if (it == last)
@@ -55,7 +55,7 @@ pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
 
     var middle = it;
 
-    for(; it != last && pred(range[it]); ++it)
+    for (; it != last && pred(range[it]); ++it)
       ;
 
     std::rotate!(&mut std::subrange(range, first, it), middle);
@@ -73,7 +73,7 @@ pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
 
   #if (requires (typeof(range.begin) x, usize y) { x + y; })
   {
-    for(var len = std::count(range); len > 0; )
+    for (var len = std::count(range); len > 0; )
     {
       var m = len / 2;
       var it = first + m;
@@ -91,7 +91,7 @@ pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
   }
   #else
   {
-    for(var end = range.end; first != end; ++first)
+    for (var end = range.end; first != end; ++first)
     {
       if (!pred(range[first]))
         break;

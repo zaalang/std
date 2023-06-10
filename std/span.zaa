@@ -72,7 +72,7 @@ pub struct span<T>
   #[lifetime(depend(*this))]
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
-    assert(range.0 <= range.1 && range.0 < this.len && range.1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
     return span(this.data + range.0, this.data + range.1);
   }
@@ -80,7 +80,7 @@ pub struct span<T>
   #[lifetime(depend(*this))]
   pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
-    assert(range.0 <= range.1 && range.0 < this.len && range.1 + 1 <= this.len);
+    assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
 
     return span(this.data + range.0, this.data + range.1 + 1);
   }

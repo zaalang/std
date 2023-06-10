@@ -1,0 +1,432 @@
+//
+// lml vector
+//
+
+import std.fmt;
+import std.hash;
+import lml.point : Point;
+import lml.matrix;
+
+pub concept Vector<U, T, N>
+{
+  requires<vector> -> vector::vector_t
+}
+
+pub struct vector<T, N> : pub T[N]
+{
+  pub const dimension = N;
+  pub using coord_type = T;
+  pub using point_t = Point<T, N>;
+  pub using vector_t = Vector<vector<T, N>, T, N>;
+
+  pub vector(T k)
+    : super(void)
+  {
+    #for (const i = 0; i < N; ++i)
+      new<T>(&super[i])(k);
+  }
+
+  pub vector<Args>(Args &&...args)
+    match(T[N] storage, Args args) { typeof(storage)([<T>: args...]); }
+    : super(void)
+  {
+    #for (const i = 0; i < N; ++i)
+      new<T>(&super[i])(&&args.#i);
+  }
+
+  pub vector(T[N] &&that)
+    : super(&&that)
+  {
+  }
+
+  pub vector() = default;
+  pub vector(vector&&) = default;
+  pub fn =(vector mut &, vector &&) -> vector mut & = default;
+  pub ~vector() = default;
+}
+
+pub fn get<i, T, N>(vector<T, N> &vector) -> T &
+{
+  return &vector[i];
+}
+
+pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, vector<T, N> &vector) throws -> void
+{
+  std::fmt_to(&mut os, &mut ctx, vector.super);
+}
+
+pub static fn get<i, U, T, N>(Vector<U, T, N> &vector)
+{
+  return &&vector.get<i>();
+}
+
+pub fn map<U, T, N, Func>(Vector<U, T, N> &u, Func &&func) -> U
+{
+  var storage = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&storage[i])(func(get<i>(u)));
+
+  return U(storage...);
+}
+
+pub fn map<U, T, N, Func>(Vector<U, T, N> &u, Vector<U, T, N> &v, Func &&func) -> U
+{
+  var storage = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&storage[i])(func(get<i>(u), get<i>(v)));
+
+  return U(storage...);
+}
+
+pub fn foldl<R, U, T, N, Func>(Vector<U, T, N> &u, R &init, Func &&func) -> R
+{
+  var result = func(init, get<0>(u));
+
+  #for (const i = 1; i < N; ++i)
+    result = func(result, get<i>(u));
+
+  return result;
+}
+
+fn foldl<U, T, N, Func>(Func &&func, Vector<U, T, N> &u) -> T
+{
+  var result = get<0>(u);
+
+  #for (const i = 1; i < N; ++i)
+    result = func(result, get<i>(u));
+
+  return result;
+}
+
+/// norm of the vector squared
+pub const fn normsqr<U, T, N>(Vector<U, T, N> &u) -> T
+{
+  return foldl(|s, xx| s + xx, map(u, |x| x * x));
+}
+
+/// norm of the vector
+pub const fn norm<U, T, N>(Vector<U, T, N> &u) -> T
+{
+  using T;
+  using std::sqrt;
+
+  return sqrt(normsqr(u));
+}
+
+/// translate a vector
+pub const fn translate<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
+{
+  return map(u, v, |x, y| x + y);
+}
+
+/// scales a vector
+pub const fn scale<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
+  match (T x, S y) { T(x * y); }
+{
+  return map(u, |x| x * s);
+}
+
+/// normalise a vector to a unit vector
+pub const fn normalise<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  return scale(u, T(1.0)/norm(u));
+}
+
+/// normalise a vector to a unit vector or return zero
+pub const fn safenormalise<U, T, N>(Vector<U, T, N> &u, U &nominalvalue = U()) -> U
+{
+  using T;
+  using std::sqrt;
+  using std::fcmp;
+
+  var lengthsqr = normsqr(u);
+
+  return fcmp(lengthsqr, T(0.0)) ? nominalvalue : scale(u, T(1.0)/sqrt(lengthsqr));
+}
+
+/// elementwise abs
+pub const fn abs<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  using T;
+  using std::abs;
+
+  return map(u, |x| abs(x));
+}
+
+/// elementwise min
+pub const fn min<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
+{
+  using T;
+  using std::min;
+
+  return map(u, v, |x, y| min(x, y));
+}
+
+/// elementwise max
+pub const fn max<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
+{
+  using T;
+  using std::max;
+
+  return map(u, v, |x, y| max(x, y));
+}
+
+/// elementwise floor
+pub const fn floor<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  using T;
+  using std::floor;
+
+  return map(u, |x| floor(x));
+}
+
+/// elementwise ceil
+pub const fn ceil<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  using T;
+  using std::ceil;
+
+  return map(u, |x| ceil(x));
+}
+
+/// elementwise trunc
+pub const fn trunc<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  using T;
+  using std::trunc;
+
+  return map(u, |x| trunc(x));
+}
+
+/// elementwise fract
+pub const fn fract<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  using T;
+  using std::fract;
+
+  return map(u, |x| fract(x));
+}
+
+/// elementwise clamp
+pub const fn clamp<U, T, N>(Vector<U, T, N> &u, T lower, T upper) -> U
+{
+  using T;
+  using std::clamp;
+
+  return map(u, |x| clamp(x, lower, upper));
+}
+
+/// elementwise lerp
+pub const fn lerp<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v, T alpha) -> U
+{
+  using T;
+  using std::lerp;
+
+  return map(u, v, |x, y| lerp(x, y, alpha));
+}
+
+/// min element
+pub const fn min_element<U, T, N>(Vector<U, T, N> &u) -> T
+{
+  using T;
+  using std::min;
+
+  return foldl(|s, x| min(s, x), u);
+}
+
+/// max element
+pub const fn max_element<U, T, N>(Vector<U, T, N> &u) -> T
+{
+  using T;
+  using std::max;
+
+  return foldl(|s, x| max(s, x), u);
+}
+
+/// perp operator
+pub const fn perp<U, T>(Vector<U, T, 2> &u) -> U
+{
+  return U(-get<1>(u), get<0>(u));
+}
+
+/// perp product
+pub const fn perp<U, T>(Vector<U, T, 2> &u, Vector<U, T, 2> &v) -> T
+{
+  return get<0>(u) * get<1>(v) - get<1>(u) * get<0>(v);
+}
+
+/// dot product
+pub const fn dot<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> T
+{
+  return foldl(|s, xy| s + xy, map(u, v, |x, y| x * y));
+}
+
+/// cross product
+pub const fn cross<U, T>(Vector<U, T, 3> &u, Vector<U, T, 3> &v) -> U
+{
+  return U(get<1>(u) * get<2>(v) - get<2>(u) * get<1>(v), get<2>(u) * get<0>(v) - get<0>(u) * get<2>(v), get<0>(u) * get<1>(v) - get<1>(u) * get<0>(v));
+}
+
+/// hadamard product
+pub const fn hadamard<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
+{
+  return map(u, v, |x, y| x * y);
+}
+
+/// orthogonal vector
+pub const fn orthogonal<U, T>(Vector<U, T, 3> &u) -> U
+{
+  using T;
+  using std::abs;
+
+  let x = abs(get<0>(u));
+  let y = abs(get<1>(u));
+  let z = abs(get<2>(u));
+
+  return cross(u, x < y ? (x < z ? U(T(1.0), T(0.0), T(0.0)) : U(T(0.0), T(0.0), T(1.0))) : (y < z ? U(T(0.0), T(1.0), T(0.0)) : U(T(0.0), T(0.0), T(1.0))));
+}
+
+/// orthogonal vector
+pub const fn orthogonal<U, T>(Vector<U, T, 3> &u, Vector<U, T, 3> &v) -> U
+{
+  using T;
+  using std::fcmp;
+
+  var axis = cross(u, v);
+
+  if (fcmp(normsqr(axis), T(0.0)))
+  {
+    axis = orthogonal(u);
+  }
+
+  return axis;
+}
+
+/// orthogonalise & normalise u, v, generate w
+pub fn orthonormalise<U>(U mut &u, U mut &v, U mut &w) -> void
+{
+  w = orthogonal(u, v);
+  u = normalise(u - w * dot(w, u));
+  v = normalise(cross(w, u));
+  w = cross(u, v);
+}
+
+/// spherical coordinates azimuthal angle of the vector
+pub const fn theta<U, T, N>(Vector<U, T, N> &u) -> T
+{
+  using T;
+  using std::atan2;
+
+  return atan2(get<1>(u), get<0>(u));
+}
+
+/// spherical coordinates polar angle of the vector
+pub const fn phi<U, T, N>(Vector<U, T, N> &u) -> T
+{
+  using T;
+  using std::acos;
+  using std::clamp;
+
+  return acos(clamp(get<2>(u)/norm(u), T(-1.0), T(1.0)));
+}
+
+/// angle between two unit vectors (unsigned)
+pub const fn theta<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> T
+{
+  using T;
+  using std::acos;
+  using std::clamp;
+
+  return acos(clamp(dot(u, v), T(-1.0), T(1.0)));
+}
+
+/// angle between two unit vectors (signed)
+pub const fn theta<U, T>(Vector<U, T, 2> &u, Vector<U, T, 2> &v, T normal) -> T
+{
+  using T;
+  using std::copysign;
+
+  return copysign(theta(u, v), normal * perp(u, v));
+}
+
+/// angle between two unit vectors (signed)
+pub const fn theta<U, T>(Vector<U, T, 3> &u, Vector<U, T, 3> &v, Vector<U, T, 3> &normal) -> T
+{
+  using T;
+  using std::copysign;
+
+  return copysign(theta(u, v), dot(normal, cross(u, v)));
+}
+
+/// elementwise negation
+pub const fn -<U, T, N>(Vector<U, T, N> &u) -> U
+{
+  return map(u, |x| -x);
+}
+
+/// elementwise addition
+pub const fn +<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
+{
+  return map(u, v, |x, y| x + y);
+}
+
+/// elementwise subtraction
+pub const fn -<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
+{
+  return map(u, v, |x, y| x - y);
+}
+
+/// elementwise scalar multiplication
+pub const fn *<U, T, N, S>(S &s, Vector<U, T, N> &u) -> U
+  match (T x, S y) { T(x * y); }
+{
+  return scale(u, s);
+}
+
+/// elementwise scalar multiplication
+pub const fn *<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
+  match (T x, S y) { T(x * y); }
+{
+  return scale(u, s);
+}
+
+/// elementwise scalar division
+pub const fn /<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
+  match (T x, S y) { x = x * y; }
+{
+  return scale(u, T(1.0) / s);
+}
+
+/// elementwise equality
+pub const fn ==<U, T, N>(Vector<U, T, N> &, Vector<U, T, N> &v) -> bool
+{
+  #for (const i = 0; i < N; ++i)
+    if (get<i>(u) != get<i>(v))
+      return false;
+
+  return true;
+}
+
+/// matrix-vector multiplication
+pub const fn *<T, M, N>(lml::matrix<T, M, N> &p, lml::vector<T, N> &u)
+{
+  var result = lml::vector<T, M>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i] += p[i, j] * u[j];
+
+  return result;
+}
+
+pub fn hash<U, T, N>(var &hasher, Vector<U, T, N> &vector) -> usize
+{
+  var seed = 0;
+
+  #for (const i = 0; i < N; ++i)
+    seed = hasher.combine(seed, vector[i]);
+
+  return seed;
+}

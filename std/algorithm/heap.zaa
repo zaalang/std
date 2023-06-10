@@ -7,7 +7,7 @@ import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentin
 
 fn sift_down_n<T, I, Cmp>(Range<T> mut &range, I start, I len, Cmp &cmp = std::less) -> void
 {
-  for(var first = range.begin, var n = len; 2 * start + 1 < n; )
+  for (var first = range.begin, var n = len; 2 * start + 1 < n; )
   {
     var child = 2 * start + 1;
 
@@ -28,7 +28,7 @@ pub fn is_heap<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
   var start = 0;
   var child = 1;
 
-  for(var first = range.begin, var n = range.len; child < n; ++child)
+  for (var first = range.begin, var n = range.len; child < n; ++child)
   {
     if (cmp(range[first + start], range[first + child]))
       return false;
@@ -89,7 +89,7 @@ pub fn sort_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
   var last = range.end;
 
-  for(var first = range.begin, var n = range.len; n > 1; --n)
+  for (var first = range.begin, var n = range.len; n > 1; --n)
   {
     std::swap(&mut range[first], &mut range[--last]);
 

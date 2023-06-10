@@ -138,13 +138,13 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
   var matched = false;
   var anchored_to_start = is_anchored_start(program);
 
-  for(var ch = vm.text.begin;; ++ch)
+  for (var ch = vm.text.begin;; ++ch)
   {
     if (!matched && (!anchored_to_start || ch == vm.text.begin))
     {
       if (vm.threads.empty)
       {
-        for(var end = vm.text.end; ch != end; ++ch)
+        for (var end = vm.text.end; ch != end; ++ch)
         {
           if (match_prefix(&mut vm, ch, program))
             break;
@@ -156,7 +156,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
       vm.threads.back.captures.push_back(ch);
     }
 
-    for(var i = 0; i < vm.threads.len; ++i)
+    for (var i = 0; i < vm.threads.len; ++i)
     {
       var eaten = false;
       var mut &thread = vm.threads[i];
@@ -179,7 +179,7 @@ fn execute(machine mut &vm, std::span<u32> program, std::mutable_span<u8*> captu
             std::copy(captures.begin, captures.end, thread.captures.begin, thread.captures.end);
             std::fill(captures.begin + thread.captures.len, captures.end, vm.text.end);
 
-            for(var mut &thread : vm.threads)
+            for (var mut &thread : vm.threads)
             {
               if (captures[0] < thread.captures[0])
                 thread.state = utf::REJECT;

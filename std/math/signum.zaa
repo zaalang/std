@@ -8,7 +8,7 @@ pub const fn signum<T>(T x) -> T
   where __is_integral<T>
 {
   if (x == 0)
-    return 0;
+    return x;
 
   return (x < 0) ? -1 : 1;
 }
@@ -16,6 +16,9 @@ pub const fn signum<T>(T x) -> T
 pub const fn signum<T>(T x) -> T
   where __is_floating_point<T>
 {
+  if (x == 0.0)
+    return x;
+
   if (std::is_nan(x))
     return x;
 

@@ -287,7 +287,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     assert(&this != &other);
     assert(this.allocator == other.allocator);
 
-    for(var node = other._tree.leftmost, var end = &other._tree.root; node != end; )
+    for (var node = other._tree.leftmost, var end = &other._tree.root; node != end; )
     {
       var next = node.next;
 

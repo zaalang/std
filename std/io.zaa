@@ -272,7 +272,7 @@ pub fn skip_line(InputReader mut &reader) throws -> usize
 {
   var count = 0;
 
-  for(var buffer = reader.fetch(); buffer.len != 0; buffer = reader.fetch())
+  for (var buffer = reader.fetch(); buffer.len != 0; buffer = reader.fetch())
   {
     var n = std::memchr(buffer.data, cast('\n'), buffer.len);
 
@@ -295,7 +295,7 @@ pub fn read_line(InputReader mut &reader, std::string mut &buf) throws -> usize
 {
   var count = 0;
 
-  for(var buffer = reader.fetch(); buffer.len != 0; buffer = reader.fetch())
+  for (var buffer = reader.fetch(); buffer.len != 0; buffer = reader.fetch())
   {
     var n = std::memchr(buffer.data, cast('\n'), buffer.len);
 

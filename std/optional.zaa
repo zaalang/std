@@ -11,7 +11,6 @@ import std.scan;
 pub union optional<T, Allocator = std::allocator>
 {
   pub None,
-  pub Some(T),
 
   pub optional()
     : None()
@@ -54,18 +53,25 @@ pub union optional<T, Allocator = std::allocator>
 
   #if __is_reference<T>
 
+    pub Some(std::remove_reference<T> &&),
+
     #[lifetime(depend(*this))]
     pub fn value(this &&)
     {
       std::assert(this.is_some);
 
-      return &*this.Some;
+      return &this.Some;
     }
 
     pub fn value_or<U>(this &&, U &&default) -> std::remove_reference<T>
       match (U default) { std::remove_reference<T>(default); }
     {
-      return (this.is_some) ? *this.Some : std::remove_reference<T>(&&default);
+      return (this.is_some) ? this.Some : std::remove_reference<T>(&&default);
+    }
+
+    pub fn value_or_default(this &&) -> std::remove_reference<T>
+    {
+      return (this.is_some) ? this.Some : std::remove_reference<T>();
     }
 
     #[lifetime(depend(*this))]
@@ -73,7 +79,7 @@ pub union optional<T, Allocator = std::allocator>
     {
       std::assert(this.is_some);
 
-      return &*this.Some;
+      return &this.Some;
     }
 
     #[lifetime(depend(*this))]
@@ -81,19 +87,19 @@ pub union optional<T, Allocator = std::allocator>
     {
       std::assert(this.is_some);
 
-      return &*this.Some;
+      return &this.Some;
     }
 
     #[lifetime(depend(*this),depend(default))]
     pub fn unwrap_or(this mut &, std::remove_reference<T> &&default)
     {
-      return (this.is_some) ? &*this.Some : &default;
+      return (this.is_some) ? &this.Some : &default;
     }
 
     #[lifetime(depend(*this),depend(default))]
     pub fn ??(this mut &, std::remove_reference<T> &&default)
     {
-      return (this.is_some) ? *this.Some : &default;
+      return (this.is_some) ? &this.Some : &default;
     }
 
     #[lifetime(depend(*this))]
@@ -102,10 +108,12 @@ pub union optional<T, Allocator = std::allocator>
       if (!this.is_some)
         std::panic(msg);
 
-      return &*this.Some;
+      return &this.Some;
     }
 
   #else
+
+    pub Some(T),
 
     #[lifetime(depend(this))]
     pub fn value(this &&)
@@ -119,6 +127,11 @@ pub union optional<T, Allocator = std::allocator>
       match (U default) { T(default); }
     {
       return (this.is_some) ? &&this.Some : T(&&default);
+    }
+
+    pub fn value_or_default(this &&) -> T
+    {
+      return (this.is_some) ? &&this.Some : T();
     }
 
     #[lifetime(consume(this))]

@@ -28,7 +28,7 @@ pub fn rotate_left<T>(Range<T> mut &range)
 
   var tmp = &move std::launder(range)[first];
 
-  for(var src = std::next(first); src != last; )
+  for (var src = std::next(first); src != last; )
   {
     range[first++] = &move range[src++];
   }
@@ -65,7 +65,7 @@ pub fn rotate_right<T>(Range<T> mut &range)
   var src = std::prev(last);
   var tmp = &move std::launder(range)[src];
 
-  for(; src != first; )
+  for (; src != first; )
   {
     range[--last] = &move range[--src];
   }
@@ -87,7 +87,7 @@ pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
   if (middle == last)
     return first;
 
-  for(var it = middle;; )
+  for (var it = middle;; )
   {
     std::swap(&mut range[first++], &mut range[it++]);
 
@@ -102,7 +102,7 @@ pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
   {
     var first = first;
 
-    for(var it = middle;; )
+    for (var it = middle;; )
     {
       std::swap(&mut range[first++], &mut range[it++]);
 

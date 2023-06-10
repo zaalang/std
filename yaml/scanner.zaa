@@ -255,7 +255,7 @@ fn scan_to_next_break(scanner mut &this, InputReader mut &is) throws -> void
 
 fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
 {
-  for(;;)
+  for (;;)
   {
     switch (this.peek(&mut is))
     {
@@ -321,7 +321,7 @@ fn remove_simple_key(scanner mut &this) -> void
 
 fn stale_simple_keys(scanner mut &this) -> void
 {
-  for(var mut &key : this.simple_keys)
+  for (var mut &key : this.simple_keys)
   {
     if (key.possible && key.loc.line != this.loc.line)
     {
@@ -424,7 +424,7 @@ fn scan_document_start(scanner mut &this, InputReader mut &is) throws -> void
   remove_simple_key(&mut this);
   this.allow_simple_key = false;
 
-  for(var i = 0; i < 3; ++i)
+  for (var i = 0; i < 3; ++i)
     this.eat(&mut is);
 
   skip_blank(&mut this, &mut is);
@@ -445,7 +445,7 @@ fn scan_document_end(scanner mut &this, InputReader mut &is) throws -> void
   remove_simple_key(&mut this);
   this.allow_simple_key = false;
 
-  for(var i = 0; i < 3; ++i)
+  for (var i = 0; i < 3; ++i)
     this.eat(&mut is);
 
   this.tokens.push_back(make_token(token::type::document_end, loc));
@@ -532,7 +532,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
 
   this.eat(&mut is);
 
-  for(;;)
+  for (;;)
   {
     var ch = this.peek(&mut is);
 
@@ -550,7 +550,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
 
     leading_blanks = false;
 
-    for(;;)
+    for (;;)
     {
       switch (ch)
       {
@@ -631,7 +631,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
               if (std::atoi(buffer.data + 2, buffer.end, &mut codepoint, 16).len != length)
                 this.tokens.push_back(make_token(token::type::bad_escape, this.loc));
 
-              for(var i = 0; i < buffer.len - 2; ++i)
+              for (var i = 0; i < buffer.len - 2; ++i)
                 this.eat(&mut is);
 
               value += codepoint;
@@ -840,7 +840,7 @@ fn block_scalar_breaks(scanner mut &this, InputReader mut &is, int mut &indent, 
 {
   var max_indent = 0;
 
-  for(;;)
+  for (;;)
   {
     while ((indent == 0 || this.loc.column < indent) && this.peek(&mut is) == cast(' '))
       this.eat(&mut is);
@@ -994,7 +994,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> void
   var whitespaces = std::string();
   var leading_blanks = false;
 
-  for(;;)
+  for (;;)
   {
     var ch = this.peek(&mut is);
 
@@ -1004,7 +1004,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> void
     if (is_document_start(&mut this, &mut is) || is_document_end(&mut this, &mut is))
       break;
 
-    for(;;)
+    for (;;)
     {
       switch (ch)
       {
@@ -1127,7 +1127,7 @@ pub fn scan(scanner mut &this, InputReader mut &is) throws -> void
   if (is_document_end(&mut this, &mut is))
     return scan_document_end(&mut this, &mut is);
 
-  switch(ch)
+  switch (ch)
   {
     case '[':
       return scan_flow_collection_start(&mut this, &mut is, token::type::flow_sequence_start);
@@ -1174,7 +1174,7 @@ pub fn scan(scanner mut &this, InputReader mut &is) throws -> void
 
 pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
 {
-  for(;;)
+  for (;;)
   {
     var need_more = true;
 
@@ -1188,7 +1188,7 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
     {
       need_more = false;
 
-      for(var &key : this.simple_keys)
+      for (var &key : this.simple_keys)
       {
         if (key.possible && key.token_number == this.tokens_parsed)
         {

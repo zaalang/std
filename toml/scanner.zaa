@@ -193,7 +193,7 @@ fn scan_to_next_break(scanner mut &this, InputReader mut &is) throws -> void
 
 fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
 {
-  for(;;)
+  for (;;)
   {
     switch (this.peek(&mut is))
     {
@@ -256,7 +256,7 @@ fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style
     skip_break(&mut this, &mut is);
   }
 
-  for(;;)
+  for (;;)
   {
     var ch = this.peek(&mut is);
 
@@ -265,7 +265,7 @@ fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style
 
     leading_blanks = false;
 
-    for(;;)
+    for (;;)
     {
       switch (ch)
       {
@@ -340,7 +340,7 @@ fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style
               if (std::atoi(buffer.data + 2, buffer.end, &mut codepoint, 16).len != length)
                 return make_token(token::type::bad_escape, this.loc);
 
-              for(var i = 0; i < buffer.len - 2; ++i)
+              for (var i = 0; i < buffer.len - 2; ++i)
                 this.eat(&mut is);
 
               value += codepoint;
@@ -410,7 +410,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> token
   if (is_digit(ch) || ch == cast('.') || ch == cast('+') || ch == cast('-'))
     numeric = true;
 
-  for(;;)
+  for (;;)
   {
     switch (ch)
     {
@@ -452,7 +452,7 @@ pub fn scan(scanner mut &this, InputReader mut &is) throws -> token
   if (ch == 0)
     return make_token(token::type::stream_end, this.loc);
 
-  switch(ch)
+  switch (ch)
   {
     case '[':
       return scan_token(&mut this, &mut is, token::type::l_square);

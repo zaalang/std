@@ -247,7 +247,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    #for(const k = 0; k < __tuple_len<Args>; ++k)
+    #for (const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
 
     var pos = this.find_or_prepare_insert(key);
@@ -264,7 +264,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    #for(const k = 0; k < __tuple_len<Args>; ++k)
+    #for (const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
 
     var pos = this.find_or_prepare_insert(key);
@@ -327,7 +327,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     assert(&this != &other);
     assert(this.allocator == other.allocator);
 
-    for(var mut &it : &move other)
+    for (var mut &it : &move other)
     {
       insert(&mut this, &move it);
     }
@@ -431,7 +431,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     memset(this._ctrl, 0x80, this._capacity);
     *(this._ctrl + this._capacity) = sentinal;
 
-    for(var i = 0; i != capacity; ++i)
+    for (var i = 0; i != capacity; ++i)
     {
       if (is_full(ctrl + i))
       {
@@ -523,7 +523,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
-    for(var i = 0; i != this._capacity; ++i)
+    for (var i = 0; i != this._capacity; ++i)
     {
       if (is_full(this._ctrl + i))
         value_type::~key_value_pair(&mut *(this._data + i));

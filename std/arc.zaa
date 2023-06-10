@@ -44,7 +44,7 @@ pub struct arc<T, Allocator = std::allocator>
       if (!this.inner)
         return None;
 
-      for(;;)
+      for (;;)
       {
         var refcnt = std::volatile_load(&this.inner.refcnt);
 

@@ -175,7 +175,7 @@ fn add_range(klass mut &cc, char lo, char hi) -> void
 
   cc.runes.insert(j, klass::range(lo, hi));
 
-  for(var i = cc.runes.begin, j = i + 1; j != cc.runes.end; i = j++)
+  for (var i = cc.runes.begin, j = i + 1; j != cc.runes.end; i = j++)
   {
     if ((*j).lo <= (*i).hi + 1)
     {
@@ -193,7 +193,7 @@ fn negate(klass mut &cc) -> void
     var upper = 0;
     var lower = 0;
 
-    for(var &range : cc.runes)
+    for (var &range : cc.runes)
     {
       if (range.lo <= 'z' && range.hi >= 'A')
       {
@@ -210,7 +210,7 @@ fn negate(klass mut &cc) -> void
     }
 
     var folddn = lower & ~upper;
-    for(var lo = std::ctz(folddn); lo < 26; lo = std::ctz(folddn))
+    for (var lo = std::ctz(folddn); lo < 26; lo = std::ctz(folddn))
     {
       var hi = lo + std::ctz(~(folddn >> lo));
       cc.add_range(cast<char>(lo + 65), cast<char>(hi + 64));
@@ -218,7 +218,7 @@ fn negate(klass mut &cc) -> void
     }
 
     var foldup = upper & ~lower;
-    for(var lo = std::ctz(foldup); lo < 26; lo = std::ctz(foldup))
+    for (var lo = std::ctz(foldup); lo < 26; lo = std::ctz(foldup))
     {
       var hi = lo + std::ctz(~(foldup >> lo));
       cc.add_range(cast<char>(lo + 97), cast<char>(hi + 96));
@@ -231,7 +231,7 @@ fn negate(klass mut &cc) -> void
   var next = 0;
   var j = cc.runes.begin;
 
-  for(var range : cc.runes)
+  for (var range : cc.runes)
   {
     if (next + 1 <= range.lo)
     {
@@ -268,7 +268,7 @@ fn is_verticalbar(expr &op) -> bool
 
 fn maybe_empty(expr *first, expr *last) -> bool
 {
-  for(var op = first; op != last; op += op.len)
+  for (var op = first; op != last; op += op.len)
   {
     switch (*op)
     {
@@ -419,7 +419,7 @@ fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
     return errc::bad_char_class;
 
   var i = s;
-  for(++i; i != end && *i != ':'; ++i)
+  for (++i; i != end && *i != ':'; ++i)
     ;
 
   var sv = std::string_view(s, i);
@@ -559,7 +559,7 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
     ++s;
   }
 
-  for(; s != end && *s != ']'; )
+  for (; s != end && *s != ']'; )
   {
     var lo = *s++;
 
@@ -614,7 +614,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
 {
   var ctx = parse_context(&mut regex);
 
-  for(var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
+  for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
   {
     var s = std::next(ch);
 
@@ -705,7 +705,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
         {
           var newflags = flags;
 
-          for(++s; s != end && *s != ':' && *s != ')'; ++s)
+          for (++s; s != end && *s != ':' && *s != ')'; ++s)
           {
             var sign = 0;
 
@@ -829,7 +829,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
 
 fn dump(expr *first, expr *last) -> void
 {
-  for(var expr = first; expr != last; expr += expr.len)
+  for (var expr = first; expr != last; expr += expr.len)
   {
     switch (*expr)
     {
@@ -862,7 +862,7 @@ fn dump(expr *first, expr *last) -> void
 
       case Klass[klass]:
         std::printf("{{cc:");
-        for(var &range : klass.runes)
+        for (var &range : klass.runes)
           std::printf(" [{}-{}]", cast<u32>(range.lo), cast<u32>(range.hi));
         std::printf("}}");
 

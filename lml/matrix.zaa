@@ -1,0 +1,285 @@
+//
+// lml matrix
+//
+
+import std.fmt;
+import std.hash;
+
+pub concept Matrix<T, M, N>
+{
+  requires<mat> -> mat::matrix_t
+}
+
+pub struct matrix<T, M, N> : pub T[N][M]
+{
+  pub using matrix_t = Matrix<T, M, N>;
+  pub using result_type<P, Q> = matrix<T, P, Q>;
+
+  pub matrix(T k)
+    : super(void)
+  {
+    for (var i = 0; i < M; ++i)
+      for (var j = 0; j < N; ++j)
+        new<T>(&super[i][j])(k);
+  }
+
+  pub matrix(T[N][M] &&that)
+    : super(&&that)
+  {
+  }
+
+  pub const fn rows(this&) -> usize
+  {
+    return M;
+  }
+
+  pub const fn columns(this&) -> usize
+  {
+    return N;
+  }
+
+  pub fn [](this &&, usize i, usize j)
+  {
+    return &this.super[i][j];
+  }
+
+  pub matrix() = default;
+  pub matrix(matrix&&) = default;
+  pub fn =(matrix mut &, matrix &&) -> matrix mut & = default;
+  pub ~matrix() = default;
+}
+
+pub fn fmt<T, M, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, matrix<T, M, N> &matrix) throws -> void
+{
+  std::fmt_to(&mut os, &mut ctx, matrix.super);
+}
+
+/// norm of matrix
+pub const fn norm<T, M, N>(Matrix<T, M, N> &p) -> T
+{
+  using T;
+  using std::sqrt;
+
+  var result = T(0.0);
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result += p[i, j] * p[i, j];
+
+  return sqrt(result);
+}
+
+/// trace of matrix
+pub const fn trace<T, N>(Matrix<T, N, N> &p) -> T
+{
+  var result = T(0.0);
+
+  for (var k = 0; k < N; ++k)
+    result += p[k, k];
+
+  return result;
+}
+
+/// scale a matrix
+pub const fn scale<T, M, N, S>(Matrix<T, M, N> &p, S &s)
+  match (T x, S y) { x * y; }
+{
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i, j] = p[i, j] * s;
+
+  return result;
+}
+
+/// transpose a matrix
+pub const fn transpose<T, M, N>(Matrix<T, M, N> &p)
+{
+  var result = typeof(p)::result_type<N, M>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[j, i] = p[i, j];
+
+  return result;
+}
+
+/// determinant of matrix
+pub const fn determinant<T>(Matrix<T, 1, 1> &p) -> T
+{
+  return p[0, 0];
+}
+
+pub const fn determinant<T>(Matrix<T, 2, 2> &p) -> T
+{
+  return p[0, 0]*p[1, 1] - p[0, 1]*p[1, 0];
+}
+
+pub const fn determinant<T, N>(Matrix<T, N, N> &p) -> T
+{
+  var result = T(0.0);
+
+  for (var k = 0; k < N; ++k)
+  {
+    var sub = typeof(p)::result_type<N-1, N-1>();
+
+    for (var ii = 0; ii < N-1; ++ii)
+      for (var jj = 0; jj < N-1; ++jj)
+        sub[ii, jj] = p[ii + 1, jj + cast(jj >= k)];
+
+    result += ((k & 1) ? -p[0, k] : p[0, k]) * determinant(sub);
+  }
+
+  return result;
+}
+
+/// inverse of matrix
+pub const fn inverse<T, N>(Matrix<T, N, N> &p)
+{
+  var result = typeof(p)::result_type<N, N>();
+
+  var scale = T(1.0) / determinant(p);
+
+  for (var j = 0; j < N; ++j)
+  {
+    for (var i = 0; i < N; ++i)
+    {
+      var sub = typeof(p)::result_type<N-1, N-1>();
+
+      for (var ii = 0; ii < N-1; ++ii)
+        for (var jj = 0; jj < N-1; ++jj)
+          sub[ii, jj] = p[ii + cast(ii >= j), jj + cast(jj >= i)];
+
+      result[i, j] = (((i+j) & 1) ? -scale : scale) * determinant(sub);
+    }
+  }
+
+  return result;
+}
+
+/// elementwise abs
+pub const fn abs<T, M, N>(Matrix<T, M, N> &p)
+{
+  using T;
+  using std::abs;
+
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i, j] = abs(p[i, j]);
+
+  return result;
+}
+
+/// hadamard product
+pub const fn hadamard<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
+  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
+{
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i, j] = p[i, j] * q[i, j];
+
+  return result;
+}
+
+/// elementwise negation
+pub const fn -<T, M, N>(Matrix<T, M, N> &p)
+{
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i, j] = -p[i, j];
+
+  return result;
+}
+
+/// elementwise addition
+pub const fn +<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
+  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
+{
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i, j] = p[i, j] + q[i, j];
+
+  return result;
+}
+
+/// elementwise subtraction
+pub const fn -<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
+  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
+{
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      result[i, j] = p[i, j] - q[i, j];
+
+  return result;
+}
+
+/// matrix multiplication
+pub const fn *<T, M, N, O>(Matrix<T, M, O> &p, Matrix<T, O, N> &q)
+  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
+{
+  var result = typeof(p)::result_type<M, N>();
+
+  for (var i = 0; i < M; ++i)
+  {
+    for (var j = 0; j < N; ++j)
+    {
+      for (var k = 0; k < O; ++k)
+        result[i, j] += p[i, k] * q[k, j];
+    }
+  }
+
+  return result;
+}
+
+/// elementwise scalar multiplication
+pub const fn scale<T, M, N, S>(S &s, Matrix<T, M, N> &p)
+  match (T x, S y) { x * y; }
+{
+  return scale(p, s);
+}
+
+/// elementwise scalar multiplication
+pub const fn scale<T, M, N, S>(Matrix<T, M, N> &p, S &s)
+  match (T x, S y) { x * y; }
+{
+  return scale(p, s);
+}
+
+/// elementwise scalar division
+pub const fn scale<T, M, N, S>(Matrix<T, M, N> &p, S &s)
+  match (T x, S y) { x * y; }
+{
+  return scale(u, T(1.0) / s);
+}
+
+/// elementwise equality
+pub const fn ==<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q) -> bool
+{
+  for (var i = 0; i < M; ++i)
+    for (var j = 0; j < N; ++j)
+      if (p[i, j] != q[i, j])
+        return false;
+
+  return true;
+}
+
+pub fn hash<T, M, N>(var &hasher, Matrix<T, M, N> &matrix) -> usize
+{
+  var seed = 0;
+
+  #for (const i = 0; i < N; ++i)
+    seed = hasher.combine(seed, matrix[i]);
+
+  return seed;
+}

@@ -314,7 +314,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
   var ulp = 1;
   
   var kappa = 1;
-  for(var pow = 10; pow <= integral; pow *= 10)
+  for (var pow = 10; pow <= integral; pow *= 10)
     ++kappa;
 
   var ch = beg;
@@ -342,7 +342,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
     }
   }
   
-  for(;;)
+  for (;;)
   {
     ulp *= 10;
     delta *= 10;
@@ -374,7 +374,7 @@ fn fallback_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usiz
   var integral = fp.value.f >> shift;
 
   var kappa = 1;
-  for(var pow = 10; pow <= integral; pow *= 10)
+  for (var pow = 10; pow <= integral; pow *= 10)
     ++kappa;
 
   var value = bigint<1024>(fp.value.f);
@@ -384,7 +384,7 @@ fn fallback_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usiz
 
   var ch = beg;
 
-  for(var i = 0; i <= len; ++i)
+  for (var i = 0; i <= len; ++i)
   {
     var digit = divmod(&mut value, scale);
 
@@ -412,7 +412,7 @@ fn fallback_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usiz
     }
   }
 
-  for(var i = ch - 1; *i == cast('0'); --i)
+  for (var i = ch - 1; *i == cast('0'); --i)
   {
     K += 1;
     ch -= 1;
@@ -458,18 +458,18 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
   if (ch != end && *ch == cast('0'))
   {
     gotdig = true;
-    for(++ch; ch != end && *ch == cast('0'); ++ch)
+    for (++ch; ch != end && *ch == cast('0'); ++ch)
       ;
 
     if (ch != end && *ch == cast('.'))
     {
       gotdot = true;
-      for(++ch; ch != end && *ch == cast('0'); ++ch)
+      for (++ch; ch != end && *ch == cast('0'); ++ch)
         rp -= 1;
     }
   }
 
-  for(; ch != end; ++ch)
+  for (; ch != end; ++ch)
   {
     if (*ch == cast('_'))
       continue;
@@ -529,7 +529,7 @@ fn parse_decfloat(u8 * mut &ch, u8 *end) -> ParsedFp
     if (ch == end || !(cast('0') <= *ch && *ch <= cast('9')))
       return x;
 
-    for(; ch != end; ++ch)
+    for (; ch != end; ++ch)
     {
       if (*ch == cast('_'))
         continue;

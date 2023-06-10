@@ -117,7 +117,7 @@ pub fn is_range<T>(var &range) -> bool
 
 pub const fn is_all_ranges<Rs, T>() -> bool
 {
-  #for(const k = 0; k < __tuple_len<Rs>; ++k)
+  #for (const k = 0; k < __tuple_len<Rs>; ++k)
     if (!__is_match<Range<T>, typeof(Rs::#k)>())
       return false;
 
@@ -153,7 +153,7 @@ pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
   var i = lhs.begin;
   var j = rhs.begin;
 
-  for(var endi = lhs.end, var endj = rhs.end; j != endj; ++i, ++j)
+  for (var endi = lhs.end, var endj = rhs.end; j != endj; ++i, ++j)
   {
     if (i == endi)
       return false;
@@ -174,7 +174,7 @@ pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
   var i = lhs.begin;
   var j = rhs.begin;
 
-  for(var endi = lhs.end, var endj = rhs.end; j != endj; ++i, ++j)
+  for (var endi = lhs.end, var endj = rhs.end; j != endj; ++i, ++j)
   {
     if (i == endi)
       return -1;
@@ -193,7 +193,7 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &ra
 {
   ctx.written += std::print_to(&mut os, "[");
 
-  for(var k = 0, var &value : range;; ++k)
+  for (var k = 0, var &value : range;; ++k)
   {
     if (k != 0)
       ctx.written += std::print_to(&mut os, ", ");
@@ -767,7 +767,7 @@ pub struct zip_view<Rs, I, J>
 
     pub fn ++(zip_iterator mut &this) -> zip_iterator mut &
     {
-      #for(var mut &i : this.base)
+      #for (var mut &i : this.base)
         ++i;
 
       return &this;
@@ -775,7 +775,7 @@ pub struct zip_view<Rs, I, J>
 
     pub fn --(zip_iterator mut &this) -> zip_iterator mut &
     {
-      #for(var mut &i : this.base)
+      #for (var mut &i : this.base)
         --i;
 
       return &this;
@@ -788,7 +788,7 @@ pub struct zip_view<Rs, I, J>
 
     pub fn ==(zip_iterator &this, zip_sentinal &) -> bool
     {
-      #for(const i = 0; i < __tuple_len<I>; ++i)
+      #for (const i = 0; i < __tuple_len<I>; ++i)
         if (this.base.#i == this.end.#i)
           return true;
 
@@ -808,7 +808,7 @@ pub struct zip_view<Rs, I, J>
 
   pub fn is_random_access() -> bool
   {
-    #for(const i = 0; i < __tuple_len<I>; ++i)
+    #for (const i = 0; i < __tuple_len<I>; ++i)
       if (!__is_match<RandomAccessIterator, typeof(I::#i)>())
         return false;
 
@@ -826,7 +826,7 @@ pub struct zip_view<Rs, I, J>
   {
     var len = rhs.end.0 - rhs.base.0;
 
-    #for(const i = 1; i < __tuple_len<I>; ++i)
+    #for (const i = 1; i < __tuple_len<I>; ++i)
       if (var dist = rhs.end.#i - rhs.base.#i; dist < len)
         len = dist;
 
@@ -836,7 +836,7 @@ pub struct zip_view<Rs, I, J>
   pub fn -(zip_iterator lhs, usize rhs) -> zip_iterator
     where is_random_access()
   {
-    #for(var mut &i : lhs.base)
+    #for (var mut &i : lhs.base)
       i -= rhs;
 
     return lhs;
@@ -845,7 +845,7 @@ pub struct zip_view<Rs, I, J>
   pub fn +(zip_iterator lhs, usize rhs) -> zip_iterator
     where is_random_access()
   {
-    #for(var mut &i : lhs.base)
+    #for (var mut &i : lhs.base)
       i += rhs;
 
     return lhs;

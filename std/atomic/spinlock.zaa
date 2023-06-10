@@ -10,7 +10,7 @@ pub struct spin_lock
 
   pub fn lock(this mut &) -> void
   {
-    for(;;)
+    for (;;)
     {
       if (std::atomic_xchg(&this.state, 1, std::memory_order::acquire) == 0)
         break;
@@ -41,7 +41,7 @@ pub struct shared_spin_lock
 
   pub fn lock(this mut &) -> void
   {
-    for(;;)
+    for (;;)
     {
       if (std::atomic_cmpxchg_weak(&this.state, 0, 1 << 31))
         break;
@@ -63,7 +63,7 @@ pub struct shared_spin_lock
 
   pub fn lock_shared(this mut &) -> void
   {
-    for(;;)
+    for (;;)
     {
       if (std::atomic_add(&this.state, 1) & (1 << 31) == 0)
         break;

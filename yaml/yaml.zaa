@@ -303,7 +303,7 @@ pub union node
     if (ch != end && (*ch == cast('+') || *ch == cast('-')))
       ++ch;
 
-    for(; ch != end; ++ch)
+    for (; ch != end; ++ch)
     {
       if (cast('0') <= *ch && *ch <= cast('9'))
         gotdig = true;
@@ -354,7 +354,7 @@ pub fn ==(node &lhs, node &rhs) -> bool
     switch (cast<int>(lhs.kind))
     {
       #{
-        #for(const k = 1; k != std::meta::fields_of($node).len; ++k)
+        #for (const k = 1; k != std::meta::fields_of($node).len; ++k)
           -> { case $(k): return lhs.$(k) == rhs.$(k); }
       }
     }
@@ -370,7 +370,7 @@ pub fn <=>(node &lhs, node &rhs) -> int
     switch (cast<int>(lhs.kind))
     {
       #{
-        #for(const k = 1; k != std::meta::fields_of($node).len; ++k)
+        #for (const k = 1; k != std::meta::fields_of($node).len; ++k)
           -> { case $(k): return lhs.$(k) <=> rhs.$(k); }
       }
     }

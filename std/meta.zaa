@@ -185,7 +185,7 @@ pub struct meta
     switch (value)
     {
       #{
-        #for(const k : std::meta::enumerators_of($T))
+        #for (const k : std::meta::enumerators_of($T))
         {
           -> { case $(T::#k): return $(std::meta::name_of(k)); }
         }

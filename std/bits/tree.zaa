@@ -604,7 +604,7 @@ fn tree_verify<K, T, Cmp, Allocator>(tree<K, T, Cmp, Allocator> &tree) -> bool
   {
     var len = 0;
 
-    for(var node = first; node != last; node = node.parent)
+    for (var node = first; node != last; node = node.parent)
     {
       if (node.color == Color::black)
         ++len;
@@ -615,7 +615,7 @@ fn tree_verify<K, T, Cmp, Allocator>(tree<K, T, Cmp, Allocator> &tree) -> bool
 
   var len = black_count(tree.leftmost, tree.root.parent);
 
-  for(var node = tree.leftmost; node != &tree.root; node = node.next)
+  for (var node = tree.leftmost; node != &tree.root; node = node.next)
   {
     var x = node;
     var l = x.left;

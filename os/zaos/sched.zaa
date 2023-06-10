@@ -65,6 +65,9 @@ extern fn __vdso_thread_create(void *entry, void *parameter, u64 flags) -> i32;
 extern fn __vdso_wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32;
 
 #[weak]
+extern fn __vdso_process_kill(i32 pid) -> i32;
+
+#[weak]
 extern fn __vdso_thread_exit(i32 rval) -> void;
 
 #[weak]
@@ -83,6 +86,11 @@ pub fn thread_create(void *entry, void *parameter, u64 flags) -> i32
 pub fn wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32
 {
   return __vdso_wait(id, rvalbuf, flags);
+}
+
+pub fn process_kill(i32 pid) -> i32
+{
+  return __vdso_process_kill(pid);
 }
 
 #[noreturn]

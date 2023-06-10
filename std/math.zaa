@@ -56,6 +56,21 @@ pub const fn signbit<T>(T x) -> int
   return __signbit(x);
 }
 
+pub const fn byteswap<T>(T x) -> T
+  where __is_integral<T>
+{
+  #if (sizeof<T> == 1)
+    return x;
+
+  return __byteswap(x);
+}
+
+pub const fn bitreverse<T>(T x) -> T
+  where __is_integral<T>
+{
+  return __bitreverse(x);
+}
+
 pub const fn copysign<T>(T x, T sign) -> T
   where __is_arithmetic<T>
 {
@@ -104,6 +119,34 @@ pub const fn fract<T>(T x) -> T
   return x - __trunc(x);
 }
 
+pub const fn modulo<T>(T x, T y) -> T
+  where __is_arithmetic<T>
+{
+  var v = x % y;
+
+  return (v < cast<T>(0)) ? v + y : v;
+}
+
+pub const fn fcmp<T>(T x, T y, T epsilon) -> bool
+  where __is_arithmetic<T>
+{
+  return absdiff(x, y) < epsilon;
+}
+
+pub const fn fcmp<T>(T x, T y) -> bool
+  where __is_integral<T>
+{
+  return x == y;
+}
+
+pub const fn fcmp<T>(T x, T y) -> bool
+  where requires { std::numeric_traits<T>::epsilon; }
+{
+  using T;
+
+  return abs(x - y) < std::numeric_traits<T>::epsilon * max(abs(x), T(1.0));
+}
+
 pub const fn min<T>(T x, T y) -> T
   where __is_arithmetic<T>
 {
@@ -120,6 +163,18 @@ pub const fn clamp<T>(T value, T lower, T upper) -> T
   where __is_arithmetic<T>
 {
   return __max(lower, __min(value, upper));
+}
+
+pub const fn lerp<T>(T lower, T upper, T alpha) -> T
+  where __is_floating_point<T>
+{
+  return (1.0 - alpha) * lower + alpha * upper;
+}
+
+pub const fn remap<T>(T value1, T lower1, T upper1, T lower2, T upper2) -> T
+  where __is_floating_point<T>
+{
+  return lerp(lower2, upper2, (value1 - lower1)/(upper1 - lower1));
 }
 
 pub fn add_with_carry<T>(T x, T y) -> (T, T)

@@ -53,7 +53,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, bool value) throws -> void
 
 fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
 {
-  switch(value)
+  switch (value)
   {
     case '\a':
       put(&mut os, &mut ctx, "\\a");
@@ -99,7 +99,7 @@ fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> voi
 
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
 {
-  switch(ctx.spec.type)
+  switch (ctx.spec.type)
   {
     case 'd':
     case 'b':
@@ -128,7 +128,7 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
   var buf = [0; 64];
   var str = std::strconv_result(void);
 
-  switch(ctx.spec.type)
+  switch (ctx.spec.type)
   {
     case 'c':
       str = std::ctoa(buf.end - 4, buf.end, cast<char>(value));
@@ -152,7 +152,7 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
 
   if (ctx.spec.alt != 0)
   {
-    switch(ctx.spec.type)
+    switch (ctx.spec.type)
     {
       case 'b':
       case 'B':
@@ -171,7 +171,7 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
 
   if (std::is_uppercase(ctx.spec.type))
   {
-    for(var ch = cast<u8 mut *>(beg), var end = str.ptr + str.len; ch != end; ++ch)
+    for (var ch = cast<u8 mut *>(beg), var end = str.ptr + str.len; ch != end; ++ch)
       *ch = std::to_uppercase(*ch);
   }
 
@@ -268,7 +268,7 @@ fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
 
   var beg = buf.data + 1;
 
-  switch(ctx.spec.type)
+  switch (ctx.spec.type)
   {
     case 'f':
     case 'F':
@@ -291,7 +291,7 @@ fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
 
   if (std::is_uppercase(ctx.spec.type))
   {
-    for(var ch = cast<u8 mut *>(beg), var end = str.ptr + str.len; ch != end; ++ch)
+    for (var ch = cast<u8 mut *>(beg), var end = str.ptr + str.len; ch != end; ++ch)
       *ch = std::to_uppercase(*ch);
   }
 
@@ -329,7 +329,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws -> void
   buf[0] = cast('0');
   buf[1] = cast('x');
   
-  for(var ch = buf.begin + 2, var end = buf.end - str.len; ch != end; ++ch)
+  for (var ch = buf.begin + 2, var end = buf.end - str.len; ch != end; ++ch)
     *ch = cast('0');
 
   ctx.written += os.write(buf.data, buf.len);
@@ -457,7 +457,7 @@ fn cell_width(String &str) -> usize
 {
   var x = 0;
 
-  for(var ch : str.chars)
+  for (var ch : str.chars)
     x += cell_width(ch);
 
   return x;
@@ -471,7 +471,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
 
     var i = str.begin;
 
-    for(var j = i; j != str.end; ++j)
+    for (var j = i; j != str.end; ++j)
     {
       if (std::is_cntrl(*j) || *j == cast('\"') || *j == cast('\\') || *j == 127)
       {
@@ -499,7 +499,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
       var x = 0;
       var j = str.chars.begin;
 
-      for(length = 0; j != str.chars.end; ++j)
+      for (length = 0; j != str.chars.end; ++j)
       {
         x += cell_width(*j);
 
@@ -562,7 +562,7 @@ fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws 
 {
   put(&mut os, &mut ctx, "[");
 
-  for(var k = 0; k < array.len; ++k)
+  for (var k = 0; k < array.len; ++k)
   {
     if (k != 0)
       put(&mut os, &mut ctx, ", ");
@@ -577,7 +577,7 @@ fn fmt_tuple<T>(OutputStream mut &os, fmt_context mut &ctx, T &tuple) throws -> 
 {
   put(&mut os, &mut ctx, "(");
 
-  #for(const k = 0; k != __tuple_len<T>; ++k)
+  #for (const k = 0; k != __tuple_len<T>; ++k)
   {
     #if (k != 0)
       put(&mut os, &mut ctx, ", ");
@@ -605,7 +605,7 @@ fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> 
 
       var str = std::string_literal();
 
-      #for(const k : std::meta::enumerators_of($T))
+      #for (const k : std::meta::enumerators_of($T))
         if (object == T::#k)
           str = std::meta::name_of(k);
 
@@ -636,7 +636,7 @@ fn fmt_union<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws ->
 
   dtx.written += print_to(&mut os, std::meta::name_of(std::meta::declid($T)), " { ", object.kind, ": ");
 
-  #for(const k = 1; k != std::meta::fields_of($T).len; ++k)
+  #for (const k = 1; k != std::meta::fields_of($T).len; ++k)
     if (object.kind == cast(k))
       fmt_to(&mut os, &mut dtx, object.#k);
 
@@ -654,7 +654,7 @@ fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -
 
   dtx.written += print_to(&mut os, std::meta::name_of(std::meta::declid($T)), " { ");
 
-  #for(const i = 0, const k : std::meta::fields_of($T); true; ++i)
+  #for (const i = 0, const k : std::meta::fields_of($T); true; ++i)
   {
     #if (i != 0)
       put(&mut os, &mut dtx, ", ");
@@ -740,7 +740,7 @@ pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
   var ctx = fmt_context();
   //var os = std::output_stream(&mut os);
 
-  #for(var &arg : args)
+  #for (var &arg : args)
   {
     ctx.spec.width = spec::auto;
     ctx.spec.precision = spec::auto;
@@ -886,7 +886,7 @@ fn parse_args<Args>(std::string_literal format) -> arguments<std::tuple_len<Args
   var beg = format.data;
   var end = format.data + format.len;
 
-  for(var ch = beg; ch != end; ++ch)
+  for (var ch = beg; ch != end; ++ch)
   {
     if (*ch == cast('{') || *ch == cast('}'))
     {
@@ -962,7 +962,7 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
 
   const fmt = #parse_args<Args>(format);
 
-  #for(const k = 0; k < std::tuple_len<Args>; ++k)
+  #for (const k = 0; k < std::tuple_len<Args>; ++k)
   {
     #if (fmt.specs[k].ok)
     {
@@ -1027,7 +1027,7 @@ pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) thr
 
     if (ctx.spec.ok)
     {
-      #for(const k = 0; k < std::tuple_len<Args>; ++k)
+      #for (const k = 0; k < std::tuple_len<Args>; ++k)
       {
         if (k < arg)
           continue;
