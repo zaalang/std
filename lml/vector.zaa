@@ -3,12 +3,14 @@
 //
 
 import std.fmt;
-import std.hash;
 import lml.point : Point;
 import lml.matrix;
 
 pub concept Vector<U, T, N>
 {
+  pub const dimension = N;
+  pub using coord_type = T;
+
   requires<vector> -> vector::vector_t
 }
 
@@ -48,11 +50,6 @@ pub struct vector<T, N> : pub T[N]
 pub fn get<i, T, N>(vector<T, N> &vector) -> T &
 {
   return &vector[i];
-}
-
-pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, vector<T, N> &vector) throws -> void
-{
-  std::fmt_to(&mut os, &mut ctx, vector.super);
 }
 
 pub static fn get<i, U, T, N>(Vector<U, T, N> &vector)
@@ -98,6 +95,11 @@ fn foldl<U, T, N, Func>(Func &&func, Vector<U, T, N> &u) -> T
     result = func(result, get<i>(u));
 
   return result;
+}
+
+pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, vector<T, N> &vector) throws -> void
+{
+  std::fmt_to(&mut os, &mut ctx, vector.super);
 }
 
 /// norm of the vector squared
@@ -400,7 +402,7 @@ pub const fn /<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
 }
 
 /// elementwise equality
-pub const fn ==<U, T, N>(Vector<U, T, N> &, Vector<U, T, N> &v) -> bool
+pub const fn ==<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> bool
 {
   #for (const i = 0; i < N; ++i)
     if (get<i>(u) != get<i>(v))
@@ -419,14 +421,4 @@ pub const fn *<T, M, N>(lml::matrix<T, M, N> &p, lml::vector<T, N> &u)
       result[i] += p[i, j] * u[j];
 
   return result;
-}
-
-pub fn hash<U, T, N>(var &hasher, Vector<U, T, N> &vector) -> usize
-{
-  var seed = 0;
-
-  #for (const i = 0; i < N; ++i)
-    seed = hasher.combine(seed, vector[i]);
-
-  return seed;
 }

@@ -330,7 +330,7 @@ pub fn ioring_get_sqe(ioring mut &ring) -> ioring_sqe mut *
   var index = tail & ring.header.sq_mask;
   var next = std::add_with_carry(tail, 1).0;
 
-  if (next == std::volatile_load(&ring.header.sq_head))
+  if (std::sub_with_borrow(next, std::volatile_load(&ring.header.sq_head)).0 > ring.header.sq_mask + 1)
     return null;
 
   return cast<ioring_sqe mut *>(cast<uintptr>(ring.header) + cast<usize>(ring.header.sq_offset + index * sizeof<ioring_sqe>));

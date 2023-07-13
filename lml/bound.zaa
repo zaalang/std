@@ -1,0 +1,463 @@
+//
+// bound
+//
+
+import std.fmt;
+import std.optional;
+import lml.point : Point;
+import lml.vector : Vector;
+import lml.quaternion;
+import lml.matrix;
+
+pub concept Bound<U, T, N>
+{
+  pub const dimension = N;
+  pub using coord_type = T;
+
+  requires<bound> -> bound::bound_t
+}
+
+pub struct bound<T, N>
+{
+  pub const dimension = N;
+  pub using coord_type = T;
+  pub using bound_t = Bound<bound<T, N>, T, N>;
+
+  T[N] lo;
+  T[N] hi;
+
+  pub bound(T[N] &&lo, T[N] &&hi)
+    : lo(&&lo), hi(&&hi)
+  {
+  }
+
+  pub fn centre(this &, usize axis) -> T
+  {
+    return (this.lo[axis] + this.hi[axis])/T(2.0);
+  }
+
+  pub fn halfdim(this &, usize axis) -> T
+  {
+    return (this.hi[axis] - this.lo[axis])/T(2.0);
+  }
+
+  pub fn low(this &, usize axis) -> T
+  {
+    return this.lo[axis];
+  }
+
+  pub fn high(this &, usize axis) -> T
+  {
+    return this.hi[axis];
+  }
+
+  pub bound() = default;
+  pub bound(bound&&) = default;
+  pub fn =(bound mut &, bound &&) -> bound mut & = default;
+  pub ~bound() = default;
+}
+
+pub fn low<i, T, N>(bound<T, N> &bound) -> T &
+{
+  return &bound.lo[i];
+}
+
+pub fn high<i, T, N>(bound<T, N> &bound) -> T &
+{
+  return &bound.hi[i];
+}
+
+pub static fn low<i, U, T, N>(Bound<U, T, N> &bound)
+{
+  return &&bound.low<i>();
+}
+
+pub static fn high<i, U, T, N>(Bound<U, T, N> &bound)
+{
+  return &&bound.high<i>();
+}
+
+pub fn make_bound<U, T, N>(Point<T, N> &min, Point<T, N> &max) -> U
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&lo[i])(get<i>(min));
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&hi[i])(get<i>(max));
+
+  return U(lo, hi);
+}
+
+pub fn make_bound<U, T, N>(Point<T, N> &centre, T &halfdim) -> U
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&lo[i])(get<i>(centre) - halfdim);
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&hi[i])(get<i>(centre) + halfdim);
+
+  return U(lo, hi);
+}
+
+pub struct bound_traits<bound>
+{
+  pub const N = bound::bound_t::dimension;
+  pub using T = bound::bound_t::coord_type;
+
+  pub const fn min()
+  {
+    return bound([std::numeric_traits<T>::max; N], [std::numeric_traits<T>::min; N]);
+  }
+
+  pub const fn max()
+  {
+    return bound([std::numeric_traits<T>::min; N], [std::numeric_traits<T>::max; N]);
+  }
+}
+
+/// elementwise equality
+pub const fn ==<U, T, N>(Bound<U, T, N> &lhs, Bound<U, T, N> &rhs) -> bool
+{
+  #for (const i = 0; i < N; ++i)
+    if (low<i>(lhs) != low<i>(rhs) || high<i>(lhs) != high<i>(rhs))
+      return false;
+
+  return true;
+}
+
+/// empty
+pub fn empty<U, T, N>(Bound<U, T, N> &bound) -> bool
+{
+  #for (const i = 0; i < N; ++i)
+    if (high<i>(bound) <= low<i>(bound))
+      return true;
+
+  return false;
+}
+
+/// volume
+pub const fn volume<U, T, N>(Bound<U, T, N> &bound) -> T
+{
+  var result = T(1.0);
+
+  #for (const i = 0; i < N; ++i)
+    result *= high<i>(bound) - low<i>(bound);
+
+  return result;
+}
+
+/// translate a bound
+pub const fn translate<U, V, T, N>(Bound<U, T, N> &bound, Vector<V, T, N> &v) -> U
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(low<i>(bound) + get<i>(v));
+    new<T>(&hi[i])(high<i>(bound) + get<i>(v));
+  }
+
+  return U(lo, hi);
+}
+
+/// scale a bound
+pub const fn scale<U, T, N, S>(Bound<U, T, N> &bound, S &s) -> U
+  match (T x, S y) { T(x * y); }
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(low<i>(bound) * s);
+    new<T>(&hi[i])(high<i>(bound) * s);
+  }
+
+  return U(lo, hi);
+}
+
+/// scale a bound
+pub const fn scale<U, V, T, N, S>(Bound<U, T, N> &bound, Vector<V, T, N> &v) -> U
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(low<i>(bound) * get<i>(v));
+    new<T>(&hi[i])(high<i>(bound) * get<i>(v));
+  }
+
+  return U(lo, hi);
+}
+
+/// inflate a bound
+pub const fn inflate<U, T, N, S>(Bound<U, T, N> &bound, S &radius) -> U
+  match (T x, S y) { T(x * y); }
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(low<i>(bound) - radius);
+    new<T>(&hi[i])(high<i>(bound) + radius);
+  }
+
+  return U(lo, hi);
+}
+
+/// inflate a bound
+pub const fn inflate<U, V, T, N>(Bound<U, T, N> &bound, Vector<V, T, N> &radius) -> U
+{
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(low<i>(bound) - get<i>(radius));
+    new<T>(&hi[i])(high<i>(bound) + get<i>(radius));
+  }
+
+  return U(lo, hi);
+}
+
+/// expand a bound to a point
+pub const fn expand<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> U
+{
+  using T;
+  using std;
+
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(min(low<i>(bound), get<i>(pt)));
+    new<T>(&hi[i])(max(high<i>(bound), get<i>(pt)));
+  }
+
+  return U(lo, hi);
+}
+
+/// expand a bound (union)
+pub const fn expand<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> U
+{
+  using T;
+  using std;
+
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+  {
+    new<T>(&lo[i])(min(low<i>(b1), low<i>(b2)));
+    new<T>(&hi[i])(max(high<i>(b1), high<i>(b2)));
+  }
+
+  return U(lo, hi);
+}
+
+/// clamp point on or within bound
+pub const fn clamp<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> typeof(pt)
+{
+  using T;
+  using std;
+
+  var result = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&result[i])(clamp(get<i>(pt), low<i>(bound), high<i>(bound)));
+
+  return typeof(pt)(result...);
+}
+
+/// clamp bound to bound
+pub const fn clamp<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> U
+{
+  using T;
+  using std;
+
+  var lo = [<T>: void; N];
+  var hi = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&lo[i])(max(low<i>(b1), low<i>(b2)));
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&hi[i])(min(high<i>(b1), high<i>(b2)));
+
+  return U(lo, hi);
+}
+
+/// intersects
+pub const fn intersects<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> bool
+{
+  #for (const i = 0; i < N; ++i)
+    if (low<i>(b1) > high<i>(b2) || high<i>(b1) < low<i>(b2))
+      return false;
+
+  return true;
+}
+
+/// intersection
+pub const fn intersection<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> std::optional<U>
+{
+  using T;
+  using std;
+
+  var result = std::optional<U>();
+
+  if (intersects(b1, b2))
+  {
+    result.emplace(clamp(b1, b2));
+  }
+
+  return result;
+}
+
+/// intersection of bound and line segment
+pub struct slabintersect<U, T, N> : pub std::optional<U>
+{
+  pub T tmin;
+  pub T tmax;
+
+  pub fn ray(this&) -> bool { using T; using std; return this.tmax > max(this.tmin, T(0.0)); }
+  pub fn seg(this&) -> bool { using T; using std; return this.tmax > max(this.tmin, T(0.0)) && this.tmin < T(1.0); }
+  pub fn inside(this&) -> bool { return this.tmax > T(0.0) && this.tmin < T(0.0); }
+
+  slabintersect() = default;
+  pub slabintersect(slabintersect&) = default;
+  pub ~slabintersect() = default;
+}
+
+pub const fn intersection<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &a, Point<T, N> &b)
+{
+  using T;
+  using std;
+
+  var result = slabintersect<typeof(a), T, N>();
+
+  result.tmin = std::numeric_traits<T>::min;
+  result.tmax = std::numeric_traits<T>::max;
+
+  #for (const i = 0; i < N; ++i)
+  {
+    var t1 = (low<i>(bound) - get<i>(a)) / (get<i>(b) - get<i>(a));
+    var t2 = (high<i>(bound) - get<i>(a)) / (get<i>(b) - get<i>(a));
+
+    if (var t = min(t1, t2); result.tmin < t)
+      result.tmin = t;
+
+    if (var t = max(t1, t2); t < result.tmax)
+      result.tmax = t;
+  }
+
+  if (result.tmax > result.tmin)
+  {
+    result.emplace(a + (result.tmin < 0.0 ? result.tmax : result.tmin) * vec(a, b));
+  }
+
+  return result;
+}
+
+/// contains point
+pub const fn contains<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> bool
+{
+  #for (const i = 0; i < N; ++i)
+    if (get<i>(pt) < low<i>(bound) || get<i>(pt) > high<i>(bound))
+      return false;
+
+  return true;
+}
+
+/// contains bound
+pub const fn contains<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> bool
+{
+  #for (const i = 0; i < N; ++i)
+    if (low<i>(b2) < low<i>(b1) || high<i>(b2) > high<i>(b1))
+      return false;
+
+  return true;
+}
+
+/// centre
+pub fn centre<U, T, N>(Bound<U, T, N> &bound) -> lml::vector<T, N>
+{
+  using T;
+  using std;
+
+  var result = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&result[i])((low<i>(bound) + high<i>(bound))/T(2.0));
+
+  return lml::vector<T, N>(result);
+}
+
+/// halfdim
+pub fn halfdim<U, T, N>(Bound<U, T, N> &bound) -> lml::vector<T, N>
+{
+  using T;
+  using std;
+
+  var result = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&result[i])((high<i>(bound) - low<i>(bound))/T(2.0));
+
+  return lml::vector<T, N>(result);
+}
+
+/// transform
+pub fn transform<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N> &bound) -> U
+{
+  var centre = transform(m, lml::centre(bound));
+  var halfdim = transform(abs(m), lml::halfdim(bound));
+
+  return make_bound<U>(centre - halfdim, centre + halfdim);
+}
+
+pub fn *<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N> &bound) -> U
+{
+  return transform(m, bound);
+}
+
+/// transform
+pub fn transform<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N-1> &bound) -> U
+{
+  var centre = transform(m, lml::centre(bound));
+  var halfdim = transform(abs(m), lml::halfdim(bound));
+
+  return make_bound<U>(centre - halfdim, centre + halfdim);
+}
+
+pub fn *<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N-1> &bound) -> U
+{
+  return transform(m, bound);
+}
+
+/// transform
+pub fn transform<U, T, V>(lml::quaternion<T, V> &q, Bound<U, T, 3> &bound) -> U
+{
+  var centre = transform(q, lml::centre(bound));
+
+  var halfdim = lml::halfdim(bound);
+  var rx = dot(abs(q.xaxis), halfdim);
+  var ry = dot(abs(q.yaxis), halfdim);
+  var rz = dot(abs(q.zaxis), halfdim);
+
+  return make_bound<U>(centre - lml::vector<T, 3>(rx, ry, rz), centre + lml::vector<T, 3>(rx, ry, rz));
+}
+
+pub fn *<U, T, V>(lml::quaternion<T> &m, Bound<U, T, 3> &bound) -> U
+{
+  return transform(m, bound);
+}

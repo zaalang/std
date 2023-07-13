@@ -150,16 +150,6 @@ pub fn hash(hash &hash, std::string_literal &str) -> usize
   return hash.combine_contiguous(str.data, str.len);
 }
 
-pub fn hash<T, N>(hash &hash, T[N] &array) -> usize
-{
-  return hash.combine_contiguous(array.data, array.len);
-}
-
-pub fn hash<T>(hash &hash, (T...) &tuple) -> usize
-{
-  return hash.combine(tuple...);
-}
-
 pub fn hash(hash &hash, null &) -> usize
 {
   return 0;
@@ -178,6 +168,16 @@ pub fn hash(hash &hash, typeof(0) literal) -> usize
 pub fn hash(hash &hash, typeof(0.0) literal) -> usize
 {
   return hash(cast<float>(literal));
+}
+
+pub fn hash<T, N>(var &hasher, T[N] &array) -> usize
+{
+  return hasher.combine_contiguous(array.data, array.len);
+}
+
+pub fn hash<T>(var &hasher, (T...) &tuple) -> usize
+{
+  return hasher.combine(tuple...);
 }
 
 pub fn hash<T>(var &hasher, T &object) -> usize

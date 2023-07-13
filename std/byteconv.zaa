@@ -1,0 +1,199 @@
+//
+// std byteconv
+//
+
+import std.error;
+
+pub enum endian
+{
+  big = 1,
+  little = 2,
+
+  native = little,
+}
+
+pub fn endian_load<T, N, Endian>(u8 *data) -> T
+{
+  std::assert(1 <= N && N <= sizeof<T>);
+
+  var value = T();
+
+  #if (Endian == endian::little)
+    std::memcpy(cast<u8 mut *>(&value) + (sizeof<T> - N), data, N);
+  #else
+    std::memcpy(cast<u8 mut *>(&value), data, N);
+
+  #if (Endian != endian::native)
+    value = std::byteswap(value);
+
+  return value >> ((sizeof<T> - N) << 3);
+}
+
+pub fn endian_store<T, N, Endian>(u8 mut *data, T value) -> void
+{
+  std::assert(1 <= N && N <= sizeof<T>);
+
+  #if (Endian != endian::native)
+    value = std::byteswap(value);
+
+  #if (Endian == endian::little)
+    std::memcpy(data, cast<u8*>(&value), N);
+  #else
+    std::memcpy(data, cast<u8*>(&value) + (sizeof<T> - N), N);
+}
+
+pub fn load_le_i8(u8 *data) -> i8
+{
+  return endian_load<i8, 1, endian::little>(data);
+}
+
+pub fn load_be_i8(u8 *data) -> i8
+{
+  return endian_load<i8, 1, endian::big>(data);
+}
+
+pub fn load_ne_i8(u8 *data) -> i8
+{
+  return endian_load<i8, 1, endian::native>(data);
+}
+
+pub fn load_le_u8(u8 *data) -> u8
+{
+  return endian_load<u8, 1, endian::little>(data);
+}
+
+pub fn load_be_u8(u8 *data) -> u8
+{
+  return endian_load<u8, 1, endian::big>(data);
+}
+
+pub fn load_ne_u8(u8 *data) -> u8
+{
+  return endian_load<u8, 1, endian::native>(data);
+}
+
+pub fn load_le_i16(u8 *data) -> i16
+{
+  return endian_load<i16, 2, endian::little>(data);
+}
+
+pub fn load_be_i16(u8 *data) -> i16
+{
+  return endian_load<i16, 2, endian::big>(data);
+}
+
+pub fn load_ne_i16(u8 *data) -> i16
+{
+  return endian_load<i16, 2, endian::native>(data);
+}
+
+pub fn load_le_u16(u8 *data) -> u16
+{
+  return endian_load<u16, 2, endian::little>(data);
+}
+
+pub fn load_be_u16(u8 *data) -> u16
+{
+  return endian_load<u16, 2, endian::big>(data);
+}
+
+pub fn load_ne_u16(u8 *data) -> u16
+{
+  return endian_load<u16, 2, endian::native>(data);
+}
+
+pub fn load_le_i32(u8 *data) -> i32
+{
+  return endian_load<i32, 4, endian::little>(data);
+}
+
+pub fn load_be_i32(u8 *data) -> i32
+{
+  return endian_load<i32, 4, endian::big>(data);
+}
+
+pub fn load_ne_i32(u8 *data) -> u32
+{
+  return endian_load<u32, 4, endian::native>(data);
+}
+
+pub fn load_le_u32(u8 *data) -> u32
+{
+  return endian_load<u32, 4, endian::little>(data);
+}
+
+pub fn load_be_u32(u8 *data) -> u32
+{
+  return endian_load<u32, 4, endian::big>(data);
+}
+
+pub fn load_ne_u32(u8 *data) -> u32
+{
+  return endian_load<u32, 4, endian::native>(data);
+}
+
+pub fn load_le_i64(u8 *data) -> i64
+{
+  return endian_load<i64, 8, endian::little>(data);
+}
+
+pub fn load_be_i64(u8 *data) -> i64
+{
+  return endian_load<i64, 8, endian::big>(data);
+}
+
+pub fn load_ne_i64(u8 *data) -> i64
+{
+  return endian_load<i64, 8, endian::native>(data);
+}
+
+pub fn load_le_u64(u8 *data) -> u64
+{
+  return endian_load<u64, 8, endian::little>(data);
+}
+
+pub fn load_be_u64(u8 *data) -> u64
+{
+  return endian_load<u64, 8, endian::big>(data);
+}
+
+pub fn load_ne_u64(u8 *data) -> u64
+{
+  return endian_load<u64, 8, endian::native>(data);
+}
+
+pub fn native_to_be<T>(T value) -> T
+  where __is_arithmetic<T>
+{
+  #if (endian::native != endian::big)
+    value = std::byteswap(value);
+
+  return value;
+}
+
+pub fn native_to_le<T>(T value) -> T
+  where __is_arithmetic<T>
+{
+  #if (endian::native != endian::little)
+    value = std::byteswap(value);
+
+  return value;
+}
+
+pub fn be_to_native<T>(T value) -> T
+  where __is_arithmetic<T>
+{
+  #if (endian::big != endian::native)
+    value = std::byteswap(value);
+
+  return value;
+}
+
+pub fn le_to_native<T>(T value) -> T
+  where __is_arithmetic<T>
+{
+  #if (endian::little != endian::native)
+    value = std::byteswap(value);
+
+  return value;
+}

@@ -363,6 +363,11 @@ pub const fn max<R1, P1, R2, P2>(fixed<R1, P1> x, fixed<R2, P2> y)
   return fixed<ct::rep, exp>(__max(fixed<ct::rep, exp>(x).value, fixed<ct::rep, exp>(y).value), exp);
 }
 
+pub const fn clamp<R, P, T>(fixed<R, P> x, T lower, T upper)
+{
+  return max(fixed<R, P>(lower), min(x, fixed<R, P>(upper)));
+}
+
 pub const fn sqrt<R, P>(fixed<R, P> x)
 {
   std::assert(P & 1 == 0);
