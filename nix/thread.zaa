@@ -1,0 +1,137 @@
+//
+// nix.thread
+//
+
+import std.arc;
+
+struct pthread_attr;
+using pthread_t = void*;
+using pthread_attr_t = pthread_attr*;
+
+extern fn pthread_create(pthread_t mut *thread, pthread_attr_t *attr, fn (*start_routine)(void mut *) -> i32, void mut *start_argument) -> i32;
+extern fn pthread_join(pthread_t thread, i32 mut *rval) -> i32;
+extern fn pthread_detach(pthread_t thread) -> i32;
+
+struct invoker
+{
+  void mut *self;
+  fn (*fx)(void mut *);
+
+  invoker() = default;
+  ~invoker() = default;
+}
+
+struct state<Worker, Args> : pub invoker
+{
+  Worker worker;
+  Args args;
+
+  state(Worker &&worker, Args && ...args)
+    : worker(&&worker), args(&&args...)
+  {
+    super.fx = fn (void mut *self) -> void {
+      var this = std::arc<state<Worker, Args>>::adopt(cast(self));
+
+      this.worker(this.args...);
+    };
+  }
+
+  ~state() = default;
+}
+
+fn thread_routine(invoker mut *state) -> i32
+{
+  state.fx(state.self);
+
+  return 0;
+}
+
+pub struct thread
+{
+  pthread_t handle;
+
+  pub fn spawn<Worker, Args>(Worker &&worker, Args && ...args) -> thread
+    match(Worker worker, Args args) { worker(&move args...); }
+  {
+    var state = std::arc<state<Worker, Args>>(&&worker, &&args...);
+
+    var invoker = &*state;
+    invoker.self = std::arc::release(&move state);
+
+    var handle = pthread_t();
+    if (var rc = pthread_create(&handle, null, &cast<fn (invoker mut *) -> i32>(thread_routine), invoker); rc < 0)
+      std::arc::reset(&mut state, cast(invoker.self));
+
+    return thread(handle);
+  }
+
+  pub fn join(this mut &) -> void
+  {
+    if (this.handle)
+    {
+      if (var rc = pthread_join(this.handle, null); rc < 0)
+        std::panic();
+    }
+
+    this.handle = null;
+  }
+
+  pub fn detach(this mut &) -> void
+  {
+    if (this.handle)
+    {
+      pthread_detach(this.handle);
+    }
+
+    this.handle = null;
+  }
+
+  pub thread() = default;
+
+  pub thread(thread &&other)
+    where __is_rvalue<typeof(other)>
+  {
+    handle = release(&move other);
+  }
+
+  pub fn adopt(pthread_t handle) -> thread
+  {
+    return thread(handle);
+  }
+
+  pub fn =(thread mut &this, thread &&other) -> thread mut &
+    where __is_rvalue<typeof(other)>
+  {
+    reset(&mut this, release(&move other));
+
+    return &this;
+  }
+
+  pub static fn release(thread &&this) -> pthread_t
+    where __is_rvalue<typeof(this)>
+  {
+    var handle = this.handle;
+
+    this.handle = null;
+
+    return handle;
+  }
+
+  pub static fn reset(this mut &, pthread_t handle = null) -> void
+  {
+    if (this.handle)
+      detach(&mut this);
+
+    this.handle = handle;
+  }
+
+  thread(pthread_t handle)
+    : handle(handle)
+  {
+  }
+
+  pub ~thread()
+  {
+    reset(&mut this);
+  }
+}

@@ -3,9 +3,10 @@
 //
 
 import std.math;
-import lml.matrix : matrix;
-import lml.vector : vector;
+import std.optional;
 import lml.point : Point;
+import lml.vector : Vector;
+import lml.matrix : Matrix;
 
 /// distance between two points squared
 pub const fn distsqr<T, N>(Point<T, N> &a, Point<T, N> &b) -> T
@@ -181,4 +182,175 @@ pub const fn nearest_on_segment<T, N>(Point<T, N> &a, Point<T, N> &b, Point<T, N
     return b;
 
   return a + dot_ta/(dot_ta + dot_tb) * u;
+}
+
+/// intersection of two lines
+
+pub struct lineintersect<U, T, N> : pub std::optional<U>
+{
+  pub T u;
+  pub T s;
+  pub T t;
+
+  pub fn segseg(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.s <= 1.0 && this.t >= 0.0 && this.t <= 1.0; }
+  pub fn segray(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.s <= 1.0 && this.t >= 0.0; }
+  pub fn rayseg(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.t >= 0.0 && this.t <= 1.0; }
+  pub fn rayray(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.t >= 0.0; }
+  pub fn overlap(this&) -> bool { return this.region.is_some(); }
+
+  pub std::optional<(U, U)> region;
+
+  lineintersect() = default;
+  pub lineintersect(lineintersect&) = default;
+  pub ~slabintersect() = default;
+}
+
+pub fn intersection_robust<T, N>(Point<T, N> &a1, Point<T, N> &a2, Point<T, N> &b1, Point<T, N> &b2)
+{
+  using T;
+  using std;
+
+  var result = lineintersect<typeof(a1), T, N>();
+
+  var u = vec(a1, a2);
+  var v = vec(b1, b2);
+  var w = vec(b1, a1);
+
+  var sidea1 = orientation(a1, a2, b1);
+  var sidea2 = orientation(a1, a2, b2);
+  var sideb1 = orientation(b1, b2, a1);
+  var sideb2 = orientation(b1, b2, a2);
+
+  if ((sidea1 == 0.0 && sidea2 == 0.0) || (sideb1 == 0.0 && sideb2 == 0.0))
+  {
+    result.u = 0.0;
+
+    var k = 0;
+    var region = [<typeof(a1)*>: null; 5];
+
+    if (dot(v, v) != 0.0)
+    {
+      if (dot(vec(b1, a1), v) >= 0.0 && dot(vec(a1, b2), v) > 0.0)
+        region[k++] = &a1;
+
+      if (dot(vec(b1, a2), v) > 0.0 && dot(vec(a2, b2), v) >= 0.0)
+        region[k++] = &a2;
+    }
+
+    if (dot(u, u) != 0.0)
+    {
+      if (dot(vec(a1, b1), u) > 0.0 && dot(vec(b1, a2), u) >= 0.0)
+        region[k++] = &b1;
+
+      if (dot(vec(a1, b2), u) >= 0.0 && dot(vec(b2, a2), u) > 0.0)
+        region[k++] = &b2;
+    }
+
+    if (dot(u, u) == 0.0 && dot(v, v) == 0.0 && dot(w, w) == 0.0)
+    {
+      region[k++] = &a1;
+      region[k++] = &b1;
+    }
+
+    if (k != 0)
+    {
+      result.region = (*region[0], *region[k-1]);
+    }
+  }
+  else
+  {
+    result.u = perp(u, v);
+
+    if (result.u != 0.0)
+    {
+      result.s = perp(v, w) / result.u;
+      result.t = perp(u, w) / result.u;
+
+      if ((sidea1 * sidea2) <= 0.0 && (sideb1 * sideb2) <= 0.0)
+      {
+        result.s = clamp(result.s, 0.0, 1.0);
+        result.t = clamp(result.t, 0.0, 1.0);
+
+        if (sideb1 == 0.0)
+          result.s = 0.0;
+
+        if (sideb2 == 0.0)
+          result.s = 1.0;
+
+        if (sidea1 == 0.0)
+          result.t = 0.0;
+
+        if (sidea2 == 0.0)
+          result.t = 1.0;
+      }
+
+      result.emplace((abs(result.s) < abs(result.t)) ? a1 + result.s * u : b1 + result.t * v);
+    }
+  }
+
+  return result;
+}
+
+pub fn intersection<T, N>(Point<T, N> &a1, Point<T, N> &a2, Point<T, N> &b1, Point<T, N> &b2)
+{
+  using T;
+  using std;
+
+  var result = lineintersect<typeof(a1), T, N>();
+
+  var u = vec(a1, a2);
+  var v = vec(b1, b2);
+  var w = vec(b1, a1);
+
+  result.u = perp(u, v);
+
+  if (result.u != 0.0)
+  {
+    result.s = perp(v, w) / result.u;
+    result.t = perp(u, w) / result.u;
+
+    result.emplace((abs(result.s) < abs(result.t)) ? a1 + result.s * u : b1 + result.t * v);
+  }
+
+  return result;
+}
+
+/// intersection of ray and triangle (moller–trumbore)
+pub fn intersection<U, T>(Point<T, 3> &origin, Vector<U, T, 3> &direction, Point<T, 3> &a, Point<T, 3> &b, Point<T, 3> &c)
+{
+  using T;
+  using std;
+
+  var result = std::optional<typeof(origin)>();
+
+  var ab = vec(a, b);
+  var ac = vec(a, c);
+
+  var h = cross(direction, ac);
+  var d = dot(ab, h);
+
+  if (d != 0.0)
+  {
+    var f = 1.0 / d;
+    var s = vec(a, origin);
+    var u = dot(s, h) * f;
+
+    if (u >= 0.0 && u <= 1.0)
+    {
+      var q = cross(s, ab);
+      var v = dot(direction, q) * f;
+
+      if (v >= 0.0 && u + v <= 1.0)
+      {
+        var t = dot(ac, q) * f;
+
+        if (t >= 0.0)
+        {
+          result.emplace(origin + t * direction);
+        }
+      }
+    }
+  }
+
+  return result;
 }

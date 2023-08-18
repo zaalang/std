@@ -1,0 +1,9 @@
+//
+// synchapi
+//
+
+import os.windows.ntdef : *;
+
+pub extern "C" fn WaitOnAddress(VOID *Address, PVOID CompareAddress, SIZE_T AddressSize, DWORD dwMilliseconds) -> BOOL;
+pub extern "C" fn WakeByAddressSingle(PVOID Address) -> void;
+pub extern "C" fn WakeByAddressAll(PVOID Address) -> void;

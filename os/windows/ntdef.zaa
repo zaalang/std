@@ -11,8 +11,11 @@ pub using LPCCH = u8 *;
 pub using LPSTR = u8 mut *;
 pub using LPWSTR = u16 mut *;
 pub using LPCWSTR = u16 *;
+pub using VOID = void;
+pub using PVOID = void *;
 pub using LPVOID = void mut *;
 pub using LPCVOID = void *;
 pub using SIZE_T = usize;
 pub using LARGE_INTEGER = i64;
 pub using ULARGE_INTEGER = u64;
+

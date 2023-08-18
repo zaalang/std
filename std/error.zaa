@@ -75,6 +75,7 @@ pub enum errc : u32
   broken_pipe = 32,
   argument_out_of_domain = 33,
   result_out_of_range = 34,
+  deadlock_avoided = 35,
   name_too_long = 36,
   not_implemented = 38,
   directory_not_empty = 39,

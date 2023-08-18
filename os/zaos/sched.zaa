@@ -52,6 +52,16 @@ pub struct attr
   pub ~attr() = default;
 }
 
+pub enum priority
+{
+  pub const lowest = 1;
+  pub const low = 5;
+  pub const normal = 10;
+  pub const display = 15;
+  pub const high = 20;
+  pub const max = 50;
+}
+
 pub const WNOHANG = 0x1;
 pub const WNOWAIT = 0x2;
 
@@ -59,13 +69,22 @@ pub const WNOWAIT = 0x2;
 extern fn __vdso_process_create(arg *argv, usize argc, arg *envp, usize envc, attr *attrs, usize n, u64 flags) -> i32;
 
 #[weak]
-extern fn __vdso_thread_create(void *entry, void *parameter, u64 flags) -> i32;
+extern fn __vdso_thread_create(void mut *stack, (fn (void mut *) -> void) *start_routine, void mut *start_argument, i32 priority, i32 mut *tid, u64 flags) -> i32;
 
 #[weak]
 extern fn __vdso_wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32;
 
 #[weak]
+extern fn __vdso_futex_wait(u32 *addr, u32 expected, u64 abstime) -> i32;
+
+#[weak]
+extern fn __vdso_futex_wake(u32 *addr, u32 count) -> i32;
+
+#[weak]
 extern fn __vdso_process_kill(i32 pid) -> i32;
+
+#[weak]
+extern fn __vdso_thread_munmap_exit(void *addr, usize length) -> i32;
 
 #[weak]
 extern fn __vdso_thread_exit(i32 rval) -> void;
@@ -78,9 +97,9 @@ pub fn process_create(arg *argv, usize argc, arg *envp, usize envc, attr *attrs,
   return __vdso_process_create(argv, argc, envp, envc, attrs, n, flags);
 }
 
-pub fn thread_create(void *entry, void *parameter, u64 flags) -> i32
+pub fn thread_create(void mut *stack, (fn (void mut *) -> void) *start_routine, void mut *start_argument, i32 priority, i32 mut *tid, u64 flags) -> i32
 {
-  return __vdso_thread_create(entry, parameter, flags);
+  return __vdso_thread_create(stack, start_routine, start_argument, priority, tid, flags);
 }
 
 pub fn wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32
@@ -88,9 +107,24 @@ pub fn wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32
   return __vdso_wait(id, rvalbuf, flags);
 }
 
+pub fn futex_wait(u32 *addr, u32 expected, u64 abstime) -> i32
+{
+  return __vdso_futex_wait(addr, expected, abstime);
+}
+
+pub fn futex_wake(u32 *addr, u32 count) -> i32
+{
+  return __vdso_futex_wake(addr, count);
+}
+
 pub fn process_kill(i32 pid) -> i32
 {
   return __vdso_process_kill(pid);
+}
+
+pub fn thread_munmap_exit(void *addr, usize length) -> i32
+{
+  return __vdso_thread_munmap_exit(addr, length);
 }
 
 #[noreturn]

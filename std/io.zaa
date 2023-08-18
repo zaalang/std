@@ -53,7 +53,7 @@ pub concept InputReader
 pub struct input_stream
 {
   void mut &_stream;
-  usize fn(void mut &, u8 mut *, usize) throws(std::error) *_read;
+  fn (*_read)(void mut &, u8 mut *, usize) throws(std::error) -> usize;
 
   pub fn read(this mut &, u8 mut *data, usize len) throws -> usize
   {
@@ -65,7 +65,7 @@ pub struct input_stream
   {
     assert(__is_match<InputStream, T>);
 
-    _read = fn(void mut &stream, u8 mut *data, usize len) throws -> usize {
+    _read = fn (void mut &stream, u8 mut *data, usize len) throws -> usize {
       return cast<T mut &>(stream).read(data, len);
     };
   }
@@ -76,7 +76,7 @@ pub struct input_stream
 pub struct output_stream
 {
   void mut &_stream;
-  usize fn(void mut &, u8 *, usize) throws(std::error) *_write;
+  fn (*_write)(void mut &, u8 *, usize) throws(std::error) -> usize;
 
   pub fn write(this mut &, u8 *data, usize len) throws -> usize
   {
@@ -88,7 +88,7 @@ pub struct output_stream
   {
     assert(__is_match<OutputStream, T>);
 
-    _write = fn(void mut &stream, u8 *data, usize len) throws -> usize {
+    _write = fn (void mut &stream, u8 *data, usize len) throws -> usize {
       return cast<T mut &>(stream).write(data, len);
     };
   }

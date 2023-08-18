@@ -543,7 +543,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws -> 
   fmt(&mut os, &mut ctx, error.message(buf.data, buf.len));
 }
 
-fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, R fn(V...) &) throws -> void
+fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, (fn (V...) -> R) &) throws -> void
 {
   put(&mut os, &mut ctx, "fn&");
 }
@@ -568,6 +568,21 @@ fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws 
       put(&mut os, &mut ctx, ", ");
 
     fmt_to(&mut os, &mut ctx, array[k]);
+  }
+
+  put(&mut os, &mut ctx, "]");
+}
+
+fn fmt_slice<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &slice) throws -> void
+{
+  put(&mut os, &mut ctx, "[");
+
+  for (var &k : slice)
+  {
+    if (&k != slice.data)
+      put(&mut os, &mut ctx, ", ");
+
+    fmt_to(&mut os, &mut ctx, k);
   }
 
   put(&mut os, &mut ctx, "]");
@@ -699,6 +714,11 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   #if (__is_struct<T> || __is_vtable<T>)
   {
     fmt_struct(&mut os, &mut ctx, object);
+  }
+
+  #if (__is_slice<T>)
+  {
+    fmt_slice(&mut os, &mut ctx, object);
   }
 }
 

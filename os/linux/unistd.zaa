@@ -63,3 +63,13 @@ pub fn exit(int rval) -> void
 {
   syscall1(sys_exit, rval);
 }
+
+pub const FUTEX_WAIT = 0;
+pub const FUTEX_WAKE = 1;
+pub const FUTEX_PRIVATE_FLAG = 128;
+pub const FUTEX_CLOCK_REALTIME = 256;
+
+pub fn futex(u32 *uaddr, int futex_op, u32 val, timespec *timeout) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall4(sys_futex, uaddr, futex_op, val, timeout)));
+}

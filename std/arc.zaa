@@ -39,22 +39,24 @@ pub struct arc<T, Allocator = std::allocator>
     {
     }
 
-    pub fn upgrade(this mut &) -> std::optional<arc>
+    pub fn upgrade(this &) -> std::optional<arc>
     {
       if (!this.inner)
         return None;
 
+      var inner = cast<Ac mut *>(this.inner);
+
       for (;;)
       {
-        var refcnt = std::volatile_load(&this.inner.refcnt);
+        var refcnt = std::volatile_load(&inner.refcnt);
 
         if (refcnt == 0)
           return None;
 
-        if (!std::atomic_cmpxchg_weak(&this.inner.refcnt, refcnt, refcnt + 1))
+        if (!std::atomic_cmpxchg_weak(&inner.refcnt, refcnt, refcnt + 1))
           continue;
 
-        return arc(this.inner);
+        return arc(inner);
       }
     }
 
@@ -147,6 +149,7 @@ pub struct arc<T, Allocator = std::allocator>
     return arc(ptr);
   }
 
+  #[lifetime(launder(this))]
   pub fn =(arc mut &this, arc &&other) -> arc mut &
   {
     if (&this != &other)
@@ -182,6 +185,7 @@ pub struct arc<T, Allocator = std::allocator>
     return ptr;
   }
 
+  #[lifetime(launder(this))]
   pub static fn reset(this mut &, Ac mut *ptr = null) -> void
   {
     if (this.inner)

@@ -3,7 +3,7 @@
 //
 
 import std.stdlib : assert;
-import std.span;
+import std.span : span, mutable_span;
 import std.string : String;
 import std.error;
 
@@ -51,7 +51,7 @@ pub struct file
 {
   pub fn open(String &path, u64 offset = 0, usize length = 0) throws -> file
   {
-    var fd = open_file(std::string_view(path.data, path.len), mode::readonly);
+    var fd = open_file(std::string_view(path), mode::readonly);
 
     var addr = map_file(fd, offset, &mut length, mode::readonly);
 
@@ -67,14 +67,9 @@ pub struct file
     return file(addr, length);
   }
 
-  pub file(u8 *data, usize len)
-    : _data(data), _len(len)
+  pub fn bool(this&) -> bool
   {
-  }
-
-  pub ~file()
-  {
-    unmap(_data, _len);
+    return this._data != null;
   }
 
   pub fn len(this &) -> usize
@@ -87,21 +82,30 @@ pub struct file
     return this._len;
   }
 
+  pub fn empty(this &) -> bool
+  {
+    return this._len == 0;
+  }
+
+  #[lifetime(depend(this))]
   pub fn data(this &) -> u8 *
   {
     return this._data;
   }
 
+  #[lifetime(depend(this))]
   pub fn begin(this &) -> u8 *
   {
     return this._data;
   }
 
+  #[lifetime(depend(this))]
   pub fn end(this &) -> u8 *
   {
     return this._data + this._len;
   }
 
+  #[lifetime(depend(this))]
   pub fn [](this &, usize index) -> u8 &
   {
     assert(index < this._len);
@@ -109,19 +113,74 @@ pub struct file
     return &*(this._data + index);
   }
 
-  pub fn [](this &, (usize, usize) range) -> std::span<u8>
+  #[lifetime(depend(this))]
+  pub fn [](this &, (usize, usize) range) -> span<u8>
   {
-    assert(range.0 <= range.1 && range.0 < this._len && range.1 <= this._len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
 
-    return std::span(this._data + range.0, this._data + range.1);
+    return span(this._data + range.0, this._data + range.1);
   }
 
-  pub fn [](this &, (usize, usize, void) range) -> std::span<u8>
+  #[lifetime(depend(this))]
+  pub fn [](this &, (usize, usize, void) range) -> span<u8>
   {
-    assert(range.0 <= range.1 && range.0 < this._len && range.1 + 1 <= this._len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
 
-    return std::span(this._data + range.0, this._data + range.1 + 1);
+    return span(this._data + range.0, this._data + range.1 + 1);
   }
+
+  #[lifetime(repose(iter, this), depend(this))]
+  pub fn [](this &, u8 *iter) -> u8 &
+  {
+    assert(this._data <= iter && iter < this._data + this._len);
+
+    return &*iter;
+  }
+
+  #[lifetime(repose(range, this), depend(this))]
+  pub fn [](this &, (u8*, u8*) range) -> span<u8>
+  {
+    assert(range.0 <= range.1 && this._data <= range.0 && range.1 <= this._data + this._len);
+
+    return span(range.0, range.1);
+  }
+
+  #[lifetime(repose(range, this), depend(this))]
+  pub fn [](this &, (u8*, u8*, void) range) -> span<u8>
+  {
+    assert(range.0 <= range.1 && this._data <= range.0 && range.1 + 1 <= this._data + this._len);
+
+    return span(range.0, range.1 + 1);
+  }
+
+  pub file(file &&other)
+    where __is_rvalue<typeof(other)>
+  {
+    std::swap(&mut this._len, &mut other._len);
+    std::swap(&mut this._data, &mut other._data);
+  }
+
+  pub fn =(file mut &this, file &&other) -> file mut &
+    where __is_rvalue<typeof(other)>
+  {
+    std::swap(&mut this._len, &mut other._len);
+    std::swap(&mut this._data, &mut other._data);
+
+    return &this;
+  }
+
+  file(u8 *data, usize len)
+    : _data(data), _len(len)
+  {
+  }
+
+  pub ~file()
+  {
+    if (_data)
+      unmap(_data, _len);
+  }
+
+  pub file() = default;
 
   usize _len;
   u8 *_data;
@@ -131,7 +190,7 @@ pub struct mutable_file
 {
   pub fn open(String &path, u64 offset = 0, usize length = 0) throws -> mutable_file
   {
-    var fd = open_file(std::string_view(path.data, path.len), mode::readwrite);
+    var fd = open_file(std::string_view(path), mode::readwrite);
 
     var addr = map_file(fd, offset, &mut length, mode::readwrite);
 
@@ -147,14 +206,9 @@ pub struct mutable_file
     return mutable_file(addr, length);
   }
 
-  pub mutable_file(u8 mut *data, usize len)
-    : _data(data), _len(len)
+  pub fn bool(this&) -> bool
   {
-  }
-
-  pub ~mutable_file()
-  {
-    unmap(_data, _len);
+    return this._data != null;
   }
 
   pub fn len(this &) -> usize
@@ -167,55 +221,137 @@ pub struct mutable_file
     return this._len;
   }
 
+  pub fn empty(this &) -> bool
+  {
+    return this._len == 0;
+  }
+
+  #[lifetime(depend(this))]
   pub fn data(this &&)
   {
     return this._data;
   }
 
+  #[lifetime(depend(this))]
   pub fn begin(this &&)
   {
     return this._data;
   }
 
+  #[lifetime(depend(this))]
   pub fn end(this &&)
   {
     return this._data + this._len;
   }
 
+  #[lifetime(depend(this))]
   pub fn [](this &&, usize index)
   {
     assert(index < this._len);
 
-    return &*(this._data + index);
+    return &cast<&&typeof(this)>(*(this._data + index));
   }
 
-  pub fn [](this &, (usize, usize) range) -> std::span<u8>
+  #[lifetime(depend(this))]
+  pub fn [](this &, (usize, usize) range) -> span<u8>
   {
-    assert(range.0 <= range.1 && range.0 < this._len && range.1 <= this._len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
 
-    return std::span(this._data + range.0, this._data + range.1);
+    return span(this._data + range.0, this._data + range.1);
   }
 
-  pub fn [](this &, (usize, usize, void) range) -> std::span<u8>
+  #[lifetime(depend(this))]
+  pub fn [](this &, (usize, usize, void) range) -> span<u8>
   {
-    assert(range.0 <= range.1 && range.0 < this._len && range.1 + 1 <= this._len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
 
-    return std::span(this._data + range.0, this._data + range.1 + 1);
+    return span(this._data + range.0, this._data + range.1 + 1);
   }
 
-  pub fn [](this mut &, (usize, usize) range) -> std::mutable_span<u8>
+  #[lifetime(depend(this))]
+  pub fn [](this mut &, (usize, usize) range) -> mutable_span<u8>
   {
-    assert(range.0 <= range.1 && range.0 < this._len && range.1 <= this._len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
 
-    return std::mutable_span(this._data + range.0, this._data + range.1);
+    return mutable_span(this._data + range.0, this._data + range.1);
   }
 
-  pub fn [](this mut &, (usize, usize, void) range) -> std::mutable_span<u8>
+  #[lifetime(depend(this))]
+  pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<u8>
   {
-    assert(range.0 <= range.1 && range.0 < this._len && range.1 + 1 <= this._len);
+    assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
 
-    return std::mutable_span(this._data + range.0, this._data + range.1 + 1);
+    return mutable_span(this._data + range.0, this._data + range.1 + 1);
   }
+
+  #[lifetime(repose(iter, this), depend(this))]
+  pub fn [](this &&, u8 *iter)
+  {
+    assert(this._data <= iter && iter < this._data + this._len);
+
+    return &cast<&&typeof(this)>(*cast<u8 mut *>(iter));
+  }
+
+  #[lifetime(repose(range, this), depend(this))]
+  pub fn [](this &, (u8*, u8*) range) -> span<u8>
+  {
+    assert(range.0 <= range.1 && this._data <= range.0 && range.1 <= this._data + this._len);
+
+    return span(range.0, range.1);
+  }
+
+  #[lifetime(repose(range, this), depend(this))]
+  pub fn [](this &, (u8*, u8*, void) range) -> span<u8>
+  {
+    assert(range.0 <= range.1 && this._data <= range.0 && range.1 + 1 <= this._data + this._len);
+
+    return span(range.0, range.1 + 1);
+  }
+
+  #[lifetime(repose(range, this), depend(this))]
+  pub fn [](this mut &, (u8*, u8*) range) -> mutable_span<u8>
+  {
+    assert(range.0 <= range.1 && this._data <= range.0 && range.1 <= this._data + this._len);
+
+    return mutable_span(cast<u8 mut *>(range.0), cast<u8 mut *>(range.1));
+  }
+
+  #[lifetime(repose(range, this), depend(this))]
+  pub fn [](this mut &, (u8*, u8*, void) range) -> mutable_span<u8>
+  {
+    assert(range.0 <= range.1 && this._data <= range.0 && range.1 + 1 <= this._data + this._len);
+
+    return mutable_span(cast<u8 mut *>(range.0), cast<u8 mut *>(range.1 + 1));
+  }
+
+  pub mutable_file(mutable_file &&other)
+    where __is_rvalue<typeof(other)>
+  {
+    std::swap(&mut this._len, &mut other._len);
+    std::swap(&mut this._data, &mut other._data);
+  }
+
+  pub fn =(mutable_file mut &this, mutable_file &&other) -> mutable_file mut &
+    where __is_rvalue<typeof(other)>
+  {
+    std::swap(&mut this._len, &mut other._len);
+    std::swap(&mut this._data, &mut other._data);
+
+    return &this;
+  }
+
+  mutable_file(u8 mut *data, usize len)
+    : _data(data), _len(len)
+  {
+  }
+
+  pub ~mutable_file()
+  {
+    if (_data)
+      unmap(_data, _len);
+  }
+
+  pub mutable_file() = default;
 
   usize _len;
   u8 mut *_data;
@@ -253,11 +389,11 @@ pub struct mutable_file
     if (length == 0)
     {
       var fs = stat();
-      if (var result = fstat(fd, &fs); result < 0)
+      if (var rc = fstat(fd, &fs); rc < 0)
       {
         close(fd);
 
-        throw mmap_error(cast<uintptr>(-result));
+        throw mmap_error(cast<uintptr>(-rc));
       }
 
       length = cast<usize>(fs.st_size - offset);
@@ -265,11 +401,11 @@ pub struct mutable_file
 
     var addr = mmap(null, length, (mode == mode::readonly) ? PROT_READ : PROT_WRITE, MAP_SHARED, fd, offset);
 
-    if (var result = std::bit_cast<intptr>(addr); result < 0)
+    if (var rc = std::bit_cast<intptr>(addr); rc < 0)
     {
       close(fd);
 
-      throw mmap_error(cast<uintptr>(-result));
+      throw mmap_error(cast<uintptr>(-rc));
     }
 
     return cast<u8 mut *>(addr);
@@ -405,11 +541,11 @@ pub struct mutable_file
     if (length == 0)
     {
       var fs = stat();
-      if (var result = stat(&mut thread_ring, fd, &fs, stats::size); result < 0)
+      if (var rc = stat(&mut thread_ring, fd, &fs, stats::size); rc < 0)
       {
         close(&mut thread_ring, fd);
 
-        throw mmap_error(cast<uintptr>(-result));
+        throw mmap_error(cast<uintptr>(-rc));
       }
 
       length = cast<usize>(fs.size - offset);
@@ -422,11 +558,11 @@ pub struct mutable_file
     mmvec.prot = (mode == mode::readonly) ? prot::readonly : prot::readwrite;
 
     var addr = null<u8 mut *>();
-    if (var result = os::mmap(fd, &mmvec, 1, &addr, 0); result < 0)
+    if (var rc = os::mmap(fd, &mmvec, 1, &addr, 0); rc < 0)
     {
       close(&mut thread_ring, fd);
 
-      throw mmap_error(cast<uintptr>(-result));
+      throw mmap_error(cast<uintptr>(-rc));
     }
 
     return addr;

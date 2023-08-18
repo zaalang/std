@@ -1,0 +1,178 @@
+//
+// futex
+//
+
+import std.error;
+import chrono;
+
+#if __cfg("os.linux")
+
+  import os.linux.unistd;
+
+  pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
+  {
+    using os;
+
+    if (var rc = futex(addr, FUTEX_WAIT, expected, null); rc < 0)
+    {
+      if (rc == EAGAIN)
+        return 0;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws -> i32
+  {
+    using os;
+    using chrono;
+
+    var timeout = chrono::floor<chrono::nanoseconds>(abstime - Clock::now);
+
+    if (timeout < chrono::nanoseconds(0))
+      timeout = chrono::nanoseconds(0);
+
+    var tp = timespec();
+    tp.tv_sec = cast(seconds(timeout).count);
+    tp.tv_nsec = cast(nanoseconds(timeout - seconds(timeout)).count);
+
+    if (var rc = futex(addr, FUTEX_WAIT, expected, &tp); rc < 0)
+    {
+      if (rc == ETIMEDOUT)
+        return rc;
+
+      if (rc == EAGAIN)
+        return 0;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn futex_wake(u32 *addr, u32 count) throws -> i32
+  {
+    using os;
+
+    if (var rc = futex(addr, FUTEX_WAKE, count, null); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+#end
+
+#if __cfg("os.windows")
+
+  import os.windows.kernel32;
+  import os.windows.synchapi;
+
+  pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
+  {
+    using os;
+
+    if (WaitOnAddress(addr, &expected, sizeof<u32>, INFINITE) == 0)
+    {
+      throw std::system_error(cast<std::errc>(GetLastError()));
+    }
+
+    return 0;
+  }
+
+  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws -> i32
+  {
+    using os;
+    using chrono;
+
+    var timeout = chrono::floor<chrono::milliseconds>(abstime - Clock::now);
+
+    if (timeout < chrono::milliseconds(0))
+      timeout = chrono::milliseconds(0);
+
+    //var tp = timespec();
+    //tp.tv_sec = cast(seconds(timeout).count);
+    //tp.tv_nsec = cast(nanoseconds(timeout - seconds(timeout)).count);
+
+    if (WaitOnAddress(addr, &expected, sizeof<u32>, cast(timeout.count)) == 0)
+    {
+      var rc = GetLastError();
+
+      if (rc == 1460)
+        return -110;
+
+      throw std::system_error(cast<std::errc>(rc));
+    }
+
+    return 0;
+  }
+
+  pub fn futex_wake(u32 *addr, u32 count) throws -> i32
+  {
+    using os;
+
+    if (count == 1)
+      WakeByAddressSingle(addr);
+
+    else
+      WakeByAddressAll(addr);
+
+    return 0;
+  }
+
+#end
+
+#if __cfg("os.zaos")
+
+  import os.zaos.time;
+  import os.zaos.sched;
+  import os.zaos.fcntl;
+
+  pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
+  {
+    using os;
+
+    if (var rc = os::futex_wait(addr, expected, ~0); rc < 0)
+    {
+      if (rc == EAGAIN)
+        return 0;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws -> i32
+  {
+    using os;
+    using chrono;
+
+    var tp = chrono::floor<chrono::nanoseconds>(abstime.time_since_epoch).count;
+
+    if (var rc = os::futex_wait(addr, expected, cast(tp)); rc < 0)
+    {
+      if (rc == ETIMEDOUT)
+        return rc;
+
+      if (rc == EAGAIN)
+        return 0;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn futex_wake(u32 *addr, u32 count) throws -> i32
+  {
+    using os;
+
+    if (var rc = os::futex_wake(addr, count); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+#end

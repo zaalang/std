@@ -6,56 +6,6 @@ import std.stdlib;
 
 pub struct delegate<R(V), Throws = void, N = 24>
 {
-  u64[(N+7)/8] _storage;
-  R fn(void*, V mut &) throws(Throws) *_fx;
-
-  pub delegate<Y>(Y &&fx)
-  {
-    std::assert(__is_trivial_copy<Y>, "delegate must be trivial copy");
-    std::assert(__is_trivial_destroy<Y>, "delegate must be trivial destroy");
-    std::assert(sizeof<Y> <= sizeof(_storage), "delegate too large for storage");
-
-    new<Y>(cast<Y mut *>(_storage.data))(&&fx);
-    _fx = fn(void *data, V mut &v) -> R { return cast<Y mut *>(data)(v...); };
-  }
-
-  pub fn ()(this&, V ...v) throws(Throws) -> R
-  {
-    return this._fx(this._storage.data, v);
-  }
-
-  pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
-  {
-    this = delegate(&&fx);
-
-    return &this;
-  }
-
-  pub fn =(this mut &, null) -> delegate mut &
-  {
-    this._fx = null;
-
-    return &this;
-  }
-
-  pub fn bool(this&) -> bool
-  {
-    return this._fx != null;
-  }
-
-  pub fn ==(this&, null) -> bool
-  {
-    return this._fx == null;
-  }
-
-  pub delegate() = default;
-  pub delegate(delegate&) = default;
-  pub fn =(delegate mut &, delegate &) -> delegate mut & = default;
-  pub ~delegate() = default;
-}
-/*
-pub struct delegate<R(V), Throws = void, N = 24>
-{
   Fx *_fx;
   u64[(N+7)/8] _storage;
 
@@ -170,4 +120,3 @@ pub struct delegate<R(V), Throws = void, N = 24>
       this._fx.destroy(this._storage.data);
   }
 }
-*/

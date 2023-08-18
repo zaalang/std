@@ -9,6 +9,8 @@ pub using HANDLE = uintptr;
 pub using HLOCAL = void mut *;
 pub using HGLOBAL = void mut *;
 
+pub const INFINITE = 0xffffffff;
+
 pub const CP_UTF8 = 65001;
 
 pub const PAGE_READONLY = 0x02;

@@ -104,7 +104,7 @@ fn build(std::string_literal pattern, options flags)
   if (var r = compile(ast, &mut program, flags); r != cast<errc>(0))
     std::panic("regex compile error : ", r);
 
-  return [ program.data : program.len ];
+  return program.as_literal;
 }
 
 fn match<Args>(std::span<u32> program, std::string_view text) -> bool
@@ -167,40 +167,40 @@ pub fn match(regex &rex, String &text) -> bool
 {
   assert(!rex.error, "invalid regex");
 
-  return match(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len));
+  return match(std::span(rex.program), std::string_view(text));
 }
 
 pub fn match(#std::string_literal pattern, String &text) -> bool
 {
   let program = #build(pattern, cast<options>(0));
 
-  return match(std::span(program.data, program.len), std::string_view(text.data, text.len));
+  return match(std::span(program), std::string_view(text));
 }
 
 pub fn match<Args>(regex &rex, String &text, Args mut & ...args) -> bool
 {
   assert(!rex.error, "invalid regex");
 
-  return match(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), &mut args...);
+  return match(std::span(rex.program), std::string_view(text), &mut args...);
 }
 
 pub fn match<Args>(#std::string_literal pattern, String &text, Args mut & ...args) -> bool
 {
   let program = #build(pattern, cast<options>(0));
 
-  return match(std::span(program.data, program.len), std::string_view(text.data, text.len), &mut args...);
+  return match(std::span(program), std::string_view(text), &mut args...);
 }
 
 pub fn find<Args>(regex &rex, String &text, Args mut & ...args) -> std::string_view
 {
   assert(!rex.error, "invalid regex");
 
-  return find(std::span(rex.program.data, rex.program.len), std::string_view(text.data, text.len), &mut args...);
+  return find(std::span(rex.program), std::string_view(text), &mut args...);
 }
 
 pub fn find<Args>(#std::string_literal pattern, String &text, Args mut & ...args) -> std::string_view
 {
   let program = #build(pattern, cast<options>(0));
 
-  return find(std::span(program.data, program.len), std::string_view(text.data, text.len), &mut args...);
+  return find(std::span(program), std::string_view(text), &mut args...);
 }

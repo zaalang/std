@@ -5,6 +5,7 @@
 import std.stdlib;
 import std.iterator : Iterator, Sentinal, RandomAccessIterator;
 import std.span : Span;
+import std.optional;
 import std.fmt;
 
 // NOTE:
@@ -206,8 +207,8 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &ra
 
 pub struct iota_view<I, J>
 {
-  pub iota_iterator<I> first;
-  pub iota_iterator<J> second;
+  iota_iterator<I> first;
+  iota_iterator<J> second;
 
   pub iota_view(I beg, J end = void)
     : first(beg), second(end)
@@ -335,8 +336,8 @@ pub struct reverse_view<R, I, J>
 {
   R &&range;
 
-  pub reverse_iterator<J> first;
-  pub reverse_iterator<I> second;
+  reverse_iterator<J> first;
+  reverse_iterator<I> second;
 
   pub reverse_view(R &&range, I beg, J end)
     : range(&range), first(end), second(beg)
@@ -445,8 +446,8 @@ pub struct filter_view<R, I, J, Pred>
   R &&range;
   Pred _pred;
 
-  pub filter_iterator<I> first;
-  pub filter_iterator<J> second;
+  filter_iterator<I> first;
+  filter_iterator<J> second;
 
   pub filter_view(R &&range, I beg, J end, Pred &&pred)
     : range(&range), _pred(&&pred), first(beg, end, range, _pred), second(end, range, _pred),
@@ -553,8 +554,8 @@ pub struct take_view<R, I, J>
 {
   R &&range;
 
-  pub take_iterator first;
-  pub take_sentinal second;
+  take_iterator first;
+  take_sentinal second;
 
   pub take_view(R &&range, I beg, J end, usize n)
     : range(&range), first(beg, end, n)
@@ -645,8 +646,8 @@ pub struct transform_view<R, I, J, Func>
 {
   R &&range;
 
-  pub transform_iterator<I> first;
-  pub transform_iterator<J> second;
+  transform_iterator<I> first;
+  transform_iterator<J> second;
 
   pub transform_view(R &&range, I beg, J end, Func &&func)
     : range(&range), first(beg), second(end),
@@ -741,8 +742,8 @@ pub struct zip_view<Rs, I, J>
 {
   Rs rs;
 
-  pub zip_iterator first;
-  pub zip_sentinal second;
+  zip_iterator first;
+  zip_sentinal second;
 
   pub zip_view(Rs rs, I beg, J end)
     : rs(rs), first(beg, end)
@@ -868,7 +869,7 @@ pub struct zip_view<Rs, I, J>
   {
     fn deref(Rs && ...rs, I && ...is)
     {
-      return std::tuple((&&(&&rs)[is])...);
+      return ((&&(&&rs)[is])...,);
     }
 
     return deref(this.rs..., iter.base...);
@@ -929,4 +930,13 @@ pub fn []<Range>(Range &&range, usize index)
   where requires(Range range) { Range::[](range, range.begin); } && __is_match<RandomAccessIterator, typeof(range.begin)>
 {
   return &&(&&range)[std::next(range.begin, index)];
+}
+
+#[lifetime(depend(*range.[]))]
+pub fn first<T, Pred>(Range<T> &&range, Pred &pred) -> std::optional<typeof(&&range.front)>
+{
+  if (var filtered = range.filter(pred); !filtered.empty)
+    return Some(&&filtered.front);
+
+  return None;
 }

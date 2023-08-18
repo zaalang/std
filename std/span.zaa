@@ -414,14 +414,14 @@ pub fn subspan<T>(Span<T> &&span, usize offset, usize count)
 
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn first_n<T>(Span<T> &&span, usize n)
+pub fn front_n<T>(Span<T> &&span, usize n)
 {
   return (&&span)[0 .. n];
 }
 
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn last_n<T>(Span<T> &&span, usize n)
+pub fn back_n<T>(Span<T> &&span, usize n)
 {
   return (&&span)[span.len - n .. span.len];
 }

@@ -61,6 +61,7 @@ pub const STDCWD_FILENO = 5;
 
 pub const EINVAL = -22;
 pub const EAGAIN = -11;
+pub const ETIMEDOUT = -110;
 
 pub enum ftype
 {
@@ -374,8 +375,8 @@ pub fn ioring_wait_cqe(ioring mut &ring) -> i32
 
   if (head == std::volatile_load(&ring.header.sq_tail))
   {
-    if (var result = __vdso_ioring_enter(ring.fd, 0, 1, 0); result < 0)
-      return result;
+    if (var rc = __vdso_ioring_enter(ring.fd, 0, 1, 0); rc < 0)
+      return rc;
   }
 
   return 0;
@@ -618,8 +619,8 @@ pub fn open(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
   ioring_prep_sqe_open(sqe, dir, path, flags, mode);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -647,8 +648,8 @@ pub fn stat(ioring mut &ring, i32 fd, stat mut *statbuf, u64 flags) -> i32
   ioring_prep_sqe_stat(sqe, fd, statbuf, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -666,8 +667,8 @@ pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize buflen) -> i32
   ioring_prep_sqe_read(sqe, fd, buffer, buflen);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -685,8 +686,8 @@ pub fn write(ioring mut &ring, i32 fd, void *buffer, usize buflen) -> i32
   ioring_prep_sqe_write(sqe, fd, buffer, buflen);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -704,8 +705,8 @@ pub fn ioctl(ioring mut &ring, i32 fd, u32 op, void mut *buffer, usize buflen) -
   ioring_prep_sqe_ioctl(sqe, fd, op, buffer, buflen);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -723,8 +724,8 @@ pub fn close(ioring mut &ring, i32 fd) -> i32
   ioring_prep_sqe_close(sqe, fd);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -739,8 +740,8 @@ pub fn select(ioring mut &ring, pollevt mut *evts, usize n, u64 timeout) -> i32
   ioring_prep_sqe_select(sqe, evts, n, timeout);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -755,8 +756,8 @@ pub fn dup(ioring mut &ring, i32 oldfd) -> i32
   ioring_prep_sqe_dup(sqe, oldfd);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -771,8 +772,8 @@ pub fn dup2(ioring mut &ring, i32 oldfd, i32 newfd) -> i32
   ioring_prep_sqe_dup2(sqe, oldfd, newfd);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -790,8 +791,8 @@ pub fn mkdir(ioring mut &ring, i32 dir, string path, u64 flags, u32 mode) -> i32
   ioring_prep_sqe_mkdir(sqe, dir, path, flags, mode);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -819,8 +820,8 @@ pub fn rename(ioring mut &ring, i32 olddir, string oldpath, i32 newdir, string n
   ioring_prep_sqe_rename(sqe, olddir, oldpath, newdir, newpath, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -853,8 +854,8 @@ pub fn link(ioring mut &ring, i32 olddir, string oldpath, i32 newdir, string new
   ioring_prep_sqe_link(sqe, olddir, oldpath, newdir, newpath, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -887,8 +888,8 @@ pub fn symlink(ioring mut &ring, i32 dir, string path, string target, u64 flags)
   ioring_prep_sqe_symlink(sqe, dir, path, target, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -916,8 +917,8 @@ pub fn unlink(ioring mut &ring, i32 dir, string path, u64 flags) -> i32
   ioring_prep_sqe_unlink(sqe, dir, path, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -942,8 +943,8 @@ pub fn epoll_create(ioring mut &ring, u64 flags) -> i32
   ioring_prep_sqe_epoll_create(sqe, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -958,8 +959,8 @@ pub fn epoll_ctl(ioring mut &ring, i32 fd, i32 op, pollevt *evt, u64 flags) -> i
   ioring_prep_sqe_epoll_ctl(sqe, fd, op, evt, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -974,8 +975,8 @@ pub fn epoll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize n, u64 time
   ioring_prep_sqe_epoll_wait(sqe, fd, evts, n, timeout);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -990,8 +991,8 @@ pub fn event_create(ioring mut &ring, u64 value, u64 maxvalue, u64 flags) -> i32
   ioring_prep_sqe_event_create(sqe, value, maxvalue, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -1006,8 +1007,8 @@ pub fn buffer_create(ioring mut &ring, i32[2] mut *fds, usize size, u64 flags) -
   ioring_prep_sqe_buffer_create(sqe, fds, size, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -1022,8 +1023,8 @@ pub fn channel_create(ioring mut &ring, i32[2] mut *fds, u64 flags) -> i32
   ioring_prep_sqe_channel_create(sqe, fds, flags);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -1041,8 +1042,8 @@ pub fn channel_read(ioring mut &ring, i32 fd, i32 mut *sid, msg mut *buffer, usi
   ioring_prep_sqe_channel_read(sqe, fd, sid, buffer, outbytes, outfds);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -1060,8 +1061,8 @@ pub fn channel_write(ioring mut &ring, i32 fd, i32 sid, cmsg *msg) -> i32
   ioring_prep_sqe_channel_write(sqe, fd, sid, msg);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;
@@ -1079,8 +1080,8 @@ pub fn channel_call(ioring mut &ring, i32 fd, cmsg mut *msg, msg mut *buffer, us
   ioring_prep_sqe_channel_call(sqe, fd, msg, buffer, outbytes, outfds);
   ioring_advance_sqe(&mut ring);
 
-  if (var result = __vdso_ioring_enter(ring.fd, 1, 1, 0); result < 0)
-    return result;
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
 
   var cqe = ioring_get_cqe(&mut ring);
   var result = cqe.result;

@@ -1,0 +1,283 @@
+//
+// nix mutex
+//
+
+import std.stdio;
+import std.atomic;
+import nix.sys.futex : futex_wait, futex_wait_until, futex_wake;
+import chrono;
+
+pub struct mutex
+{
+  const busy = 1;
+  const waiting = 1 << 31;
+
+  pub fn lock(this mut &) -> void
+  {
+    for (var k = 0; k < 100; ++k)
+    {
+      if (std::atomic_cmpxchg_weak(&this.state, 0, busy))
+        return;
+
+      __relax();
+    }
+
+    std::atomic_or(&this.state, waiting);
+
+    for (;;)
+    {
+      if (std::atomic_cmpxchg_strong(&this.state, waiting, busy))
+        return;
+
+      try
+      {
+        futex_wait(&this.state, waiting | busy);
+      }
+      catch(std::error e)
+      {
+        std::panic("futex failure");
+      }
+    }
+  }
+
+  pub fn try_lock(this mut &) -> bool
+  {
+    return std::atomic_cmpxchg_strong(&this.state, 0, busy);
+  }
+
+  pub fn try_lock_until<Clock, Duration>(this mut &, chrono::time_point<Clock, Duration> &abstime) -> bool
+  {
+    if (std::atomic_cmpxchg_weak(&this.state, 0, busy))
+      return true;
+
+    std::atomic_or(&this.state, waiting);
+
+    for (;;)
+    {
+      if (std::atomic_cmpxchg_strong(&this.state, waiting, busy))
+        return true;
+
+      try
+      {
+        if (futex_wait_until(&this.state, waiting | busy, abstime) < 0)
+          return false;
+      }
+      catch(std::error e)
+      {
+        std::panic("futex failure");
+      }
+    }
+
+    return true;
+  }
+
+  pub fn try_lock_for<R, P>(this mut &, chrono::duration<R, P> &timeout) -> bool
+  {
+    if (std::atomic_cmpxchg_weak(&this.state, 0, busy))
+      return true;
+
+    return this.try_lock_until(chrono::steady_clock::now + timeout);
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    if (std::atomic_cmpxchg_strong(&this.state, busy, 0))
+      return;
+
+    std::atomic_store(&this.state, waiting);
+
+    try
+    {
+      futex_wake(&this.state, 1);
+    }
+    catch(std::error e)
+    {
+      std::panic("futex failure");
+    }
+  }
+
+  pub mutex() = default;
+  pub mutex(#mutex&) = default;
+  pub ~mutex() = default;
+
+  u32 state;
+}
+
+pub struct shared_mutex
+{
+  const max_readers = 1 << 30;
+
+  pub fn lock(this mut &) -> void
+  {
+    this.writelock.lock();
+
+    if (var pending = std::atomic_sub(&this.pending, max_readers); pending != 0)
+    {
+      std::atomic_add(&this.departing, pending);
+
+      wait_for_departure(&mut this);
+    }
+  }
+
+  pub fn unlock(this mut &) -> void
+  {
+    if (var pending = std::atomic_add(&this.pending, max_readers) + max_readers; pending != 0)
+    {
+      std::atomic_sub(&this.arriving, pending);
+
+      signal_arrival(&mut this);
+    }
+
+    this.writelock.unlock();
+  }
+
+  pub fn lock_shared(this mut &) -> void
+  {
+    if (std::atomic_add(&this.pending, 1) < 0)
+    {
+      wait_for_arrival(&mut this);
+    }
+  }
+
+  pub fn unlock_shared(this mut &) -> void
+  {
+    if (std::atomic_sub(&this.pending, 1) < 0)
+    {
+      if (std::atomic_sub(&this.departing, 1) == 1)
+      {
+        signal_departure(&mut this);
+      }
+    }
+  }
+
+  pub fn lock_upgrade(this mut &) -> void
+  {
+    this.writelock.lock();
+
+    std::atomic_add(&this.departing, std::atomic_sub(&this.pending, max_readers));
+  }
+
+  pub fn unlock_upgrade_and_lock(this mut &) -> void
+  {
+    wait_for_departure(&mut this);
+  }
+
+  pub fn unlock_upgrade_and_lock_shared(this mut &) -> void
+  {
+    wait_for_departure(&mut this);
+
+    std::atomic_sub(&this.arriving, std::atomic_add(&this.pending, max_readers + 1) + max_readers);
+
+    signal_arrival(&mut this);
+
+    this.writelock.unlock();
+  }
+
+  pub fn unlock_upgrade(this mut &) -> void
+  {
+    wait_for_departure(&mut this);
+
+    this.unlock();
+  }
+
+  pub fn unlock_and_lock_upgrade(this mut &) -> void
+  {
+  }
+
+  fn signal_arrival(this mut &) -> void
+  {
+    try
+    {
+      futex_wake(cast<u32*>(&this.arriving), max_readers);
+    }
+    catch(std::error e)
+    {
+      std::panic("futex failure");
+    }
+  }
+
+  fn wait_for_arrival(this mut &) -> void
+  {
+    for (var k = 0; k < 100; ++k)
+    {
+      var arriving = std::volatile_load(&this.arriving);
+
+      if (arriving >= 0)
+        continue;
+
+      if (std::atomic_cmpxchg_weak(&this.arriving, arriving, arriving + 1))
+        return;
+    }
+
+    for (;;)
+    {
+      var arriving = std::volatile_load(&this.arriving);
+
+      if (arriving >= 0)
+      {
+        try
+        {
+          futex_wait(cast<u32*>(&this.arriving), cast<u32>(arriving));
+        }
+        catch(std::error e)
+        {
+          std::panic("futex failure");
+        }
+
+        arriving = -1;
+      }
+
+      if (std::atomic_cmpxchg_weak(&this.arriving, arriving, arriving + 1))
+        return;
+    }
+  }
+
+  fn signal_departure(this mut &) -> void
+  {
+    try
+    {
+      futex_wake(cast<u32*>(&this.departing), 1);
+    }
+    catch(std::error e)
+    {
+      std::panic("futex failure");
+    }
+  }
+
+  fn wait_for_departure(this mut &) -> void
+  {
+    for (var k = 0; k < 100; ++k)
+    {
+      var departing = std::volatile_load(&this.departing);
+
+      if (departing <= 0)
+        return;
+    }
+
+    for (;;)
+    {
+      var departing = std::volatile_load(&this.departing);
+
+      if (departing <= 0)
+        return;
+
+      try
+      {
+        futex_wait(cast<u32*>(&this.departing), cast<u32>(departing));
+      }
+      catch(std::error e)
+      {
+        std::panic("futex failure");
+      }
+    }
+  }
+
+  pub shared_mutex() = default;
+  pub shared_mutex(#shared_mutex&) = default;
+  pub ~shared_mutex() = default;
+
+  i32 pending;
+  i32 arriving;
+  i32 departing;
+  mutex writelock;
+}

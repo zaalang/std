@@ -338,7 +338,7 @@ pub struct slabintersect<U, T, N> : pub std::optional<U>
   pub ~slabintersect() = default;
 }
 
-pub const fn intersection<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &a, Point<T, N> &b)
+pub fn intersection<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &a, Point<T, N> &b)
 {
   using T;
   using std;

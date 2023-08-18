@@ -80,7 +80,7 @@ pub struct fd_result
   pub ~fd_result() = default;
 }
 
-extern fn fd_open(uintptr &fd, string path, u32 oflags, u64 rights, u32 fdflags) -> u32;
+extern fn fd_open(uintptr mut *fd, string path, u32 oflags, u64 rights, u32 fdflags) -> u32;
 extern fn fd_stat(uintptr fd, filestat *fs) -> u32;
 extern fn fd_readv(uintptr fd, iovec mut *iovs, usize n) -> fd_result;
 extern fn fd_preadv(uintptr fd, iovec mut *iovs, usize n, u64 offset) -> fd_result;
@@ -122,7 +122,7 @@ pub struct fd
   pub fn open(String &path, oflags oflags, rights rights, fdflags fdflags = cast(0)) throws -> fd
   {
     var handle = fd(0);
-    var result = fd_open(handle.fd, string(path.data, path.len), cast(oflags), cast(rights), cast(fdflags));
+    var result = fd_open(&handle.fd, string(path.data, path.len), cast(oflags), cast(rights), cast(fdflags));
 
     if (result != 0)
       throw std::system_error(cast<std::errc>(result));
