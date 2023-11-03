@@ -1,0 +1,125 @@
+//
+// std.dyn
+//
+
+import std.stdlib;
+import std.memory;
+import std.string : String;
+import std.fmt;
+
+pub struct dyn<Fx, Allocator = std::allocator>
+{
+  pub struct Dx : pub Fx &
+  {
+    pub void mut &self;
+
+    usize size;
+    fn (*destruct)(void mut &) -> void;
+
+    Dx(Fx &fx, void mut *self, Allocator &allocator)
+      : super(&fx), self(&*self),
+        _allocator(allocator)
+    {
+    }
+
+    Allocator _allocator;
+  }
+
+  struct Tx<T> : pub Dx
+  {
+    T value;
+
+    Tx(T &&arg, Allocator &allocator)
+      : super(&impl value, &value, allocator),
+        value(void)
+    {
+      new<T>(&value)(&&arg, allocator?: this._allocator);
+
+      this.size = sizeof(this);
+      this.destruct = fn (void mut &self) -> void { T::~T(&mut cast<T mut &>(self)); };
+    }
+  }
+
+  Dx mut *inner;
+
+  pub fn *(this &&)
+  {
+    return &*this.inner;
+  }
+
+  pub dyn<T>(T &&value, Allocator &allocator = Allocator())
+    where requires (T value) { Fx(&impl value); }
+    : inner(void)
+  {
+    inner = new<Tx<T>>(Allocator(allocator).allocate(sizeof<Tx<T>>, alignof<Tx<T>>))(&&value, allocator: allocator);
+  }
+
+  pub dyn(dyn &&other)
+    where __is_rvalue<typeof(other)>
+    : inner(void)
+  {
+    inner = release(&move other);
+  }
+
+  pub fn adopt(Dx mut *ptr) -> dyn
+  {
+    return dyn(ptr);
+  }
+
+  #[lifetime(launder(this))]
+  pub fn =(dyn mut &this, dyn &&other) -> dyn mut &
+    where __is_rvalue<typeof(other)>
+  {
+    reset(&mut this, release(&move other));
+
+    return &this;
+  }
+
+  pub static fn release(dyn &&this) -> Dx mut *
+    where __is_rvalue<typeof(this)>
+  {
+    var ptr = this.inner;
+
+    this.inner = null;
+
+    return ptr;
+  }
+
+  #[lifetime(launder(this))]
+  pub static fn reset(this mut &, Dx mut *ptr = null) -> void
+  {
+    if (this.inner)
+    {
+      this.inner.destruct(this.inner.self);
+
+      destroy(this.inner);
+    }
+
+    this.inner = ptr;
+  }
+
+  fn destroy(Dx mut *ptr) -> void
+  {
+    var size = ptr.size;
+    var allocator = &move ptr._allocator;
+
+    Allocator::~Allocator(&mut ptr._allocator);
+
+    allocator.free(ptr, size);
+  }
+
+  dyn(Dx mut *ptr)
+    : inner(ptr)
+  {
+  }
+
+  pub ~dyn()
+  {
+    reset(&mut this);
+  }
+}
+
+pub fn fmt<Fx>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::dyn<Fx> &dyned) throws -> void
+{
+  ctx.written += std::print_to(&mut os, __type_name($Fx));
+}

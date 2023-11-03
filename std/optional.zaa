@@ -197,6 +197,22 @@ pub union optional<T, Allocator = std::allocator>
     new<optional>(&this)();
   }
 
+  pub fn ==(optional &lhs, optional &rhs) -> bool
+  {
+    if (lhs.is_none || rhs.is_none)
+      return lhs.is_none == rhs.is_none;
+
+    return lhs.value == rhs.value;
+  }
+
+  pub fn <=>(optional &lhs, optional &rhs) -> int
+  {
+    if (lhs.is_none || rhs.is_none)
+      return lhs.is_none ? rhs.is_none ? 0 : -1 : +1;
+
+    return lhs.value <=> rhs.value;
+  }
+
   pub optional<U>(optional<U> &&other, Allocator &allocator = Allocator())
     match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>()); }
   {

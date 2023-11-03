@@ -309,7 +309,7 @@ pub struct list<T, Allocator = std::allocator>
   {
     var result = &move std::launder(this.front);
 
-    pop_front(&mut this);
+    erase(&mut this, this._root.next, this._root.next.next);
 
     return result;
   }
@@ -319,7 +319,7 @@ pub struct list<T, Allocator = std::allocator>
   {
     var result = &move std::launder(this.back);
 
-    pop_back(&mut this);
+    erase(&mut this, this._root.prev, this._root.prev.next);
 
     return result;
   }

@@ -135,7 +135,9 @@ pub struct arc<T, Allocator = std::allocator>
   pub arc(arc &&other)
     : inner(void)
   {
-    if (inner = cast<Ac mut *>(other.inner))
+    inner = cast<Ac mut *>(other.inner);
+
+    if (this.inner)
     {
       #if (__is_rvalue<typeof(other)>)
         other.inner = null;

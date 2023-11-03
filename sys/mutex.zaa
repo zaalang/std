@@ -1,10 +1,10 @@
 //
-// nix mutex
+// sys mutex
 //
 
 import std.stdio;
 import std.atomic;
-import nix.sys.futex : futex_wait, futex_wait_until, futex_wake;
+import sys.bits.futex : futex_wait, futex_wait_until, futex_wake;
 import chrono;
 
 pub struct mutex

@@ -24,7 +24,6 @@ pub struct fixed<R = i32, P = 0>
     pub const is_integer = false;
   }
 
-
   pub fixed<T>(T value)
     where __is_integral<T>
     : value(fixed_cast<fixed>(fixed<T, 0>(value, 0)).value)

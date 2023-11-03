@@ -33,14 +33,14 @@ pub struct box<T, Allocator = std::allocator>
   pub box(T &&value, Allocator &allocator = Allocator())
     : inner(void)
   {
-    inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&value, allocator?: allocator);
+    inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&value, allocator: allocator);
   }
 
   pub box<Args>(Args && ...args, Allocator &allocator = Allocator())
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
     : inner(void)
   {
-    inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&args..., allocator?: allocator);
+    inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&args..., allocator: allocator);
   }
 
   pub box(box &&other)

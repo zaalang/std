@@ -153,21 +153,23 @@ pub const fn volume<U, T, N>(Bound<U, T, N> &bound) -> T
 }
 
 /// translate a bound
+#[nodiscard]
 pub const fn translate<U, V, T, N>(Bound<U, T, N> &bound, Vector<V, T, N> &v) -> U
 {
   var lo = [<T>: void; N];
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(low<i>(bound) + get<i>(v));
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(high<i>(bound) + get<i>(v));
-  }
 
   return U(lo, hi);
 }
 
 /// scale a bound
+#[nodiscard]
 pub const fn scale<U, T, N, S>(Bound<U, T, N> &bound, S &s) -> U
   match (T x, S y) { T(x * y); }
 {
@@ -175,30 +177,32 @@ pub const fn scale<U, T, N, S>(Bound<U, T, N> &bound, S &s) -> U
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(low<i>(bound) * s);
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(high<i>(bound) * s);
-  }
 
   return U(lo, hi);
 }
 
 /// scale a bound
+#[nodiscard]
 pub const fn scale<U, V, T, N, S>(Bound<U, T, N> &bound, Vector<V, T, N> &v) -> U
 {
   var lo = [<T>: void; N];
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(low<i>(bound) * get<i>(v));
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(high<i>(bound) * get<i>(v));
-  }
 
   return U(lo, hi);
 }
 
 /// inflate a bound
+#[nodiscard]
 pub const fn inflate<U, T, N, S>(Bound<U, T, N> &bound, S &radius) -> U
   match (T x, S y) { T(x * y); }
 {
@@ -206,30 +210,32 @@ pub const fn inflate<U, T, N, S>(Bound<U, T, N> &bound, S &radius) -> U
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(low<i>(bound) - radius);
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(high<i>(bound) + radius);
-  }
 
   return U(lo, hi);
 }
 
 /// inflate a bound
+#[nodiscard]
 pub const fn inflate<U, V, T, N>(Bound<U, T, N> &bound, Vector<V, T, N> &radius) -> U
 {
   var lo = [<T>: void; N];
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(low<i>(bound) - get<i>(radius));
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(high<i>(bound) + get<i>(radius));
-  }
 
   return U(lo, hi);
 }
 
 /// expand a bound to a point
+#[nodiscard]
 pub const fn expand<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> U
 {
   using T;
@@ -239,15 +245,16 @@ pub const fn expand<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> U
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(min(low<i>(bound), get<i>(pt)));
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(max(high<i>(bound), get<i>(pt)));
-  }
 
   return U(lo, hi);
 }
 
 /// expand a bound (union)
+#[nodiscard]
 pub const fn expand<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> U
 {
   using T;
@@ -257,29 +264,16 @@ pub const fn expand<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> U
   var hi = [<T>: void; N];
 
   #for (const i = 0; i < N; ++i)
-  {
     new<T>(&lo[i])(min(low<i>(b1), low<i>(b2)));
+
+  #for (const i = 0; i < N; ++i)
     new<T>(&hi[i])(max(high<i>(b1), high<i>(b2)));
-  }
 
   return U(lo, hi);
 }
 
-/// clamp point on or within bound
-pub const fn clamp<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> typeof(pt)
-{
-  using T;
-  using std;
-
-  var result = [<T>: void; N];
-
-  #for (const i = 0; i < N; ++i)
-    new<T>(&result[i])(clamp(get<i>(pt), low<i>(bound), high<i>(bound)));
-
-  return typeof(pt)(result...);
-}
-
 /// clamp bound to bound
+#[nodiscard]
 pub const fn clamp<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> U
 {
   using T;
@@ -295,6 +289,21 @@ pub const fn clamp<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> U
     new<T>(&hi[i])(min(high<i>(b1), high<i>(b2)));
 
   return U(lo, hi);
+}
+
+/// clamp point on or within bound
+#[nodiscard]
+pub const fn clamp<U, T, N>(Point<T, N> &pt, Bound<U, T, N> &bound) -> typeof(pt)
+{
+  using T;
+  using std;
+
+  var result = [<T>: void; N];
+
+  #for (const i = 0; i < N; ++i)
+    new<T>(&result[i])(clamp(get<i>(pt), low<i>(bound), high<i>(bound)));
+
+  return typeof(pt)(result...);
 }
 
 /// intersects

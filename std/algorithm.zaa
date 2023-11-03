@@ -16,11 +16,21 @@ pub import std.algorithm.iteration;
 pub import std.algorithm.partition;
 pub import std.algorithm.permutation;
 
+#[lifetime(swap(a, b))]
 pub fn swap<T>(T mut &a, T mut &b)
 {
   var tmp = &move a;
   a = &move b;
   b = &move tmp;
+}
+
+#[lifetime(repose(i, range), repose(j, range))]
+pub fn swap<T, I>(Range<T> mut &range, I &i, I &j)
+{
+  if (i != j)
+  {
+    std::swap(&mut std::launder(range)[i], &mut std::launder(range)[j]);
+  }
 }
 
 pub fn fill<O, T>(O dst, Sentinal<O> end, T &value) -> O

@@ -337,7 +337,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     var result = &move std::launder(this.back);
 
-    pop_back(&mut this);
+    erase(&mut this, this._data + this._len - 1, 1);
 
     return result;
   }

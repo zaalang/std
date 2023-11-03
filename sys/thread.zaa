@@ -1,5 +1,5 @@
 //
-// nix.thread
+// sys.thread
 //
 
 import std.arc;
@@ -15,7 +15,7 @@ extern fn pthread_detach(pthread_t thread) -> i32;
 struct invoker
 {
   void mut *self;
-  fn (*fx)(void mut *);
+  fn (*fx)(void mut *) -> void;
 
   invoker() = default;
   ~invoker() = default;

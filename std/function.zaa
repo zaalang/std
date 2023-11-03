@@ -27,7 +27,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
 
     fn invoke(void *this, V mut &v) throws(Throws) -> R
     {
-      return cast<Holder<Y> mut *>(this).callable(v...);
+      return cast<Holder<Y> mut *>(this).callable(&&v...);
     }
 
     fn exchange(void mut *this, void mut *other) -> void
@@ -69,7 +69,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
     return this._fx == null;
   }
 
-  pub fn ()(this&, V ...v) throws(Throws) -> R
+  pub fn ()(this mut &, V ...v) throws(Throws) -> R
   {
     return this._fx.invoke(this._storage.data, v);
   }

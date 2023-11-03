@@ -543,7 +543,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws -> 
   fmt(&mut os, &mut ctx, error.message(buf.data, buf.len));
 }
 
-fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, (fn (V...) -> R) &) throws -> void
+fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, fn (&)(V...) -> R) throws -> void
 {
   put(&mut os, &mut ctx, "fn&");
 }
