@@ -113,8 +113,8 @@ pub static fn prev(Iterator i, usize n, Sentinal<typeof(i)> bound) -> typeof(i)
 {
   #if (requires (typeof(i) x, usize y) { x - y; })
   {
-    #if (requires (typeof(i) x, typeof(bound) y) { y - x; })
-      n = std::min(n, bound - i);
+    #if (requires (typeof(i) x, typeof(bound) y) { x - y; })
+      n = std::min(n, i - bound);
 
     return i - n;
   }

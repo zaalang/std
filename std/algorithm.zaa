@@ -198,6 +198,32 @@ pub fn transform!<T, Func>(Range<T> mut &range, Func &&func)
   return &range;
 }
 
+#[lifetime(depend(range))]
+pub fn adjacent_transform!<N, T, Func>(Range<T> mut &range, Func &&func)
+{
+  fn deref(var &&range, var && ...is)
+  {
+    return ((&&(&&range)[is])...,);
+  }
+
+  var first = range.begin;
+  var window = [typeof(first)(); N];
+
+  window[0] = first;
+  for (var k = 1; k < N; ++k)
+    window[k] = std::next(window[k - 1], 1, range.end);
+
+  for (var last = range.end; window[N - 1] != last; ++first)
+  {
+    range[first] = func(deref(range, window...));
+
+    for (var k = 0; k < N; ++k)
+      ++window[k];
+  }
+
+  return std::subrange(range, range.begin, first);
+}
+
 pub fn min<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {

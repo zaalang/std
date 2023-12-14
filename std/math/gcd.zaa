@@ -1,0 +1,45 @@
+//
+// std math gcd
+//
+
+import std.math;
+
+pub const fn gcd<T>(T m, T n) -> T
+  where __is_integral<T> && __is_unsigned<T>
+{
+  if (m == 0)
+    return n;
+
+  if (n == 0)
+    return m;
+
+  var i = __ctz(m);
+  var j = __ctz(n);
+  var k = __min(i, j);
+
+  m >>= i;
+  n >>= j;
+
+  while (true)
+  {
+    if (m > n)
+    {
+      var x = m;
+      m = n;
+      n = x;
+    }
+
+    n -= m;
+
+    if (n == 0)
+      return m << k;
+
+    n >>= __ctz(n);
+  }
+}
+
+pub const fn gcd<T>(T m, T n) -> T
+  where __is_integral<T> && !__is_unsigned<T>
+{
+  return cast<T>(gcd(cast<usize>(__abs(m)), cast<usize>(__abs(n))));
+}

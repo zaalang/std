@@ -77,7 +77,7 @@ pub const fn quadrant<T, N>(Point<T, N> &pt) -> int
 {
   var result = 0;
 
-  #for(const i = 0; i < N; ++i)
+  #for (const i = 0; i < N; ++i)
     result += cast(get<i>(pt) < 0.0) * (1 << i);
 
   return result;

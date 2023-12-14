@@ -69,10 +69,39 @@ pub enum condition
   nonwordboundary,    // \B - not \b
 }
 
+pub struct ctre
+{
+  options flags;
+  std::string_literal pattern;
+
+  pub const fn ~=(#ctre &rex, String &str) -> bool
+  {
+    return match(std::span(#build(rex.pattern, rex.flags)), str);
+  }
+
+  pub const fn ctre(#std::string_literal pattern, #options flags = cast(0))
+  {
+    var ctre = ctre();
+    ctre.flags = flags;
+    ctre.pattern = pattern;
+
+    return ctre;
+  }
+
+  ctre() = default;
+  ctre(#ctre&) = default;
+  pub ~ctre() = default;
+}
+
 pub struct regex
 {
   pub errc error;
   pub std::vector<u32> program;
+
+  pub fn ~=(this &rex, String &str) -> bool
+  {
+    return match(std::span(rex.program), str);
+  }
 
   pub regex(String &pattern, options flags = cast(0))
   {
@@ -91,6 +120,9 @@ pub struct regex
     this.program = std::vector::from(#build(pattern, flags));
   }
 
+  pub regex() = default;
+  pub regex(regex&&) = default;
+  pub fn =(regex mut &, regex &&) -> regex mut & = default;
   pub ~regex() = default;
 }
 
@@ -123,7 +155,7 @@ fn match<Args>(std::span<u32> program, std::string_view text, Args mut & ...args
 
   var vm = machine(text);
 
-  if (vm.execute(program, captures))
+  if (vm.execute(program, &mut captures))
   {
     #for (var mut &arg : args, const i = 2;; i += 2)
     {

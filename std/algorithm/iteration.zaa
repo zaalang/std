@@ -38,6 +38,26 @@ pub fn each<T, Func>(Range<T> &&range, Func &&func) -> bool
   return all;
 }
 
+pub fn min<T>(Range<T> &range) -> T
+{
+  var result = range.front;
+
+  for (var &i : range)
+    result = std::min(result, i);
+
+  return result;
+}
+
+pub fn max<T>(Range<T> &range) -> T
+{
+  var result = range.front;
+
+  for (var &i : range)
+    result = std::max(result, i);
+
+  return result;
+}
+
 pub fn sum<T>(Range<T> &range, T seed = T()) -> T
 {
   var result = seed;

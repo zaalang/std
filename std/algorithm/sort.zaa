@@ -30,7 +30,7 @@ pub fn is_sorted<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
   return is_sorted_until(range, range.end, cmp) == range.end;
 }
 
-fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+pub fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
   var first = range.begin;
 
@@ -44,7 +44,7 @@ fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
   }
 }
 
-fn insertion_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+pub fn insertion_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
   var last = range.end;
   var first = range.begin;
@@ -59,7 +59,7 @@ fn insertion_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
   }
 }
 
-fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp, int maxdepth) -> void
+pub fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp, int maxdepth) -> void
 {
   var last = range.end;
   var first = range.begin;
@@ -70,7 +70,7 @@ fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp, int maxdepth) -> void
   }
   else if (maxdepth == 0)
   {
-    partial_sort(&mut range, last);
+    partial_sort(&mut range, last, cmp);
   }
   else
   {

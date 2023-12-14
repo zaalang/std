@@ -562,6 +562,20 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   Allocator _allocator;
 }
 
+pub fn ==<K, T>(flat_hash_map<K, T> &lhs, flat_hash_map<K, T> &rhs) -> bool
+{
+  if (lhs.len != rhs.len)
+    return false;
+
+  for (var i = lhs.begin, var lhsend = lhs.end, var rhsend = rhs.end; i != lhsend; ++i)
+  {
+    if (var j = rhs.find(lhs[i].key); j == rhsend || lhs[i].value != rhs[j].value)
+      return false;
+  }
+
+  return true;
+}
+
 pub fn hash<K, T>(var &hasher, flat_hash_map<K, T> &map) -> usize
 {
   return hasher.combine_range(map, map.begin, map.end);

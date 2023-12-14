@@ -5,6 +5,7 @@
 import std.stdlib : assert;
 import std.memory : memset, memcpy, memmove;
 import std.algorithm : swap, find, find_if, find_if_not, count, count_if, count_if_not, sort!, is_sorted;
+import std.algorithm.iteration : each, min, max, sum;
 import std.range : Sentinal, Range;
 import std.span : span, mutable_span, moveable_span;
 import std.type : as_const;

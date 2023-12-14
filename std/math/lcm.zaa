@@ -1,0 +1,15 @@
+//
+// std math lcm
+//
+
+import std.math;
+import std.math.gcd;
+
+pub const fn lcm<T>(T m, T n) -> T
+  where __is_integral<T>
+{
+  var m = cast<usize>(__abs(m));
+  var n = cast<usize>(__abs(n));
+
+  return cast<T>(m / std::gcd(m, n) * n);
+}

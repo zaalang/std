@@ -11,16 +11,6 @@ pub fn tuple<T>(T && ...elements) -> T
   return T(&&elements...);
 }
 
-//pub const fn tuple<T>(#T ...elements) -> T
-//{
-//  return elements;
-//}
-//
-//pub const fn tuple<...T>(#T ...elements) -> T
-//{
-//  return elements;
-//}
-
 #[lifetime(depend(*elements))]
 pub fn tie<T>(T && ...elements)
   where !is_any_rvalue<typeof(elements)>

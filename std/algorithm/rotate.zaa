@@ -38,6 +38,14 @@ pub fn rotate_left<T>(Range<T> mut &range)
   return first;
 }
 
+#[lifetime(depend(range))]
+pub fn rotate_left!<T>(Range<T> mut &range)
+{
+  rotate_left(&mut range);
+
+  return &range;
+}
+
 pub fn rotate_right<I>(I first, I last) -> I
   where __is_match<BidirectionalIterator, I>()
 {
@@ -73,6 +81,14 @@ pub fn rotate_right<T>(Range<T> mut &range)
   range[first] = &move tmp;
 
   return last;
+}
+
+#[lifetime(depend(range))]
+pub fn rotate_right!<T>(Range<T> mut &range)
+{
+  rotate_right(&mut range);
+
+  return &range;
 }
 
 #[lifetime(repose(middle, range), depend(range))]
@@ -120,4 +136,12 @@ pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
   }
 
   return first;
+}
+
+#[lifetime(repose(middle, range), depend(range))]
+pub fn rotate!<T, I>(Range<T> mut &range, I middle) -> I
+{
+  rotate(&mut range, middle);
+
+  return &range;
 }

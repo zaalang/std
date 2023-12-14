@@ -205,16 +205,67 @@ fn scan(std::string_view is, scan_context mut &ctx, typeof(0.0) mut &literal) ->
   literal = cast(tmp);
 }
 
+fn scan_str<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
+{
+  switch (ctx.type)
+  {
+    case 'd':
+      var end = is.chars.begin;
+      while (end != is.end && std::is_digit(*end))
+        ++end;
+      is = std::string_view(is.begin, end);
+
+    case 'D':
+      var end = is.chars.begin;
+      while (end != is.end && !std::is_digit(*end))
+        ++end;
+      is = std::string_view(is.begin, end);
+
+    case 'w':
+      var end = is.chars.begin;
+      while (end != is.end && std::is_alpha(*end))
+        ++end;
+      is = std::string_view(is.begin, end);
+
+    case 'W':
+      var end = is.chars.begin;
+      while (end != is.end && !std::is_alpha(*end))
+        ++end;
+      is = std::string_view(is.begin, end);
+
+    case 's':
+      var end = is.chars.begin;
+      while (end != is.end && std::is_whitespace(*end))
+        ++end;
+      is = std::string_view(is.begin, end);
+
+    case 'S':
+      var end = is.chars.begin;
+      while (end != is.end && !std::is_whitespace(*end))
+        ++end;
+      is = std::string_view(is.begin, end);
+  }
+
+  value = is;
+  ctx.cursor += value.len;
+}
+
 fn scan(std::string_view is, scan_context mut &ctx, std::string_view mut &str) -> void
 {
-  str = is;
-  ctx.cursor += str.len;
+  scan_str(is, &mut ctx, &mut str);
 }
 
 fn scan(std::string_view is, scan_context mut &ctx, std::string mut &str) -> void
 {
-  str = is;
-  ctx.cursor += str.len;
+  scan_str(is, &mut ctx, &mut str);
+}
+
+fn scan<T, N>(std::string_view is, scan_context mut &ctx, T[N] mut &array) -> void
+{
+  for (var mut &elem : array)
+  {
+    scan(is.remove_prefix(ctx.cursor), &mut ctx, &mut elem);
+  }
 }
 
 pub fn scan_to<T>(std::string_view is, scan_context mut &ctx, T mut &object) -> void
