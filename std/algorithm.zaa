@@ -356,7 +356,7 @@ pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return first;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(value, range))]
 pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (T u, Value v, Cmp cmp) { cmp(u, v); }
 {
@@ -403,7 +403,7 @@ pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return first;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(value, range))]
 pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (T u, Value v, Cmp cmp) { cmp(v, u); }
 {
@@ -434,7 +434,7 @@ pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return (lower_bound(first, last, value, cmp), upper_bound(first, last, value, cmp));
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(value, range))]
 pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (T u, Value v, Cmp cmp) { cmp(u, v); cmp(v, u); }
 {
@@ -452,7 +452,7 @@ pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp
   return j;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(value, range))]
 pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (T u, Value v, Cmp cmp) { cmp(u, v); }
 {
@@ -558,7 +558,7 @@ pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
   return first;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(value, range))]
 pub fn find<T, Value>(Range<T> &&range, Value &value)
   match (T u, Value v) { u == v; }
 {
@@ -585,7 +585,7 @@ pub fn find_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
   return first;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(pred, range))]
 pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
 {
   var first = range.begin;
@@ -611,7 +611,7 @@ pub fn find_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
   return first;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(depend(range), repose(pred, range))]
 pub fn find_if_not<T, Pred>(Range<T> &&range, Pred &pred)
 {
   var first = range.begin;

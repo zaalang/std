@@ -52,6 +52,16 @@ pub fn get<i, T, N>(vector<T, N> &vector) -> T &
   return &vector[i];
 }
 
+pub const fn swizzle<...I, T, N>(vector<T, N> &vector)
+{
+  var result = vector<T, __tuple_len<I>>(void);
+
+  #for (const i = 0; i < __tuple_len<I>; ++i)
+    new<T>(&result[i])(vector[typeof(I::#i)()]);
+
+  return result;
+}
+
 pub static fn get<i, U, T, N>(Vector<U, T, N> &vector)
 {
   return &&vector.get<i>();

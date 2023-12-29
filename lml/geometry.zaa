@@ -205,12 +205,12 @@ pub struct lineintersect<U, T, N> : pub std::optional<U>
   pub ~slabintersect() = default;
 }
 
-pub fn intersection_robust<T, N>(Point<T, N> &a1, Point<T, N> &a2, Point<T, N> &b1, Point<T, N> &b2)
+pub fn intersection_robust<T>(Point<T, 2> &a1, Point<T, 2> &a2, Point<T, 2> &b1, Point<T, 2> &b2)
 {
   using T;
   using std;
 
-  var result = lineintersect<typeof(a1), T, N>();
+  var result = lineintersect<typeof(a1), T, 2>();
 
   var u = vec(a1, a2);
   var v = vec(b1, b2);
@@ -291,12 +291,12 @@ pub fn intersection_robust<T, N>(Point<T, N> &a1, Point<T, N> &a2, Point<T, N> &
   return result;
 }
 
-pub fn intersection<T, N>(Point<T, N> &a1, Point<T, N> &a2, Point<T, N> &b1, Point<T, N> &b2)
+pub fn intersection<T>(Point<T, 2> &a1, Point<T, 2> &a2, Point<T, 2> &b1, Point<T, 2> &b2)
 {
   using T;
   using std;
 
-  var result = lineintersect<typeof(a1), T, N>();
+  var result = lineintersect<typeof(a1), T, 2>();
 
   var u = vec(a1, a2);
   var v = vec(b1, b2);

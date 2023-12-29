@@ -1,0 +1,299 @@
+//
+// json unmarshal
+//
+
+import std.io;
+import std.scan;
+import std.string : String;
+import std.strconv;
+import json.scanner;
+
+pub struct scan_context
+{
+  pub json::token tok;
+  pub json::scanner scanner;
+  pub std::errc error;
+
+  #[lifetime(launder(this.tok))]
+  pub fn consume_token(this mut &, var mut &is) -> void
+  {
+    try
+    {
+      this.tok = this.scanner.fetch(&mut is);
+    }
+    catch (std::error)
+    {
+      this.error = std::errc::io_error;
+    }
+  }
+
+  scan_context() = default;
+  ~scan_context() = default;
+}
+
+fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &value) -> void
+  where __is_builtin<T>
+{
+  switch (ctx.tok.type)
+  {
+    case scalar:
+      if (var result = std::sscan(ctx.tok.value, &mut value); result.error)
+        ctx.error = result.error;
+
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan(std::string_stream mut &is, scan_context mut &ctx, std::string mut &value) -> void
+{
+  switch (ctx.tok.type)
+  {
+    case scalar:
+      value = &move ctx.tok.value;
+
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan<T, N>(std::string_stream mut &is, scan_context mut &ctx, T[N] mut &array) -> void
+{
+  switch (ctx.tok.type)
+  {
+    case l_square:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+
+  for (var mut &elem : array)
+  {
+    scan_to(&mut is, &mut ctx, &mut elem);
+
+    switch (ctx.tok.type)
+    {
+      case comma:
+        ctx.consume_token(&mut is);
+
+      case r_square:
+        break;
+
+      else:
+        ctx.error = std::errc::format_error;
+    }
+
+    if (ctx.error)
+      break;
+  }
+
+  switch (ctx.tok.type)
+  {
+    case r_square:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, std::vector<T> mut &array) -> void
+{
+  switch (ctx.tok.type)
+  {
+    case l_square:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+
+  while (ctx.tok.type != json::token::type::r_square)
+  {
+    var elem = T();
+
+    scan_to(&mut is, &mut ctx, &mut elem);
+
+    if (!ctx.error)
+      array.push_back(&move elem);
+
+    switch (ctx.tok.type)
+    {
+      case comma:
+        ctx.consume_token(&mut is);
+
+      case r_square:
+        break;
+
+      else:
+        ctx.error = std::errc::format_error;
+    }
+
+    if (ctx.error)
+      break;
+  }
+
+  switch (ctx.tok.type)
+  {
+    case r_square:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &object) -> void
+  where __is_struct<T>
+{
+  switch (ctx.tok.type)
+  {
+    case l_brace:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+
+  while (ctx.tok.type != json::token::type::r_brace)
+  {
+    switch (ctx.tok.type)
+    {
+      case scalar:
+        var key = &move ctx.tok.value;
+
+        ctx.consume_token(&mut is);
+        ctx.consume_token(&mut is);
+
+        switch (key)
+        {
+          #{
+            #for (const k : std::meta::fields_of($T))
+            {
+              -> { case $(std::meta::name_of(k)):
+                scan_to(&mut is, &mut ctx, &mut object.$(k));
+              }
+            }
+          }
+
+          else:
+            ctx.error = std::errc::not_found;
+        }
+
+      else:
+        ctx.error = std::errc::format_error;
+    }
+
+    switch (ctx.tok.type)
+    {
+      case comma:
+        ctx.consume_token(&mut is);
+
+      case r_brace:
+        break;
+
+      else:
+        ctx.error = std::errc::format_error;
+    }
+
+    if (ctx.error)
+      break;
+  }
+
+  switch (ctx.tok.type)
+  {
+    case r_brace:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, std::flat_hash_map<std::string, T> mut &map) -> void
+{
+  switch (ctx.tok.type)
+  {
+    case l_brace:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+
+  while (ctx.tok.type != json::token::type::r_square)
+  {
+    var elem = T();
+
+    switch (ctx.tok.type)
+    {
+      case scalar:
+        var key = &move ctx.tok.value;
+
+        ctx.consume_token(&mut is);
+        ctx.consume_token(&mut is);
+
+        scan_to(&mut is, &mut ctx, &mut elem);
+
+        if (!ctx.error)
+          map.insert(&move key, &move elem);
+
+      else:
+        ctx.error = std::errc::format_error;
+    }
+
+    switch (ctx.tok.type)
+    {
+      case comma:
+        ctx.consume_token(&mut is);
+
+      case r_square:
+        break;
+
+      else:
+        ctx.error = std::errc::format_error;
+    }
+
+    if (ctx.error)
+      break;
+  }
+
+  switch (ctx.tok.type)
+  {
+    case r_brace:
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+pub fn scan_to<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &object) -> void
+{
+  using T;
+
+  scan(&mut is, &mut ctx, &mut object);
+}
+
+pub fn unmarshal(String &str, var mut &value) -> std::scan_result
+{
+  var ctx = scan_context();
+  var is = std::string_stream(str);
+
+  ctx.consume_token(&mut is);
+
+  scan_to(&mut is, &mut ctx, &mut value);
+
+  var result = std::scan_result();
+
+  result.len = is.buffer.data - str.data;
+  result.count = cast<usize>(!ctx.error);
+  result.error = ctx.error;
+
+  return result;
+}

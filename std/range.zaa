@@ -61,6 +61,13 @@ pub struct range_view<R, I, J>
   {
     return &&(&&this.range)[iter];
   }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(&&this.range)[std::next(this.begin, index)];
+  }
 }
 
 pub struct moveable_range_view<R, I, J>
@@ -300,6 +307,11 @@ pub struct iota_view<I, J>
   {
     return iter.n;
   }
+
+  pub fn [](this &&, usize index)
+  {
+    return this.first.n + cast<I>(index);
+  }
 }
 
 pub fn iota(#int value)
@@ -416,6 +428,13 @@ pub struct reverse_view<R, I, J>
   pub fn [](this &&, reverse_iterator<J> iter)
   {
     return &&(&&this.range)[std::prev(iter.base)];
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(&&this)[std::next(this.begin, index)];
   }
 }
 
@@ -735,6 +754,13 @@ pub struct transform_view<R, I, J, Func>
     return &&this._func((&&this.range)[iter.base]);
   }
 
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(&&this)[std::next(this.begin, index)];
+  }
+
   Func _func;
 }
 
@@ -882,6 +908,13 @@ pub struct zip_view<Rs, I, J>
 
     return deref(this.rs..., iter.base...);
   }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where is_random_access()
+  {
+    return &&(&&this)[std::next(this.begin, index)];
+  }
 }
 
 #[nodiscard]
@@ -1019,6 +1052,13 @@ pub struct adjacent_view<R, N, I, J>
 
     return deref(this.range, iter.window...);
   }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(&&this)[std::next(this.begin, index)];
+  }
 }
 
 #[nodiscard]
@@ -1064,17 +1104,17 @@ pub fn front<T>(Range<T> &&range)
 }
 
 #[lifetime(depend(*range.[]))]
-pub fn nth<Range>(Range &&range, usize index)
+pub fn nth<T>(Range<T> &&range, usize index)
 {
   return &&(&&range)[std::next(range.begin, index)];
 }
 
-#[lifetime(depend(*range.[]))]
-pub fn []<Range>(Range &&range, usize index)
-  where requires(Range range) { Range::[](range, range.begin); } && __is_match<RandomAccessIterator, typeof(range.begin)>
-{
-  return &&(&&range)[std::next(range.begin, index)];
-}
+//#[lifetime(depend(*range.[]))]
+//pub fn []<Range>(Range &&range, usize index)
+//  where requires(Range range) { Range::[](range, range.begin); } && __is_match<RandomAccessIterator, typeof(range.begin)>
+//{
+//  return &&(&&range)[std::next(range.begin, index)];
+//}
 
 #[lifetime(depend(*range.[]))]
 pub fn first<T, Pred>(Range<T> &&range, Pred &pred) -> std::optional<typeof(&&range.front)>

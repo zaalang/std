@@ -55,7 +55,7 @@ struct parse_context
 
   fn consume_token(this mut &, var mut &is) throws -> void
   {
-    this.tok = this.scanner.scan(&mut is);
+    this.tok = this.scanner.fetch(&mut is);
   }
 
   parse_context()

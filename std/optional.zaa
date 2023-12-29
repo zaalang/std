@@ -55,6 +55,12 @@ pub union optional<T, Allocator = std::allocator>
 
     pub Some(std::remove_reference<T> &&),
 
+    #[lifetime(depend(this))]
+    pub fn *(this &&)
+    {
+      return &&this.value;
+    }
+
     #[lifetime(depend(*this))]
     pub fn value(this &&)
     {
@@ -114,6 +120,12 @@ pub union optional<T, Allocator = std::allocator>
   #else
 
     pub Some(T),
+
+    #[lifetime(depend(this))]
+    pub fn *(this &&)
+    {
+      return &&this.value;
+    }
 
     #[lifetime(depend(this))]
     pub fn value(this &&)

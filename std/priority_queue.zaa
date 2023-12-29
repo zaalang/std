@@ -1,0 +1,118 @@
+//
+// std priority_queue
+//
+
+import std.stdlib : assert;
+import std.algorithm.heap;
+import std.vector;
+
+pub struct priority_queue<T = int, Cmp = typeof(std::less), Container = std::vector<T>>
+{
+  using Allocator = typeof(std::declval<Container>().allocator);
+
+  pub priority_queue(Allocator &allocator = Allocator())
+    : _container(allocator)
+  {
+  }
+
+  pub priority_queue(Cmp &&cmp, Allocator &allocator = Allocator())
+    : cmp(&&cmp), _container(allocator)
+  {
+  }
+
+  pub priority_queue(priority_queue &&other, Allocator &allocator = Allocator())
+    : cmp(other.cmp), _container(allocator)
+  {
+    insert(&mut this._container, &&other._container);
+  }
+
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  pub fn =(this mut &, priority_queue &&other) -> priority_queue mut &
+  {
+    std::launder(other);
+
+    if (&this != &other)
+    {
+      clear(&mut this);
+
+      this.cmp = other.cmp;
+
+      insert(&mut this._container, &&other._container);
+    }
+
+    return &this;
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._container.len;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this._container.len == 0;
+  }
+
+  pub fn cmp(this &) -> Cmp &
+  {
+    return &this.cmp;
+  }
+
+  pub fn allocator(this &) -> Allocator &
+  {
+    return &this._container.allocator;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn front(this &&)
+  {
+    assert(this._container.len != 0);
+
+    return &&this._container.front;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn push_back<Args>(this mut &, Args && ...args) -> void
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    this._container.push_back(&&args...);
+
+    std::sift_up_heap(&mut this._container, this.cmp);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn pop_front(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    std::pop_heap(&mut this._container, this.cmp);
+
+    this._container.pop_back();
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_front(this mut &) -> T
+  {
+    var result = &move std::launder(this.front);
+
+    this.pop_front();
+
+    return result;
+  }
+
+  #[lifetime(launder(this), poison(this))]
+  pub fn clear(this mut &) -> void
+  {
+    this._container.clear();
+  }
+
+  pub ~priority_queue() = default;
+
+  Cmp cmp;
+  Container _container;
+}
+
+pub fn hash<T>(var &hasher, priority_queue<T> &queue) -> usize
+{
+  return hasher.combine_range(queue, queue.begin, queue.end);
+}

@@ -1,8 +1,8 @@
 //
-// toml scanner
+// json scanner
 //
 
-import toml;
+import json;
 import std.io : InputReader;
 import std.strconv;
 
@@ -35,9 +35,8 @@ pub struct token
     r_square,
     l_brace,
     r_brace,
+    colon,
     comma,
-    equal,
-    period,
     scalar,
 
     unexpected_end_of_line,
@@ -186,12 +185,6 @@ fn skip_break(scanner mut &this, InputReader mut &is) throws -> void
   }
 }
 
-fn scan_to_next_break(scanner mut &this, InputReader mut &is) throws -> void
-{
-  while (!is_breakz(this.peek(&mut is)))
-    this.eat(&mut is);
-}
-
 fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
 {
   for (;;)
@@ -205,9 +198,6 @@ fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
       case '\r':
       case '\n':
         skip_break(&mut this, &mut is);
-
-      case '#':
-        scan_to_next_break(&mut this, &mut is);
 
       else:
         break;
@@ -224,175 +214,64 @@ fn scan_token(scanner mut &this, InputReader mut &is, token::type type) throws -
   return make_token(type, loc);
 }
 
-fn is_multiline_end(scanner mut &this, InputReader mut &is, scalar_style style) throws -> bool
-{
-  switch (style)
-  {
-    case singlequoted:
-      return this.prefix(&mut is, 3) == "'''" && this.peek(&mut is, 3) != cast('\'');
-
-    case doublequoted:
-      return this.prefix(&mut is, 3) == "\"\"\"" && this.peek(&mut is, 3) != cast('"');
-
-    else:
-      return false;
-  }
-}
-
 fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws -> token
 {
   var loc = this.loc;
-
   var value = std::string();
-  var multiline = false;
-  var leading_blanks = false;
 
   this.eat(&mut is);
 
-  if (this.prefix(&mut is, 2) == "\"\"" || this.prefix(&mut is, 2) == "''")
-  {
-    multiline = true;
-    this.eat(&mut is);
-    this.eat(&mut is);
-    skip_break(&mut this, &mut is);
-  }
-
   for (;;)
   {
-    var ch = this.peek(&mut is);
-
-    if (is_z(ch))
-      return make_token(token::type::unexpected_end_of_stream, this.loc);
-
-    leading_blanks = false;
-
-    for (;;)
+    switch (var ch = this.peek(&mut is))
     {
-      switch (ch)
-      {
-        case '\r':
-        case '\n':
-        case '\0':
-          break;
+      case '\r':
+      case '\n':
+        return make_token(token::type::unexpected_end_of_line, this.loc);
 
-        case '\'':
-          if (style == scalar_style::singlequoted)
-          {
-            if (!multiline || is_multiline_end(&mut this, &mut is, style))
-              break;
-          }
+      case '\0':
+        return make_token(token::type::unexpected_end_of_stream, this.loc);
 
-          value += ch;
-          this.eat(&mut is);
-
-        case '"':
-          if (style == scalar_style::doublequoted)
-          {
-            if (!multiline || is_multiline_end(&mut this, &mut is, style))
-              break;
-          }
-
-          value += ch;
-          this.eat(&mut is);
-
-        case '\\':
-          if (style == scalar_style::doublequoted)
-          {
-            var length = 0;
-
-            switch (this.peek(&mut is, 1))
-            {
-              case ' ':
-              case '\t':
-              case '\r':
-              case '\n':
-                this.eat(&mut is);
-                skip_blank(&mut this, &mut is);
-                skip_break(&mut this, &mut is);
-                leading_blanks = true;
-                ch = this.peek(&mut is);
-                break;
-
-              case '0': value += cast<u8>('\0');
-              case 'a': value += cast<u8>('\x07');
-              case 'b': value += cast<u8>('\x08');
-              case 't': value += cast<u8>('\t');
-              case 'n': value += cast<u8>('\n');
-              case 'v': value += cast<u8>('\x0b');
-              case 'f': value += cast<u8>('\x0c');
-              case 'r': value += cast<u8>('\x0d');
-              case 'e': value += cast<u8>('\x1b');
-              case '"': value += cast<u8>('"');
-              case '/': value += cast<u8>('/');
-              //case '\'': value += cast<u8>('\'');
-              case '\\': value += cast<u8>('\\');
-              case 'x': length = 2;
-              case 'u': length = 4;
-              case 'U': length = 8;
-              else:
-                return make_token(token::type::bad_escape, this.loc);
-            }
-
-            if (length != 0)
-            {
-              var codepoint = ' ';
-              var buffer = this.prefix(&mut is, length + 2);
-
-              if (std::atoi(buffer.data + 2, buffer.end, &mut codepoint, 16).len != length)
-                return make_token(token::type::bad_escape, this.loc);
-
-              for (var i = 0; i < buffer.len - 2; ++i)
-                this.eat(&mut is);
-
-              value += codepoint;
-            }
-
-            this.eat(&mut is);
-            this.eat(&mut is);
-          }
-          else
-          {
-            value += ch;
-            this.eat(&mut is);
-          }
-
-        else:
-          value += ch;
-          this.eat(&mut is);
-      }
-
-      ch = this.peek(&mut is);
-    }
-
-    if (!multiline)
-    {
-      if (style == scalar_style::singlequoted && ch == cast('\''))
+      case '"':
         break;
 
-      if (style == scalar_style::doublequoted && ch == cast('"'))
-        break;
+      case '\\':
+        switch (this.peek(&mut is, 1))
+        {
+          case 'b': value += cast<u8>('\x08');
+          case 't': value += cast<u8>('\t');
+          case 'n': value += cast<u8>('\n');
+          case 'f': value += cast<u8>('\x0c');
+          case 'r': value += cast<u8>('\x0d');
+          case '"': value += cast<u8>('"');
+          case '/': value += cast<u8>('/');
+          case '\'': value += cast<u8>('\'');
+          case '\\': value += cast<u8>('\\');
 
-      return make_token(token::type::unexpected_end_of_line, this.loc);
-    }
+          case 'u':
+            var length = 4;
+            var buffer = this.prefix(&mut is, length + 2);
 
-    if (is_multiline_end(&mut this, &mut is, style))
-    {
-      this.eat(&mut is);
-      this.eat(&mut is);
-      break;
-    }
+            var codepoint = ' ';
+            if (std::atoi(buffer.data + 2, buffer.end, &mut codepoint, 16).len != length)
+              return make_token(token::type::bad_escape, this.loc);
 
-    while (is_blank(ch) || is_break(ch))
-    {
-      if (!leading_blanks)
+            for (var i = 0; i < buffer.len - 2; ++i)
+              this.eat(&mut is);
+
+            value += codepoint;
+
+          else:
+            return make_token(token::type::bad_escape, this.loc);
+        }
+
+        this.eat(&mut is);
+        this.eat(&mut is);
+
+      else:
         value += ch;
-
-      this.eat(&mut is);
-
-      ch = this.peek(&mut is);
+        this.eat(&mut is);
     }
-
-    leading_blanks = false;
   }
 
   this.eat(&mut is);
@@ -422,12 +301,8 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> token
       case '\0':
         break;
 
-      case '#':
       case ']':
-      case '[':
-      case '{':
       case '}':
-      case '=':
       case ',':
         break;
 
@@ -463,16 +338,12 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
       return scan_token(&mut this, &mut is, token::type::r_square);
     case '}':
       return scan_token(&mut this, &mut is, token::type::r_brace);
+    case ':':
+      return scan_token(&mut this, &mut is, token::type::colon);
     case ',':
       return scan_token(&mut this, &mut is, token::type::comma);
-    case '\'':
-      return scan_string_scalar(&mut this, &mut is, scalar_style::singlequoted);
     case '\"':
       return scan_string_scalar(&mut this, &mut is, scalar_style::doublequoted);
-    case '=':
-      return scan_token(&mut this, &mut is, token::type::equal);
-    case '.':
-      return scan_token(&mut this, &mut is, token::type::period);
   }
 
   return scan_plain_scalar(&mut this, &mut is);

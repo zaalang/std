@@ -1105,7 +1105,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::scalar, scalar_style::plain, value, loc));
 }
 
-pub fn scan(scanner mut &this, InputReader mut &is) throws -> void
+fn scan(scanner mut &this, InputReader mut &is) throws -> void
 {
   scan_to_next_token(&mut this, &mut is);
 

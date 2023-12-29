@@ -303,6 +303,21 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
   {
     switch (*ch)
     {
+      case '{':
+      case '}':
+        if (ch + 1 != end && *(ch + 1) == *ch)
+        {
+          if (sv == str.end || *sv++ != *ch++)
+            ctx.error = std::errc::format_error;
+
+          ++ch;
+
+          continue;
+        }
+    }
+
+    switch (*ch)
+    {
       case ' ':
       case '\t':
         while (sv != str.end && std::is_whitespace(*sv))

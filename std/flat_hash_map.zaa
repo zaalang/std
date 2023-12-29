@@ -161,7 +161,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return &cast<&&typeof(this)>(*cast<value_type mut *>(iter.data));
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(depend(this), repose(key, this))]
   pub fn []<Key>(this &&, Key &key)
     match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
@@ -182,7 +182,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return None;
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(depend(this), repose(key, this))]
   pub fn get<Key>(this mut &, Key &key) -> std::optional<T mut &>
     match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {
@@ -192,7 +192,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return None;
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(depend(this), repose(key, this))]
   pub fn find<Key>(this &&, Key &key)
     match (K u, Key v, Cmp cmp) { cmp(u, v); }
   {

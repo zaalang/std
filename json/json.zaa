@@ -496,7 +496,7 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, value &value
   }
 }
 
-pub fn load_from_str(String &src) -> parse_result
+pub fn load_from_string(String &src) -> parse_result
 {
   try
   {
