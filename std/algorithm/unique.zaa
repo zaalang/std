@@ -4,28 +4,134 @@
 
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+import std.algorithm : count, count_if, count_if_not;
+import std.algorithm.iteration : each, min, max, sum, mean;
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn unique<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::equal_to) -> I
+{
+  var next = first;
+
+  while (first != last)
+  {
+    if (next != first)
+      range[next] = &move range[first];
+
+    var &&current = range[next];
+
+    while (++first != last)
+    {
+      if (!cmp(current, range[first]))
+        break;
+    }
+
+    ++next;
+  }
+
+  return next;
+}
 
 #[lifetime(depend(range))]
 pub fn unique<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 {
-  var last = range.end;
-  var first = range.begin;
+  return unique(&mut range, range.begin, range.end, cmp);
+}
 
-  if (first == last)
-    return last;
+pub struct uniq_view<R, Cmp>
+{
+  R &range;
 
-  var next = first;
-  while (++first != last)
+  pub uniq_view(R &range, Cmp &cmp)
+    : range(&range), cmp(cmp)
   {
-    if (!cmp(range[next], range[first]) && ++next != first)
-      range[next] = &move range[first];
   }
 
-  return ++next;
+  pub ~uniq_view() = default;
+
+  pub struct uniq_iterator<X> : pub X
+  {
+    uniq_iterator(uniq_view &view, X base)
+      : super(base), view(&view)
+    {
+    }
+
+    pub uniq_iterator() = default;
+    pub uniq_iterator(uniq_iterator &&) = default;
+    pub fn =(uniq_iterator mut &lhs, uniq_iterator &&rhs) -> uniq_iterator mut & = default;
+    pub ~uniq_iterator() = default;
+
+    pub fn ++(uniq_iterator mut &this) -> uniq_iterator mut &
+      where requires (X mut &x) { ++x; }
+    {
+      var &&current = this.view.range[this.super];
+
+      while (++this.super != this.view.range.end)
+      {
+        if (!this.view.cmp(current, this.view.range[this.super]))
+          break;
+      }
+
+      return &this;
+    }
+
+    pub fn --(uniq_iterator mut &this) -> uniq_iterator mut &
+      where requires (X mut &x) { --x; }
+    {
+      var &&current = this.view.range[std::prev(this.super)];
+
+      while (--this.super != this.view.range.begin)
+      {
+        if (!this.view.cmp(current, this.view.range[std::prev(this.super)]))
+          break;
+      }
+
+      return &this;
+    }
+
+    pub fn -(uniq_iterator &lhs, uniq_iterator &rhs) -> usize = delete;
+    pub fn +(uniq_iterator lhs, usize rhs) -> uniq_iterator = delete;
+    pub fn -(uniq_iterator lhs, usize rhs) -> uniq_iterator = delete;
+
+    uniq_view &view;
+  }
+
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, uniq_iterator<X> &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &)
+  {
+    return uniq_iterator(this, this.range.begin);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &)
+  {
+    return uniq_iterator(this, this.range.end);
+  }
+
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn []<I>(this &, uniq_iterator<I> &iter)
+  {
+    return &&(&&this.range)[iter.super];
+  }
+
+  Cmp cmp;
+}
+
+#[nodiscard]
+#[lifetime(depend(range))]
+pub fn uniq<T, Cmp>(Range<T> &&range, Cmp &cmp = std::equal_to)
+{
+  return uniq_view<typeof(range)>(&&range, &cmp);
 }
 
 #[lifetime(depend(range))]
-pub fn unique!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
+pub fn uniq!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 {
-  return std::subrange(range, range.begin, unique(&mut range, cmp));
+  var last = unique(&mut range, range.begin, range.end, cmp);
+
+  return std::subrange(range, range.begin, last);
 }

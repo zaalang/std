@@ -25,6 +25,7 @@ pub struct box<T, Allocator = std::allocator>
 
   Bx mut *inner;
 
+  #[lifetime(depend(this))]
   pub fn *(this &&)
   {
     return &cast<&&typeof(this)>(this.inner.value);
@@ -55,7 +56,7 @@ pub struct box<T, Allocator = std::allocator>
     return box(ptr);
   }
 
-  #[lifetime(launder(this))]
+  #[lifetime(poison(this))]
   pub fn =(box mut &this, box &&other) -> box mut &
     where __is_rvalue<typeof(other)>
   {
@@ -74,7 +75,7 @@ pub struct box<T, Allocator = std::allocator>
     return ptr;
   }
 
-  #[lifetime(launder(this))]
+  #[lifetime(launder(this), poison(this))]
   pub static fn reset(this mut &, Bx mut *ptr = null) -> void
   {
     if (this.inner)

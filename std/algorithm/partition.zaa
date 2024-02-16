@@ -5,10 +5,10 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
-pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn is_partitioned<T, I, Pred>(Range<T> &range, I first, Sentinal<I> last, Pred &pred) -> bool
 {
-  var last = range.end;
-  var first = std::find_if_not(range, pred);
+  first = std::find_if_not(range, first, last, pred);
 
   for (; first != last; ++first)
     if (pred(range[first]))
@@ -17,11 +17,15 @@ pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
   return true;
 }
 
-#[lifetime(depend(range))]
-pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
+pub fn is_partitioned<T, Pred>(Range<T> &range, Pred &pred) -> bool
 {
-  var last = range.end;
-  var first = std::find_if_not(range, pred);
+  return is_partitioned(range, range.begin, range.end, pred);
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn partition<T, I, Pred>(Range<T> mut &range, I first, Sentinal<I> last, Pred &pred) -> I
+{
+  first = std::find_if_not(range, first, last, pred);
 
   if (first == last)
     return first;
@@ -40,10 +44,15 @@ pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
 }
 
 #[lifetime(depend(range))]
-pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
+pub fn partition<T, Pred>(Range<T> mut &range, Pred &pred)
 {
-  var last = range.end;
-  var first = std::find_if_not(range, pred);
+  return partition(&mut range, range.begin, range.end, pred);
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn stable_partition<T, I, Pred>(Range<T> mut &range, I first, Sentinal<I> last, Pred &pred) -> I
+{
+  first = std::find_if_not(range, first, last, pred);
 
   for (var it = first; it != last; )
   {
@@ -58,7 +67,7 @@ pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
     for (; it != last && pred(range[it]); ++it)
       ;
 
-    std::rotate!(&mut std::subrange(range, first, it), middle);
+    std::rotate(&mut range, first, middle, it);
 
     first = std::next(first, std::distance(middle, it));
   }
@@ -67,13 +76,17 @@ pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
 }
 
 #[lifetime(depend(range))]
-pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
+pub fn stable_partition<T, Pred>(Range<T> mut &range, Pred &pred)
 {
-  var first = range.begin;
+  return stable_partition(&mut range, range.begin, range.end, pred);
+}
 
-  #if (requires (typeof(range.begin) x, usize y) { x + y; })
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn partition_point<T, I, Pred>(Range<T> &range, I first, Sentinal<I> last, Pred &pred) -> I
+{
+  #if (requires (I x, usize y) { x + y; })
   {
-    for (var len = std::count(range); len > 0; )
+    for (var len = std::distance(first, last); len > 0; )
     {
       var m = len / 2;
       var it = first + m;
@@ -91,7 +104,7 @@ pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
   }
   #else
   {
-    for (var end = range.end; first != end; ++first)
+    for (; first != last; ++first)
     {
       if (!pred(range[first]))
         break;
@@ -99,4 +112,10 @@ pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
   }
 
   return first;
+}
+
+#[lifetime(depend(range))]
+pub fn partition_point<T, Pred>(Range<T> &range, Pred &pred)
+{
+  return partition_point(range, range.begin, range.end, pred);
 }

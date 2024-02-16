@@ -53,6 +53,7 @@ struct parse_context
     return this.states.take_back();
   }
 
+  #[lifetime(launder(this.tok))]
   fn consume_token(this mut &, var mut &is) throws -> void
   {
     this.tok = this.scanner.fetch(&mut is);
@@ -78,6 +79,7 @@ pub struct parse_result
   pub ~parse_result() = default;
 }
 
+#[lifetime(consume(rhs))]
 fn merge(node mut &lhs, node mut &rhs) -> bool
 {
   var ok = true;
@@ -91,7 +93,7 @@ fn merge(node mut &lhs, node mut &rhs) -> bool
       array.append(&move rhs.as_vec);
 
     case Map[map]:
-      for (var mut &it : rhs.as_map)
+      for (var mut &it : &move rhs.as_map)
       {
         if (var j = map.insert(&move it); !j.1)
         {
@@ -202,11 +204,10 @@ fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var mut &entry = std::launder(ctx.stack[ctx.stack.len - 1]);
+  var entry = ctx.stack.take_back;
+  var mut &array = ctx.stack.back.Array;
 
-  ctx.stack[ctx.stack.len - 2].Array.push_back(&move entry);
-
-  ctx.stack.pop_back();
+  array.push_back(&move entry);
 
   return ctx.pop_state();
 }
@@ -285,10 +286,9 @@ fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var mut &key = std::launder(ctx.stack[ctx.stack.len - 2]);
-  var mut &value = std::launder(ctx.stack[ctx.stack.len - 1]);
-
-  var mut &map = std::launder(ctx.stack[ctx.stack.len - 3]).Map;
+  var value = ctx.stack.take_back;
+  var key = ctx.stack.take_back;
+  var mut &map = ctx.stack.back.Map;
 
   if (var j = map.insert(&move key, &move value); !j.1)
   {
@@ -297,9 +297,6 @@ fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
     if (!merge(&mut map[j.0].value, &mut value))
       return parse_error(&mut ctx, toml::errc::duplicate_key);
   }
-
-  ctx.stack.pop_back();
-  ctx.stack.pop_back();
 
   return ctx.pop_state();
 }

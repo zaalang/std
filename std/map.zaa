@@ -214,7 +214,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return (iterator(pos.0), !!pos.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(args, key), depend(this))]
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -228,7 +228,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     return (iterator(pos.0), !!pos.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(args, key), depend(this))]
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -274,7 +274,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     }
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(repose(args, key), depend(this))]
   pub fn emplace<Key, Args>(this mut &, Key &&key, Args && ...args) -> T mut &
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {

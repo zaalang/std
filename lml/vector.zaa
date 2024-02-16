@@ -8,20 +8,21 @@ import lml.matrix;
 
 pub concept Vector<U, T, N>
 {
-  pub const dimension = N;
-  pub using coord_type = T;
+  pub const dim = N;
+  pub using coord_t = T;
 
   requires<vector> -> vector::vector_t
 }
 
 pub struct vector<T, N> : pub T[N]
 {
-  pub const dimension = N;
-  pub using coord_type = T;
+  pub const dim = N;
+  pub using coord_t = T;
   pub using point_t = Point<T, N>;
   pub using vector_t = Vector<vector<T, N>, T, N>;
 
-  pub vector(T k)
+  pub vector<K>(K &k)
+    match (K k) { T(k); }
     : super(void)
   {
     #for (const i = 0; i < N; ++i)

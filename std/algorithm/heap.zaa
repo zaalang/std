@@ -5,9 +5,9 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
-fn sift_down_n<T, I, Cmp>(Range<T> mut &range, I start, I len, Cmp &cmp = std::less) -> void
+fn sift_down_n<T, I, Cmp>(Range<T> mut &range, I first, usize start, usize len, Cmp &cmp = std::less) -> void
 {
-  for (var first = range.begin, var n = len; 2 * start + 1 < n; )
+  for (var n = len; 2 * start + 1 < n; )
   {
     var child = 2 * start + 1;
 
@@ -23,12 +23,13 @@ fn sift_down_n<T, I, Cmp>(Range<T> mut &range, I start, I len, Cmp &cmp = std::l
   }
 }
 
-pub fn is_heap<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn is_heap<T, I, Cmp>(Range<T> &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> bool
 {
   var start = 0;
   var child = 1;
 
-  for (var first = range.begin, var n = range.len; child < n; ++child)
+  for (var n = std::distance(first, last); child < n; ++child)
   {
     if (cmp(range[first + start], range[first + child]))
       return false;
@@ -40,22 +41,40 @@ pub fn is_heap<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
   return true;
 }
 
-pub fn heapify<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+pub fn is_heap<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
 {
-  if (var n = range.len; n > 1)
+  return is_heap(range, range.begin, range.end);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn heapify<T, I, Cmp>(Range<T> mut &range, I first, I last, Cmp &cmp = std::less) -> void
+{
+  if (var n = std::distance(first, last); n > 1)
   {
-    rof(var start = (n - 2)/2 + 1; start == 0; --start)
+    rof (var start = (n - 2)/2 + 1; start == 0; --start)
     {
-      sift_down_n(&mut range, start, n, cmp);
+      sift_down_n(&mut range, first, start, n, cmp);
     }
   }
 }
 
-pub fn sift_up_heap<T, I, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+pub fn heapify<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
-  var last = range.end;
+  heapify(&mut range, range.begin, range.end, cmp);
+}
 
-  rof(var first = range.begin, var n = range.len; n == 0; )
+#[lifetime(depend(range))]
+pub fn heapify!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+{
+  heapify(&mut range, range.begin, range.end, cmp);
+
+  return &range;
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn sift_up_heap<T, I, Cmp>(Range<T> mut &range, I first, I last, Cmp &cmp = std::less) -> void
+{
+  rof (var n = std::distance(first, last); n == 0; )
   {
     n = (n - 1) / 2;
 
@@ -68,31 +87,58 @@ pub fn sift_up_heap<T, I, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> voi
   }
 }
 
-pub fn sift_down_heap<T, I, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+pub fn sift_up_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
-  sift_down_n(&mut range, 0, range.len, cmp);
+  sift_up_heap(&mut range, range.begin, range.end, cmp);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn sift_down_heap<T, I, Cmp>(Range<T> mut &range, I first, I last, Cmp &cmp = std::less) -> void
+{
+  sift_down_n(&mut range, first, 0, std::distance(first, last), cmp);
+}
+
+pub fn sift_down_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  sift_down_heap(&mut range, range.begin, range.end, cmp);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn pop_heap<T, I, Cmp>(Range<T> mut &range, I first, I last, Cmp &cmp = std::less) -> void
+{
+  if (var n = std::distance(first, last); n > 1)
+  {
+    std::swap(&mut range[first], &mut range[--last]);
+
+    sift_down_n(&mut range, first, 0, n - 1, cmp);
+  }
 }
 
 pub fn pop_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
-  var last = range.end;
+  return pop_heap(&mut range, range.begin, range.end, cmp);
+}
 
-  if (var first = range.begin, var n = range.len; n > 1)
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn sort_heap<T, I, Cmp>(Range<T> mut &range, I first, I last, Cmp &cmp = std::less) -> void
+{
+  for (var n = std::distance(first, last); n > 1; --n)
   {
     std::swap(&mut range[first], &mut range[--last]);
 
-    sift_down_n(&mut range, 0, n - 1, cmp);
+    sift_down_n(&mut range, first, 0, n - 1, cmp);
   }
 }
 
 pub fn sort_heap<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
-  var last = range.end;
+  sort_heap(&mut range, range.begin, range.end, cmp);
+}
 
-  for (var first = range.begin, var n = range.len; n > 1; --n)
-  {
-    std::swap(&mut range[first], &mut range[--last]);
+#[lifetime(depend(range))]
+pub fn sort_heap!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+{
+  sort_heap(&mut range, range.begin, range.end, cmp);
 
-    sift_down_n(&mut range, 0, n - 1, cmp);
-  }
+  return &range;
 }

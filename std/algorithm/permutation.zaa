@@ -5,11 +5,9 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
-pub fn next_permutation<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> bool
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn next_permutation<T, I, Cmp>(Range<T> mut &range, I first, I last, Cmp &cmp = std::less) -> bool
 {
-  var last = range.end;
-  var first = range.begin;
-
   if (first == last)
     return false;
 
@@ -30,7 +28,7 @@ pub fn next_permutation<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> bo
 
       std::swap(&mut range[i], &mut range[j]);
 
-      std::reverse!(&mut range.subrange(i1, last));
+      std::reverse(&mut range, i1, last);
 
       return true;
     }
@@ -39,23 +37,33 @@ pub fn next_permutation<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> bo
       break;
   }
 
-  std::reverse!(&mut range.subrange(first, last));
+  std::reverse(&mut range, first, last);
 
   return false;
 }
 
-pub fn next_partial_permutation<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> bool
+pub fn next_permutation<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> bool
 {
-  std::reverse!(&mut range.subrange(middle, range.end));
-
-  return next_permutation(&mut range);
+  return next_permutation(&mut range, range.begin, range.end, cmp);
 }
 
-pub fn next_combination<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> bool
+#[lifetime(repose(first, range), repose(middle, range), repose(last, range))]
+pub fn next_partial_permutation<T, I, Cmp>(Range<T> mut &range, I first, I middle, I last, Cmp &cmp = std::less) -> bool
 {
-  var last = range.end;
-  var first = range.begin;
+  std::reverse(&mut range, middle, last);
 
+  return next_permutation(&mut range, first, last, cmp);
+}
+
+#[lifetime(repose(middle, range))]
+pub fn next_partial_permutation<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> bool
+{
+  return next_partial_permutation(&mut range, range.begin, middle, range.end, cmp);
+}
+
+#[lifetime(repose(first, range), repose(middle, range), repose(last, range))]
+pub fn next_combination<T, I, Cmp>(Range<T> mut &range, I first, I middle, I last, Cmp &cmp = std::less) -> bool
+{
   if (first == middle || middle == last)
     return false;
 
@@ -83,20 +91,26 @@ pub fn next_combination<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std
 
       if (++i != middle && ++j != last)
       {
-        std::rotate(&mut range.subrange(i, last), j);
+        std::rotate(&mut range, i, j, last);
 
         i1 = middle;
         for (; j != last; ++j)
           ++i1;
 
-        std::rotate(&mut range.subrange(middle, last), i1);
+        std::rotate(&mut range, middle, i1, last);
       }
 
       return true;
     }
   }
 
-  std::rotate(&mut range, middle);
+  std::rotate(&mut range, first, middle, last);
 
   return false;
+}
+
+#[lifetime(repose(middle, range))]
+pub fn next_combination<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> bool
+{
+  return next_combination(&mut range, range.begin, middle, range.end, cmp);
 }

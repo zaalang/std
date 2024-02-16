@@ -5,24 +5,38 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
+pub concept Sortable
+{
+  requires<T> (T range) { range[range.begin] = &move range[++range.begin]; }
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn is_sorted_until<T, I, Cmp>(Range<T> &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
+{
+  if (first == last)
+    return first;
+
+  var next = first;
+
+  for (; ++next != last; first = next)
+  {
+    if (cmp(range[next], range[first]))
+      return next;
+  }
+
+  return next;
+}
+
 #[lifetime(repose(last, range), depend(range))]
 pub fn is_sorted_until<T, I, Cmp>(Range<T> &range, I last, Cmp &cmp = std::less) -> I
 {
-  var first = range.begin;
+  return is_sorted_until(range, range.begin, last);
+}
 
-  if (first != last)
-  {
-    var next = first;
-    while (++next != last)
-    {
-      if (cmp(range[next], range[first]))
-        return next;
-
-      first = next;
-    }
-  }
-
-  return last;
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn is_sorted<T, I, Cmp>(Range<T> &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> bool
+{
+  return is_sorted_until(range, range.end, cmp) == range.end;
 }
 
 pub fn is_sorted<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
@@ -30,11 +44,10 @@ pub fn is_sorted<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> bool
   return is_sorted_until(range, range.end, cmp) == range.end;
 }
 
-pub fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn bubble_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
 {
-  var first = range.begin;
-
-  for (var i = first, var last = range.end; i != last; ++i)
+  for (var i = first; i != last; ++i)
   {
     for (var j = first; j != i; ++j)
     {
@@ -44,82 +57,248 @@ pub fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
   }
 }
 
-pub fn insertion_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+pub fn bubble_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
-  var last = range.end;
-  var first = range.begin;
+  bubble_sort(&mut range, range.begin, range.end, cmp);
+}
 
-  if (first != last)
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn insertion_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
+{
+  if (first == last)
+    return;
+
+  std::swap(&mut range[first], &mut range[std::min_element(range, first, last, cmp)]);
+
+  for (var i = first; ++i != last; first = i)
   {
-    std::swap(&mut range[first], &mut range[std::min_element(range, cmp)]);
-
-    for (var i = first; ++i != last; first = i)
-      for (var j = i; cmp(range[j], range[first]); --j, --first)
-        std::swap(&mut range[first], &mut range[j]);
+    for (var j = i; cmp(range[j], range[first]); --j, --first)
+      std::swap(&mut range[first], &mut range[j]);
   }
 }
 
-pub fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp, int maxdepth) -> void
+pub fn insertion_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
 {
-  var last = range.end;
-  var first = range.begin;
+  insertion_sort(&mut range, range.begin, range.end, cmp);
+}
 
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn quick_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
+{
+  if (first == last)
+    return;
+
+  var middle = first;
+
+  #if (requires (I x, I y) { y - x; })
+    std::swap(&mut range[first], &mut range[first + (last - first) / 2]);
+
+  for (var i = std::next(middle); i != last; ++i, ++middle)
+    if (!cmp(range[i], range[first]))
+      break;
+
+  for (var i = std::next(middle); i != last; ++i)
+    if (cmp(range[i], range[first]))
+      std::swap(&mut range[i], &mut range[++middle]);
+
+  std::swap(&mut range[first], &mut range[middle]);
+
+  quick_sort(&mut range, first, middle, cmp);
+  quick_sort(&mut range, std::next(middle), last, cmp);
+}
+
+pub fn quick_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+{
+  quick_sort(&mut range, range.begin, range.end, cmp);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn intro_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less, int maxdepth = 16) -> void
+  where __is_match<RandomAccessIterator, I>()
+{
   if (last - first < 16)
   {
-    insertion_sort(&mut range, cmp);
+    insertion_sort(&mut range, first, last, cmp);
   }
   else if (maxdepth == 0)
   {
-    partial_sort(&mut range, last, cmp);
+    partial_sort(&mut range, first, std::next(first, last - first), last, cmp);
   }
   else
   {
-    var pivot = first;
-    var middle = std::next(first);
+    var middle = first;
 
-    for (var i = middle; i != last; ++i)
-      if (cmp(range[i], range[pivot]))
-        std::swap(&mut range[i], &mut range[middle++]);
+    std::swap(&mut range[first], &mut range[first + (last - first) / 2]);
 
-    std::swap(&mut range[first], &mut range[middle - 1]);
+    for (var i = std::next(middle); i != last; ++i, ++middle)
+      if (!cmp(range[i], range[first]))
+        break;
 
-    intro_sort(&mut std::subrange(range, first, middle - 1), cmp, maxdepth - 1);
-    intro_sort(&mut std::subrange(range, middle, last), cmp, maxdepth - 1);
+    for (var i = std::next(middle); i != last; ++i)
+      if (cmp(range[i], range[first]))
+        std::swap(&mut range[i], &mut range[++middle]);
+
+    std::swap(&mut range[first], &mut range[middle]);
+
+    intro_sort(&mut range, first, middle, cmp, maxdepth - 1);
+    intro_sort(&mut range, std::next(middle), last, cmp, maxdepth - 1);
   }
+}
+
+pub fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less, int maxdepth = 16) -> void
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+{
+  intro_sort(&mut range, range.begin, range.end, cmp);
+}
+
+fn inplace_merge<T, I, Cmp>(Range<T> mut &range, I first, I middle, Sentinal<I> last, usize n1, usize n2, Cmp &cmp = std::less) -> void
+{
+  for (; n1 != 0 && n2 != 0; ++first, --n1)
+  {
+    if (cmp(range[middle], range[first]))
+      break;
+  }
+
+  if (first == middle || middle == last)
+    return;
+
+  var m1 = n1 / 2;
+  var m2 = n2 / 2;
+
+  if (m1 == 0 && m2 == 0)
+  {
+    std::swap(&mut range[first], &mut range[middle]);
+    return;
+  }
+
+  var cut1 = first;
+  var cut2 = middle;
+
+  if (n1 < n2)
+  {
+    cut2 = std::next(cut2, m2);
+    cut1 = std::upper_bound(range, first, middle, range[cut2], cmp);
+    m1 = std::distance(first, cut1);
+  }
+  else
+  {
+    cut1 = std::next(cut1, m1);
+    cut2 = std::lower_bound(range, middle, last, range[cut1], cmp);
+    m2 = std::distance(middle, cut2);
+  }
+
+  var pivot = std::rotate(&mut range, cut1, middle, cut2);
+
+  inplace_merge(&mut range, first, cut1, pivot, m1, m2, cmp);
+  inplace_merge(&mut range, pivot, cut2, last, n1 - m1, n2 - m2, cmp);
+}
+
+#[lifetime(repose(first, range), repose(middle, range), repose(last, range))]
+pub fn inplace_merge<T, I, Cmp>(Range<T> mut &range, I first, I middle, Sentinal<I> last, Cmp &cmp = std::less) -> void
+  where __is_match<BidirectionalIterator, I>()
+{
+  inplace_merge(&mut range, first, middle, last, std::distance(first, middle), std::distance(middle, last), cmp);
+}
+
+#[lifetime(repose(middle, range))]
+pub fn inplace_merge<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> void
+  where __is_match<BidirectionalIterator, typeof(range.begin)>()
+{
+  inplace_merge(&mut range, range.begin, middle, range.end, std::distance(range.begin, middle), std::distance(middle, range.end), cmp);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn merge_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, I>()
+{
+  if (last - first <= 1)
+    return;
+
+  var middle = first + (last - first) / 2;
+
+  merge_sort(&mut range, first, middle, cmp);
+  merge_sort(&mut range, middle, last, cmp);
+  inplace_merge(&mut range, first, middle, last, cmp);
+}
+
+pub fn merge_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+{
+  merge_sort(&mut range, range.begin, range.end, cmp);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, I>()
+{
+  intro_sort(&mut range, first, last, cmp, (63 - __clz(cast<u64>(std::distance(first, last)))) * 2);
 }
 
 pub fn sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
   where __is_match<RandomAccessIterator, typeof(range.begin)>()
+  where __is_match<Sortable, typeof(range)>()
 {
-  intro_sort(&mut range, cmp, (63 - __clz(cast<u64>(range.len))) * 2);
+  intro_sort(&mut range, range.begin, range.end, cmp, (63 - __clz(cast<u64>(range.len))) * 2);
 }
 
-pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> void
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn stable_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, I>()
 {
-  var first = range.begin;
+  if (last - first < 16)
+  {
+    insertion_sort(&mut range, first, last, cmp);
+  }
+  else
+  {
+    var middle = first + (last - first) / 2;
 
+    stable_sort(&mut range, first, middle, cmp);
+    stable_sort(&mut range, middle, last, cmp);
+    inplace_merge(&mut range, first, middle, last, cmp);
+  }
+}
+
+pub fn stable_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+  where __is_match<Sortable, typeof(range)>()
+{
+  stable_sort(&mut range, range.begin, range.end, cmp);
+}
+
+#[lifetime(repose(first, range), repose(last, range))]
+pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I first, I middle, Sentinal<I> last, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, I>()
+{
   if (first == middle)
     return;
 
-  var subrange = std::subrange(range, first, middle);
+  std::heapify(&mut range, first, middle, cmp);
 
-  std::heapify(&mut subrange, cmp);
-
-  for (var i = middle, var end = range.end; i != end; ++i)
+  for (var i = middle; i != last; ++i)
   {
     if (cmp(range[i], range[first]))
     {
       std::swap(&mut range[i], &mut range[first]);
 
-      std::sift_down_heap(&mut subrange, cmp);
+      std::sift_down_heap(&mut range, first, middle, cmp);
     }
   }
 
-  std::sort_heap(&mut subrange, cmp);
+  std::sort_heap(&mut range, first, middle, cmp);
+}
+
+pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> void
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+  where __is_match<Sortable, typeof(range)>()
+{
+  partial_sort(&mut range, range.begin, middle, range.end, cmp);
 }
 
 #[lifetime(depend(range))]
 pub fn sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+  where __is_match<Sortable, typeof(range)>()
 {
   sort(&mut range, cmp);
 
@@ -127,7 +306,19 @@ pub fn sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
 }
 
 #[lifetime(depend(range))]
+pub fn stable_sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+  where __is_match<Sortable, typeof(range)>()
+{
+  stable_sort(&mut range, cmp);
+
+  return &range;
+}
+
+#[lifetime(depend(range))]
 pub fn partial_sort!<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less)
+  where __is_match<RandomAccessIterator, typeof(range.begin)>()
+  where __is_match<Sortable, typeof(range)>()
 {
   partial_sort(&mut range, middle, cmp);
 

@@ -5,26 +5,38 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
-pub fn reverse<I>(I first, I last) -> void
+pub fn reverse<I>(I first, Sentinal<I> last) -> I
   where __is_match<BidirectionalIterator, I>()
 {
-  for (; first != last && first != --last; ++first)
+  var last = std::next(first, ~0, last);
+
+  for (var tail = last; first != tail && first != --tail; ++first)
   {
-    std::swap(&mut *first, &mut *last);
+    std::swap(&mut *first, &mut *tail);
   }
+
+  return last;
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn reverse<T, I>(Range<T> mut &range, I first, Sentinal<I> last) -> I
+  where __is_match<BidirectionalIterator, I>()
+{
+  var last = std::next(first, ~0, last);
+
+  for (var tail = last; first != tail && first != --tail; ++first)
+  {
+    std::swap(&mut range[first], &mut range[tail]);
+  }
+
+  return last;
 }
 
 #[lifetime(depend(range))]
 pub fn reverse!<T>(Range<T> mut &range)
   where __is_match<BidirectionalIterator, typeof(range.end)>()
 {
-  var last = range.end;
-  var first = range.begin;
-
-  for (; first != last && first != --last; ++first)
-  {
-    std::swap(&mut range[first], &mut range[last]);
-  }
+  reverse(&mut range, range.begin, range.end);
 
   return &range;
 }

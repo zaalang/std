@@ -209,7 +209,7 @@ pub struct fd_set
 
   pub fd_set() = default;
   pub fd_set(fd_set&) = default;
-  pub fn =(fd_set mut &, stat &) -> fd_set mut & = default;
+  pub fn =(fd_set mut &, fd_set &) -> fd_set mut & = default;
   pub ~fd_set() = default;
 }
 

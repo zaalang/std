@@ -107,6 +107,7 @@ pub union node
     std::panic("invalid toml access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_str(this &&)
   {
     switch (this)
@@ -118,6 +119,7 @@ pub union node
     std::panic("invalid toml access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_vec(this &&)
   {
     switch (this)
@@ -129,6 +131,7 @@ pub union node
     std::panic("invalid toml access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_map(this &&)
   {
     switch (this)
@@ -140,21 +143,25 @@ pub union node
     std::panic("invalid toml access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_string(this &&)
   {
     return &(&&this).as_str;
   }
 
+  #[lifetime(depend(this))]
   pub fn as_array(this &&)
   {
     return &(&&this).as_vec;
   }
 
+  #[lifetime(depend(this))]
   pub fn as_object(this &&)
   {
     return &(&&this).as_map;
   }
 
+  #[lifetime(depend(this))]
   pub fn []<Key>(this&, Key &key) -> node &
   {
     static const emptynode = #node();

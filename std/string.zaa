@@ -7,6 +7,7 @@ import std.stdlib : assert;
 import std.algorithm : swap;
 import std.memory : memcpy, memmove, memchr, memrchr, memcmp;
 import std.unicode : is_whitespace, to_uppercase, to_lowercase;
+import std.algorithm : find, find_if, find_if_not, count, count_if, count_if_not, sort!, uniq, uniq!, is_sorted;
 import std.range : Sentinal, Range;
 import std.type : as_const;
 import std.bits.utf as utf;
@@ -145,14 +146,9 @@ pub struct string_view : pub std::span<u8>
       return &this;
     }
 
-    pub fn -(u8 *rhs, char_iterator &lhs) -> usize = delete;
-    pub fn +(char_iterator &lhs, usize) -> char_iterator = delete;
-    pub fn -(char_iterator &lhs, usize) -> char_iterator = delete;
-
-    pub fn ==(char_iterator &lhs, u8 *rhs) -> bool
-    {
-      return lhs.super == rhs;
-    }
+    pub fn -(u8 *, char_iterator &) -> usize = delete;
+    pub fn +(char_iterator &, usize) -> char_iterator = delete;
+    pub fn -(char_iterator &, usize) -> char_iterator = delete;
 
     pub fn ==(char_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -226,14 +222,9 @@ pub struct string_view : pub std::span<u8>
       return &this;
     }
 
-    pub fn -(u8 *rhs, line_iterator &lhs) -> usize = delete;
-    pub fn +(line_iterator &lhs, usize) -> line_iterator = delete;
-    pub fn -(line_iterator &lhs, usize) -> line_iterator = delete;
-
-    pub fn ==(line_iterator &lhs, u8 *rhs) -> bool
-    {
-      return lhs.super == rhs;
-    }
+    pub fn -(u8 *, line_iterator &) -> usize = delete;
+    pub fn +(line_iterator &, usize) -> line_iterator = delete;
+    pub fn -(line_iterator &, usize) -> line_iterator = delete;
 
     pub fn ==(line_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -306,14 +297,9 @@ pub struct string_view : pub std::span<u8>
       return &this;
     }
 
-    pub fn -(u8 *rhs, word_iterator &lhs) -> usize = delete;
-    pub fn +(word_iterator &lhs, usize) -> word_iterator = delete;
-    pub fn -(word_iterator &lhs, usize) -> word_iterator = delete;
-
-    pub fn ==(word_iterator &lhs, u8 *rhs) -> bool
-    {
-      return lhs.super == rhs;
-    }
+    pub fn -(u8 *, word_iterator &) -> usize = delete;
+    pub fn +(word_iterator &, usize) -> word_iterator = delete;
+    pub fn -(word_iterator &, usize) -> word_iterator = delete;
 
     pub fn ==(word_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -387,14 +373,9 @@ pub struct string_view : pub std::span<u8>
       return &this;
     }
 
-    pub fn -(u8 *rhs, split_iterator &lhs) -> usize = delete;
-    pub fn +(split_iterator &lhs, usize) -> split_iterator = delete;
-    pub fn -(split_iterator &lhs, usize) -> split_iterator = delete;
-
-    pub fn ==(split_iterator &lhs, u8 *rhs) -> bool
-    {
-      return lhs.super == rhs;
-    }
+    pub fn -(u8 *, split_iterator &) -> usize = delete;
+    pub fn +(split_iterator &, usize) -> split_iterator = delete;
+    pub fn -(split_iterator &, usize) -> split_iterator = delete;
 
     pub fn ==(split_iterator &lhs, end_iterator rhs) -> bool
     {
@@ -658,7 +639,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     return result;
   }
 
-  pub fn from_utf8(Range<u8> &&other, Allocator &allocator = Allocator()) -> string
+  pub fn from(Range<u8> &&other, Allocator &allocator = Allocator()) -> string
   {
     var result = string(allocator);
 
@@ -1009,11 +990,11 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
-  pub fn appendf<Args>(this mut &, #string_literal format, Args & ...args) -> usize
+  pub fn appendf<Args>(this mut &, #string_literal format, Args & ...args, #var site = std::source_location(__site__)) -> usize
   {
     try
     {
-      return std::format_to(&mut this, format, args...);
+      return std::format_to(&mut this, format, args..., site: site);
     }
     catch(std::error e)
     {
@@ -1212,11 +1193,11 @@ pub fn sprint<Args>(Span<u8> mut &os, Args & ...args) -> usize
   }
 }
 
-pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args) -> usize
+pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args, #var site = std::source_location(__site__)) -> usize
 {
   try
   {
-    return std::format_to(&mut os, format, args...);
+    return std::format_to(&mut os, format, args..., site: site);
   }
   catch(std::error e)
   {
@@ -1421,7 +1402,7 @@ pub fn find_last(String &&haystack, u8 *pos, String &needle)
 
   if (needle.len <= n)
   {
-    rof(var i = haystack.data + n + 1 - needle.len, var end = haystack.data; i == end; --i)
+    rof (var i = haystack.data + n + 1 - needle.len, var end = haystack.data; i == end; --i)
     {
       if (memcmp(i, needle.data, needle.len) == 0)
         return i;
@@ -1442,7 +1423,7 @@ pub fn find_last_of(String &&haystack, u8 *pos, String &needle)
 {
   var n = pos - haystack.data;
 
-  rof(var i = haystack.data + n, var end = haystack.data; i == end; --i)
+  rof (var i = haystack.data + n, var end = haystack.data; i == end; --i)
   {
     for (var j = needle.begin; j != needle.end; )
     {
@@ -1469,7 +1450,7 @@ pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
 {
   var n = pos - haystack.data;
 
-  rof(var i = haystack.data + n, var end = haystack.data; i == end; --i)
+  rof (var i = haystack.data + n, var end = haystack.data; i == end; --i)
   {
     var found = true;
     for (var j = needle.begin; j != needle.end; )
@@ -1721,7 +1702,7 @@ pub fn trim_right(String &str) -> string_view
 {
   var j = str.end;
 
-  rof(var i = str.chars.end; i == str.begin; --i)
+  rof (var i = str.chars.end; i == str.begin; --i)
   {
     if (!is_whitespace(*i))
       break;
@@ -1939,6 +1920,35 @@ pub fn to_uppercase!(string mut &str) -> string mut &
     ch = to_uppercase(ch);
 
   return &str;
+}
+
+#[nodiscard]
+pub fn join(Range<String> &strings, String &seperator = "") -> string
+{
+  var len = 0;
+
+  for (var &s : strings)
+  {
+    len += s.len + seperator.len;
+  }
+
+  var str = string::with_capacity(len);
+
+  var last = strings.end;
+  var first = strings.begin;
+
+  if (first != last)
+  {
+    str += strings[first++];
+  }
+
+  while (first != last)
+  {
+    str += seperator;
+    str += strings[first++];
+  }
+
+  return str;
 }
 
 #[nodiscard]

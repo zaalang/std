@@ -21,6 +21,7 @@ struct parse_context
   token tok;
   scanner scanner;
 
+  #[lifetime(launder(this.tok))]
   fn consume_token(this mut &, var mut &is) throws -> void
   {
     this.tok = this.scanner.fetch(&mut is);

@@ -13,6 +13,7 @@ pub import std.algorithm.unique;
 pub import std.algorithm.reverse;
 pub import std.algorithm.rotate;
 pub import std.algorithm.iteration;
+pub import std.algorithm.transform;
 pub import std.algorithm.partition;
 pub import std.algorithm.permutation;
 
@@ -29,8 +30,18 @@ pub fn swap<T, I>(Range<T> mut &range, I &i, I &j)
 {
   if (i != j)
   {
-    std::swap(&mut std::launder(range)[i], &mut std::launder(range)[j]);
+    std::swap(&mut range[i], &mut range[j]);
   }
+}
+
+#[lifetime(poison(a), depend(*a), assign(a, depend(*a.=,b)))]
+pub fn exchange<T, U>(T mut &a, U &&b) -> T
+  match (T a, U b) { a = &move b; }
+{
+  var tmp = &move a;
+  a = &&b;
+
+  return tmp;
 }
 
 pub fn fill<O, T>(O dst, Sentinal<O> end, T &value) -> O
@@ -139,103 +150,21 @@ pub fn move_n<O, I, N>(O dst, Sentinal<O> end, I first, N n) -> O
   return dst;
 }
 
-pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, Func &&func) -> O
-{
-  while (first != last)
-  {
-    assert(dst != end);
-
-    *dst++ = func(*first++);
-  }
-
-  return dst;
-}
-
-pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &&func) -> O
-{
-  while (first != last)
-  {
-    assert(end != dst);
-
-    *--end = func(*--last);
-  }
-
-  return end;
-}
-
-pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &&func) -> O
-{
-  while (n > 0)
-  {
-    assert(dst != end);
-
-    *dst++ = func(*first++);
-
-    --n;
-  }
-
-  return dst;
-}
-
-pub fn transform<O, I, Func>(I first, Sentinal<I> last, Func &&func) -> void
-{
-  for (; first != last; ++first)
-  {
-    *first = func(&move *first);
-  }
-}
-
-#[lifetime(depend(range))]
-pub fn transform!<T, Func>(Range<T> mut &range, Func &&func)
-{
-  var first = range.begin;
-
-  for (var last = range.end; first != last; ++first)
-  {
-    range[first] = func(&move std::launder(range[first]));
-  }
-
-  return &range;
-}
-
-#[lifetime(depend(range))]
-pub fn adjacent_transform!<N, T, Func>(Range<T> mut &range, Func &&func)
-{
-  fn deref(var &&range, var && ...is)
-  {
-    return ((&&(&&range)[is])...,);
-  }
-
-  var first = range.begin;
-  var window = [typeof(first)(); N];
-
-  window[0] = first;
-  for (var k = 1; k < N; ++k)
-    window[k] = std::next(window[k - 1], 1, range.end);
-
-  for (var last = range.end; window[N - 1] != last; ++first)
-  {
-    range[first] = func(deref(range, window...));
-
-    for (var k = 0; k < N; ++k)
-      ++window[k];
-  }
-
-  return std::subrange(range, range.begin, first);
-}
-
+#[lifetime(depend(a), depend(b))]
 pub fn min<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {
   return (b < a) ? &b : &a;
 }
 
+#[lifetime(depend(a), depend(b))]
 pub fn max<T>(T &&a, T &&b)
   where !__is_arithmetic<T>
 {
   return (a < b) ? &b : &a;
 }
 
+#[lifetime(depend(*args))]
 pub fn min<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
 {
@@ -250,6 +179,7 @@ pub fn min<Args>(Args & ...args)
   return &result;
 }
 
+#[lifetime(depend(*args))]
 pub fn max<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
 {
@@ -264,9 +194,9 @@ pub fn max<Args>(Args & ...args)
   return &result;
 }
 
-pub const less = fn<U,V>(U &x, V &y) -> bool match(U x, V y) { x < y; } { return x < y; };
-pub const greater = fn<U,V>(U &x, V &y) -> bool match(U x, V y) { x > y; } { return x > y; };
-pub const equal_to = fn<U,V>(U &x, V &y) -> bool match(U x, V y) { x == y; } { return x == y; };
+pub const less = |x, y| x < y;
+pub const greater = |x, y| x > y;
+pub const equal_to = |x, y| x == y;
 
 pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 {
@@ -284,12 +214,12 @@ pub fn min_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
   return result;
 }
 
-#[lifetime(depend(range))]
-pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn min_element<T, I, Cmp>(Range<T> &&range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 {
-  var result = range.begin;
+  var result = first;
 
-  if (var first = range.begin, var last = range.end; first != last)
+  if (first != last)
   {
     for (++first; first != last; ++first)
     {
@@ -299,6 +229,12 @@ pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
   }
 
   return result;
+}
+
+#[lifetime(depend(range))]
+pub fn min_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
+{
+  return min_element(&&range, range.begin, range.end, cmp);
 }
 
 pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
@@ -317,12 +253,12 @@ pub fn max_element<I, Cmp>(I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
   return result;
 }
 
-#[lifetime(depend(range))]
-pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn max_element<T, I, Cmp>(Range<T> &&range, I first, Sentinal<I> last, Cmp &cmp = std::less) -> I
 {
-  var result = range.begin;
+  var result = first;
 
-  if (var first = range.begin, var last = range.end; first != last)
+  if (first != last)
   {
     for (++first; first != last; ++first)
     {
@@ -332,6 +268,12 @@ pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
   }
 
   return result;
+}
+
+#[lifetime(depend(range))]
+pub fn max_element<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
+{
+  return max_element(&&range, range.begin, range.end, cmp);
 }
 
 pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
@@ -356,13 +298,11 @@ pub fn lower_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return first;
 }
 
-#[lifetime(depend(range), repose(value, range))]
-pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
+#[lifetime(repose(first, range), repose(last, range), repose(value, range), depend(range))]
+pub fn lower_bound<T, I, Value, Cmp>(Range<T> &&range, I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   match (T u, Value v, Cmp cmp) { cmp(u, v); }
 {
-  var first = range.begin;
-
-  for (var len = std::count(range); len > 0; )
+  for (var len = std::distance(first, last); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -379,6 +319,13 @@ pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
   }
 
   return first;
+}
+
+#[lifetime(repose(value, range), depend(range))]
+pub fn lower_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
+  match (T u, Value v, Cmp cmp) { cmp(u, v); }
+{
+  return lower_bound(&&range, range.begin, range.end, value, cmp);
 }
 
 pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
@@ -403,13 +350,11 @@ pub fn upper_bound<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &
   return first;
 }
 
-#[lifetime(depend(range), repose(value, range))]
-pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
+#[lifetime(repose(first, range), repose(last, range), repose(value, range), depend(range))]
+pub fn upper_bound<T, I, Value, Cmp>(Range<T> &&range, I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
   match (T u, Value v, Cmp cmp) { cmp(v, u); }
 {
-  var first = range.begin;
-
-  for (var len = std::count(range); len > 0; )
+  for (var len = std::distance(first, last); len > 0; )
   {
     var m = len / 2;
     var it = std::next(first, m);
@@ -428,13 +373,20 @@ pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std
   return first;
 }
 
+#[lifetime(repose(value, range), depend(range))]
+pub fn upper_bound<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
+  match (T u, Value v, Cmp cmp) { cmp(v, u); }
+{
+  return upper_bound(&&range, range.begin, range.end, value, cmp);
+}
+
 pub fn equal_range<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> (I, I)
   where requires (I i, Value &v, Cmp &cmp) { cmp(*i, v); cmp(v, *i); }
 {
   return (lower_bound(first, last, value, cmp), upper_bound(first, last, value, cmp));
 }
 
-#[lifetime(depend(range), repose(value, range))]
+#[lifetime(repose(value, range), depend(range))]
 pub fn equal_range<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (T u, Value v, Cmp cmp) { cmp(u, v); cmp(v, u); }
 {
@@ -452,16 +404,23 @@ pub fn binary_search<I, Value, Cmp>(I first, Sentinal<I> last, Value &value, Cmp
   return j;
 }
 
-#[lifetime(depend(range), repose(value, range))]
+#[lifetime(repose(first, range), repose(last, range), repose(value, range), depend(range))]
+pub fn binary_search<T, I, Value, Cmp>(Range<T> &&range, I first, Sentinal<I> last, Value &value, Cmp &cmp = std::less) -> I
+  match (T u, Value v, Cmp cmp) { cmp(u, v); }
+{
+  var j = lower_bound(&&range, first, last, value, cmp);
+
+  if (j == last || cmp(value, range[j]))
+    return last;
+
+  return j;
+}
+
+#[lifetime(repose(value, range), depend(range))]
 pub fn binary_search<T, Value, Cmp>(Range<T> &&range, Value &value, Cmp &cmp = std::less)
   match (T u, Value v, Cmp cmp) { cmp(u, v); }
 {
-  var j = lower_bound(range, value, cmp);
-
-  if (j == range.end || cmp(value, range[j]))
-    return range.end;
-
-  return j;
+  return binary_search(&&range, range.begin, range.end, value, cmp);
 }
 
 pub fn count<I, Value>(I first, Sentinal<I> last, Value &value) -> usize
@@ -478,18 +437,26 @@ pub fn count<I, Value>(I first, Sentinal<I> last, Value &value) -> usize
   return count;
 }
 
-pub fn count<T, Value>(Range<T> &&range, Value &value) -> usize
+#[lifetime(repose(first, range), repose(last, range), repose(value, range))]
+pub fn count<T, I, Value>(Range<T> &range, I first, Sentinal<I> last, Value &value) -> usize
   match (T u, Value v) { u == v; }
 {
   var count = 0;
 
-  for (var first = range.begin, var last = range.end; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (range[first] == value)
       ++count;
   }
 
   return count;
+}
+
+#[lifetime(repose(value, range))]
+pub fn count<T, Value>(Range<T> &range, Value &value) -> usize
+  match (T u, Value v) { u == v; }
+{
+  return count(range, range.begin, range.end, value);
 }
 
 pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
@@ -506,17 +473,24 @@ pub fn count_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
   return count;
 }
 
-pub fn count_if<T, Pred>(Range<T> &&range, Pred &pred) -> usize
+#[lifetime(repose(first, range), repose(last, range), repose(pred, range))]
+pub fn count_if<T, I, Pred>(Range<T> &range, I first, Sentinal<I> last, Pred &pred) -> usize
 {
   var count = 0;
 
-  for (var first = range.begin, var last = range.end; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (pred(range[first]))
       ++count;
   }
 
   return count;
+}
+
+#[lifetime(repose(pred, range))]
+pub fn count_if<T, Pred>(Range<T> &range, Pred &pred) -> usize
+{
+  return count_if(range, range.begin, range.end, pred);
 }
 
 pub fn count_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
@@ -533,17 +507,24 @@ pub fn count_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> usize
   return count;
 }
 
-pub fn count_if_not<T, Pred>(Range<T> &&range, Pred &pred) -> usize
+#[lifetime(repose(first, range), repose(last, range), repose(pred, range))]
+pub fn count_if_not<T, I, Pred>(Range<T> &range, I first, Sentinal<I> last, Pred &pred) -> usize
 {
   var count = 0;
 
-  for (var first = range.begin, var last = range.end; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (!pred(range[first]))
       ++count;
   }
 
   return count;
+}
+
+#[lifetime(repose(pred, range))]
+pub fn count_if_not<T, Pred>(Range<T> &range, Pred &pred) -> usize
+{
+  return count_if_not(range, range.begin, range.end, pred);
 }
 
 pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
@@ -558,19 +539,24 @@ pub fn find<I, Value>(I first, Sentinal<I> last, Value &value) -> I
   return first;
 }
 
-#[lifetime(depend(range), repose(value, range))]
-pub fn find<T, Value>(Range<T> &&range, Value &value)
+#[lifetime(repose(first, range), repose(last, range), repose(value, range), depend(range))]
+pub fn find<T, I, Value>(Range<T> &&range, I first, Sentinal<I> last, Value &value) -> I
   match (T u, Value v) { u == v; }
 {
-  var first = range.begin;
-
-  for (var last = range.end; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (range[first] == value)
       return first;
   }
 
   return first;
+}
+
+#[lifetime(repose(value, range), depend(range))]
+pub fn find<T, Value>(Range<T> &&range, Value &value)
+  match (T u, Value v) { u == v; }
+{
+  return find(&&range, range.begin, range.end, value);
 }
 
 pub fn find_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
@@ -585,18 +571,22 @@ pub fn find_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
   return first;
 }
 
-#[lifetime(depend(range), repose(pred, range))]
-pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
+#[lifetime(repose(first, range), repose(last, range), repose(pred, range), depend(range))]
+pub fn find_if<T, I, Pred>(Range<T> &&range, I first, Sentinal<I> last, Pred &pred) -> I
 {
-  var first = range.begin;
-
-  for (var last = range.end; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (pred(range[first]))
       return first;
   }
 
   return first;
+}
+
+#[lifetime(repose(pred, range), depend(range))]
+pub fn find_if<T, Pred>(Range<T> &&range, Pred &pred)
+{
+  return find_if(&&range, range.begin, range.end, pred);
 }
 
 pub fn find_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
@@ -611,18 +601,22 @@ pub fn find_if_not<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
   return first;
 }
 
-#[lifetime(depend(range), repose(pred, range))]
-pub fn find_if_not<T, Pred>(Range<T> &&range, Pred &pred)
+#[lifetime(repose(first, range), repose(last, range), repose(pred, range), depend(range))]
+pub fn find_if_not<T, I, Pred>(Range<T> &&range, I first, Sentinal<I> last, Pred &pred) -> I
 {
-  var first = range.begin;
-
-  for (var last = range.end; first != last; ++first)
+  for (; first != last; ++first)
   {
     if (!pred(range[first]))
       return first;
   }
 
   return first;
+}
+
+#[lifetime(repose(pred, range), depend(range))]
+pub fn find_if_not<T, Pred>(Range<T> &&range, Pred &pred)
+{
+  return find_if_not(&&range, range.begin, range.end, pred);
 }
 
 pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
@@ -642,13 +636,13 @@ pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
   return first;
 }
 
-#[lifetime(depend(range))]
-pub fn remove<T, Value>(Range<T> &&range, Value &value)
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn remove<T, I, Value>(Range<T> &&range, I first, Sentinal<I> last, Value &value) -> I
   match (T u, Value v) { u == v; }
 {
-  var first = find(range, value);
+  first = find(range, first, last, value);
 
-  if (var last = range.end; first != last)
+  if (first != last)
   {
     for (var i = first; ++i != last; )
     {
@@ -658,6 +652,13 @@ pub fn remove<T, Value>(Range<T> &&range, Value &value)
   }
 
   return first;
+}
+
+#[lifetime(depend(range))]
+pub fn remove<T, Value>(Range<T> &&range, Value &value)
+  match (T u, Value v) { u == v; }
+{
+  return remove(&&range, range.begin, range.end, value);
 }
 
 pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
@@ -677,12 +678,12 @@ pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
   return first;
 }
 
-#[lifetime(depend(range))]
-pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn remove_if<T, I, Pred>(Range<T> &&range, I first, Sentinal<I> last, Pred &pred) -> I
 {
-  var first = find_if(range, pred);
+  first = find_if(range, first, last, pred);
 
-  if (var last = range.end; first != last)
+  if (first != last)
   {
     for (var i = first; ++i != last; )
     {
@@ -692,6 +693,12 @@ pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
   }
 
   return first;
+}
+
+#[lifetime(depend(range))]
+pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
+{
+  return remove_if(&&range, range.begin, range.end, pred);
 }
 
 pub fn all_of<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> bool

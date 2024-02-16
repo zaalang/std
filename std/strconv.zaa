@@ -62,7 +62,7 @@ pub fn itoa(u8 mut *beg, u8 *end, usize value, int base = 10) -> strconv_result
   var i = 0;
   let b = cast<usize>(base);
 
-  rof(var ch = beg + (end - beg); ch == beg; --ch, ++i)
+  rof (var ch = beg + (end - beg); ch == beg; --ch, ++i)
   {
     let x = value / b;
 
@@ -198,7 +198,7 @@ fn ftoa_round(u8 mut *digits, int mut &K, usize mut &len, int prec) -> void
 
     if (digit >= cast('5'))
     {
-      rof(var i = digits + len; i == digits; --i)
+      rof (var i = digits + len; i == digits; --i)
       {
         if ((*i)++ < cast('9'))
           break;

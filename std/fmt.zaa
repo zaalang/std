@@ -898,7 +898,7 @@ fn flatten(std::string_literal str) -> std::string_literal
   return str;
 }
 
-fn parse_args<Args>(std::string_literal format) -> arguments<std::tuple_len<Args>>
+fn parse_args<Args>(std::string_literal format, std::source_location site) -> arguments<std::tuple_len<Args>>
 {
   var args = arguments<std::tuple_len<Args>>();
 
@@ -913,20 +913,20 @@ fn parse_args<Args>(std::string_literal format) -> arguments<std::tuple_len<Args
       ch += 1;
 
       if (ch == end)
-        std::panic("premature end of format string");
+        std::panic(site, ": error: premature end of format string");
 
       if ((*ch == cast('{') && *(ch-1) == cast('{')) || (*ch == cast('}') && *(ch-1) == cast('}')))
         continue;
 
       if (arg >= args.specs.len)
-        std::panic("mismatched arg count in format string");
+        std::panic(site, ": error: mismatched arg count in format string");
 
       args.pieces[arg] = flatten(std::string_literal(beg, ch - beg - 1));
 
       args.specs[arg] = parse_spec(&mut ch, end);
 
       if (!args.specs[arg].ok)
-        std::panic("invalid arg spec in format string");
+        std::panic(site, ": error: invalid arg spec in format string");
 
       if (args.specs[arg].width == spec::arg)
       {
@@ -945,7 +945,7 @@ fn parse_args<Args>(std::string_literal format) -> arguments<std::tuple_len<Args
   }
 
   if (arg != args.specs.len)
-    std::panic("mismatched piece count in format string");
+    std::panic(site, ": error: mismatched piece count in format string");
 
   args.pieces[arg] = flatten(std::string_literal(beg, end - beg));
 
@@ -975,12 +975,12 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throw
   }
 }
 
-pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args) throws -> usize
+pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args, #var site = std::source_location(__site__)) throws -> usize
 { 
   var ctx = fmt_context();
   //var os = std::output_stream(&mut os);
 
-  const fmt = #parse_args<Args>(format);
+  const fmt = #parse_args<Args>(format, site);
 
   #for (const k = 0; k < std::tuple_len<Args>; ++k)
   {

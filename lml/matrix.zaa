@@ -7,15 +7,21 @@ import std.fmt;
 
 pub concept Matrix<T, M, N>
 {
+  pub const rows = M;
+  pub const cols = N;
+  pub using coord_t = T;
+
   requires<mat> -> mat::matrix_t
 }
 
 pub struct matrix<T, M, N> : pub T[N][M]
 {
+  pub using coord_t = T;
   pub using matrix_t = Matrix<T, M, N>;
-  pub using result_type<I, J> = matrix<T, I, J>;
+  pub using reshape_t<I, J> = matrix<T, I, J>;
 
-  pub matrix(T k)
+  pub matrix<K>(K &k)
+    match (K k) { T(k); }
     : super(void)
   {
     for (var i = 0; i < M; ++i)
@@ -33,7 +39,7 @@ pub struct matrix<T, M, N> : pub T[N][M]
     return M;
   }
 
-  pub const fn columns(this&) -> usize
+  pub const fn cols(this&) -> usize
   {
     return N;
   }
@@ -52,6 +58,15 @@ pub struct matrix<T, M, N> : pub T[N][M]
 pub fn fmt<T, M, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, matrix<T, M, N> &matrix) throws -> void
 {
   std::fmt_to(&mut os, &mut ctx, matrix.super);
+}
+
+pub struct matrix_reshape_t<T, I, J>
+{
+  #if (T::matrix_t::rows != I || T::matrix_t::cols != J)
+    using matrix = T::reshape_t<I, J>;
+  #else
+    using matrix = T;
+  #end
 }
 
 /// norm of matrix
@@ -84,7 +99,7 @@ pub const fn trace<T, N>(Matrix<T, N, N> &p) -> T
 pub const fn scale<T, M, N, S>(Matrix<T, M, N> &p, S &s)
   match (T x, S y) { x * y; }
 {
-  var result = typeof(p)::result_type<M, N>();
+  var result = typeof(p)();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -96,7 +111,7 @@ pub const fn scale<T, M, N, S>(Matrix<T, M, N> &p, S &s)
 /// transpose a matrix
 pub const fn transpose<T, M, N>(Matrix<T, M, N> &p)
 {
-  var result = typeof(p)::result_type<N, M>();
+  var result = matrix_reshape_t<typeof(p), N, M>::matrix();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -137,7 +152,7 @@ pub const fn determinant<T, N>(Matrix<T, N, N> &p) -> T
 
   for (var k = 0; k < N; ++k)
   {
-    var sub = typeof(p)::result_type<N-1, N-1>();
+    var sub = matrix<T, N-1, N-1>();
 
     for (var ii = 0; ii < N-1; ++ii)
       for (var jj = 0; jj < N-1; ++jj)
@@ -210,13 +225,13 @@ pub const fn adjoint<T>(Matrix<T, 4, 4> &p)
 
 pub const fn adjoint<T, N>(Matrix<T, N, N> &p)
 {
-  var result = typeof(p)::result_type<N, N>();
+  var result = typeof(p)();
 
   for (var j = 0; j < N; ++j)
   {
     for (var i = 0; i < N; ++i)
     {
-      var sub = typeof(p)::result_type<N-1, N-1>();
+      var sub = matrix<T, N-1, N-1>();
 
       for (var ii = 0; ii < N-1; ++ii)
         for (var jj = 0; jj < N-1; ++jj)
@@ -235,13 +250,67 @@ pub const fn inverse<T, N>(Matrix<T, N, N> &p)
   return adjoint(p) / determinant(p);
 }
 
+/// square matrix multiplication
+pub fn *<T>(Matrix<T, 2, 2> &p, Matrix<T, 2, 2> &q)
+{
+  var result = typeof(p)();
+
+  result[0, 0] = p[0, 0]*q[0, 0] + p[0, 1]*q[1, 0];
+  result[0, 1] = p[0, 0]*q[0, 1] + p[0, 1]*q[1, 1];
+  result[1, 0] = p[1, 0]*q[0, 0] + p[1, 1]*q[1, 0];
+  result[1, 1] = p[1, 0]*q[0, 1] + p[1, 1]*q[1, 1];
+
+  return result;
+}
+
+pub fn *<T>(Matrix<T, 3, 3> &p, Matrix<T, 3, 3> &q)
+{
+  var result = typeof(p)();
+
+  result[0, 0] = p[0, 0]*q[0, 0] + p[0, 1]*q[1, 0] + p[0, 2]*q[2, 0];
+  result[0, 1] = p[0, 0]*q[0, 1] + p[0, 1]*q[1, 1] + p[0, 2]*q[2, 1];
+  result[0, 2] = p[0, 0]*q[0, 2] + p[0, 1]*q[1, 2] + p[0, 2]*q[2, 2];
+  result[1, 0] = p[1, 0]*q[0, 0] + p[1, 1]*q[1, 0] + p[1, 2]*q[2, 0];
+  result[1, 1] = p[1, 0]*q[0, 1] + p[1, 1]*q[1, 1] + p[1, 2]*q[2, 1];
+  result[1, 2] = p[1, 0]*q[0, 2] + p[1, 1]*q[1, 2] + p[1, 2]*q[2, 2];
+  result[2, 0] = p[2, 0]*q[0, 0] + p[2, 1]*q[1, 0] + p[2, 2]*q[2, 0];
+  result[2, 1] = p[2, 0]*q[0, 1] + p[2, 1]*q[1, 1] + p[2, 2]*q[2, 1];
+  result[2, 2] = p[2, 0]*q[0, 2] + p[2, 1]*q[1, 2] + p[2, 2]*q[2, 2];
+
+  return result;
+}
+
+pub fn *<T>(Matrix<T, 4, 4> &p, Matrix<T, 4, 4> &q)
+{
+  var result = typeof(p)();
+
+  result[0, 0] = p[0, 0]*q[0, 0] + p[0, 1]*q[1, 0] + p[0, 2]*q[2, 0] + p[0, 3]*q[3, 0];
+  result[0, 1] = p[0, 0]*q[0, 1] + p[0, 1]*q[1, 1] + p[0, 2]*q[2, 1] + p[0, 3]*q[3, 1];
+  result[0, 2] = p[0, 0]*q[0, 2] + p[0, 1]*q[1, 2] + p[0, 2]*q[2, 2] + p[0, 3]*q[3, 2];
+  result[0, 3] = p[0, 0]*q[0, 3] + p[0, 1]*q[1, 3] + p[0, 2]*q[2, 3] + p[0, 3]*q[3, 3];
+  result[1, 0] = p[1, 0]*q[0, 0] + p[1, 1]*q[1, 0] + p[1, 2]*q[2, 0] + p[1, 3]*q[3, 0];
+  result[1, 1] = p[1, 0]*q[0, 1] + p[1, 1]*q[1, 1] + p[1, 2]*q[2, 1] + p[1, 3]*q[3, 1];
+  result[1, 2] = p[1, 0]*q[0, 2] + p[1, 1]*q[1, 2] + p[1, 2]*q[2, 2] + p[1, 3]*q[3, 2];
+  result[1, 3] = p[1, 0]*q[0, 3] + p[1, 1]*q[1, 3] + p[1, 2]*q[2, 3] + p[1, 3]*q[3, 3];
+  result[2, 0] = p[2, 0]*q[0, 0] + p[2, 1]*q[1, 0] + p[2, 2]*q[2, 0] + p[2, 3]*q[3, 0];
+  result[2, 1] = p[2, 0]*q[0, 1] + p[2, 1]*q[1, 1] + p[2, 2]*q[2, 1] + p[2, 3]*q[3, 1];
+  result[2, 2] = p[2, 0]*q[0, 2] + p[2, 1]*q[1, 2] + p[2, 2]*q[2, 2] + p[2, 3]*q[3, 2];
+  result[2, 3] = p[2, 0]*q[0, 3] + p[2, 1]*q[1, 3] + p[2, 2]*q[2, 3] + p[2, 3]*q[3, 3];
+  result[3, 0] = p[3, 0]*q[0, 0] + p[3, 1]*q[1, 0] + p[3, 2]*q[2, 0] + p[3, 3]*q[3, 0];
+  result[3, 1] = p[3, 0]*q[0, 1] + p[3, 1]*q[1, 1] + p[3, 2]*q[2, 1] + p[3, 3]*q[3, 1];
+  result[3, 2] = p[3, 0]*q[0, 2] + p[3, 1]*q[1, 2] + p[3, 2]*q[2, 2] + p[3, 3]*q[3, 2];
+  result[3, 3] = p[3, 0]*q[0, 3] + p[3, 1]*q[1, 3] + p[3, 2]*q[2, 3] + p[3, 3]*q[3, 3];
+
+  return result;
+}
+
 /// elementwise abs
 pub const fn abs<T, M, N>(Matrix<T, M, N> &p)
 {
   using T;
   using std::abs;
 
-  var result = typeof(p)::result_type<M, N>();
+  var result = typeof(p)();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -252,9 +321,8 @@ pub const fn abs<T, M, N>(Matrix<T, M, N> &p)
 
 /// hadamard product
 pub const fn hadamard<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
-  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
 {
-  var result = typeof(p)::result_type<M, N>();
+  var result = typeof(p)();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -266,7 +334,7 @@ pub const fn hadamard<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
 /// elementwise negation
 pub const fn -<T, M, N>(Matrix<T, M, N> &p)
 {
-  var result = typeof(p)::result_type<M, N>();
+  var result = typeof(p)();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -277,9 +345,8 @@ pub const fn -<T, M, N>(Matrix<T, M, N> &p)
 
 /// elementwise addition
 pub const fn +<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
-  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
 {
-  var result = typeof(p)::result_type<M, N>();
+  var result = typeof(p)();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -290,9 +357,8 @@ pub const fn +<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
 
 /// elementwise subtraction
 pub const fn -<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
-  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
 {
-  var result = typeof(p)::result_type<M, N>();
+  var result = typeof(p)();
 
   for (var i = 0; i < M; ++i)
     for (var j = 0; j < N; ++j)
@@ -303,9 +369,8 @@ pub const fn -<T, M, N>(Matrix<T, M, N> &p, Matrix<T, M, N> &q)
 
 /// matrix multiplication
 pub const fn *<T, M, N, O>(Matrix<T, M, O> &p, Matrix<T, O, N> &q)
-  where __is_same<typeof(p)::result_type<M, N>, typeof(q)::result_type<M, N>>
 {
-  var result = typeof(p)::result_type<M, N>();
+  var result = matrix_reshape_t<typeof(p), M, N>::matrix();
 
   for (var i = 0; i < M; ++i)
   {

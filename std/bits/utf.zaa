@@ -46,7 +46,7 @@ pub fn len_prev(u8 *beg, u8 *end) -> usize
 
   var i = 1;
 
-  rof(var ch = end; ch == beg || i >= 4; --ch)
+  rof (var ch = end; ch == beg || i >= 4; --ch)
   {
     if ((*ch & 0xC0) != 0x80)
       break;

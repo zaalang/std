@@ -11,16 +11,16 @@ import lml.matrix;
 
 pub concept Bound<U, T, N>
 {
-  pub const dimension = N;
-  pub using coord_type = T;
+  pub const dim = N;
+  pub using coord_t = T;
 
   requires<bound> -> bound::bound_t
 }
 
 pub struct bound<T, N>
 {
-  pub const dimension = N;
-  pub using coord_type = T;
+  pub const dim = N;
+  pub using coord_t = T;
   pub using bound_t = Bound<bound<T, N>, T, N>;
 
   T[N] lo;
@@ -107,8 +107,8 @@ pub fn make_bound<U, T, N>(Point<T, N> &centre, T &halfdim) -> U
 
 pub struct bound_traits<bound>
 {
-  pub const N = bound::bound_t::dimension;
-  pub using T = bound::bound_t::coord_type;
+  pub const N = bound::bound_t::dim;
+  pub using T = bound::bound_t::coord_t;
 
   pub const fn min()
   {

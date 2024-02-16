@@ -157,7 +157,7 @@ pub struct dirent
 
   pub dirent() = default;
   pub dirent(dirent&) = default;
-  pub fn =(dirent mut &, stat &) -> dirent mut & = default;
+  pub fn =(dirent mut &, dirent &) -> dirent mut & = default;
   pub ~dirent() = default;
 }
 

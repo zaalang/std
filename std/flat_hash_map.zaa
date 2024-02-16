@@ -243,7 +243,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(args, key), depend(this))]
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -260,7 +260,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(args, key), depend(this))]
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -314,7 +314,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     }
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this), repose(args, key), depend(this))]
   pub fn emplace<Key, Args>(this mut &, Key &&key, Args && ...args) -> T mut &
     match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
   {

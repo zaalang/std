@@ -22,6 +22,7 @@ pub struct array<T, N> : pub T[N]
   pub fn =(this mut &, T[N] &&other) -> array mut &
   {
     this.super = &&other;
+
     return &this;
   }
 

@@ -55,11 +55,11 @@ pub struct thread
   {
     var state = std::arc<state<Worker, Args>>(&&worker, &&args...);
 
-    var invoker = &*state;
+    var invoker = state;
     invoker.self = std::arc::release(&move state);
 
     var handle = pthread_t();
-    if (var rc = pthread_create(&handle, null, &cast<fn (invoker mut *) -> i32>(thread_routine), invoker); rc < 0)
+    if (var rc = pthread_create(&handle, null, &cast<fn (invoker mut *) -> i32>(thread_routine), &*invoker); rc < 0)
       std::arc::reset(&mut state, cast(invoker.self));
 
     return thread(handle);

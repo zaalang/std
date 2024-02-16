@@ -28,6 +28,7 @@ pub union optional<T, Allocator = std::allocator>
   {
   }
 
+  #[lifetime(poison(this))]
   pub fn =<Args>(this mut &, Args && ...args) -> optional mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -187,6 +188,7 @@ pub union optional<T, Allocator = std::allocator>
 
   #end
 
+  #[lifetime(poison(this))]
   pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -194,6 +196,7 @@ pub union optional<T, Allocator = std::allocator>
     new<optional>(&this)(&&args..., allocator?: allocator);
   }
 
+  #[lifetime(poison(this))]
   pub fn emplace<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator()) -> T mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -202,7 +205,7 @@ pub union optional<T, Allocator = std::allocator>
     return &this.Some;
   }
 
-  #[lifetime(launder(this))]
+  #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
     optional::~optional(&mut this);
@@ -235,6 +238,7 @@ pub union optional<T, Allocator = std::allocator>
     }
   }
 
+  #[lifetime(poison(this))]
   pub fn =<U>(this mut &, optional<U> &&other) -> optional mut &
     match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>()); }
   {
@@ -242,6 +246,9 @@ pub union optional<T, Allocator = std::allocator>
 
     switch (other)
     {
+      case None:
+        new<optional>(&this)();
+
       case Some:
         new<optional>(&this)((&&other).value, allocator?: Allocator());
     }
@@ -249,8 +256,33 @@ pub union optional<T, Allocator = std::allocator>
     return &this;
   }
 
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  pub fn =(this mut &, optional &&other) -> optional mut &
+  {
+    std::launder(other);
+
+    if (&this != &other)
+    {
+      optional::~optional(&mut this);
+
+      switch (other)
+      {
+        case None:
+          new<optional>(&this)();
+
+        case Some[value]:
+          #if (__is_reference<T>)
+            new<optional>(&this)(&value, allocator?: Allocator());
+          #else
+            new<optional>(&this)(&&value, allocator?: Allocator());
+
+      }
+    }
+
+    return &this;
+  }
+
   pub optional(optional &&, Allocator &allocator = Allocator()) = default;
-  pub fn =(optional mut &, optional &&) -> optional mut & = default;
   pub ~optional() = default;
 }
 
@@ -258,7 +290,7 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optiona
 {
   switch (optional)
   {
-    case Some[v]:
+    case Some:
       ctx.written += std::format_to(&mut os, "Some({})", optional.value);
 
     case None:
@@ -280,7 +312,7 @@ pub fn transform<T, Func>(std::optional<T> &&optional, Func &&func) -> std::opti
 {
   switch (optional)
   {
-    case Some[v]:
+    case Some:
       return func((&&optional).value);
   }
 

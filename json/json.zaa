@@ -137,6 +137,7 @@ pub union value
     std::panic("invalid json access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_str(this &&)
   {
     switch (this)
@@ -148,6 +149,7 @@ pub union value
     std::panic("invalid json access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_vec(this &&)
   {
     switch (this)
@@ -159,6 +161,7 @@ pub union value
     std::panic("invalid json access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_map(this &&)
   {
     switch (this)
@@ -170,21 +173,25 @@ pub union value
     std::panic("invalid json access");
   }
 
+  #[lifetime(depend(this))]
   pub fn as_string(this &&)
   {
     return &(&&this).as_str;
   }
 
+  #[lifetime(depend(this))]
   pub fn as_array(this &&)
   {
     return &(&&this).as_vec;
   }
 
+  #[lifetime(depend(this))]
   pub fn as_object(this &&)
   {
     return &(&&this).as_map;
   }
 
+  #[lifetime(depend(this))]
   pub fn []<Key>(this&, Key &key) -> value &
   {
     static const emptyvalue = #value();
@@ -259,11 +266,13 @@ pub union value
     return false;
   }
 
+  #[lifetime(poison(this))]
   pub fn emplace_null(this mut &) -> void
   {
     this = Null();
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_real(this mut &, f64 value = 0.0) -> f64 mut &
   {
     this = Real(value);
@@ -271,6 +280,7 @@ pub union value
     return &this.Real;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_int64(this mut &, i64 value = 0) -> i64 mut &
   {
     this = Int64(value);
@@ -278,6 +288,7 @@ pub union value
     return &this.Int64;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_uint64(this mut &, u64 value = 0) -> u64 mut &
   {
     this = UInt64(value);
@@ -285,6 +296,7 @@ pub union value
     return &this.UInt64;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_boolean(this mut &, bool value = false) -> bool mut &
   {
     this = Boolean(value);
@@ -292,6 +304,7 @@ pub union value
     return &this.Boolean;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_string(this mut &, String &&value = "") -> std::string mut &
   {
     this = String(&&value);
@@ -299,6 +312,7 @@ pub union value
     return &this.String;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_array(this mut &) -> std::vector<value> mut &
   {
     this = Array();
@@ -306,6 +320,7 @@ pub union value
     return &this.Array;
   }
 
+  #[lifetime(poison(this), depend(this))]
   pub fn emplace_object(this mut &) -> std::flat_hash_map<std::string, value> mut &
   {
     this = Map();

@@ -38,43 +38,109 @@ pub fn each<T, Func>(Range<T> &&range, Func &&func) -> bool
   return all;
 }
 
-pub fn min<T>(Range<T> &range) -> T
+pub fn sum<S = T, T>(Range<T> &range) -> S
 {
-  var result = range.front;
+  var result = S();
 
   for (var &i : range)
-    result = std::min(result, i);
+  {
+    #if (__is_arithmetic<S> && __is_arithmetic<T>)
+      result += cast(i);
+    #else
+      result += i;
+  }
 
   return result;
 }
 
-pub fn max<T>(Range<T> &range) -> T
+pub fn mean<S = float, T>(Range<T> &range) -> S
 {
-  var result = range.front;
+  var result = S();
 
-  for (var &i : range)
-    result = std::max(result, i);
+  if (!range.empty)
+  {
+    var count = S();
+
+    for (var &i : range)
+    {
+      #if (__is_arithmetic<S> && __is_arithmetic<T>)
+        result += cast(i);
+      #else
+        result += i;
+
+      ++count;
+    }
+
+    result /= count;
+  }
 
   return result;
 }
 
-pub fn sum<T>(Range<T> &range, T seed = T()) -> T
+pub fn min<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> std::optional<T>
 {
-  var result = seed;
+  if (range.empty)
+    return None;
 
-  for (var &i : range)
-    result += i;
-
-  return result;
+  return range[std::min_element(range, cmp)];
 }
 
-pub fn accumulate<S, T, Func>(Range<T> &range, S seed, Func &&func) -> S
+pub fn max<T, Cmp>(Range<T> &range, Cmp &cmp = std::less) -> std::optional<T>
+{
+  if (range.empty)
+    return None;
+
+  return range[std::max_element(range, cmp)];
+}
+
+pub fn fold_left<S, T, Func>(Range<T> &&range, S seed, Func &&func) -> S
   match (Func func, S s, T i) { s = func(&move s, i); }
 {
-  var result = seed;
+  var result = &move seed;
 
-  for (var &i : range)
-    result = func(&move result, i);
+  for (var &&elem : &&range)
+    result = func(&move result, &&elem);
+
+  return result;
+}
+
+pub fn fold_right<S, T, Func>(Range<T> &&range, S seed, Func &&func) -> S
+  match (Func func, S s, T i) { s = func(&move s, i); }
+{
+  var result = &move seed;
+
+  rof (var &&elem : &&range)
+    result = func(&move result, &&elem);
+
+  return result;
+}
+
+pub fn reduce_left<T, Func>(Range<T> &&range, Func &&func) -> std::optional<T>
+  match (Func func, T s, T i) { s = func(&move s, i); }
+{
+  if (range.empty)
+    return None;
+
+  var first = range.begin;
+  var result = (&&range)[first++];
+
+  for (var last = range.end; first != last; )
+    result = func(&move result, (&&range)[first++]);
+
+  return result;
+}
+
+pub fn reduce_right<T, Func>(Range<T> &&range, Func &&func) -> std::optional<T>
+  match (Func func, T s, T i) { s = func(&move s, i); }
+{
+  if (range.empty)
+    return None;
+
+  var first = range.end;
+  var result = (&&range)[--first];
+
+  for (var last = range.begin; first != last; )
+    result = func(&move result, (&&range)[--first]);
 
   return result;
 }

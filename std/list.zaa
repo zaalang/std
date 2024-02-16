@@ -155,21 +155,21 @@ pub struct list<T, Allocator = std::allocator>
     return &cast<&&typeof(this)>(cast<Node mut *>(this._root.prev).value);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(args, this), depend(this))]
   pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, this.begin.cursor, &&args...).value;
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(args, this), depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     return &insert(&mut this, this.end.cursor, &&args...).value;
   }
 
-  #[lifetime(repose(position, this), depend(this))]
+  #[lifetime(repose(position, this), repose(args, this), depend(this))]
   pub fn insert<Args>(this mut &, iterator position, Args && ...args) -> iterator
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -219,7 +219,7 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(node);
   }
 
-  #[lifetime(repose(position, this), depend(this))]
+  #[lifetime(repose(position, this), repose(args, this), depend(this))]
   pub fn emplace<Args>(this mut &, iterator position, Args && ...args) -> T mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
@@ -256,8 +256,7 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(node);
   }
 
-  #[lifetime(repose(position, this), repose(first, other), repose(other, this), depend(this))]
-  //#[lifetime(repose(position, this), repose(position, other), repose(first, this), repose(first, other), repose(other, this), repose(this, other), depend(this))]
+  #[lifetime(repose(position, this), repose(position, other), repose(first, this), repose(first, other), repose(other, this), repose(this, other), depend(this))]
   pub fn splice(this mut &, iterator position, list mut &other, iterator first) -> iterator
   {
     assert(this.allocator == other.allocator);
@@ -272,8 +271,7 @@ pub struct list<T, Allocator = std::allocator>
     return iterator(node);
   }
 
-  #[lifetime(repose(position, this), repose(first, other), repose(last, other), depend(this))]
-  //#[lifetime(repose(position, this), repose(position, other), repose(first, this), repose(first, other), repose(last, this), repose(last, other), repose(other, this), repose(this, other), depend(this))]
+  #[lifetime(repose(position, this), repose(position, other), repose(first, this), repose(first, other), repose(last, this), repose(last, other), repose(other, this), repose(this, other), depend(this))]
   pub fn splice(this mut &, iterator position, list mut &other, iterator first, iterator last) -> iterator
   {
     assert(this.allocator == other.allocator);
@@ -345,6 +343,16 @@ pub struct list<T, Allocator = std::allocator>
     var result = &move std::launder(this[position]);
 
     erase(&mut this, position);
+
+    return result;
+  }
+
+  #[lifetime(repose(first, this), repose(last, this))]
+  pub fn take(this mut &, iterator first, iterator last) -> list
+  {
+    var result = list();
+
+    result.splice(result.begin, &mut this, first, last);
 
     return result;
   }

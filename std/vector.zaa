@@ -4,8 +4,8 @@
 
 import std.stdlib : assert;
 import std.memory : memset, memcpy, memmove;
-import std.algorithm : swap, find, find_if, find_if_not, count, count_if, count_if_not, sort!, is_sorted;
-import std.algorithm.iteration : each, min, max, sum;
+import std.algorithm : find, find_if, find_if_not, count, count_if, count_if_not, sort!, uniq, uniq!, is_sorted;
+import std.algorithm.iteration : each, min, max, sum, mean;
 import std.range : Sentinal, Range;
 import std.span : span, mutable_span, moveable_span;
 import std.type : as_const;
@@ -31,8 +31,18 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     insert(&mut this, this.end, &&other);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this))]
   pub fn =<M>(this mut &, vector<T, Allocator, M> &&other) -> vector mut &
+  {
+    clear(&mut this);
+
+    insert(&mut this, this.end, &&other);
+
+    return &this;
+  }
+
+  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  pub fn =(this mut &, vector &&other) -> vector mut &
   {
     std::launder(other);
 
@@ -540,9 +550,9 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     if (other._data != cast(other._smallbuffer.data))
     {
-      swap(&mut this._data, &mut other._data);
-      swap(&mut this._len, &mut other._len);
-      swap(&mut this._capacity, &mut other._capacity);
+      std::swap(&mut this._data, &mut other._data);
+      std::swap(&mut this._len, &mut other._len);
+      std::swap(&mut this._capacity, &mut other._capacity);
 
       if (other._data == cast(this._smallbuffer.data))
         other.init();
@@ -584,7 +594,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
       while (first != last)
       {
         #if (!__is_trivial_destroy<T>)
-          T::~T(&mut *(end-1));
+          T::~T(&mut *(end - 1));
 
         new<T>(--end)(&move *--last, allocator?: this.allocator);
       }

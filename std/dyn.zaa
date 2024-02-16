@@ -42,6 +42,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
 
   Dx mut *inner;
 
+  #[lifetime(depend(this))]
   pub fn *(this &&)
   {
     return &*this.inner;
@@ -66,7 +67,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
     return dyn(ptr);
   }
 
-  #[lifetime(launder(this))]
+  #[lifetime(poison(this))]
   pub fn =(dyn mut &this, dyn &&other) -> dyn mut &
     where __is_rvalue<typeof(other)>
   {
@@ -85,7 +86,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
     return ptr;
   }
 
-  #[lifetime(launder(this))]
+  #[lifetime(launder(this), poison(this))]
   pub static fn reset(this mut &, Dx mut *ptr = null) -> void
   {
     if (this.inner)

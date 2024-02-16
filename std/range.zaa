@@ -5,7 +5,8 @@
 import std.stdlib;
 import std.iterator : Iterator, Sentinal, RandomAccessIterator;
 import std.span : Span;
-import std.algorithm.iteration : each, min, max, sum;
+import std.algorithm : count, count_if, count_if_not, sort!, uniq, uniq!, is_sorted;
+import std.algorithm.iteration : each, min, max, sum, mean;
 import std.optional;
 import std.fmt;
 
@@ -32,9 +33,9 @@ pub struct range_view<R, I, J>
   I first;
   J second;
 
-  #[lifetime(repose(first, range), repose(second, range))]
-  pub range_view(R &&range, I first, J second)
-    : range(&range), first(first), second(second)
+  #[lifetime(repose(beg, range), repose(end, range))]
+  pub range_view(R &&range, I beg, J end)
+    : range(&range), first(beg), second(end)
   {
   }
 
@@ -56,7 +57,7 @@ pub struct range_view<R, I, J>
   }
 
   #[lifetime(repose(iter, this), depend(*this))]
-  pub fn []<I>(this &&, I iter)
+  pub fn []<I>(this &&, I &iter)
     match (typeof(this) this, I iter) { this.range[iter]; }
   {
     return &&(&&this.range)[iter];
@@ -101,7 +102,7 @@ pub struct moveable_range_view<R, I, J>
   }
 
   #[lifetime(repose(iter, this), depend(*this))]
-  pub fn []<I>(this &&, I iter)
+  pub fn []<I>(this &&, I &iter)
     match (typeof(this) this, I iter) { this.range[iter]; }
   {
     return &&cast<&&typeof(this)>((&&this.range)[iter]);
@@ -178,7 +179,7 @@ pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
 }
 
 pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
-  where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] <=> x[y.begin]; }
+  where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] <=> y[y.begin]; }
 {
   var i = lhs.begin;
   var j = rhs.begin;
@@ -245,6 +246,7 @@ pub struct iota_view<I, J>
     }
 
     pub fn ++(iota_iterator mut &this) -> iota_iterator mut &
+      where requires (N n) { ++n; }
     {
       ++this.n;
 
@@ -270,6 +272,11 @@ pub struct iota_view<I, J>
     }
   }
 
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, iota_iterator<X> &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.n);
+  }
+
   pub const fn is_bounded() -> bool
   {
     return requires (I i, J j) { j - i; };
@@ -281,13 +288,13 @@ pub struct iota_view<I, J>
     return cast<usize>(lhs.n - rhs.n);
   }
 
-  pub fn -<I>(iota_iterator<I> &lhs, usize rhs) -> iota_iterator<I>
+  pub fn -(iota_iterator<I> lhs, usize rhs) -> iota_iterator<I>
     where requires (I i, usize j) { i - cast<I>(j); }
   {
     return iota_iterator<I>(lhs.n - cast<I>(rhs));
   }
 
-  pub fn +<I>(iota_iterator<I> &lhs, usize rhs) -> iota_iterator<I>
+  pub fn +(iota_iterator<I> lhs, usize rhs) -> iota_iterator<I>
     where requires (I i, usize j) { i + cast<I>(j); }
   {
     return iota_iterator<I>(lhs.n + cast<I>(rhs));
@@ -345,6 +352,584 @@ pub fn iota<T, W>(T &&value, W &&bound)
   return iota_view(&&value, &&bound);
 }
 
+pub struct repeat_view<T, I, J>
+{
+  T value;
+
+  repeat_iterator<I> first;
+  repeat_iterator<J> second;
+
+  pub repeat_view(T &&value, I beg, J end = void)
+    : value(&&value), first(beg), second(end)
+  {
+  }
+
+  pub ~repeat_view() = default;
+
+  pub struct repeat_iterator<N>
+  {
+    N n;
+
+    repeat_iterator(N &&n)
+      : n(&&n)
+    {
+    }
+
+    pub repeat_iterator() = default;
+    pub repeat_iterator(repeat_iterator &&) = default;
+    pub fn =(repeat_iterator mut &lhs, repeat_iterator &&rhs) -> repeat_iterator mut & = default;
+    pub ~repeat_iterator() = default;
+
+    pub fn ++(repeat_iterator mut &this) -> repeat_iterator mut &
+      where requires (N n) { ++n; }
+    {
+      ++this.n;
+
+      return &this;
+    }
+
+    pub fn --(repeat_iterator mut &this) -> repeat_iterator mut &
+      where requires (N n) { --n; }
+    {
+      --this.n;
+
+      return &this;
+    }
+
+    pub fn ==<I, J>(repeat_iterator<I> &lhs, repeat_iterator<J> &rhs) -> bool
+    {
+      return lhs.n == rhs.n;
+    }
+
+    pub fn ==<I, J>(repeat_iterator<I> &lhs, repeat_iterator<void> &rhs) -> bool
+    {
+      return false;
+    }
+  }
+
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, repeat_iterator<X> &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.n);
+  }
+
+  pub const fn is_bounded() -> bool
+  {
+    return requires (I i, J j) { j - i; };
+  }
+
+  pub fn -<I, J>(repeat_iterator<I> &lhs, repeat_iterator<J> &rhs) -> usize
+    where requires (I i, J j) { i - j; }
+  {
+    return cast<usize>(lhs.n - rhs.n);
+  }
+
+  pub fn -(repeat_iterator<I> lhs, usize rhs) -> repeat_iterator<I>
+    where requires (I i, usize j) { i - cast<I>(j); }
+  {
+    return repeat_iterator<I>(lhs.n - cast<I>(rhs));
+  }
+
+  pub fn +(repeat_iterator<I> lhs, usize rhs) -> repeat_iterator<I>
+    where requires (I i, usize j) { i + cast<I>(j); }
+  {
+    return repeat_iterator<I>(lhs.n + cast<I>(rhs));
+  }
+
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  pub fn [](this &&, repeat_iterator<I> iter) -> T &
+  {
+    return &this.value;
+  }
+
+  pub fn [](this &&, usize index) -> T &
+  {
+    return &this.value;
+  }
+}
+
+pub fn repeat(#int value)
+{
+  return repeat_view(value, usize(0));
+}
+
+pub fn repeat(#int value, usize bound)
+{
+  return repeat_view(value, usize(0), bound);
+}
+
+pub fn repeat(#float value)
+{
+  return repeat_view(value, usize(0));
+}
+
+pub fn repeat(#float value, usize bound)
+{
+  return repeat_view(value, usize(0), bound);
+}
+
+pub fn repeat<T>(T &&value)
+{
+  return repeat_view(&&value, usize(0));
+}
+
+pub fn repeat<T, W>(T &&value, usize bound)
+{
+  return repeat_view(&&value, usize(0), bound);
+}
+
+pub struct cycle_view<R, I, J>
+{
+  R &&range;
+
+  cycle_iterator first;
+  cycle_sentinal second;
+
+  pub cycle_view(R &&range, I beg, J end)
+    : range(&range), first(this, beg), second(end)
+  {
+  }
+
+  pub ~cycle_view() = default;
+
+  pub struct cycle_iterator : pub I
+  {
+    cycle_iterator(cycle_view &view, I beg, usize n = 0)
+      : super(beg), view(&view), n(n)
+    {
+    }
+
+    pub cycle_iterator() = default;
+    pub cycle_iterator(cycle_iterator &&) = default;
+    pub fn =(cycle_iterator mut &lhs, cycle_iterator &&rhs) -> cycle_iterator mut & = default;
+    pub ~cycle_iterator() = default;
+
+    pub fn ++(cycle_iterator mut &this) -> cycle_iterator mut &
+      where requires (I mut &i) { ++i; }
+    {
+      ++this.n;
+      ++this.super;
+
+      if (this.super == this.view.second.super)
+        this.super = this.view.first.super;
+
+      return &this;
+    }
+
+    pub fn --(cycle_iterator mut &this) -> cycle_iterator mut &
+      where requires (I mut &i) { --i; }
+    {
+      if (this.super == this.view.first.super)
+        this.super = this.view.second.super;
+
+      --this.super;
+      --this.n;
+
+      return &this;
+    }
+
+    pub fn -(cycle_iterator &lhs, cycle_iterator &rhs) -> usize
+      where requires (I i, I j) { i - j; }
+    {
+      return cast<usize>(lhs.n - rhs.n);
+    }
+
+    pub fn -(cycle_iterator lhs, usize rhs) -> cycle_iterator
+      where requires (I i, usize j) { i + j; }
+    {
+      return cycle_iterator(lhs.view, lhs.view.first.super + (lhs.n - rhs) % lhs.view.range.len, lhs.n - rhs);
+    }
+
+    pub fn +(cycle_iterator lhs, usize rhs) -> cycle_iterator
+      where requires (I i, usize j) { i + j; }
+    {
+      return cycle_iterator(lhs.view, lhs.view.first.super + (lhs.n + rhs) % lhs.view.range.len, lhs.n + rhs);
+    }
+
+    pub fn ==(cycle_iterator &lhs, cycle_iterator &rhs) -> bool
+    {
+      return lhs.n == rhs.n;
+    }
+
+    pub fn ==(cycle_iterator &lhs, cycle_sentinal &rhs) -> bool
+    {
+      return false;
+    }
+
+    usize n;
+    cycle_view &view;
+  }
+
+  pub struct cycle_sentinal : J
+  {
+    pub cycle_sentinal(J end)
+      : super(end)
+    {
+    }
+
+    pub cycle_sentinal(cycle_sentinal &&) = default;
+    pub fn =(cycle_sentinal mut &lhs, cycle_sentinal &&rhs) -> cycle_sentinal mut & = default;
+    pub ~cycle_sentinal() = default;
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, cycle_iterator &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, cycle_iterator &iter)
+  {
+    return &&(&&this.range)[iter.super];
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(&&this)[std::next(this.begin, index)];
+  }
+}
+
+#[nodiscard]
+#[lifetime(depend(range))]
+pub fn cycle<T, Pred>(Range<T> &&range)
+{
+  return cycle_view<typeof(range)>(&&range, range.begin, range.end);
+}
+
+pub struct chain_view<Rs, I, J>
+{
+  Rs rs;
+
+  chain_iterator<I> first;
+  chain_iterator<J> second;
+
+  pub chain_view(Rs rs, I beg, J end)
+    : rs(rs), first(this, 0, beg), second(this, __tuple_len<J>, end)
+  {
+  }
+
+  pub ~chain_view() = default;
+
+  pub struct chain_iterator<X> : pub X
+  {
+    usize n;
+
+    chain_iterator(chain_view &view, usize n, X beg)
+      : super(beg), view(&view), n(n)
+    {
+    }
+
+    pub chain_iterator() = default;
+    pub chain_iterator(chain_iterator &&) = default;
+    pub fn =(chain_iterator mut &lhs, chain_iterator &&rhs) -> chain_iterator mut & = default;
+    pub ~chain_iterator() = default;
+
+    pub fn ++(chain_iterator mut &this) -> chain_iterator mut &
+    {
+      switch (this.n)
+      {
+        #{ #for (const k = 0; k < __tuple_len<X>; ++k)
+          -> { case $(k): ++this.super.$(k); }
+        }
+      }
+
+      while (this.n != __tuple_len<X>)
+      {
+        switch (this.n)
+        {
+          #{ #for (const k = 0; k < __tuple_len<X>; ++k)
+            -> { case $(k): if (this.super.$(k) != this.view.second.super.$(k)) break; }
+          }
+        }
+
+        ++this.n;
+      }
+
+      return &this;
+    }
+
+    pub fn --(chain_iterator mut &this) -> chain_iterator mut &
+    {
+      while (this.n != 0)
+      {
+        switch (this.n)
+        {
+          #{ #for (const k = 0; k < __tuple_len<X>; ++k)
+            -> { case $(k): if (this.super.$(k) != this.view.first.super.$(k)) break; }
+          }
+        }
+
+        --this.n;
+      }
+
+      switch (this.n)
+      {
+        #{ #for (const k = 0; k < __tuple_len<X>; ++k)
+          -> { case $(k): --this.super.$(k); }
+        }
+      }
+
+      return &this;
+    }
+
+    pub fn ==<I, J>(chain_iterator<I> &lhs, chain_iterator<J> &rhs) -> bool
+    {
+      #for (const k = 0; k < __tuple_len<X>; ++k)
+        if (lhs.super.#k != rhs.super.#k)
+          return false;
+
+      return true;
+    }
+
+    chain_view &view;
+  }
+
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, chain_iterator<X> &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
+  }
+
+  pub fn is_random_access() -> bool
+  {
+    #for (const i = 0; i < __tuple_len<I>; ++i)
+      if (!__is_match<RandomAccessIterator, typeof(I::#i)>())
+        return false;
+
+    return true;
+  }
+
+  pub fn len(this &) -> usize
+    where is_random_access()
+  {
+    var len = 0;
+
+    #for (const i = 0; i < __tuple_len<Rs>; ++i)
+      len += this.rs.#i.len;
+
+    return len;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, chain_iterator<I> &iter)
+  {
+    switch (iter.n)
+    {
+      #{ #for (const k = 0; k < __tuple_len<I>; ++k)
+        -> { case $(k): return &&(&&this.rs.$(k))[iter.super.$(k)]; }
+      }
+    }
+
+    std::panic();
+  }
+}
+
+#[nodiscard]
+#[lifetime(depend(ranges))]
+pub fn chain(var && ...ranges)
+  where is_all_ranges<typeof(ranges)>
+{
+  return chain_view(ranges, std::tuple((ranges.begin)...), std::tuple((ranges.end)...));
+}
+
+#[nodiscard]
+#[lifetime(consume(range))]
+pub fn move<Rs, I, J>(chain_view<Rs, I, J> &&range)
+{
+  return moveable_range_view(&mut range, range.begin, range.end);
+}
+
+pub struct flatten_view<R, I, J>
+{
+  R &&range;
+
+  flatten_iterator first;
+  flatten_sentinal second;
+
+  pub flatten_view(R &&range, I beg, J end)
+    : range(&range), first(this, beg, end), second(end)
+  {
+  }
+
+  pub ~flatten_view() = default;
+
+  pub struct flatten_iterator
+  {
+    pub I base;
+    pub typeof(std::as_const(std::declval<R>)[std::declval<I>].begin) current;
+
+    flatten_iterator(flatten_view &view, I beg, J end)
+      : view(&view), base(beg)
+    {
+      if (this.base != end)
+      {
+        this.current = this.view.range[this.base].begin;
+
+        while (this.current == this.view.range[this.base].end)
+        {
+          if (++this.base == end)
+            break;
+
+          this.current = this.view.range[this.base].begin;
+        }
+      }
+    }
+
+    pub flatten_iterator() = default;
+    pub flatten_iterator(flatten_iterator &&) = default;
+    pub fn =(flatten_iterator mut &lhs, flatten_iterator &&rhs) -> flatten_iterator mut & = default;
+    pub ~flatten_iterator() = default;
+
+    pub fn ++(flatten_iterator mut &this) -> flatten_iterator mut &
+      where requires (I mut &i, typeof(this.current) mut &x) { ++i; ++x; }
+    {
+      ++this.current;
+
+      while (this.current == this.view.range[this.base].end)
+      {
+        if (++this.base == this.view.second.base)
+          break;
+
+        this.current = this.view.range[this.base].begin;
+      }
+
+      return &this;
+    }
+
+    pub fn --(flatten_iterator mut &this) -> flatten_iterator mut &
+      where requires (I mut &i) { --i; }
+    {
+      if (this.base == this.view.second.base)
+      {
+        --this.base;
+        this.current = this.view.range[this.base].end;
+      }
+
+      while (this.current == this.view.range[this.base].begin)
+      {
+        --this.base;
+        this.current = this.view.range[this.base].end;
+      }
+
+      --this.current;
+
+      return &this;
+    }
+
+    pub fn ==(flatten_iterator &lhs, flatten_iterator &rhs) -> bool
+    {
+      return lhs.base == rhs.base && lhs.current == rhs.current;
+    }
+
+    pub fn ==(flatten_iterator &lhs, flatten_sentinal &rhs) -> bool
+    {
+      return lhs.base == rhs.base;
+    }
+
+    flatten_view &view;
+  }
+
+  pub struct flatten_sentinal
+  {
+    J base;
+
+    pub flatten_sentinal(J end)
+      : base(end)
+    {
+    }
+
+    pub flatten_sentinal(flatten_sentinal &&) = default;
+    pub fn =(flatten_sentinal mut &lhs, flatten_sentinal &&rhs) -> flatten_sentinal mut & = default;
+    pub ~flatten_sentinal() = default;
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, flatten_iterator &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.base);
+  }
+
+  pub fn is_random_access() -> bool
+  {
+    return __is_match<RandomAccessIterator, I>() && __is_match<RandomAccessIterator, typeof(flatten_iterator::current)>();
+  }
+
+  pub fn len(this &) -> usize
+    where is_random_access()
+  {
+    var len = 0;
+
+    for (var &rng : this.range)
+      len += rng.len;
+
+    return len;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, flatten_iterator &iter)
+  {
+    return &&(&&this.range)[iter.base][iter.current];
+  }
+}
+
+#[nodiscard]
+#[lifetime(depend(range))]
+pub fn flatten<T, Pred>(Range<Range<T>> &&range)
+{
+  return flatten_view<typeof(range)>(&&range, range.begin, range.end);
+}
+
+#[nodiscard]
+#[lifetime(consume(range))]
+pub fn move<R, I, J>(flatten_view<R, I, J> &&range)
+{
+  return moveable_range_view(&mut range, range.begin, range.end);
+}
+
 pub struct reverse_view<R, I, J>
 {
   R &&range;
@@ -359,12 +944,10 @@ pub struct reverse_view<R, I, J>
 
   pub ~reverse_view() = default;
 
-  pub struct reverse_iterator<X>
+  pub struct reverse_iterator<X> : pub X
   {
-    pub X base;
-
     reverse_iterator(X beg)
-      : base(beg)
+      : super(beg)
     {
     }
 
@@ -376,7 +959,7 @@ pub struct reverse_view<R, I, J>
     pub fn ++(reverse_iterator mut &this) -> reverse_iterator mut &
       where requires (X mut &x) { --x; }
     {
-      --this.base;
+      --this.super;
 
       return &this;
     }
@@ -384,32 +967,33 @@ pub struct reverse_view<R, I, J>
     pub fn --(reverse_iterator mut &this) -> reverse_iterator mut &
       where requires (X mut &x) { ++x; }
     {
-      ++this.base;
+      ++this.super;
 
       return &this;
     }
 
-    pub fn ==(reverse_iterator &lhs, X &rhs) -> bool
+    pub fn -<I, J>(reverse_iterator<I> &lhs, reverse_iterator<J> &rhs) -> usize
+      where requires (I i, J j) { j - i; }
     {
-      return lhs.base == rhs;
+      return rhs.super - lhs.super;
     }
 
-    pub fn ==<I, J>(reverse_iterator<I> &lhs, reverse_iterator<J> &rhs) -> bool
+    pub fn +(reverse_iterator<J> lhs, usize rhs) -> reverse_iterator<J>
+      where requires (J i, usize j) { i - j; }
     {
-      return lhs.base == rhs.base;
+      return reverse_iterator<J>(lhs.super - rhs);
+    }
+
+    pub fn -(reverse_iterator<J> lhs, usize rhs) -> reverse_iterator<J>
+      where requires (J i, usize j) { i + j; }
+    {
+      return reverse_iterator<J>(lhs.super + rhs);
     }
   }
 
-  pub fn -<I, J>(reverse_iterator<I> &lhs, reverse_iterator<J> &rhs) -> usize
-    where requires (I i, J j) { j - i; }
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, reverse_iterator<X> &iter) throws -> void
   {
-    return rhs.base - lhs.base;
-  }
-
-  pub fn +<I>(reverse_iterator<I> lhs, usize rhs) -> reverse_iterator<I>
-    where requires (I i, usize j) { i - j; }
-  {
-    return reverse_iterator<I>(lhs.base - rhs);
+    std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
   #[lifetime(depend(*this))]
@@ -424,15 +1008,15 @@ pub struct reverse_view<R, I, J>
     return this.second;
   }
 
-  #[lifetime(depend(*this))]
-  pub fn [](this &&, reverse_iterator<J> iter)
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, reverse_iterator<J> &iter)
   {
-    return &&(&&this.range)[std::prev(iter.base)];
+    return &&(&&this.range)[std::prev(iter.super)];
   }
 
   #[lifetime(depend(*this))]
   pub fn [](this &&, usize index)
-    where __is_match<RandomAccessIterator, I>
+    where __is_match<RandomAccessIterator, J>
   {
     return &&(&&this)[std::next(this.begin, index)];
   }
@@ -446,7 +1030,7 @@ pub fn reverse<T>(Range<T> &&range)
   #if (requires (typeof(range) range) { --range.end; })
     return reverse_view<typeof(range)>(&&range, range.begin, range.end);
   #else
-    return reverse_view<typeof(range)>(&&range, range.begin, std::next(range.begin, std::count(range)));
+    return reverse_view<typeof(range)>(&&range, range.begin, std::next(range.begin, ~0, range.end));
 }
 
 #[nodiscard]
@@ -459,31 +1043,28 @@ pub fn move<R, I, J>(reverse_view<R, I, J> &&range)
 pub struct filter_view<R, I, J, Pred>
 {
   R &&range;
-  Pred _pred;
 
   filter_iterator<I> first;
   filter_iterator<J> second;
 
   pub filter_view(R &&range, I beg, J end, Pred &&pred)
-    : range(&range), _pred(&&pred), first(beg, end, range, _pred), second(end, range, _pred),
+    : range(&range), first(this, beg, end), second(this, end), pred(&&pred)
   {
   }
 
   pub ~filter_view() = default;
 
-  pub struct filter_iterator<X>
+  pub struct filter_iterator<X> : pub X
   {
-    pub X base;
-
-    filter_iterator(X beg, J end, R &range, Pred &pred)
-      : base(beg), end(end), range(&range), pred(&pred)
+    filter_iterator(filter_view &view, X beg, J end)
+      : super(beg), view(&view)
     {
-      while (this.base != this.end && !this.pred(this.range[this.base]))
-        ++this.base;
+      while (this.super != end && !this.view.pred(this.view.range[this.super]))
+        ++this.super;
     }
 
-    filter_iterator(X end, R &range, Pred &pred)
-      : base(end), end(end), range(&range), pred(&pred)
+    filter_iterator(filter_view &view, X end)
+      : super(end), view(&view)
     {
     }
 
@@ -495,10 +1076,13 @@ pub struct filter_view<R, I, J, Pred>
     pub fn ++(filter_iterator mut &this) -> filter_iterator mut &
       where requires (X mut &x) { ++x; }
     {
-      ++this.base;
+      for (;;)
+      {
+        ++this.super;
 
-      while (this.base != this.end && !this.pred(this.range[this.base]))
-        ++this.base;
+        if (this.super == this.view.second.super || this.view.pred(this.view.range[this.super]))
+          break;
+      }
 
       return &this;
     }
@@ -506,30 +1090,27 @@ pub struct filter_view<R, I, J, Pred>
     pub fn --(filter_iterator mut &this) -> filter_iterator mut &
       where requires (X mut &x) { --x; }
     {
-      while (true)
+      for (;;)
       {
-        --this.base;
+        --this.super;
 
-        if (this.pred(this.range[this.base]))
+        if (this.view.pred(this.view.range[this.super]))
           break;
       }
 
       return &this;
     }
 
-    pub fn ==(filter_iterator &lhs, X &rhs) -> bool
-    {
-      return lhs.base == rhs;
-    }
+    pub fn -(X &, filter_iterator &) -> usize = delete;
+    pub fn +(filter_iterator &, usize) -> filter_iterator = delete;
+    pub fn -(filter_iterator &, usize) -> filter_iterator = delete;
 
-    pub fn ==<I, J>(filter_iterator<I> &lhs, filter_iterator<J> &rhs) -> bool
-    {
-      return lhs.base == rhs.base;
-    }
+    filter_view &view;
+  }
 
-    J end;
-    R &range;
-    Pred &pred;
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, filter_iterator<X> &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
   #[lifetime(depend(*this))]
@@ -544,17 +1125,19 @@ pub struct filter_view<R, I, J, Pred>
     return this.second;
   }
 
-  #[lifetime(depend(*this))]
-  pub fn [](this &&, filter_iterator<I> iter)
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, filter_iterator<I> &iter)
   {
-    return &&(&&this.range)[iter.base];
+    return &&(&&this.range)[iter.super];
   }
+
+  Pred pred;
 }
 
 #[nodiscard]
 #[lifetime(depend(range))]
 pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
-  match (Pred pred, typeof(range) range) { pred(range[range.begin]); }
+  match (Pred pred, typeof(range) range) { !pred(range[range.begin]); }
 {
   return filter_view<typeof(range)>(&&range, range.begin, range.end, &&pred);
 }
@@ -574,18 +1157,16 @@ pub struct take_view<R, I, J>
   take_sentinal second;
 
   pub take_view(R &&range, I beg, J end, usize n)
-    : range(&range), first(beg, end, n)
+    : range(&range), first(beg, n), second(end)
   {
   }
 
   pub ~take_view() = default;
 
-  pub struct take_iterator
+  pub struct take_iterator : pub I
   {
-    pub I base;
-
-    take_iterator(I beg, J end, usize n)
-      : base(beg), end(end), n(n)
+    take_iterator(I beg, usize n)
+      : super(beg), n(n)
     {
     }
 
@@ -598,7 +1179,7 @@ pub struct take_view<R, I, J>
       where requires (I mut &i) { ++i; }
     {
       --this.n;
-      ++this.base;
+      ++this.super;
 
       return &this;
     }
@@ -607,31 +1188,39 @@ pub struct take_view<R, I, J>
       where requires (I mut &i) { --i; }
     {
       ++this.n;
-      --this.base;
+      --this.super;
 
       return &this;
     }
 
     pub fn ==(take_iterator &lhs, take_iterator &rhs) -> bool
     {
-      return lhs.base == rhs.base;
+      return lhs.super == rhs.super;
     }
 
-    pub fn ==(take_iterator &this, take_sentinal &) -> bool
+    pub fn ==(take_iterator &lhs, take_sentinal &rhs) -> bool
     {
-      return this.n == 0 || this.base == this.end;
+      return lhs.n == 0 || lhs.super == rhs.super;
     }
 
-    J end;
     usize n;
   }
 
-  pub struct take_sentinal
+  pub struct take_sentinal : J
   {
-    pub take_sentinal() = default;
+    pub take_sentinal(J end)
+      : super(end)
+    {
+    }
+
     pub take_sentinal(take_sentinal &&) = default;
     pub fn =(take_sentinal mut &lhs, take_sentinal &&rhs) -> take_sentinal mut & = default;
     pub ~take_sentinal() = default;
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, take_iterator &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
   #[lifetime(depend(*this))]
@@ -646,10 +1235,10 @@ pub struct take_view<R, I, J>
     return this.second;
   }
 
-  #[lifetime(depend(*this))]
-  pub fn [](this &&, take_iterator iter)
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, take_iterator &iter)
   {
-    return &&(&&this.range)[iter.base];
+    return &&(&&this.range)[iter.super];
   }
 }
 
@@ -676,19 +1265,16 @@ pub struct transform_view<R, I, J, Func>
   transform_iterator<J> second;
 
   pub transform_view(R &&range, I beg, J end, Func &&func)
-    : range(&range), first(beg), second(end),
-      _func(&&func)
+    : range(&range), first(beg), second(end), func(&&func)
   {
   }
 
   pub ~transform_view() = default;
 
-  pub struct transform_iterator<X>
+  pub struct transform_iterator<X> : pub X
   {
-    pub X base;
-
     transform_iterator(X beg)
-      : base(beg)
+      : super(beg)
     {
     }
 
@@ -700,7 +1286,7 @@ pub struct transform_view<R, I, J, Func>
     pub fn ++(transform_iterator mut &this) -> transform_iterator mut &
       where requires (X mut &x) { ++x; }
     {
-      ++this.base;
+      ++this.super;
 
       return &this;
     }
@@ -708,32 +1294,33 @@ pub struct transform_view<R, I, J, Func>
     pub fn --(transform_iterator mut &this) -> transform_iterator mut &
       where requires (X mut &x) { --x; }
     {
-      --this.base;
+      --this.super;
 
       return &this;
     }
 
-    pub fn ==(transform_iterator &lhs, X &rhs) -> bool
+    pub fn -<I, J>(transform_iterator<I> &lhs, transform_iterator<J> &rhs) -> usize
+      where requires (I i, J j) { i - j; }
     {
-      return lhs.base == rhs;
+      return lhs.super - rhs.super;
     }
 
-    pub fn ==<I, J>(transform_iterator<I> &lhs, transform_iterator<J> &rhs) -> bool
+    pub fn -(transform_iterator<I> lhs, usize rhs) -> transform_iterator<I>
+      where requires (I i, usize j) { i - j; }
     {
-      return lhs.base == rhs.base;
+      return transform_iterator<I>(lhs.super - rhs);
+    }
+
+    pub fn +(transform_iterator<I> lhs, usize rhs) -> transform_iterator<I>
+      where requires (I i, usize j) { i + j; }
+    {
+      return transform_iterator<I>(lhs.super + rhs);
     }
   }
 
-  pub fn -<I, J>(transform_iterator<I> &lhs, transform_iterator<J> &rhs) -> usize
-    where requires (I i, J j) { i - j; }
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, transform_iterator<X> &iter) throws -> void
   {
-    return lhs.base - rhs.base;
-  }
-
-  pub fn +<I>(transform_iterator<I> lhs, usize rhs) -> transform_iterator<I>
-    where requires (I i, usize j) { i + j; }
-  {
-    return transform_iterator<I>(lhs.base + rhs);
+    std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
   #[lifetime(depend(*this))]
@@ -748,10 +1335,10 @@ pub struct transform_view<R, I, J, Func>
     return this.second;
   }
 
-  #[lifetime(depend(*this))]
-  pub fn [](this &&, transform_iterator<I> iter)
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, transform_iterator<I> &iter)
   {
-    return &&this._func((&&this.range)[iter.base]);
+    return &&this.func((&&this.range)[iter.super]);
   }
 
   #[lifetime(depend(*this))]
@@ -761,7 +1348,7 @@ pub struct transform_view<R, I, J, Func>
     return &&(&&this)[std::next(this.begin, index)];
   }
 
-  Func _func;
+  Func func;
 }
 
 #[nodiscard]
@@ -780,18 +1367,16 @@ pub struct zip_view<Rs, I, J>
   zip_sentinal second;
 
   pub zip_view(Rs rs, I beg, J end)
-    : rs(rs), first(beg, end)
+    : rs(rs), first(beg), second(end)
   {
   }
 
   pub ~zip_view() = default;
 
-  pub struct zip_iterator
+  pub struct zip_iterator : pub I
   {
-    pub I base;
-
-    zip_iterator(I beg, J end)
-      : base(beg), end(end)
+    zip_iterator(I beg)
+      : super(beg)
     {
     }
 
@@ -802,7 +1387,7 @@ pub struct zip_view<Rs, I, J>
 
     pub fn ++(zip_iterator mut &this) -> zip_iterator mut &
     {
-      #for (var mut &i : this.base)
+      #for (var mut &i : this.super)
         ++i;
 
       return &this;
@@ -810,7 +1395,7 @@ pub struct zip_view<Rs, I, J>
 
     pub fn --(zip_iterator mut &this) -> zip_iterator mut &
     {
-      #for (var mut &i : this.base)
+      #for (var mut &i : this.super)
         --i;
 
       return &this;
@@ -818,27 +1403,34 @@ pub struct zip_view<Rs, I, J>
 
     pub fn ==(zip_iterator &lhs, zip_iterator &rhs) -> bool
     {
-      return lhs.base == rhs.base;
+      return lhs.super == rhs.super;
     }
 
-    pub fn ==(zip_iterator &this, zip_sentinal &) -> bool
+    pub fn ==(zip_iterator &lhs, zip_sentinal &rhs) -> bool
     {
       #for (const i = 0; i < __tuple_len<I>; ++i)
-        if (this.base.#i == this.end.#i)
+        if (lhs.super.#i == rhs.super.#i)
           return true;
 
       return false;
     }
-
-    J end;
   }
 
-  pub struct zip_sentinal
+  pub struct zip_sentinal : J
   {
-    pub zip_sentinal() = default;
+    pub zip_sentinal(J end)
+      : super(end)
+    {
+    }
+
     pub zip_sentinal(zip_sentinal &&) = default;
     pub fn =(zip_sentinal mut &lhs, zip_sentinal &&rhs) -> zip_sentinal mut & = default;
     pub ~zip_sentinal() = default;
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, zip_iterator &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
   pub fn is_random_access() -> bool
@@ -853,16 +1445,16 @@ pub struct zip_view<Rs, I, J>
   pub fn -(zip_iterator &lhs, zip_iterator &rhs) -> usize
     where is_random_access()
   {
-    return lhs.base.0 - rhs.base.0;
+    return lhs.super.0 - rhs.super.0;
   }
 
   pub fn -(zip_sentinal &lhs, zip_iterator &rhs) -> usize
     where __is_same<I, J> && is_random_access()
   {
-    var len = rhs.end.0 - rhs.base.0;
+    var len = lhs.super.0 - rhs.super.0;
 
     #for (const i = 1; i < __tuple_len<I>; ++i)
-      if (var dist = rhs.end.#i - rhs.base.#i; dist < len)
+      if (var dist = lhs.super.#i - rhs.super.#i; dist < len)
         len = dist;
 
     return len;
@@ -871,7 +1463,7 @@ pub struct zip_view<Rs, I, J>
   pub fn -(zip_iterator lhs, usize rhs) -> zip_iterator
     where is_random_access()
   {
-    #for (var mut &i : lhs.base)
+    #for (var mut &i : lhs.super)
       i -= rhs;
 
     return lhs;
@@ -880,7 +1472,7 @@ pub struct zip_view<Rs, I, J>
   pub fn +(zip_iterator lhs, usize rhs) -> zip_iterator
     where is_random_access()
   {
-    #for (var mut &i : lhs.base)
+    #for (var mut &i : lhs.super)
       i += rhs;
 
     return lhs;
@@ -898,15 +1490,15 @@ pub struct zip_view<Rs, I, J>
     return this.second;
   }
 
-  #[lifetime(depend(*this))]
-  pub fn [](this &&, zip_iterator iter)
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, zip_iterator &iter)
   {
-    fn deref(Rs && ...rs, I && ...is)
+    fn deref(Rs ...rs, var & ...is)
     {
       return ((&&(&&rs)[is])...,);
     }
 
-    return deref(this.rs..., iter.base...);
+    return deref(this.rs..., iter.super...);
   }
 
   #[lifetime(depend(*this))]
@@ -939,16 +1531,14 @@ pub struct adjacent_view<R, N, I, J>
 
   pub ~adjacent_view() = default;
 
-  pub struct adjacent_iterator
+  pub struct adjacent_iterator : pub I
   {
-    pub I base;
-
-    adjacent_iterator(I beg, var end)
-      : base(beg)
+    adjacent_iterator(I beg, J end)
+      : super(beg)
     {
-      window[0] = base;
+      window[0] = super;
       #for (const k = 1; k < N; ++k)
-        window[k] = this.base = std::next(this.base, 1, end);
+        window[k] = this.super = std::next(this.super, 1, end);
     }
 
     pub adjacent_iterator() = default;
@@ -962,7 +1552,7 @@ pub struct adjacent_view<R, N, I, J>
       #for (const k = 1; k < N; ++k)
         this.window[k - 1] = this.window[k];
 
-      this.window[N-1] = ++this.base;
+      this.window[N-1] = ++this.super;
 
       return &this;
     }
@@ -973,61 +1563,63 @@ pub struct adjacent_view<R, N, I, J>
       #for (const k = 1; k < N; ++k)
         this.window[N - k] = this.window[N - k - 1];
 
-      this.window[0] = std::prev(--this.base, N - 1);
+      this.window[0] = std::prev(--this.super, N - 1);
 
       return &this;
     }
 
+    pub fn -(adjacent_iterator &lhs, adjacent_iterator &rhs) -> usize
+      where requires (I i, I j) { i - j; }
+    {
+      return lhs.super - rhs.super;
+    }
+
+    pub fn -(adjacent_sentinal &lhs, adjacent_iterator &rhs) -> usize
+      where requires (I i, J j) { j - i; }
+    {
+      return lhs.super - rhs.super;
+    }
+
+    pub fn -(adjacent_iterator lhs, usize rhs) -> adjacent_iterator
+      where requires (I i, usize j) { i - j; }
+    {
+      return adjacent_iterator(lhs.window[0] - rhs, lhs.window[0] - rhs + N);
+    }
+
+    pub fn +(adjacent_iterator lhs, usize rhs) -> adjacent_iterator
+      where requires (I i, usize j) { i + j; }
+    {
+      return adjacent_iterator(lhs.window[0] + rhs, lhs.window[0] + (rhs + N));
+    }
+
     pub fn ==(adjacent_iterator &lhs, adjacent_iterator &rhs) -> bool
     {
-      return lhs.base == rhs.base;
+      return lhs.super == rhs.super;
     }
 
     pub fn ==(adjacent_iterator &lhs, adjacent_sentinal &rhs) -> bool
     {
-      return lhs.base == rhs.base;
+      return lhs.super == rhs.super;
     }
 
     I[N] window;
   }
 
-  pub struct adjacent_sentinal
+  pub struct adjacent_sentinal : J
   {
-    pub J base;
-
     adjacent_sentinal(J end)
-      : base(end)
+      : super(end)
     {
     }
 
-    pub adjacent_sentinal() = default;
     pub adjacent_sentinal(adjacent_sentinal &&) = default;
     pub fn =(adjacent_sentinal mut &lhs, adjacent_sentinal &&rhs) -> adjacent_sentinal mut & = default;
     pub ~adjacent_sentinal() = default;
   }
 
-  pub fn -(adjacent_iterator &lhs, adjacent_iterator &rhs) -> usize
-    where requires (I i, I j) { i - j; }
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, adjacent_iterator &iter) throws -> void
   {
-    return lhs.base - rhs.base;
-  }
-
-  pub fn -(adjacent_sentinal &lhs, adjacent_iterator &rhs) -> usize
-    where requires (I i, J j) { j - i; }
-  {
-    return lhs.base - rhs.base;
-  }
-
-  pub fn -(adjacent_iterator lhs, usize rhs) -> adjacent_iterator
-    where requires (I i, usize j) { i - j; }
-  {
-    return adjacent_iterator(lhs.window[0] - rhs, lhs.window[0] - rhs + N);
-  }
-
-  pub fn +(adjacent_iterator lhs, usize rhs) -> adjacent_iterator
-    where requires (I i, usize j) { i + j; }
-  {
-    return adjacent_iterator(lhs.window[0] + rhs, lhs.window[0] + (rhs + N));
+    std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
   #[lifetime(depend(*this))]
@@ -1042,12 +1634,12 @@ pub struct adjacent_view<R, N, I, J>
     return this.second;
   }
 
-  #[lifetime(depend(*this))]
-  pub fn [](this &&, adjacent_iterator iter)
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, adjacent_iterator &iter)
   {
-    fn deref(R &&range, var && ...is)
+    fn deref(R &&range, var & ...is)
     {
-      return ((&&(&&range)[is])...,);
+      return ((&&range[is])...,);
     }
 
     return deref(this.range, iter.window...);
@@ -1063,9 +1655,140 @@ pub struct adjacent_view<R, N, I, J>
 
 #[nodiscard]
 #[lifetime(depend(range))]
-pub fn adjacent<N, T>(Range<T> &&range)
+pub fn adjacent<N = 2, T>(Range<T> &&range)
 {
   return adjacent_view<typeof(range), N>(&&range, range.begin, range.end);
+}
+
+pub struct enumerate_view<R, I, J>
+{
+  R &&range;
+
+  enumerate_iterator first;
+  enumerate_sentinal second;
+
+  pub enumerate_view(R &&range, I beg, J end)
+    : range(&range), first(beg, 0), second(end)
+  {
+  }
+
+  pub ~enumerate_view() = default;
+
+  pub struct enumerate_iterator : pub I
+  {
+    pub usize index;
+
+    enumerate_iterator(I beg, usize index)
+      : super(beg), index(index)
+    {
+    }
+
+    pub enumerate_iterator() = default;
+    pub enumerate_iterator(enumerate_iterator &&) = default;
+    pub fn =(enumerate_iterator mut &lhs, enumerate_iterator &&rhs) -> enumerate_iterator mut & = default;
+    pub ~enumerate_iterator() = default;
+
+    pub fn ++(enumerate_iterator mut &this) -> enumerate_iterator mut &
+      where requires (I mut &i) { ++i; }
+    {
+      ++this.index;
+      ++this.super;
+
+      return &this;
+    }
+
+    pub fn --(enumerate_iterator mut &this) -> enumerate_iterator mut &
+      where requires (I mut &i) { --i; }
+    {
+      --this.super;
+      --this.index;
+
+      return &this;
+    }
+
+    pub fn -(enumerate_iterator &lhs, enumerate_iterator &rhs) -> usize
+      where requires (I i, I j) { i - j; }
+    {
+      return lhs.super - rhs.super;
+    }
+
+    pub fn -(enumerate_sentinal &lhs, enumerate_iterator &rhs) -> usize
+      where requires (I i, J j) { j - i; }
+    {
+      return lhs.super - rhs.super;
+    }
+
+    pub fn -(enumerate_iterator lhs, usize rhs) -> enumerate_iterator
+      where requires (I i, usize j) { i - j; }
+    {
+      return enumerate_iterator(lhs.super - rhs, lhs.index - rhs);
+    }
+
+    pub fn +(enumerate_iterator lhs, usize rhs) -> enumerate_iterator
+      where requires (I i, usize j) { i + j; }
+    {
+      return enumerate_iterator(lhs.super + rhs, lhs.index + rhs);
+    }
+
+    pub fn ==(enumerate_iterator &lhs, enumerate_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
+    pub fn ==(enumerate_iterator &lhs, enumerate_sentinal &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+  }
+
+  pub struct enumerate_sentinal : J
+  {
+    enumerate_sentinal(J end)
+      : super(end)
+    {
+    }
+
+    pub enumerate_sentinal(enumerate_sentinal &&) = default;
+    pub fn =(enumerate_sentinal mut &lhs, enumerate_sentinal &&rhs) -> enumerate_sentinal mut & = default;
+    pub ~enumerate_sentinal() = default;
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, enumerate_iterator &iter) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, iter.super);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &&, enumerate_iterator &iter)
+  {
+    return (iter.index, &&(&&this.range)[iter.super]);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &&, usize index)
+    where __is_match<RandomAccessIterator, I>
+  {
+    return &&(&&this)[std::next(this.begin, index)];
+  }
+}
+
+#[nodiscard]
+#[lifetime(depend(range))]
+pub fn enumerate<T>(Range<T> &&range)
+{
+  return enumerate_view<typeof(range)>(&&range, range.begin, range.end);
 }
 
 #[nodiscard]
@@ -1079,7 +1802,7 @@ pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
 #[lifetime(repose(first, range), repose(last, range), depend(*range))]
 pub fn subrange<R, I, J>(range_view<R, I, J> &&range, I first, Sentinal<I> last)
 {
-  return range_view<R, I, J>(range.range, first, last);
+  return range_view<R>(range.range, first, last);
 }
 
 #[nodiscard]
@@ -1104,21 +1827,21 @@ pub fn front<T>(Range<T> &&range)
 }
 
 #[lifetime(depend(*range.[]))]
+pub fn back<T>(Range<T> &&range)
+  where requires (typeof(range) range) { range.len; }
+{
+  return &&(&&range)[std::next(range.begin, range.len - 1)];
+}
+
+#[lifetime(depend(*range.[]))]
 pub fn nth<T>(Range<T> &&range, usize index)
 {
   return &&(&&range)[std::next(range.begin, index)];
 }
 
-//#[lifetime(depend(*range.[]))]
-//pub fn []<Range>(Range &&range, usize index)
-//  where requires(Range range) { Range::[](range, range.begin); } && __is_match<RandomAccessIterator, typeof(range.begin)>
-//{
-//  return &&(&&range)[std::next(range.begin, index)];
-//}
-
 #[lifetime(depend(*range.[]))]
 pub fn first<T, Pred>(Range<T> &&range, Pred &pred) -> std::optional<typeof(&&range.front)>
-  match (Pred pred, typeof(range) range) { pred(&move range[range.begin]); }
+  match (Pred pred, typeof(range) range) { !pred(range[range.begin]); }
 {
   if (var filtered = std::filter(range, pred); !filtered.empty)
     return Some(&&filtered.front);

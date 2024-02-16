@@ -41,6 +41,22 @@ pub struct fixed<R = i32, P = 0>
   {
   }
 
+//  pub fn =<T>(fixed mut &lhs, T rhs) -> fixed mut &
+//    where __is_integral<T>
+//  {
+//    lhs.value = fixed(rhs).value;
+//
+//    return &lhs;
+//  }
+//
+//  pub fn =<T>(fixed mut &lhs, T rhs) -> fixed mut &
+//    where __is_floating_point<T>
+//  {
+//    lhs.value = fixed(rhs).value;
+//
+//    return &lhs;
+//  }
+
   pub fn =<R2, P2>(fixed mut &lhs, fixed<R2, P2> &rhs) -> fixed mut &
   {
     lhs.value = fixed_cast<fixed>(rhs).value;

@@ -17,16 +17,13 @@ pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
   return lm1;
 }
 
-#[lifetime(depend(range))]
-pub fn rotate_left<T>(Range<T> mut &range)
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn rotate_left<T, I>(Range<T> mut &range, I first, Sentinal<I> last) -> I
 {
-  var last = range.end;
-  var first = range.begin;
-
   if (first == last)
     return first;
 
-  var tmp = &move std::launder(range)[first];
+  var tmp = &move range[first];
 
   for (var src = std::next(first); src != last; )
   {
@@ -41,7 +38,7 @@ pub fn rotate_left<T>(Range<T> mut &range)
 #[lifetime(depend(range))]
 pub fn rotate_left!<T>(Range<T> mut &range)
 {
-  rotate_left(&mut range);
+  rotate_left(&mut range, range.begin, range.end);
 
   return &range;
 }
@@ -60,18 +57,15 @@ pub fn rotate_right<I>(I first, I last) -> I
   return fp1;
 }
 
-#[lifetime(depend(range))]
-pub fn rotate_right<T>(Range<T> mut &range)
-  where __is_match<BidirectionalIterator, typeof(range.end)>()
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn rotate_right<T, I>(Range<T> mut &range, I first, I last) -> I
+  where __is_match<BidirectionalIterator, I>()
 {
-  var last = range.end;
-  var first = range.begin;
-
   if (first == last)
     return last;
 
   var src = std::prev(last);
-  var tmp = &move std::launder(range)[src];
+  var tmp = &move range[src];
 
   for (; src != first; )
   {
@@ -86,19 +80,16 @@ pub fn rotate_right<T>(Range<T> mut &range)
 #[lifetime(depend(range))]
 pub fn rotate_right!<T>(Range<T> mut &range)
 {
-  rotate_right(&mut range);
+  rotate_right(&mut range, range.begin, range.end);
 
   return &range;
 }
 
-#[lifetime(repose(middle, range), depend(range))]
-pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
+#[lifetime(repose(first, range), repose(middle, range), repose(last, range), depend(range))]
+pub fn rotate<T, I>(Range<T> mut &range, I first, I middle, Sentinal<I> last) -> I
 {
-  var last = range.end;
-  var first = range.begin;
-
   if (first == middle)
-    return std::next(first, std::count(range));
+    return std::next(first, ~0, last);
 
   if (middle == last)
     return first;
@@ -139,7 +130,7 @@ pub fn rotate<T, I>(Range<T> mut &range, I middle) -> I
 }
 
 #[lifetime(repose(middle, range), depend(range))]
-pub fn rotate!<T, I>(Range<T> mut &range, I middle) -> I
+pub fn rotate!<T, I>(Range<T> mut &range, I middle)
 {
   rotate(&mut range, middle);
 

@@ -397,7 +397,7 @@ fn fallback_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usiz
 
   if (digit > 5 || (value.bits[0] != 0 && digit == 5))
   {
-    rof(var i = ch; i == beg; --i)
+    rof (var i = ch; i == beg; --i)
     {
       if ((*i)++ < cast('9'))
         break;

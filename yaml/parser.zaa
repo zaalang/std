@@ -75,6 +75,7 @@ struct parse_context
     return this.states.take_back();
   }
 
+  #[lifetime(launder(this.tok))]
   fn consume_token(this mut &, var mut &is) throws -> void
   {
     this.tok = this.scanner.fetch(&mut is);
@@ -338,11 +339,10 @@ fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var mut &entry = std::launder(ctx.stack[ctx.stack.len - 1]);
+  var entry = ctx.stack.take_back;
+  var mut &array = ctx.stack.back.Array;
 
-  ctx.stack[ctx.stack.len - 2].Array.push_back(&move entry);
-
-  ctx.stack.pop_back();
+  array.push_back(&move entry);
 
   return ctx.pop_state();
 }
@@ -377,13 +377,11 @@ fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var mut &key = std::launder(ctx.stack[ctx.stack.len - 2]);
-  var mut &value = std::launder(ctx.stack[ctx.stack.len - 1]);
+  var value = ctx.stack.take_back;
+  var key = ctx.stack.take_back;
+  var mut &map = ctx.stack.back.Map;
 
-  ctx.stack[ctx.stack.len - 3].Map.insert(&move key, &move value);
-
-  ctx.stack.pop_back();
-  ctx.stack.pop_back();
+  map.insert(&move key, &move value);
 
   return ctx.pop_state();
 }
@@ -400,14 +398,12 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
         case anchor:
           ctx.push_state(state::anchor_entry);
           ctx.names.push_back(&move ctx.tok.value);
-          std::launder(ctx.tok);
           ctx.consume_token(&mut is);
       }
 
     case anchor:
       ctx.push_state(state::anchor_entry);
       ctx.names.push_back(&move ctx.tok.value);
-      std::launder(ctx.tok);
       ctx.consume_token(&mut is);
 
       switch (ctx.tok.type)

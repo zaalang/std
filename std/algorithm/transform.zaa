@@ -1,0 +1,155 @@
+//
+// std tansform
+//
+
+import std.algorithm;
+import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
+
+pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, Func &&func) -> O
+{
+  while (first != last)
+  {
+    assert(dst != end);
+
+    *dst++ = func(*first++);
+  }
+
+  return dst;
+}
+
+pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &&func) -> O
+{
+  while (first != last)
+  {
+    assert(end != dst);
+
+    *--end = func(*--last);
+  }
+
+  return end;
+}
+
+pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &&func) -> O
+{
+  while (n > 0)
+  {
+    assert(dst != end);
+
+    *dst++ = func(*first++);
+
+    --n;
+  }
+
+  return dst;
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn transform<T, I, Func>(Range<T> mut &range, I first, Sentinal<I> last, Func &&func) -> I
+{
+  for (; first != last; ++first)
+  {
+    range[first] = func(&move std::launder(range[first]));
+  }
+
+  return first;
+}
+
+#[lifetime(depend(range))]
+pub fn transform!<T, Func>(Range<T> mut &range, Func &&func)
+{
+  transform(&mut range, range.begin, range.end, &&func);
+
+  return &range;
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn adjacent_transform<N, T, I, Func>(Range<T> mut &range, I first, Sentinal<I> last, Func &&func) -> I
+{
+  fn deref(var &&range, var & ...is)
+  {
+    return ((&&(&&range)[is])...,);
+  }
+
+  var window = [typeof(first)(); N];
+
+  window[0] = first;
+  for (var k = 1; k < N; ++k)
+    window[k] = std::next(window[k - 1], 1, range.end);
+
+  for (; window[N - 1] != last; ++first)
+  {
+    range[first] = func(&move deref(range, window...));
+
+    for (var k = 0; k < N; ++k)
+      ++window[k];
+  }
+
+  return first;
+}
+
+#[lifetime(depend(range))]
+pub fn adjacent_transform!<N, T, Func>(Range<T> mut &range, Func &&func)
+{
+  var last = adjacent_transform<N>(&mut range, range.begin, range.end, &&func);
+
+  return std::subrange(range, range.begin, last);
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn inclusive_scan<S, T, I, Func>(Range<T> mut &range, I first, Sentinal<I> last, Func &&func) -> I
+{
+  if (first == last)
+    return first;
+
+  var accumulator = range[first];
+
+  while (++first != last)
+  {
+    accumulator = func(&move accumulator, &move std::launder(range[first]));
+
+    range[first] = accumulator;
+  }
+
+  return first;
+}
+
+#[lifetime(depend(range))]
+pub fn inclusive_scan!<S, T, Func>(Range<T> mut &range, Func &&func)
+{
+  inclusive_scan(&mut range, range.begin, range.end, &&func);
+
+  return &range;
+}
+
+#[lifetime(repose(first, range), repose(last, range), depend(range))]
+pub fn exclusive_scan<S, T, I, Func>(Range<T> mut &range, I first, Sentinal<I> last, S seed, Func &&func) -> I
+  match (Func func, S s, T i) { s = func(&move s, i); }
+{
+  if (first == last)
+    return first;
+
+  var accumulator = seed;
+  accumulator = func(&move accumulator, &move std::launder(range[first]));
+
+  while (first != last)
+  {
+    range[first] = &move seed;
+
+    if (++first != last)
+    {
+      seed = accumulator;
+      accumulator = func(&move accumulator, &move std::launder(range[first]));
+    }
+  }
+
+  return first;
+}
+
+#[lifetime(depend(range))]
+pub fn exclusive_scan!<S, T, Func>(Range<T> mut &range, S seed, Func &&func)
+  match (Func func, S s, T i) { s = func(&move s, i); }
+{
+  exclusive_scan(&mut range, range.begin, range.end, &move seed, &&func);
+
+  return &range;
+}

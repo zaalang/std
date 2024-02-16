@@ -3,7 +3,8 @@
 //
 
 import std.stdlib : assert;
-import std.algorithm : swap, find, find_if, find_if_not, count, count_if, count_if_not, sort!, is_sorted;
+import std.algorithm : swap, find, find_if, find_if_not, count, count_if, count_if_not, sort!, uniq, uniq!, is_sorted;
+import std.algorithm.iteration : each, min, max, sum, mean;
 import std.range : Range;
 
 pub concept Span<U>

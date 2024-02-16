@@ -9,8 +9,8 @@ import lml.quaternion;
 
 pub concept Point<T, N>
 {
-  pub const dimension = N;
-  pub using coord_type = T;
+  pub const dim = N;
+  pub using coord_t = T;
 
   requires<point> -> point::point_t
   requires<point> (point pt) { pt.get<0>(); }
