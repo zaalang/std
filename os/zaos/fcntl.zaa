@@ -315,6 +315,9 @@ extern fn __vdso_ioring_setup(void *buffer, usize bufferlen, u64 flags) -> i32;
 #[weak]
 extern fn __vdso_ioring_enter(i32 fd, u32 to_submit, u32 min_complete, u64 flags) -> i32;
 
+#[weak]
+extern fn __vdso_ioring_destroy(i32 fd) -> i32;
+
 pub fn ioring_setup(void *buffer, usize bufferlen, u64 flags) -> i32
 {
   return __vdso_ioring_setup(buffer, bufferlen, flags);
@@ -323,6 +326,11 @@ pub fn ioring_setup(void *buffer, usize bufferlen, u64 flags) -> i32
 pub fn ioring_enter(i32 fd, u32 to_submit, u32 min_complete, u64 flags) -> i32
 {
   return __vdso_ioring_enter(fd, to_submit, min_complete, flags);
+}
+
+pub fn ioring_destroy(i32 fd) -> i32
+{
+  return __vdso_ioring_destroy(fd);
 }
 
 pub fn ioring_get_sqe(ioring mut &ring) -> ioring_sqe mut *

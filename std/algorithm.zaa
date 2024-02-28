@@ -34,11 +34,11 @@ pub fn swap<T, I>(Range<T> mut &range, I &i, I &j)
   }
 }
 
-#[lifetime(poison(a), depend(*a), assign(a, depend(*a.=,b)))]
+#[lifetime(poison(a), depend(*a), assign(a, depend(*a.=,b)), repose(b, a), repose(a, b))]
 pub fn exchange<T, U>(T mut &a, U &&b) -> T
   match (T a, U b) { a = &move b; }
 {
-  var tmp = &move a;
+  var tmp = &move std::launder(a);
   a = &&b;
 
   return tmp;
