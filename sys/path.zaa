@@ -1,0 +1,237 @@
+//
+// sys path
+//
+
+import std.stdlib : assert;
+import std.string : String;
+import sys.bits.path : is_sep_byte, scan_path_prefix;
+import std.fmt;
+
+pub struct path_view
+{
+  std::string_view str;
+
+  #[lifetime(depend(*data))]
+  pub path_view(u8 *data, usize len)
+    : str(data, len)
+  {
+  }
+
+  #[lifetime(depend(*beg))]
+  pub path_view(u8 *beg, u8 *end)
+    : str(beg, end)
+  {
+  }
+
+  #[lifetime(depend(*path.data))]
+  pub path_view(String &path)
+    : str(path)
+  {
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn String(this &) -> std::string_view
+  {
+    return this.str;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this.str.empty;
+  }
+
+  pub fn as_literal(this &)
+  {
+    return this.str.as_literal;
+  }
+
+  pub struct iterator
+  {
+    pub iterator() = default;
+    pub iterator(iterator&) = default;
+    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    pub ~iterator() = default;
+
+    #[lifetime(depend(this))]
+    pub fn ++(iterator mut &this) -> iterator mut &
+    {
+      for (;;)
+      {
+        this.pos += this.scan.0;
+        this.pos += this.scan.1;
+        this.scan = scan_path_next(std::string_view(this.pos, this.end));
+
+        if (this.scan.0 == 1 && *this.pos == cast('.'))
+          continue;
+
+        if (this.scan.0 == 0 && this.pos != this.end)
+          continue;
+
+        break;
+      }
+
+      return &this;
+    }
+
+    iterator(u8 *pos, (usize, usize) scan, u8 *end)
+      : pos(pos), scan(scan), end(end)
+    {
+    }
+
+    u8 *pos;
+    (usize, usize) scan;
+    u8 *end;
+  }
+
+  pub fn ==(iterator &lhs, iterator &rhs) -> bool
+  {
+    return lhs.pos == rhs.pos;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &)
+  {
+    var scan = (scan_path_prefix(this.str), 0);
+
+    if (scan.0 == 0)
+      scan = scan_path_next(this.str);
+
+    return iterator(this.str.data, scan, this.str.end);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &)
+  {
+    return iterator(this.str.end, (0, 0), this.str.end);
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn [](this &, iterator &iter) -> std::string_ref
+  {
+    return std::string_ref(iter.pos, iter.scan.0);
+  }
+
+  pub path_view() = default;
+  pub path_view(path_view &that) = default;
+  pub fn =(this mut &, path_view &that) -> path_view mut & = default;
+  pub ~path_view() = default;
+}
+
+fn scan_path_next(std::string_view path) -> (usize, usize)
+{
+  var j = path.find_if(|ch| is_sep_byte(ch));
+
+  if (j == path.end)
+    return (path.len, 0);
+
+  return (j - path.begin, 1);
+}
+
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, path_view &path) throws -> void
+{
+  std::fmt_to(&mut os, &mut ctx, path.str);
+}
+
+pub fn is_absolute(path_view &path) -> bool
+{
+  return scan_path_prefix(path.str) != 0;
+}
+
+pub fn is_relative(path_view &path) -> bool
+{
+  return scan_path_prefix(path.str) == 0;
+}
+
+#[nodiscard]
+#[lifetime(depend(*path))]
+pub fn prefix(path_view &path) -> std::string_view
+{
+  return std::string_view(path.str.data, scan_path_prefix(path.str));
+}
+
+#[nodiscard]
+#[lifetime(depend(*path))]
+pub fn basename(path_view &path) -> std::string_view
+{
+  var base = std::string_view();
+
+  for (var i = path.begin, var end = path.end; i != end; ++i)
+    base = path[i];
+
+  if (base == "/")
+    base = std::string_view();
+
+  if (base == "..")
+    base = std::string_view();
+
+  return base;
+}
+
+#[nodiscard]
+#[lifetime(depend(*path))]
+pub fn stem(path_view &path) -> std::string_view
+{
+  let base = path.basename;
+
+  return std::string_view(base.data, base.strip_prefix(".").find_last('.'));
+}
+
+#[nodiscard]
+#[lifetime(depend(*path))]
+pub fn extension(path_view &path) -> std::string_view
+{
+  let base = path.basename;
+
+  return std::string_view(base.strip_prefix(".").find_last('.'), path.str.end);
+}
+
+#[nodiscard]
+#[lifetime(depend(*path))]
+pub fn parent(path_view &path) -> path_view
+{
+  var dir = path_view();
+  var base = std::string_view(path.str.data, 0);
+
+  for (var i = path.begin, var end = path.end; i != end; ++i)
+  {
+    dir = path_view(path.str.data, base.end);
+    base = path[i];
+  }
+
+  return dir;
+}
+
+pub fn starts_with(path_view &path, String &base) -> bool
+{
+  for (var i = path.begin, var end = path.end; i != end; ++i)
+  {
+    if (std::string_view(path.str.begin, i.pos + i.scan.0) == base)
+      return true;
+  }
+
+  return false;
+}
+
+pub fn ends_with(path_view &path, String &child) -> bool
+{
+  for (var i = path.begin, var end = path.end; i != end; ++i)
+  {
+    if (std::string_view(i.pos, path.str.end) == child)
+      return true;
+  }
+
+  return false;
+}
+
+#[nodiscard]
+#[lifetime(depend(*path))]
+pub fn strip_prefix(path_view &path, String &prefix) -> path_view
+{
+  for (var i = path.begin, var end = path.end; i != end; ++i)
+  {
+    if (std::string_view(path.str.begin, i.pos + i.scan.0) == prefix)
+      return path_view(i.pos + i.scan.0 + i.scan.1, i.end);
+  }
+
+  return path;
+}

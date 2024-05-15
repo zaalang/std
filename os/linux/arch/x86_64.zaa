@@ -5,7 +5,7 @@
 pub using uid_t = u32;
 pub using gid_t = u32;
 pub using mode_t = u32;
-pub using pid_t = u32;
+pub using pid_t = i32;
 pub using off_t = u64;
 pub using time_t = i64;
 
@@ -17,6 +17,8 @@ pub using blkcnt_t = u64;
 
 pub using size_t = usize;
 pub using ssize_t = isize;
+
+pub const PATH_MAX = 4096;
 
 pub const EPERM = -1;
 pub const ENOENT = -2;
@@ -504,4 +506,16 @@ pub fn syscall5(usize n, var a1, var a2, var a3, var a4, var a5) -> uintptr
 pub fn syscall6(usize n, var a1, var a2, var a3, var a4, var a5, var a6) -> uintptr
 {
   return __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4, a5, a6);
+}
+
+pub fn __clone(void mut *stack, fn (*start_routine)(void mut *) -> int, u64 flags, int mut *parent_tid, int mut *child_tid, void *tls) -> uintptr
+{
+  var n = sys_clone;
+
+  var ret = __asm (
+    "syscall; test eax, eax; jnz 1f; xor ebp, ebp; mov rdi, rsp; and rsp, -16; call r9; mov rdi, rax; mov rax, 60; syscall; hlt; 1:\n",
+    "=r,{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", n, flags, stack, parent_tid, child_tid, tls, start_routine
+  );
+
+  return ret;
 }

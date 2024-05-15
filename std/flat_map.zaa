@@ -28,7 +28,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, flat_map &&other) -> flat_map mut &
   {
     std::launder(other);
@@ -225,7 +225,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       return (pos, true);
     }
 
-    (*pos).value = T(&&args..., allocator?: this.allocator);
+    pos.value = T(&&args..., allocator?: this.allocator);
 
     return (pos, false);
   }
@@ -242,7 +242,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
         return;
       }
 
-      return this.merge(&mut other);
+      return this.merge(&move other);
     }
 
     if (var first = other.begin, var last = other.end; first != last)
@@ -272,7 +272,8 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(poison(this), consume(other))]
-  pub fn merge(this mut &, flat_map mut &other) -> void
+  pub fn merge(this mut &, flat_map &&other) -> void
+    where __is_rvalue<typeof(other)>
   {
     assert(&this != &other);
     assert(this.allocator == other.allocator);
@@ -306,7 +307,9 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn take_erase<Key>(this mut &, Key &key) -> T
   {
-    var result = &move std::launder(this[key]);
+    var result = &move this[key];
+
+    std::launder(this);
 
     erase(&mut this, key);
 
@@ -316,7 +319,9 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(poison(this), repose(position, this))]
   pub fn take_erase(this mut &, value_type *position) -> T
   {
-    var result = &move std::launder(this[position].value);
+    var result = &move this[position].value;
+
+    std::launder(this);
 
     erase(&mut this, position);
 

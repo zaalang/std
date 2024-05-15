@@ -3,12 +3,16 @@
 //
 
 pub using BOOL = i32;
+pub using SHORT = i16;
 pub using INT = i32;
 pub using UINT = u32;
+pub using WORD = u16;
 pub using DWORD = u32;
 pub using ULONG = u32;
-pub using LPCCH = u8 *;
+pub using CHAR = u8;
+pub using WCHAR = u16;
 pub using LPSTR = u8 mut *;
+pub using LPCSTR = u8 *;
 pub using LPWSTR = u16 mut *;
 pub using LPCWSTR = u16 *;
 pub using VOID = void;

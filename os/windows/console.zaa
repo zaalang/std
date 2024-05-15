@@ -1,0 +1,97 @@
+//
+// kernel32
+//
+
+import os.windows.ntdef : *;
+import os.windows.kernel32 : *;
+
+pub struct COORD
+{
+  pub SHORT X;
+  pub SHORT Y;
+
+  pub COORD() = default;
+  pub COORD(COORD &) = default;
+  pub fn =(COORD mut &, COORD &) -> COORD mut & = default;
+  pub ~COORD() = default;
+}
+
+pub struct SMALL_RECT
+{
+  pub SHORT Left;
+  pub SHORT Top;
+  pub SHORT Right;
+  pub SHORT Bottom;
+
+  pub SMALL_RECT() = default;
+  pub SMALL_RECT(SMALL_RECT &) = default;
+  pub fn =(SMALL_RECT mut &, SMALL_RECT &) -> SMALL_RECT mut & = default;
+  pub ~SMALL_RECT() = default;
+}
+
+pub struct CONSOLE_SCREEN_BUFFER_INFO
+{
+  pub COORD dwSize;
+  pub COORD dwCursorPosition;
+  pub WORD wAttributes;
+  pub SMALL_RECT srWindow;
+  pub COORD dwMaximumWindowSize;
+
+  pub CONSOLE_SCREEN_BUFFER_INFO() = default;
+  pub CONSOLE_SCREEN_BUFFER_INFO(CONSOLE_SCREEN_BUFFER_INFO &) = default;
+  pub fn =(CONSOLE_SCREEN_BUFFER_INFO mut &, CONSOLE_SCREEN_BUFFER_INFO &) -> CONSOLE_SCREEN_BUFFER_INFO mut & = default;
+  pub ~CONSOLE_SCREEN_BUFFER_INFO() = default;
+}
+
+pub const KEY_EVENT = 0x0001;
+pub const MOUSE_EVENT = 0x0002;
+pub const WINDOW_BUFFER_SIZE_EVENT = 0x0004;
+pub const MENU_EVENT = 0x0008;
+pub const FOCUS_EVENT = 0x0010;
+
+pub struct FOCUS_EVENT_RECORD
+{
+  pub BOOL bSetFocus;
+}
+
+pub struct KEY_EVENT_RECORD
+{
+  pub BOOL bKeyDown;
+  pub WORD wRepeatCount;
+  pub WORD wVirtualKeyCode;
+  pub WORD wVirtualScanCode;
+  pub WORD Char;
+  pub DWORD dwControlKeyState;
+}
+
+pub struct MENU_EVENT_RECORD
+{
+  pub UINT dwCommandId;
+}
+
+pub struct MOUSE_EVENT_RECORD
+{
+  pub COORD dwMousePosition;
+  pub DWORD dwButtonState;
+  pub DWORD dwControlKeyState;
+  pub DWORD dwEventFlags;
+}
+
+pub struct INPUT_RECORD
+{
+  pub WORD EventType;
+  pub WORD Padding;
+  pub u8[16] Event;
+
+  pub INPUT_RECORD() = default;
+  pub INPUT_RECORD(INPUT_RECORD &) = default;
+  pub fn =(INPUT_RECORD mut &, INPUT_RECORD &) -> INPUT_RECORD mut & = default;
+  pub ~INPUT_RECORD() = default;
+}
+
+pub extern "C" fn GetConsoleMode(HANDLE hConsoleHandle, DWORD mut *lpMode) -> BOOL;
+pub extern "C" fn GetConsoleScreenBufferInfo(HANDLE hConsoleOutput, CONSOLE_SCREEN_BUFFER_INFO mut *lpConsoleScreenBufferInfo) -> BOOL;
+pub extern "C" fn SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode) -> BOOL;
+pub extern "C" fn GetNumberOfConsoleInputEvents(HANDLE hConsoleInput, DWORD mut *lpcNumberOfEvents) -> BOOL;
+pub extern "C" fn ReadConsoleInputW(HANDLE hConsoleInput, INPUT_RECORD mut *lpBuffer, DWORD nLength, DWORD mut *lpNumberOfEventsRead) -> BOOL;
+pub extern "C" fn FlushConsoleInputBuffer(HANDLE hConsoleInput) -> BOOL;

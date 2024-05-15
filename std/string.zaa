@@ -63,7 +63,7 @@ pub struct string_view : pub std::span<u8>
   }
 
   #[lifetime(depend(*this))]
-  pub fn [](this&, (usize, usize) range) -> string_view
+  pub fn [](this &, (usize, usize) range) -> string_view
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
 
@@ -71,7 +71,7 @@ pub struct string_view : pub std::span<u8>
   }
 
   #[lifetime(depend(*this))]
-  pub fn [](this&, (usize, usize, void) range) -> string_view
+  pub fn [](this &, (usize, usize, void) range) -> string_view
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
 
@@ -79,7 +79,7 @@ pub struct string_view : pub std::span<u8>
   }
 
   #[lifetime(repose(range, this), depend(*this))]
-  pub fn [](this&, (u8*, u8*) range) -> string_view
+  pub fn [](this &, (u8*, u8*) range) -> string_view
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 <= this.data + this.len);
 
@@ -87,7 +87,7 @@ pub struct string_view : pub std::span<u8>
   }
 
   #[lifetime(repose(range, this), depend(*this))]
-  pub fn [](this&, (u8*, u8*, void) range) -> string_view
+  pub fn [](this &, (u8*, u8*, void) range) -> string_view
   {
     assert(range.0 <= range.1 && this.data <= range.0 && range.1 + 1 <= this.data + this.len);
 
@@ -123,7 +123,9 @@ pub struct string_view : pub std::span<u8>
       {
         this.n += 1;
 
-        if (utf::decode(&mut state, &mut this.codepoint, *ch) == 0)
+        utf::decode(&mut state, &mut this.codepoint, *ch);
+
+        if (state == utf::ACCEPT || state == utf::REJECT)
           break;
       }
 
@@ -415,6 +417,8 @@ pub struct string_view : pub std::span<u8>
 
     using Range;
 
+    pub const range_adaptor_type = true;
+
     pub iterator_pair(I first, J second)
       : first(first), second(second)
     {
@@ -438,9 +442,23 @@ pub struct string_view : pub std::span<u8>
     }
 
     #[lifetime(repose(iter, this), depend(*this))]
-    pub fn [](this &&, I iter)
+    pub fn [](this &&, I &iter)
     {
       return &&*iter;
+    }
+
+    #[nodiscard]
+    #[lifetime(depend(*this))]
+    pub fn drop_n<T>(this &&, usize n)
+    {
+      return iterator_pair(std::next(this.first, n, this.second), this.second);
+    }
+
+    #[nodiscard]
+    #[lifetime(depend(*this))]
+    pub fn take_n<T>(this &&, usize n)
+    {
+      return iterator_pair(this.first, std::next(this.first, n, this.second));
     }
   }
 
@@ -546,7 +564,7 @@ pub struct string_stream
 
   pub fn discard(this mut &, usize len) -> void
   {
-    this.buffer.remove_prefix!(len);
+    this.buffer.drop_front!(len);
   }
 
   pub fn read(this mut &, u8 mut *data, usize len) -> usize
@@ -555,7 +573,7 @@ pub struct string_stream
 
     std::memcpy(data, this.buffer.data, bytes);
 
-    this.buffer.remove_prefix!(bytes);
+    this.buffer.drop_front!(bytes);
 
     return bytes;
   }
@@ -570,6 +588,8 @@ pub struct string_stream
 
 pub struct string<Allocator = std::allocator, N = 24>
 {
+  pub using char_iterator = string_view::char_iterator;
+
   pub string(Allocator &allocator = Allocator())
     : _allocator(allocator),
       _smallbuffer(void)
@@ -589,7 +609,7 @@ pub struct string<Allocator = std::allocator, N = 24>
       this.insert(this._len, other.data, other.len);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), depend(this))]
   pub fn =(this mut &, String &&other) -> string mut &
   {
     std::launder(other);
@@ -810,7 +830,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert(this mut &, u8 *position, u8 ch) -> (u8 mut *, usize)
   {
-    return insert(&mut this, position - this.begin, ch);
+    return insert(&mut this, position - this._data, ch);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -822,7 +842,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert(this mut &, u8 *position, char ch) -> (u8 mut *, usize)
   {
-    return insert(&mut this, position - this.begin, ch);
+    return insert(&mut this, position - this._data, ch);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -837,7 +857,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert(this mut &, u8 *position, String &str) -> (u8 mut *, usize)
   {
-    return insert(&mut this, position - this.begin, str);
+    return insert(&mut this, position - this._data, str);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -853,9 +873,21 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn insert(this mut &, u8 *position, char_iterator first, char_iterator last) -> (u8 mut *, usize)
+  {
+    return insert(&mut this, position - this._data, string_view(first, last));
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn insert(this mut &, usize position, char_iterator first, char_iterator last) -> (u8 mut *, usize)
+  {
+    return insert(&mut this, position, string_view(first, last));
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<I>(this mut &, u8 *position, I first, Sentinal<I> last) -> (u8 mut *, usize)
   {
-    return insert(&mut this, position - this.begin, first, last);
+    return insert(&mut this, position - this._data, first, last);
   }
 
   #[lifetime(poison(this), depend(this))]
@@ -871,20 +903,20 @@ pub struct string<Allocator = std::allocator, N = 24>
     return (this._data + position, index - position);
   }
 
-  #[lifetime(poison(this), repose(position, this), depend(this))]
-  pub fn erase(this mut &, u8 *position, usize len) -> u8 mut *
-  {
-    return erase(&mut this, position - this.begin, len);
-  }
-
   #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
   pub fn erase(this mut &, u8 *first, u8 *last) -> u8 mut *
   {
     return erase(&mut this, first - this.begin, last - first);
   }
 
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn erase(this mut &, u8 *position, usize count = 1) -> u8 mut *
+  {
+    return erase(&mut this, position - this._data, count);
+  }
+
   #[lifetime(poison(this), depend(this))]
-  pub fn erase(this mut &, usize position, usize count) -> u8 mut *
+  pub fn erase(this mut &, usize position, usize count = 1) -> u8 mut *
   {
     assert(position <= this._len);
 
@@ -901,7 +933,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn replace(this mut &, u8 *position, usize len, String &str) -> u8 mut *
   {
-    return replace(&mut this, position - this.begin, len, str);
+    return replace(&mut this, position - this._data, len, str);
   }
 
   #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
@@ -938,8 +970,8 @@ pub struct string<Allocator = std::allocator, N = 24>
     return this._data + position;
   }
 
-  #[lifetime(poison(this), depend(this))]
-  pub fn +=(this mut &, u8 ch) -> string mut &
+  #[lifetime(poison(this))]
+  pub fn push_back(this mut &, u8 ch) -> void
   {
     if (this._len < this._capacity)
     {
@@ -949,12 +981,10 @@ pub struct string<Allocator = std::allocator, N = 24>
     {
       insert(&mut this, this._len, ch);
     }
-
-    return &this;
   }
 
-  #[lifetime(poison(this), depend(this))]
-  pub fn +=(this mut &, char ch) -> string mut &
+  #[lifetime(poison(this))]
+  pub fn push_back(this mut &, char ch) -> void
   {
     if (this._len + 4 < this._capacity)
     {
@@ -964,6 +994,20 @@ pub struct string<Allocator = std::allocator, N = 24>
     {
       insert(&mut this, this._len, ch);
     }
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn +=(this mut &, u8 ch) -> string mut &
+  {
+    this.push_back(ch);
+
+    return &this;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn +=(this mut &, char ch) -> string mut &
+  {
+    this.push_back(ch);
 
     return &this;
   }
@@ -1593,18 +1637,18 @@ pub fn drop(String &str, usize n) -> string_view
   return string_view(i, str.end);
 }
 
+#[lifetime(depend(*str.data))]
+pub fn drop!(string_view mut &str, usize n) -> string_view
+{
+  str = drop(str, n);
+
+  return str;
+}
+
 #[lifetime(poison(str), depend(str))]
 pub fn drop!(string mut &str, usize n) -> string mut &
 {
   str = drop(str, n);
-
-  return &str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn drop_n!(string mut &str, usize n) -> string mut &
-{
-  str = drop_n(str, n);
 
   return &str;
 }
@@ -1626,18 +1670,18 @@ pub fn take(String &str, usize n) -> string_view
   return string_view(str.begin, i);
 }
 
+#[lifetime(depend(*str.data))]
+pub fn take!(string_view mut &str, usize n) -> string_view
+{
+  str = take(str, n);
+
+  return str;
+}
+
 #[lifetime(poison(str), depend(str))]
 pub fn take!(string mut &str, usize n) -> string mut &
 {
   str = take(str, n);
-
-  return &str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn take_n!(string mut &str, usize n) -> string mut &
-{
-  str = take_n(str, n);
 
   return &str;
 }
@@ -1688,6 +1732,14 @@ pub fn trim_left(String &str) -> string_view
   return string_view(i, str.end);
 }
 
+#[lifetime(depend(*str.data))]
+pub fn trim_left!(string_view mut &str) -> string_view
+{
+  str = trim_left(str);
+
+  return str;
+}
+
 #[lifetime(poison(str), depend(str))]
 pub fn trim_left!(string mut &str) -> string mut &
 {
@@ -1713,6 +1765,14 @@ pub fn trim_right(String &str) -> string_view
   return string_view(str.begin, j);
 }
 
+#[lifetime(depend(*str.data))]
+pub fn trim_right!(string_view mut &str) -> string_view
+{
+  str = trim_right(str);
+
+  return str;
+}
+
 #[lifetime(poison(str), depend(str))]
 pub fn trim_right!(string mut &str) -> string mut &
 {
@@ -1726,6 +1786,14 @@ pub fn trim_right!(string mut &str) -> string mut &
 pub fn trim(String &str) -> string_view
 {
   return trim_right(trim_left(str));
+}
+
+#[lifetime(depend(*str.data))]
+pub fn trim!(string_view mut &str) -> string_view
+{
+  str = trim(str);
+
+  return str;
 }
 
 #[lifetime(poison(str), depend(str))]
@@ -1767,9 +1835,49 @@ pub fn ends_with(String &haystack, String &needle) -> bool
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn remove_prefix!(string mut &str, usize n) -> string mut &
+pub fn drop_n!(string mut &str, usize n) -> string mut &
 {
-  str = str.remove_prefix(n);
+  str = str.drop_front(n);
+
+  return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn take_n!(string mut &str, usize n) -> string mut &
+{
+  str = str.take_front(n);
+
+  return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn drop_front!(string mut &str, usize n) -> string mut &
+{
+  str = str.drop_front(n);
+
+  return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn drop_back!(string mut &str, usize n) -> string mut &
+{
+  str = str.drop_back(n);
+
+  return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn take_front!(string mut &str, usize n) -> string mut &
+{
+  str = str.take_front(n);
+
+  return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn take_back!(string mut &str, usize n) -> string mut &
+{
+  str = str.take_back(n);
 
   return &str;
 }
@@ -1784,18 +1892,18 @@ pub fn strip_prefix(String &str, String &prefix) -> string_view
   return string_view(str.data, str.len);
 }
 
+#[lifetime(depend(*str.data))]
+pub fn strip_prefix!(string_view mut &str, String &prefix) -> string_view
+{
+  str = strip_prefix(str, prefix);
+
+  return str;
+}
+
 #[lifetime(poison(str), depend(str))]
 pub fn strip_prefix!(string mut &str, String &prefix) -> string mut &
 {
   str = strip_prefix(str, prefix);
-
-  return &str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn remove_suffix!(string mut &str, usize n) -> string mut &
-{
-  str = str.remove_suffix(n);
 
   return &str;
 }
@@ -1810,10 +1918,41 @@ pub fn strip_suffix(String &str, String &suffix) -> string_view
   return string_view(str.data, str.len);
 }
 
+#[lifetime(depend(*str.data))]
+pub fn strip_suffix!(string_view mut &str, String &suffix) -> string_view
+{
+  str = strip_suffix(str, suffix);
+
+  return str;
+}
+
 #[lifetime(poison(str), depend(str))]
 pub fn strip_suffix!(string mut &str, String &suffix) -> string mut &
 {
   str = strip_suffix(str, suffix);
+
+  return &str;
+}
+
+#[nodiscard]
+#[lifetime(depend(*str.data))]
+pub fn strip(String &str, String &fix) -> string_view
+{
+  return strip_suffix(strip_prefix(str, fix), fix);
+}
+
+#[lifetime(depend(*str.data))]
+pub fn strip!(string_view mut &str, String &fix) -> string_view
+{
+  str = strip(str, fix);
+
+  return str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn strip!(string mut &str, String &fix) -> string mut &
+{
+  str = strip(str, fix);
 
   return &str;
 }
@@ -1831,6 +1970,14 @@ pub fn chop(String &str) -> string_view
   }
 
   return string_view(str.data, str.len);
+}
+
+#[lifetime(depend(*str.data))]
+pub fn chop!(string_view mut &str) -> string_view
+{
+  str = chop(str);
+
+  return str;
 }
 
 #[lifetime(poison(str), depend(str))]
@@ -1854,6 +2001,14 @@ pub fn chomp(String &str) -> string_view
   }
 
   return string_view(str.data, str.len);
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn chomp!(string_view mut &str) -> string mut &
+{
+  str = chomp(str);
+
+  return str;
 }
 
 #[lifetime(poison(str), depend(str))]
@@ -1892,7 +2047,7 @@ pub fn gsub(String &&str, String &from, String &to) -> string
 pub fn to_lowercase(String &&str) -> string
 {
   var str = string(&&str);
-  str.to_lowercase!;
+  str.to_lowercase!();
   return str;
 }
 
@@ -1909,7 +2064,7 @@ pub fn to_lowercase!(string mut &str) -> string mut &
 pub fn to_uppercase(String &&str) -> string
 {
   var str = string(&&str);
-  str.to_uppercase!;
+  str.to_uppercase!();
   return str;
 }
 

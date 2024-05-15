@@ -1,0 +1,980 @@
+//
+// tablegen
+//
+
+// ./zacc -I ../../../std -L ../../../zrt/lib ../../../std/unicode/tablegen.zaa -lzrt
+// ./tablegen | sed 's/0x0/0/' > ../../../std/unicode/tables.zaa
+
+import std.stdio;
+import std.string : String;
+import std.flat_hash_map;
+import std.map;
+
+fn append(std::vector<(char, char)> mut &set, (char, char) range) -> void
+{
+  if (set.empty || set.back.1 + 1 != range.0)
+    set.push_back(range);
+  else
+    set.back.1 = range.1;
+}
+
+fn insert(std::vector<(char, char)> mut &set, (char, char) range) -> void
+{
+  var j = set.begin;
+  while (j != set.end && set[j].0 < range.0)
+    ++j;
+
+  set.insert(j, range);
+
+  for (var i = set.begin, j = i + 1; j != set.end; i = j++)
+  {
+    if (set[j].0 <= set[i].1 + 1)
+    {
+      set[i].1 = std::max(set[i].1, set[j].1);
+
+      j = set.erase(j) - 1;
+    }
+  }
+}
+
+struct Blocks
+{
+  fn [](this &, String &name)
+  {
+    return this.data[name];
+  }
+
+  std::flat_hash_map<std::string, (char, char)> data;
+
+  Blocks() = default;
+  ~Blocks() = default;
+}
+
+fn load_blocks(String &path) -> Blocks
+{
+  var blocks = Blocks();
+
+  try
+  {
+    var fin = std::file::open(path);
+    var lines = std::buffered_reader(&mut fin).lines;
+
+    for (var line : lines)
+    {
+      if (line.empty || line.starts_with("#"))
+        continue;
+
+      var lo = char();
+      var hi = char();
+      var name = std::string_view();
+
+      if (!std::sscanf(line, "{:x}..{:x}; {}", &mut lo, &mut hi, &mut name))
+        std::panic("error scaning input '", line, "'");
+
+      blocks.data.insert(name, lo .. hi);
+    }
+  }
+  catch (std::error e)
+  {
+    std::print("Error parsing '", path, "' - ", e);
+  }
+
+  return blocks;
+}
+
+struct PropList
+{
+  fn [](this &, String &name)
+  {
+    return this.data[name];
+  }
+
+  std::flat_hash_map<std::string, std::vector<(char, char)>> data;
+
+  PropList() = default;
+  ~PropList() = default;
+}
+
+fn load_properties(String &path) -> PropList
+{
+  var props = PropList();
+
+  try
+  {
+    var fin = std::file::open(path);
+    var lines = std::buffered_reader(&mut fin).lines;
+
+    for (var line : lines)
+    {
+      if (line.empty || line.starts_with("#"))
+        continue;
+
+      var range = std::string_view();
+      var names = std::string_view();
+      var comment = std::string_view();
+
+      if (!std::sscanf(line, "{}; {}# {}", &mut range, &mut names, &mut comment))
+        std::panic("error scaning input '", line, "'");
+
+      names.trim!();
+
+      var (start_code, end_code) = range.cut("..");
+
+      var lo = char();
+      std::atoi(start_code.begin, start_code.end, &mut lo, 16);
+
+      var hi = lo;
+      std::atoi(end_code.begin, end_code.end, &mut hi, 16);
+
+      append(&mut props.data.emplace(names), lo .. hi);
+    }
+  }
+  catch (std::error e)
+  {
+    std::print("Error parsing '", path, "' - ", e);
+  }
+
+  return props;
+}
+
+struct UnicodeData
+{
+  std::vector<(char, char)> codes;
+  std::flat_hash_map<std::string, std::vector<(char, char)>> categories;
+
+  std::flat_hash_map<char, char[2]> decomp_mapping;
+
+  std::flat_hash_map<char, char> simple_uppercase_mapping;
+  std::flat_hash_map<char, char> simple_lowercase_mapping;
+  std::flat_hash_map<char, char> simple_titlecase_mapping;
+  std::flat_hash_map<u8, std::vector<(char, char)>> canonical_combining_class;
+
+  UnicodeData() = default;
+  ~UnicodeData() = default;
+}
+
+fn load_unicode_data(String &path) -> UnicodeData
+{
+  var data = UnicodeData();
+
+  try
+  {
+    var fin = std::file::open(path);
+    var lines = std::buffered_reader(&mut fin).lines;
+
+    for (var line = lines.begin; line != lines.end; ++line)
+    {
+      var code = char();
+      var name = std::string_view();
+      var category = std::string_view();
+      var canonical_combining_class = u8();
+      var bidi_class = std::string_view();
+      var decomp_mapping = std::string_view();
+      var numeric_value6 = std::string_view();
+      var numeric_value7 = std::string_view();
+      var numeric_value8 = std::string_view();
+      var bidi_mirrored = std::string_view();
+      var unicode1_name = std::string_view();
+      var iso_comment = std::string_view();
+      var uppercase_mapping = std::string_view();
+      var lowercase_mapping = std::string_view();
+      var titlecase_mapping = std::string_view();
+
+      if (!std::sscanf(lines[line], "{:x};{};{};{};{};{};{};{};{};{};{};{};{};{};{}", &mut code, &mut name, &mut category, &mut canonical_combining_class, &mut bidi_class, &mut decomp_mapping, &mut numeric_value6, &mut numeric_value7, &mut numeric_value8, &mut bidi_mirrored, &mut unicode1_name, &mut iso_comment, &mut uppercase_mapping, &mut lowercase_mapping, &mut titlecase_mapping))
+        std::panic("error scaning input '", lines[line], "'");
+
+      var lo = code;
+      var hi = code;
+
+      if (name.starts_with("<") && name.ends_with("First>"))
+      {
+        ++line;
+        var head = lines[line].cut(';');
+        std::atoi(head.0.begin, head.0.end, &mut hi, 16);
+      }
+
+      append(&mut data.codes, lo .. hi);
+
+      append(&mut data.categories.emplace(category), lo .. hi);
+
+      append(&mut data.canonical_combining_class.emplace(canonical_combining_class), lo .. hi);
+
+      if (decomp_mapping != "" && !decomp_mapping.starts_with("<"))
+      {
+        var chars = ['\0'; 2];
+        for (var (i, pt) : std::enumerate(decomp_mapping.words))
+          std::atoi(pt.begin, pt.end, &mut chars[i], 16);
+
+        data.decomp_mapping.insert(lo, chars);
+      }
+
+      if (uppercase_mapping != "")
+      {
+        var mapping = char();
+        std::atoi(uppercase_mapping.begin, uppercase_mapping.end, &mut mapping, 16);
+
+        data.simple_uppercase_mapping.insert(lo, mapping);
+      }
+
+      if (lowercase_mapping != "")
+      {
+        var mapping = char();
+        std::atoi(lowercase_mapping.begin, lowercase_mapping.end, &mut mapping, 16);
+
+        data.simple_lowercase_mapping.insert(lo, mapping);
+      }
+
+      if (titlecase_mapping != "")
+      {
+        var mapping = char();
+        std::atoi(titlecase_mapping.begin, titlecase_mapping.end, &mut mapping, 16);
+
+        data.simple_titlecase_mapping.insert(lo, mapping);
+      }
+    }
+  }
+  catch (std::error e)
+  {
+    std::print("Error parsing '", path, "' - ", e);
+  }
+
+  return data;
+}
+
+struct CaseFolding
+{
+  std::flat_hash_map<char, char[3]> mapping;
+
+  CaseFolding() = default;
+  ~CaseFolding() = default;
+}
+
+fn load_case_folding(String &path) -> CaseFolding
+{
+  var cases = CaseFolding();
+
+  try
+  {
+    var fin = std::file::open(path);
+    var lines = std::buffered_reader(&mut fin).lines;
+
+    for (var line : lines)
+    {
+      if (line.empty || line.starts_with("#"))
+        continue;
+
+      var code = char();
+      var type = char();
+      var sequence = std::string_view();
+
+      if (!std::sscanf(line, "{:x}; {}; {};", &mut code, &mut type, &mut sequence))
+        std::panic("error scaning input '", line, "'");
+
+      if (type == 'T')
+        continue;
+
+      var chars = ['\0'; 3];
+      for (var (i, pt) : std::enumerate(sequence.strip(";").words))
+        std::atoi(pt.begin, pt.end, &mut chars[i], 16);
+
+      cases.mapping.insert(code, chars);
+    }
+  }
+  catch (std::error e)
+  {
+    std::print("Error parsing '", path, "' - ", e);
+  }
+
+  return cases;
+}
+
+struct SpecialCasing
+{
+  std::flat_hash_map<char, char[3]> special_uppercase_mapping;
+  std::flat_hash_map<char, char[3]> special_lowercase_mapping;
+  std::flat_hash_map<char, char[3]> special_titlecase_mapping;
+
+  SpecialCasing() = default;
+  ~SpecialCasing() = default;
+}
+
+fn load_special_casing(String &path) -> SpecialCasing
+{
+  var casing = SpecialCasing();
+
+  try
+  {
+    var fin = std::file::open(path);
+    var lines = std::buffered_reader(&mut fin).lines;
+
+    for (var line : lines)
+    {
+      if (line.empty || line.starts_with("#"))
+        continue;
+
+      var base = std::string_view();
+      var lower = std::string_view();
+      var title = std::string_view();
+      var upper = std::string_view();
+      var condition = std::string_view();
+      var comment = std::string_view();
+
+      if (!std::sscanf(line, "{}; {}; {}; {}; {}# {}", &mut base, &mut lower, &mut title, &mut upper, &mut condition, &mut comment))
+        std::panic("error scaning input '", line, "'");
+
+      if (condition != "")
+        continue;
+
+      var code = char();
+      std::atoi(base.begin, base.end, &mut code, 16);
+
+      if (lower != base)
+      {
+        var chars = ['\0'; 3];
+        for (var (i, pt) : std::enumerate(lower.strip(";").words))
+          std::atoi(pt.begin, pt.end, &mut chars[i], 16);
+
+        casing.special_lowercase_mapping.insert(code, chars);
+      }
+
+      if (title != base && title != upper)
+      {
+        var chars = ['\0'; 3];
+        for (var (i, pt) : std::enumerate(title.strip(";").words))
+          std::atoi(pt.begin, pt.end, &mut chars[i], 16);
+
+        casing.special_titlecase_mapping.insert(code, chars);
+      }
+
+      if (upper != base)
+      {
+        var chars = ['\0'; 3];
+        for (var (i, pt) : std::enumerate(upper.strip(";").words))
+          std::atoi(pt.begin, pt.end, &mut chars[i], 16);
+
+        casing.special_uppercase_mapping.insert(code, chars);
+      }
+    }
+  }
+  catch (std::error e)
+  {
+    std::print("Error parsing '", path, "' - ", e);
+  }
+
+  return casing;
+}
+
+fn load_exclusions(String &path) -> std::vector<(char, char)>
+{
+  var exclusions = std::vector<(char, char)>();
+
+  try
+  {
+    var fin = std::file::open(path);
+    var lines = std::buffered_reader(&mut fin).lines;
+
+    for (var line : lines)
+    {
+      if (line.empty || line.starts_with("#"))
+        continue;
+
+      var range = std::string_view();
+      var comment = std::string_view();
+
+      if (!std::sscanf(line, "{}# {}", &mut range, &mut comment))
+        std::panic("error scaning input '", line, "'");
+
+      var (start_code, end_code) = range.cut("..");
+
+      var lo = char();
+      std::atoi(start_code.begin, start_code.end, &mut lo, 16);
+
+      var hi = lo;
+      std::atoi(end_code.begin, end_code.end, &mut hi, 16);
+
+      append(&mut exclusions, lo .. hi);
+    }
+  }
+  catch (std::error e)
+  {
+    std::print("Error parsing '", path, "' - ", e);
+  }
+
+  return exclusions;
+}
+
+fn write_header() -> void
+{
+  std::print("//");
+  std::print("// unicode tables");
+  std::print("//");
+  std::print();
+}
+
+fn write_whitespace_table(PropList &proplist) -> void
+{
+  std::print("pub const unicode_whitespace_table = [<(char, char)>:");
+
+  for (var range : proplist["White_Space"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_lowercase_table(PropList &proplist) -> void
+{
+  std::print("pub const unicode_lowercase_table = [<(char, char)>:");
+
+  for (var range : proplist["Lowercase"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_uppercase_table(PropList &proplist) -> void
+{
+  std::print("pub const unicode_uppercase_table = [<(char, char)>:");
+
+  for (var range : proplist["Uppercase"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_alphabetic_table(PropList &proplist) -> void
+{
+  std::print("pub const unicode_alphabetic_table = [<(char, char)>:");
+
+  for (var range : proplist["Alphabetic"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_numeric_table(UnicodeData &chardata) -> void
+{
+  std::print("pub const unicode_numeric_table = [<(char, char)>:");
+
+  var table = std::vector<(char, char)>();
+
+  for (var range : chardata.categories["Nd"])
+    insert(&mut table, range);
+
+  for (var range : chardata.categories["Nl"])
+    insert(&mut table, range);
+
+  for (var range : chardata.categories["No"])
+    insert(&mut table, range);
+
+  for (var range : table)
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_caseing_tables(UnicodeData &chardata, SpecialCasing &specialcasing, CaseFolding &casefolding) -> void
+{
+  var case_table = std::vector<((char, char), int, int)>();
+  var special_lowercase_table = std::vector<(char, char[3])>();
+  var special_uppercase_table = std::vector<(char, char[3])>();
+  var special_titlecase_table = std::vector<(char, char[3])>();
+  var special_casefold_table = std::vector<(char, char[3])>();
+
+  var casing = std::map<char, (i32, i32)>();
+
+  for (var mapping : chardata.simple_lowercase_mapping)
+    casing.emplace(mapping.key).1 = cast<i32>(cast<i64>(mapping.value) - cast<i64>(mapping.key));
+
+  for (var mapping : chardata.simple_uppercase_mapping)
+    casing.emplace(mapping.key).0 = cast<i32>(cast<i64>(mapping.value) - cast<i64>(mapping.key));
+
+  for (var mapping : specialcasing.special_lowercase_mapping)
+    casing.emplace(mapping.key);
+
+  for (var mapping : specialcasing.special_uppercase_mapping)
+    casing.emplace(mapping.key);
+
+  for (var (code, (lower, upper)) : casing)
+  {
+    if (case_table.empty || case_table.back.0.1 + 1 != code || case_table.back.1 != lower || case_table.back.2 != upper)
+      case_table.push_back((code, code), lower, upper);
+
+    case_table.back.0.1 = code;
+  }
+
+  for (var i = 0; i < case_table.len; ++i)
+  {
+    if (case_table[i].1 == 0 && case_table[i].2 == 1)
+    {
+      for (var j = i + 1; j < case_table.len; )
+      {
+        if (case_table[j].0.0 != case_table[i].0.1 + 1 || case_table[j].1 != -1 || case_table[j].2 != 0)
+          break;
+
+        case_table[i].0.1 += 1;
+        case_table.erase(j);
+
+        if (case_table[j].0.0 != case_table[i].0.1 + 1 || case_table[j].1 != 0 || case_table[j].2 != 1)
+          break;
+
+        case_table[i].0.1 += 1;
+        case_table.erase(j);
+      }
+    }
+  }
+
+  for (var (code, chars) : specialcasing.special_lowercase_mapping)
+  {
+    if (chars[1] == 0 && chars[2] == 0 && chars[0] == chardata.simple_lowercase_mapping[code])
+      continue;
+
+    special_lowercase_table.push_back(code, chars);
+  }
+
+  std::sort(&mut special_lowercase_table);
+
+  for (var (code, chars) : specialcasing.special_uppercase_mapping)
+  {
+    if (chars[1] == 0 && chars[2] == 0 && chars[0] == chardata.simple_uppercase_mapping[code])
+      continue;
+
+    special_uppercase_table.push_back(code, chars);
+  }
+
+  std::sort(&mut special_uppercase_table);
+
+  for (var mapping : chardata.simple_titlecase_mapping)
+  {
+    if (chardata.simple_uppercase_mapping.contains(mapping.key) && chardata.simple_uppercase_mapping[mapping.key] == mapping.value)
+      continue;
+
+    special_titlecase_table.push_back(mapping.key, [ mapping.value, 0, 0 ]);
+  }
+
+  for (var (code, chars) : specialcasing.special_titlecase_mapping)
+  {
+    if (chars[1] == 0 && chars[2] == 0 && chardata.simple_titlecase_mapping.contains(code) && chardata.simple_titlecase_mapping[code] == chars[0])
+      continue;
+
+    special_titlecase_table.push_back(code, chars);
+  }
+
+  std::sort(&mut special_titlecase_table);
+
+  for (var (code, chars) : casefolding.mapping)
+  {
+    if (chars[1] == 0 && chars[2] == 0 && chardata.simple_lowercase_mapping.contains(code) && chardata.simple_lowercase_mapping[code] == chars[0])
+      continue;
+
+    special_casefold_table.push_back(code, chars);
+  }
+
+  std::sort(&mut special_casefold_table);
+
+  std::print("pub const unicode_caseing_table = [<((char, char), i32, i32)>:");
+
+  for (var entry : case_table)
+  {
+    std::printf("  ({:#x} .. {:#x}, {}, {}),\n", entry.0.0, entry.0.1, entry.1, entry.2);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const unicode_special_casefold_table = [<(char, char[3])>:");
+
+  for (var entry : special_casefold_table)
+  {
+    std::printf("  ({:#x}, [ {:#x}, {:#x}, {:#x} ]),\n", entry.0, entry.1[0], entry.1[1], entry.1[2]);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const unicode_special_lowercase_table = [<(char, char[3])>:");
+
+  for (var entry : special_lowercase_table)
+  {
+    std::printf("  ({:#x}, [ {:#x}, {:#x}, {:#x} ]),\n", entry.0, entry.1[0], entry.1[1], entry.1[2]);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const unicode_special_uppercase_table = [<(char, char[3])>:");
+
+  for (var entry : special_uppercase_table)
+  {
+    std::printf("  ({:#x}, [ {:#x}, {:#x}, {:#x} ]),\n", entry.0, entry.1[0], entry.1[1], entry.1[2]);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const unicode_special_titlecase_table = [<(char, char[3])>:");
+
+  for (var entry : special_titlecase_table)
+  {
+    std::printf("  ({:#x}, [ {:#x}, {:#x}, {:#x} ]),\n", entry.0, entry.1[0], entry.1[1], entry.1[2]);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_hangul_tables(PropList &proplist) -> void
+{
+  std::print("pub const hangul_l_table = [<(char, char)>:");
+
+  for (var range : proplist["L"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const hangul_v_table = [<(char, char)>:");
+
+  for (var range : proplist["V"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const hangul_t_table = [<(char, char)>:");
+
+  for (var range : proplist["T"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const hangul_lv_table = [<(char, char)>:");
+
+  for (var range : proplist["LV"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const hangul_lvt_table = [<(char, char)>:");
+
+  for (var range : proplist["LVT"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_emoji_tables(PropList &proplist) -> void
+{
+  std::print("pub const emoji_extended_pictographic_table = [<(char, char)>:");
+
+  for (var range : proplist["Extended_Pictographic"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_incb_tables(PropList &proplist) -> void
+{
+  std::print("pub const incb_consonant_table = [<(char, char)>:");
+
+  for (var range : proplist["InCB; Consonant"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const incb_extend_table = [<(char, char)>:");
+
+  for (var range : proplist["InCB; Extend"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const incb_linker_table = [<(char, char)>:");
+
+  for (var range : proplist["InCB; Linker"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_grapheme_tables(PropList &proplist) -> void
+{
+  std::print("pub const grapheme_control_table = [<(char, char)>:");
+
+  for (var range : proplist["Control"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const grapheme_prepend_table = [<(char, char)>:");
+
+  for (var range : proplist["Prepend"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const grapheme_extend_table = [<(char, char)>:");
+
+  for (var range : proplist["Extend"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const grapheme_spacing_mark_table = [<(char, char)>:");
+
+  for (var range : proplist["SpacingMark"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_decomp_table(UnicodeData &chardata) -> void
+{
+  var index = std::vector<((char, char), u16)>();
+  var decomp = std::map<char, std::vector<char, N:8>>();
+
+  for (var mapping : chardata.decomp_mapping)
+  {
+    var entry = std::vector<char, N:8>::from(std::filter(mapping.value, |ch| ch != 0));
+
+    for (var i = 0; i < entry.len; )
+    {
+      if (var cc = chardata.decomp_mapping.find(entry[i]); cc != chardata.decomp_mapping.end)
+      {
+        entry[i] = chardata.decomp_mapping[cc].value[1];
+        entry.insert(i, chardata.decomp_mapping[cc].value[0]);
+      }
+      else
+      {
+        ++i;
+      }
+    }
+
+    decomp.insert(mapping.key, &move entry);
+  }
+
+  for (var i = 0, var entry : decomp)
+  {
+    var n = cast<u16>(entry.value.len);
+    var idx = (i << 3) | n;
+
+    if (index.empty || index.back.0.1 + 1 != entry.key || index.back.1 + (n << 3) != idx)
+      index.push_back((entry.key, entry.key), idx);
+
+    index.back.0.1 = entry.key;
+
+    i += n;
+  }
+
+  std::print("pub const unicode_decomp_index = [<((char, char), u16)>:");
+
+  for (var entry : index)
+  {
+    std::printf("  ({:#x} .. {:#x}, {}),\n", entry.0.0, entry.0.1, entry.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::printf("pub const unicode_decomp_table = [<char>:");
+
+  for (var (i, entry) : std::enumerate(decomp))
+  {
+    if (i % 8 == 0)
+      std::printf("\n  ");
+
+    for (var ch : entry.value)
+      std::printf("{:#x}, ", ch);
+  }
+
+  std::printf("\n");
+  std::print("];");
+  std::print();
+}
+
+fn write_recomp_table(UnicodeData &chardata, std::vector<(char, char)> &exclusions) -> void
+{
+  var recomp = std::map<u32, char>();
+
+  for (var entry : chardata.decomp_mapping)
+  {
+    if (entry.value[1] == 0)
+      continue;
+
+    if (std::find_if(exclusions, |k| k.0 <= entry.key && entry.key <= k.1) != exclusions.end)
+      continue;
+
+    var hash = cast<u32>(entry.value[0] & 0xffff) << 16 | cast<u32>(entry.value[1] & 0xffff);
+
+    std::assert(!recomp.contains(hash));
+
+    recomp.insert(hash, entry.key);
+  }
+
+  std::printf("pub const unicode_recomp_table = [<(u32, char)>:");
+
+  for (var (i, entry) : std::enumerate(recomp))
+  {
+    if (i % 4 == 0)
+      std::printf("\n  ");
+
+    std::printf("({:#x}, {:#x}), ", entry.key, entry.value);
+  }
+
+  std::printf("\n");
+  std::print("];");
+  std::print();
+}
+
+fn write_combining_table(UnicodeData &chardata) -> void
+{
+  var combing = std::map<char, u8>();
+  var comb_table = std::vector<((char, char), u8)>();
+
+  for (var &(k, klass) : chardata.canonical_combining_class)
+  {
+    if (k == 0)
+      continue;
+
+    for (var range : klass)
+      for (var ch = range.0; ch <= range.1; ++ch)
+        combing.insert(ch, k);
+  }
+
+  for (var (code, key) : combing)
+  {
+    if (comb_table.empty || comb_table.back.0.1 + 1 != code || comb_table.back.1 != key)
+      comb_table.push_back((code, code), key);
+
+    comb_table.back.0.1 = code;
+  }
+
+  std::print("pub const unicode_combining_table = [<((char, char), u8)>:");
+
+  for (var entry : comb_table)
+  {
+    std::printf("  ({:#x} .. {:#x}, {}),\n", entry.0.0, entry.0.1, entry.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn write_normalization_table(PropList &proplist) -> void
+{
+  var nfc = std::vector<(char, char)>();
+
+  for (var range : proplist["NFC_QC; N"])
+    insert(&mut nfc, range);
+
+  for (var range : proplist["NFC_QC; M"])
+    insert(&mut nfc, range);
+
+  std::print("pub const normalization_nfc_table = [<(char, char)>:");
+
+  for (var range : nfc)
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+
+  std::print("pub const normalization_nfd_table = [<(char, char)>:");
+
+  for (var range : proplist["NFD_QC; N"])
+  {
+    std::printf("  {:#x} .. {:#x},\n", range.0, range.1);
+  }
+
+  std::print("];");
+  std::print();
+}
+
+fn main() -> int
+{
+  var blocks = load_blocks("Blocks.txt");
+  var proplist = load_properties("PropList.txt");
+  var coreprops = load_properties("DerivedCoreProperties.txt");
+  var graphemebreaks = load_properties("GraphemeBreakProperty.txt");
+  var hangul = load_properties("HangulSyllableType.txt");
+  var emojis = load_properties("emoji-data.txt");
+
+  var chardata = load_unicode_data("UnicodeData.txt");
+
+  var casefolding = load_case_folding("CaseFolding.txt");
+  var specialcasing = load_special_casing("SpecialCasing.txt");
+
+  var exclusions = load_exclusions("CompositionExclusions.txt");
+
+  var normalization = load_properties("DerivedNormalizationProps.txt");
+
+  write_header();
+  write_whitespace_table(proplist);
+  write_lowercase_table(coreprops);
+  write_uppercase_table(coreprops);
+  write_alphabetic_table(coreprops);
+  write_numeric_table(chardata);
+  write_caseing_tables(chardata, specialcasing, casefolding);
+  write_incb_tables(coreprops);
+  write_hangul_tables(hangul);
+  write_emoji_tables(emojis);
+  write_grapheme_tables(graphemebreaks);
+  write_decomp_table(chardata);
+  write_recomp_table(chardata, exclusions);
+  write_combining_table(chardata);
+  write_normalization_table(normalization);
+
+  return 0;
+}

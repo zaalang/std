@@ -1,0 +1,486 @@
+//
+// unicode grapheme
+//
+
+import unicode;
+import std.span : Span;
+import std.string : String;
+import std.iterator : Iterator, Sentinal;
+import std.range : Range;
+
+using unicode::is_hangul_l;
+using unicode::is_hangul_v;
+using unicode::is_hangul_t;
+using unicode::is_hangul_lv;
+using unicode::is_hangul_lvt;
+using unicode::is_incb_consonant;
+using unicode::is_incb_extend;
+using unicode::is_incb_linker;
+using unicode::is_grapheme_control;
+using unicode::is_grapheme_prepend;
+using unicode::is_grapheme_extend;
+using unicode::is_grapheme_spacing_mark;
+using unicode::is_emoji_extended_pictographic;
+using unicode::is_emoji_regional_indicator;
+
+enum State
+{
+  Start,
+  CR,
+  L,
+  V,
+  T,
+  Emoji,
+  EmojiZWJ,
+  EmojiRI,
+  Incb,
+  IncbL,
+  Prepend,
+  Post,
+}
+
+#[lifetime(depend(*ch))]
+pub static fn next_grapheme_boundary<I>(I ch, Sentinal<I> end) -> I
+  where requires (I ch) { char(*++ch); }
+{
+  var state = State::Start;
+
+  for (; ch != end; ++ch)
+  {
+    switch (state)
+    {
+      case Start:
+
+        if (*ch == '\n' || is_grapheme_control(*ch))
+          return ++ch;
+
+        else if (*ch == '\r')
+          state = State::CR;
+
+        else if (is_hangul_l(*ch))
+          state = State::L;
+
+        else if (is_hangul_v(*ch) || is_hangul_lv(*ch))
+          state = State::V;
+
+        else if (is_hangul_t(*ch) || is_hangul_lvt(*ch))
+          state = State::T;
+
+        else if (is_grapheme_prepend(*ch))
+          state = State::Prepend;
+
+        else if (is_emoji_regional_indicator(*ch))
+          state = State::EmojiRI;
+
+        else if (is_emoji_extended_pictographic(*ch))
+           state = State::Emoji;
+
+        else if (is_incb_consonant(*ch))
+          state = State::Incb;
+
+        else
+          state = State::Post;
+
+      case CR:
+
+        if (*ch == '\n')
+          ++ch;
+
+        return ch;
+
+      case L:
+
+        if (is_hangul_l(*ch))
+          state = State::L;
+
+        else if (is_hangul_v(*ch) || is_hangul_lv(*ch))
+          state = State::V;
+
+        else if (is_hangul_lvt(*ch))
+          state = State::T;
+
+        else
+          goto Post;
+
+      case V:
+
+        if (is_hangul_v(*ch))
+          state = State::V;
+
+        else if (is_hangul_t(*ch))
+          state = State::T;
+
+        else
+          goto Post;
+
+      case T:
+
+        if (is_hangul_t(*ch))
+          state = State::T;
+
+        else
+          goto Post;
+
+      case Emoji:
+
+        if (is_grapheme_extend(*ch))
+          state = State::Emoji;
+
+        else if (*ch == 0x200d)
+          state = State::EmojiZWJ;
+
+        else
+          goto Post;
+
+      case EmojiZWJ:
+
+        if (!is_emoji_extended_pictographic(*ch))
+          goto Post;
+
+        state = State::Emoji;
+
+      case EmojiRI:
+
+        if (!is_emoji_regional_indicator(*ch))
+          goto Post;
+
+        state = State::Post;
+
+      case Incb:
+
+        if (is_incb_linker(*ch) || *ch == 0x200d)
+          state = State::IncbL;
+
+        else if (is_incb_extend(*ch))
+          state = State::Incb;
+
+        else
+          goto Post;
+
+      case IncbL:
+
+        if (is_incb_linker(*ch) || *ch == 0x200d)
+          state = State::IncbL;
+
+        else if (is_incb_extend(*ch))
+          state = State::IncbL;
+
+        else if (is_incb_consonant(*ch))
+          state = State::Incb;
+
+        else
+          goto Post;
+
+      case Prepend:
+
+        if (*ch == '\r' || *ch == '\n' || is_grapheme_control(*ch))
+          return ch;
+
+        goto Start;
+
+      case Post:
+
+        if (!is_grapheme_extend(*ch) && !is_grapheme_spacing_mark(*ch) && *ch != 0x200d)
+          return ch;
+
+        state = State::Post;
+
+      else:
+        std::panic();
+    }
+  }
+
+  return ch;
+}
+
+#[lifetime(depend(*ch))]
+pub static fn prev_grapheme_boundary<I>(I beg, I ch) -> I
+  where requires (I ch) { char(*--ch); }
+{
+  var end = ch;
+  var state = State::Post;
+
+  rof (; ch == beg; --ch)
+  {
+    switch (state)
+    {
+      case Start:
+
+        if (*ch == '\r' || *ch == '\n' || is_grapheme_control(*ch))
+          return ++ch;
+
+        else if (is_grapheme_extend(*ch) || is_grapheme_spacing_mark(*ch) || *ch == 0x200d)
+          state = State::Start;
+
+        else if (is_hangul_l(*ch) || is_hangul_lv(*ch) || is_hangul_lvt(*ch))
+          state = State::L;
+
+        else if (is_hangul_v(*ch))
+          state = State::V;
+
+        else if (is_hangul_t(*ch))
+          state = State::T;
+
+        else if (is_emoji_regional_indicator(*ch))
+          state = State::EmojiRI;
+
+        else if (is_emoji_extended_pictographic(*ch))
+          state = State::Emoji;
+
+        else if (is_incb_consonant(*ch))
+          state = State::Incb;
+
+        else
+          state = State::Prepend;
+
+      case CR:
+
+        if (*ch != '\r')
+          return ++ch;
+
+        return ch;
+
+      case L:
+
+        if (is_hangul_l(*ch))
+          state = State::L;
+
+        else
+          goto Prepend;
+
+      case V:
+
+        if (is_hangul_l(*ch) || is_hangul_lv(*ch))
+          state = State::L;
+
+        else if (is_hangul_v(*ch))
+          state = State::V;
+
+        else
+          goto Prepend;
+
+      case T:
+
+        if (is_hangul_lv(*ch) || is_hangul_lvt(*ch))
+          state = State::L;
+
+        else if (is_hangul_v(*ch))
+            state = State::V;
+
+        else if (is_hangul_t(*ch))
+          state = State::T;
+
+        else
+          goto Prepend;
+
+      case Emoji:
+
+        if (*ch == 0x200d)
+        {
+          if (ch == beg)
+            goto Prepend;
+
+          rof (var i = ch; i == beg; --i)
+          {
+            if (is_grapheme_extend(*i) || is_emoji_extended_pictographic(*i))
+              break;
+
+            goto Prepend;
+          }
+
+          state = State::EmojiZWJ;
+        }
+
+        else
+          goto Prepend;
+
+      case EmojiZWJ:
+
+        if (is_grapheme_extend(*ch))
+          state = State::EmojiZWJ;
+
+        else if (is_emoji_extended_pictographic(*ch))
+          state = State::Emoji;
+
+        else
+          goto Prepend;
+
+      case EmojiRI:
+
+        if (is_emoji_regional_indicator(*ch))
+        {
+          var n = 0;
+
+          rof (var i = ch; i == beg; --i)
+          {
+            if (!is_emoji_regional_indicator(*i))
+              break;
+
+            n += 1;
+          }
+
+          if (n & 1 == 1)
+            goto Prepend;
+
+          return ch;
+        }
+
+        else
+          goto Prepend;
+
+      case Incb:
+
+        if (is_incb_linker(*ch) || *ch == 0x200d)
+        {
+          if (ch == beg)
+            goto Prepend;
+
+          rof (var i = ch; i == beg; --i)
+          {
+            if (is_incb_extend(*i) || is_incb_linker(*i) || is_incb_consonant(*i))
+              break;
+
+            goto Prepend;
+          }
+
+          state = State::IncbL;
+        }
+
+        else
+          goto Prepend;
+
+      case IncbL:
+
+        if (is_incb_linker(*ch) || *ch == 0x200d)
+          state = State::IncbL;
+
+        else if (is_incb_extend(*ch))
+          state = State::IncbL;
+
+        else if (is_incb_consonant(*ch))
+          state = State::Incb;
+
+        else
+          goto Prepend;
+
+      case Prepend:
+
+        if (!is_grapheme_prepend(*ch))
+          return ++ch;
+
+        state = State::Prepend;
+
+      case Post:
+
+        if (*ch == '\r' || is_grapheme_control(*ch))
+          return ch;
+
+        else if (*ch == '\n')
+          state = State::CR;
+
+        else
+          goto Start;
+
+      else:
+        std::panic();
+    }
+  }
+
+  return ch;
+}
+
+pub struct grapheme_view<I, J>
+{
+  grapheme_iterator first;
+  grapheme_sentinal second;
+
+  pub grapheme_view(I beg, J end)
+    : first(beg, end)
+  {
+  }
+
+  pub ~grapheme_view() = default;
+
+  pub struct grapheme_iterator : pub I
+  {
+    I next;
+
+    pub grapheme_iterator() = default;
+    pub grapheme_iterator(grapheme_iterator &&) = default;
+    pub fn =(grapheme_iterator mut &lhs, grapheme_iterator &&rhs) -> grapheme_iterator mut & = default;
+    pub ~grapheme_iterator() = default;
+
+    #[lifetime(depend(*this))]
+    pub fn *(grapheme_iterator &this)
+    {
+      return std::span(this.super, this.next);
+    }
+
+    #[lifetime(depend(this))]
+    pub fn ++(grapheme_iterator mut &this) -> grapheme_iterator mut &
+    {
+      this.super = this.next;
+      this.next = next_grapheme_boundary(this.next, this.end);
+
+      return &this;
+    }
+
+    pub fn -(I&, grapheme_iterator &) -> usize = delete;
+    pub fn +(grapheme_iterator &, usize) -> grapheme_iterator = delete;
+    pub fn -(grapheme_iterator &, usize) -> grapheme_iterator = delete;
+    pub fn -(grapheme_iterator &, grapheme_iterator &) -> usize = delete;
+
+    pub fn ==(grapheme_iterator &lhs, grapheme_sentinal &rhs) -> bool
+    {
+      return lhs.super == lhs.end;
+    }
+
+    grapheme_iterator(I beg, J end)
+      : super(beg), end(end)
+    {
+      next = next_grapheme_boundary(beg, end);
+    }
+
+    J end;
+  }
+
+  pub struct grapheme_sentinal
+  {
+    pub grapheme_sentinal() = default;
+    pub grapheme_sentinal(grapheme_sentinal &&) = default;
+    pub fn =(grapheme_sentinal mut &lhs, grapheme_sentinal &&rhs) -> grapheme_sentinal mut & = default;
+    pub ~grapheme_sentinal() = default;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &&)
+  {
+    return this.first;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn end(this &&)
+  {
+    return this.second;
+  }
+
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn []<I>(this &, grapheme_iterator &iter)
+  {
+    return *iter;
+  }
+}
+
+#[nodiscard]
+#[lifetime(depend(span))]
+pub fn graphemes(Span<char> &span)
+{
+  return grapheme_view(span.begin, span.end);
+}
+
+#[nodiscard]
+#[lifetime(depend(*str.data))]
+pub fn graphemes(String &str)
+{
+  return grapheme_view(str.chars.begin, str.end);
+}

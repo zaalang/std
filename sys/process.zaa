@@ -1,0 +1,45 @@
+//
+// sys process
+//
+
+import std.stdlib;
+import std.string : String;
+import sys.bits.spawn : spawn, spawn_attr_t;
+
+pub struct command
+{
+  pub std::string program;
+  pub std::string working_directory;
+  pub std::vector<std::string> arguments;
+  pub std::vector<spawn_attr_t> attributes;
+
+  pub command(String &&program)
+    : program(&&program)
+  {
+    arguments.push_back(program);
+  }
+
+  pub fn set_working_directory(this mut &, String &&working_directory) -> void
+  {
+    this.working_directory = &&working_directory;
+  }
+
+  pub ~command() = default;
+}
+
+fn ensure_nul_terminated(std::string mut &str) -> void
+{
+  str.reserve(str.len + 1);
+  *(str.data + str.len) = 0;
+}
+
+pub fn spawn(command mut &cmd) -> void
+{
+  ensure_nul_terminated(&mut cmd.program);
+  ensure_nul_terminated(&mut cmd.working_directory);
+
+  for (var mut &argument : cmd.arguments)
+    ensure_nul_terminated(&mut argument);
+
+  spawn(cmd.working_directory, cmd.program, std::span(cmd.arguments), std::span(cmd.attributes));
+}

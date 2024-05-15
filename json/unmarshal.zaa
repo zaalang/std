@@ -6,6 +6,7 @@ import std.io;
 import std.scan;
 import std.string : String;
 import std.strconv;
+import std.optional;
 import json.scanner;
 
 pub struct scan_context
@@ -44,6 +45,38 @@ fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &value) -> v
 
     else:
       ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &value) -> void
+  where __is_enum<T>
+{
+  switch (ctx.tok.type)
+  {
+    case scalar:
+      if (var result = std::sscan(ctx.tok.value, &mut value); result.error)
+        ctx.error = result.error;
+
+      ctx.consume_token(&mut is);
+
+    else:
+      ctx.error = std::errc::format_error;
+  }
+}
+
+fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, std::optional<T> mut &optional) -> void
+{
+  if (ctx.tok.type == json::token::type::scalar && ctx.tok.style == json::scalar_style::plain && ctx.tok.value == "undefined")
+  {
+    optional.clear();
+
+    ctx.consume_token(&mut is);
+  }
+  else
+  {
+    optional.insert(T());
+
+    scan_to(&mut is, &mut ctx, &mut optional.value);
   }
 }
 
@@ -175,8 +208,8 @@ fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &object) -> 
           #{
             #for (const k : std::meta::fields_of($T))
             {
-              -> { case $(std::meta::name_of(k)):
-                scan_to(&mut is, &mut ctx, &mut object.$(k));
+              -> { case ${std::meta::name_of(k)}:
+                scan_to(&mut is, &mut ctx, &mut object.${k});
               }
             }
           }

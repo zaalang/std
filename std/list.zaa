@@ -4,6 +4,8 @@
 
 import std.memory;
 import std.stdlib : assert;
+import std.algorithm : find, find_if, find_if_not, count, count_if, count_if_not, sort!, uniq, uniq!, is_sorted;
+import std.algorithm.iteration : each, min, max, sum, mean;
 import std.range : Sentinal, Range;
 import std.type : as_const;
 
@@ -23,7 +25,7 @@ pub struct list<T, Allocator = std::allocator>
     insert(&mut this, this.end, &&other);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, list &&other) -> list mut &
   {
     std::launder(other);
@@ -305,7 +307,9 @@ pub struct list<T, Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn take_front(this mut &) -> T
   {
-    var result = &move std::launder(this.front);
+    var result = &move this.front;
+
+    std::launder(this);
 
     erase(&mut this, this._root.next, this._root.next.next);
 
@@ -315,7 +319,9 @@ pub struct list<T, Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = &move std::launder(this.back);
+    var result = &move this.back;
+
+    std::launder(this);
 
     erase(&mut this, this._root.prev, this._root.prev.next);
 
@@ -340,7 +346,9 @@ pub struct list<T, Allocator = std::allocator>
   #[lifetime(poison(this), repose(position, this))]
   pub fn take_erase(this mut &, iterator position) -> T
   {
-    var result = &move std::launder(this[position]);
+    var result = &move this[position];
+
+    std::launder(this);
 
     erase(&mut this, position);
 
@@ -355,22 +363,6 @@ pub struct list<T, Allocator = std::allocator>
     result.splice(result.begin, &mut this, first, last);
 
     return result;
-  }
-
-  #[lifetime(poison(this), depend(this))]
-  pub fn drop_n!(this mut &, usize n) -> list mut &
-  {
-    erase(&mut this, this.begin, std::next(this.begin, n, this.end));
-
-    return &this;
-  }
-
-  #[lifetime(poison(this), depend(this))]
-  pub fn take_n!(this mut &, usize n) -> list mut &
-  {
-    erase(&mut this, std::next(this.begin, n, this.end), this.end);
-
-    return &this;
   }
 
   pub fn resize(this mut &, usize size) -> void
@@ -484,6 +476,22 @@ pub struct list<T, Allocator = std::allocator>
 pub fn hash<T>(var &hasher, list<T> &lst) -> usize
 {
   return hasher.combine_range(lst, lst.begin, lst.end);
+}
+
+#[lifetime(poison(range), depend(range))]
+pub fn drop_n!<T>(list<T> mut &range, usize n) -> list<T> mut &
+{
+  range.erase(range.begin, std::next(range.begin, n, range.end));
+
+  return &range;
+}
+
+#[lifetime(poison(range), depend(range))]
+pub fn take_n!<T>(list<T> mut &range, usize n) -> list<T> mut &
+{
+  range.erase(std::next(range.begin, n, range.end), range.end);
+
+  return &range;
 }
 
 #[lifetime(poison(lst))]

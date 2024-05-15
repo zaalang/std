@@ -1,0 +1,38 @@
+//
+// signal
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+
+pub const SIGHUP = 1;
+pub const SIGINT = 2;
+pub const SIGQUIT = 3;
+pub const SIGILL = 4;
+pub const SIGTRAP = 5;
+pub const SIGABRT = 6;
+pub const SIGIOT = 6;
+pub const SIGBUS = 7;
+pub const SIGFPE = 8;
+pub const SIGKILL = 9;
+pub const SIGUSR1 = 10;
+pub const SIGSEGV = 11;
+pub const SIGUSR2 = 12;
+pub const SIGPIPE = 13;
+pub const SIGALRM = 14;
+pub const SIGTERM = 15;
+pub const SIGSTKFLT = 16;
+pub const SIGCHLD = 17;
+pub const SIGCONT = 18;
+pub const SIGSTOP = 19;
+pub const SIGTSTP = 20;
+pub const SIGTTIN = 21;
+pub const SIGTTOU = 22;
+pub const SIGURG = 23;
+pub const SIGXCPU = 24;
+pub const SIGXFSZ = 25;
+pub const SIGVTALRM = 26;
+pub const SIGPROF = 27;
+pub const SIGWINCH = 28;
+pub const SIGIO = 29;
+pub const SIGPOLL = SIGIO;

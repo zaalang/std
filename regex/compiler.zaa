@@ -16,10 +16,10 @@ using regex::expr;
 struct compile_context
 {
   options flags;
-  std::vector<u32> mut &program;
+  std::vector<u32> program;
 
-  compile_context(std::vector<u32> mut &program, options flags)
-    : flags(flags), program(&program)
+  compile_context(options flags)
+    : flags(flags)
   {
   }
 
@@ -428,9 +428,22 @@ fn encode_prefix(compile_context mut &ctx) -> void
   }
 }
 
-pub fn compile(std::vector<expr> &regex, std::vector<u32> mut &program, options flags) -> errc
+pub struct compile_result
 {
-  var ctx = compile_context(&mut program, flags);
+  pub errc error;
+  pub std::vector<u32> program;
+
+  pub compile_result() = default;
+  pub compile_result(compile_result&) = default;
+  pub fn =(compile_result mut &, compile_result&) -> compile_result mut & = default;
+  pub ~compile_result() = default;
+}
+
+pub fn compile(std::vector<expr> &regex, options flags) -> compile_result
+{
+  var result = compile_result();
+
+  var ctx = compile_context(flags);
 
   emit_prefix(&mut ctx);
 
@@ -440,7 +453,9 @@ pub fn compile(std::vector<expr> &regex, std::vector<u32> mut &program, options 
 
   encode_prefix(&mut ctx);
 
-  return cast<errc>(0);
+  result.program = &move ctx.program;
+
+  return result;
 }
 
 pub fn dump(std::vector<u32> &program) -> void

@@ -31,7 +31,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, flat_hash_map &&other) -> flat_hash_map mut &
   {
     std::launder(other);
@@ -144,6 +144,12 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   }
 
   #[lifetime(depend(this))]
+  fn data(this &&)
+  {
+    return this._data;
+  }
+
+  #[lifetime(depend(this))]
   pub fn begin(this &)
   {
     return iterator(this._ctrl, this._data);
@@ -160,6 +166,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     return &cast<&&typeof(this)>(*cast<value_type mut *>(iter.data));
   }
+
 
   #[lifetime(depend(this), repose(key, this))]
   pub fn []<Key>(this &&, Key &key)
@@ -237,7 +244,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (pos.1)
     {
-      new<value_type>(this._data + pos.0)(&&value, allocator?: this.allocator);
+      new<value_type>(this.data + pos.0)(&&value, allocator?: this.allocator);
     }
 
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
@@ -254,7 +261,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (pos.1)
     {
-      new<value_type>(this._data + pos.0)(&&key, &&args..., allocator?: this.allocator);
+      new<value_type>(this.data + pos.0)(&&key, &&args..., allocator?: this.allocator);
     }
 
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
@@ -271,7 +278,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (pos.1)
     {
-      new<value_type>(this._data + pos.0)(&&key, &&args..., allocator?: this.allocator);
+      new<value_type>(this.data + pos.0)(&&key, &&args..., allocator?: this.allocator);
     }
     else
     {
@@ -292,7 +299,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
       if (this.empty)
         return this.take(&mut other);
 
-      return this.merge(&mut other);
+      return this.merge(&move other);
     }
 
     if (var first = other.begin, var last = other.end; first != last)
@@ -322,7 +329,8 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   }
 
   #[lifetime(poison(this), consume(other))]
-  pub fn merge(this mut &, flat_hash_map mut &other) -> void
+  pub fn merge(this mut &, flat_hash_map &&other) -> void
+    where __is_rvalue<typeof(other)>
   {
     assert(&this != &other);
     assert(this.allocator == other.allocator);
@@ -374,7 +382,9 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[lifetime(poison(this))]
   pub fn take_erase<Key>(this mut &, Key &key) -> T
   {
-    var result = &move std::launder(this[key]);
+    var result = &move this[key];
+
+    std::launder(this);
 
     erase(&mut this, key);
 
@@ -384,7 +394,9 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[lifetime(poison(this), repose(position, this))]
   pub fn take_erase(this mut &, iterator position) -> T
   {
-    var result = &move std::launder(this[position].value);
+    var result = &move this[position].value;
+
+    std::launder(this);
 
     erase(&mut this, position);
 
@@ -441,8 +453,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
         var pos = this.find_first_non_full(hash);
 
         *(this._ctrl + pos) = hash2;
-        new<value_type>(this._data + pos)(&move *(data + i), allocator?: this.allocator);
-        value_type::~key_value_pair(&mut *(data + i));
+        uninitialised_move(&mut this, this._data + pos, data + i);
       }
     }
 
@@ -509,6 +520,14 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     *(this._ctrl + index) = hash2;
 
     return (index, true);
+  }
+
+  #[unsafe]
+  fn uninitialised_move(this mut &, value_type mut *dst, value_type mut *src) -> void
+  {
+    new<value_type>(dst)(&move *src, allocator?: this.allocator);
+
+    value_type::~key_value_pair(&mut *src);
   }
 
   #[lifetime(poison(this))]

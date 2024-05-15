@@ -7,6 +7,7 @@ import std.fmt;
 import std.range : Range;
 import std.string : String;
 import std.strconv;
+import std.optional;
 
 using std::OutputStream;
 
@@ -29,9 +30,27 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T value) throws -> void
   ctx.written += std::print_to(&mut os, value);
 }
 
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T value) throws -> void
+    where __is_enum<T>
+{
+  ctx.written += std::format_to(&mut os, "\"{}\"", value);
+}
+
 fn fmt(OutputStream mut &os, fmt_context mut &ctx, String &value) throws -> void
 {
   ctx.written += std::format_to(&mut os, "{:?}", value);
+}
+
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::optional<T> &optional) throws -> void
+{
+  switch (optional)
+  {
+    case Some:
+      fmt_to(&mut os, &mut ctx, optional.value);
+
+    case None:
+      ctx.written += std::print_to(&mut os, "undefined");
+  }
 }
 
 fn fmt<T>(std::OutputStream mut &os, fmt_context mut &ctx, Range<T> &range) throws -> void

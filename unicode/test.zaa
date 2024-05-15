@@ -1,0 +1,135 @@
+//
+// test
+//
+
+// wget https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakTest.txt
+// wget https://www.unicode.org/Public/UCD/latest/ucd/NormalizationTest.txt
+
+import std.stdio;
+import std.string : String;
+import unicode;
+import unicode.norm;
+import unicode.grapheme : graphemes;
+import chrono;
+
+fn main() -> int
+{
+  var s = chrono::system_clock::now;
+
+  try
+  {
+    var fin = std::file::open("GraphemeBreakTest.txt");
+
+    for (var line : std::buffered_reader(&mut fin).lines)
+    {
+      if (line.empty || line.starts_with("#"))
+        continue;
+
+      var fields = line.cut('#').0.words;
+
+      var str = std::string();
+      for (var ch : fields.filter(|field| field != "÷" && field != "×"))
+      {
+        var code = char();
+        std::atoi(ch.begin, ch.end, &mut code, 16);
+
+        str += code;
+      }
+
+      std::printf("{} {:?}\n", fields, str);
+
+      var graphemes = std::vector::from(str.graphemes);
+
+      for (var grapheme : graphemes)
+      {
+        std::printf("> {} {:x} {:?}\n", grapheme.chars.len, grapheme.chars, std::string_view(grapheme));
+      }
+
+      if (graphemes.len != std::count(fields, "÷") - 1)
+        std::print("***");
+
+      for (var cc = str.chars, var i = cc.end, var j = cc.end, var k = 0; j != cc.begin; j = i, ++k)
+      {
+        i = unicode::prev_grapheme_boundary(cc.begin, j);
+
+        std::printf("< {} {:x} {:?}\n", j - i, std::string_view(i, j).chars, std::string_view(i, j));
+
+        if (std::span(i, j) != graphemes[graphemes.len - k - 1])
+          std::print("***");
+      }
+    }
+  }
+  catch (std::error e)
+  {
+  }
+
+  try
+  {
+    var fin = std::file::open("NormalizationTest.txt");
+
+    for (var line : std::buffered_reader(&mut fin).lines)
+    {
+      if (line.empty || line.starts_with("#") || line.starts_with("@"))
+        continue;
+
+      var source = std::string_view();
+      var nfc = std::string_view();
+      var nfd = std::string_view();
+      var nfkc = std::string_view();
+      var nfkd = std::string_view();
+
+      if (!std::sscanf(line, "{};{};{};{};{};", &mut source, &mut nfc, &mut nfd, &mut nfkc, &mut nfkd))
+        std::panic("error scaning input '", line, "'");
+
+      var source_str = std::fold_left(source.words, std::string(), |str, ch| {
+        var code = char();
+        std::atoi(ch.begin, ch.end, &mut code, 16);
+
+        return str += code;
+      });
+
+      var nfc_str = std::fold_left(nfc.words, std::string(), |str, ch| {
+        var code = char();
+        std::atoi(ch.begin, ch.end, &mut code, 16);
+
+        return str += code;
+      });
+
+      var nfd_str = std::fold_left(nfd.words, std::string(), |str, ch| {
+        var code = char();
+        std::atoi(ch.begin, ch.end, &mut code, 16);
+
+        return str += code;
+      });
+
+      std::printf("{:x} {:x} {:x}\n", source_str.chars, unicode::normalize<unicode::nf::c>(source_str).chars, nfc_str.chars);
+
+      if (unicode::normalize<unicode::nf::c>(source_str) != nfc_str)
+        std::print("***");
+
+      if (unicode::normalize<unicode::nf::c>(nfc_str) != nfc_str)
+        std::print("***");
+
+      if (unicode::normalize<unicode::nf::c>(nfd_str) != nfc_str)
+        std::print("***");
+
+      std::printf("{:x} {:x} {:x}\n", source_str.chars, unicode::normalize<unicode::nf::d>(source_str).chars, nfd_str.chars);
+
+      if (unicode::normalize<unicode::nf::d>(source_str) != nfd_str)
+        std::print("***");
+
+      if (unicode::normalize<unicode::nf::d>(nfc_str) != nfd_str)
+        std::print("***");
+
+      if (unicode::normalize<unicode::nf::d>(nfd_str) != nfd_str)
+        std::print("***");
+    }
+  }
+  catch (std::error e)
+  {
+  }
+
+  std::print(chrono::system_clock::now - s);
+
+  return 0;
+}

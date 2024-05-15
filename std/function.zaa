@@ -20,7 +20,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
   {
     Y callable;
 
-    fn fx(this&) -> Fx *
+    fn fx(this &) -> Fx *
     {
       return &Fx();
     }
@@ -37,7 +37,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
 
     fn destroy(void mut *this) -> void
     {
-      cast<Holder<Y> mut *>(this).~Holder();
+      Holder::~Holder(&mut *cast<Holder<Y> mut *>(this));
     }
 
     Holder(Y &&fx)
@@ -53,18 +53,19 @@ pub struct delegate<R(V), Throws = void, N = 24>
   pub delegate(#delegate&) = default;
 
   pub delegate<Y>(Y &&fx)
+    where requires (Y fx, V v) -> R { try { return fx(&&v...); } catch(Throws) {} }
   {
     std::assert(sizeof<Holder<Y>> <= sizeof(_storage), "delegate too large for storage");
 
     _fx = new<Holder<Y>>(cast<void mut *>(_storage.data))(&&fx).fx;
   }
 
-  pub fn bool(this&) -> bool
+  pub fn bool(this &) -> bool
   {
     return this._fx != null;
   }
 
-  pub fn ==(this&, null) -> bool
+  pub fn ==(this &, null) -> bool
   {
     return this._fx == null;
   }
@@ -75,6 +76,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
   }
 
   pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
+    where requires (Y fx, V v) -> R { try { return fx(&&v...); } catch(Throws) {} }
   {
     this = delegate(&&fx);
 

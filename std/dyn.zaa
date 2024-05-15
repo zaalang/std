@@ -91,7 +91,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
   {
     if (this.inner)
     {
-      this.inner.destruct(this.inner.self);
+      this.inner.destruct(&mut this.inner.self);
 
       destroy(this.inner);
     }
@@ -102,7 +102,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
   fn destroy(Dx mut *ptr) -> void
   {
     var size = ptr.size;
-    var allocator = &move ptr._allocator;
+    var allocator = ptr._allocator;
 
     Allocator::~Allocator(&mut ptr._allocator);
 

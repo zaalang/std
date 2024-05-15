@@ -256,7 +256,7 @@ pub union optional<T, Allocator = std::allocator>
     return &this;
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, optional &&other) -> optional mut &
   {
     std::launder(other);

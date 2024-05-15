@@ -1,0 +1,161 @@
+//
+// error
+//
+
+import std.error;
+import os.windows.ntdef : *;
+
+pub fn error_code(DWORD error) -> std::errc
+{
+  switch (error)
+  {
+    case 1:
+    case 10043:
+    case 10045:
+    case 10047:
+      return not_supported;
+
+    case 2:
+    case 3:
+    case 110:
+      return not_found;
+
+    case 4:
+    case 10024:
+      return too_many_files;
+
+    case 5:
+    case 12:
+    case 16:
+    case 19:
+    case 32:
+    case 82:
+    case 998:
+    case 10013:
+      return permission_denied;
+
+    case 6:
+    case 123:
+    case 131:
+    case 267:
+    case 10104:
+      return invalid_argument;
+
+    case 8:
+    case 14:
+      return out_of_memory;
+
+    case 15:
+    case 20:
+    case 55:
+      return no_such_device;
+
+    case 17:
+      return cross_device_link;
+
+    case 21:
+    case 1237:
+    case 10035:
+      return would_block;
+
+    case 33:
+    case 212:
+      return no_lock_available;
+
+    case 39:
+    case 112:
+      return no_space_remaining;
+
+    case 80:
+    case 183:
+      return already_exists;
+
+    case 111:
+    case 10063:
+      return name_too_long;
+
+    case 122:
+    case 10055:
+      return no_buffer_space;
+
+    case 142:
+    case 170:
+    case 2401:
+    case 2404:
+      return device_busy;
+
+    case 145:
+      return directory_not_empty;
+
+    case 995:
+      return cancelled;
+
+    case 10004:
+      return interrupted;
+
+    case 10009:
+      return bad_descriptor;
+
+    case 10014:
+      return bad_address;
+
+    case 10036:
+      return already_in_progress;
+
+    case 10037:
+      return already_in_progress;
+
+    case 10038:
+      return not_a_socket;
+
+    case 10039:
+      return address_required;
+
+    case 10040:
+      return message_too_long;
+
+    case 10041:
+      return protocol_wrong_type;
+
+    case 10042:
+      return protocol_not_available;
+
+    case 10048:
+      return address_in_use;
+
+    case 10049:
+      return address_not_available;
+
+    case 10050:
+      return network_down;
+
+    case 10051:
+      return network_unreachable;
+
+    case 10052:
+      return network_reset;
+
+    case 10053:
+      return connection_aborted;
+
+    case 10054:
+      return connection_reset;
+
+    case 10056:
+      return already_connected;
+
+    case 10057:
+      return not_connected;
+
+    case 10060:
+      return timed_out;
+
+    case 10061:
+      return connection_refused;
+
+    case 10065:
+      return host_unreachable;
+  }
+
+  return std::errc::io_error;
+}

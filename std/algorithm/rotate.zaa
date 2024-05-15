@@ -5,6 +5,7 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
+#[unsafe]
 pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
 {
   if (first == last)
@@ -17,6 +18,7 @@ pub fn rotate_left<I>(I first, Sentinal<I> last) -> I
   return lm1;
 }
 
+#[safe]
 #[lifetime(repose(first, range), repose(last, range), depend(range))]
 pub fn rotate_left<T, I>(Range<T> mut &range, I first, Sentinal<I> last) -> I
 {
@@ -43,6 +45,7 @@ pub fn rotate_left!<T>(Range<T> mut &range)
   return &range;
 }
 
+#[unsafe]
 pub fn rotate_right<I>(I first, I last) -> I
   where __is_match<BidirectionalIterator, I>()
 {
@@ -57,6 +60,7 @@ pub fn rotate_right<I>(I first, I last) -> I
   return fp1;
 }
 
+#[safe]
 #[lifetime(repose(first, range), repose(last, range), depend(range))]
 pub fn rotate_right<T, I>(Range<T> mut &range, I first, I last) -> I
   where __is_match<BidirectionalIterator, I>()
@@ -132,7 +136,7 @@ pub fn rotate<T, I>(Range<T> mut &range, I first, I middle, Sentinal<I> last) ->
 #[lifetime(repose(middle, range), depend(range))]
 pub fn rotate!<T, I>(Range<T> mut &range, I middle)
 {
-  rotate(&mut range, middle);
+  rotate(&mut range, range.begin, middle, range.end);
 
   return &range;
 }

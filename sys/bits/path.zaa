@@ -1,0 +1,98 @@
+//
+// path
+//
+
+import std.string;
+
+#if __cfg("os.linux")
+
+  pub fn sep_byte() -> u8
+  {
+    return cast<u8>('/');
+  }
+
+  pub fn is_sep_byte(u8 ch) -> bool
+  {
+    return ch == cast('/');
+  }
+
+  pub fn scan_path_prefix(std::string_view path) -> usize
+  {
+    if (path.len != 0 && is_sep_byte(path[0]))
+      return 1;
+    return 0;
+  }
+
+#end
+
+#if __cfg("os.windows")
+
+  pub fn sep_byte() -> u8
+  {
+    return cast<u8>('\\');
+  }
+
+  pub fn is_sep_byte(u8 ch) -> bool
+  {
+    return ch == cast('/') || ch == cast('\\');
+  }
+
+  pub fn scan_path_prefix(std::string_view path) -> usize
+  {
+    if (path.starts_with("\\\\"))
+    {
+      var i = 2;
+
+      for (; i != path.len; ++i)
+        if (is_sep_byte(path[i]))
+          break;
+
+      if (i != path.len)
+        ++i;
+
+      for (; i != path.len; ++i)
+        if (is_sep_byte(path[i]))
+          break;
+
+      return i;
+    }
+
+    if (path.len > 1 && path[1] == cast(':'))
+    {
+      var i = 2;
+
+      if (path.len > 2 && is_sep_byte(path[2]))
+        return 3;
+
+      for (; i != path.len; ++i)
+        if (is_sep_byte(path[i]))
+          break;
+
+      return i;
+    }
+
+    return 0;
+  }
+
+#end
+
+#if __cfg("os.zaos")
+
+  pub fn sep_byte() -> u8
+  {
+    return cast<u8>('/');
+  }
+
+  pub fn is_sep_byte(u8 ch) -> bool
+  {
+    return ch == cast('/');
+  }
+
+  pub fn scan_path_prefix(std::string_view path) -> usize
+  {
+    if (path.len != 0 && is_sep_byte(path[0]))
+      return 1;
+    return 0;
+  }
+
+#end

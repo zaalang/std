@@ -1,0 +1,532 @@
+//
+// aargh parser
+//
+
+import std.meta;
+import std.string : String;
+import std.range : Range;
+import std.scan;
+
+pub fn parser()
+{
+  -> {
+    pub fn parse<Args>(Args &args)
+    {
+      return ::aargh::parse<typeof(this)>(args);
+    }
+
+    pub this() = default;
+    pub ~this() = default;
+  }
+}
+
+struct attr
+{
+  enum type
+  {
+    flag,
+    value,
+    count,
+    command,
+    free,
+  }
+
+  type type = type::free;
+  std::optional<std::string_literal> short;
+  std::optional<std::string_literal> long;
+  std::optional<std::string_literal> help;
+  bool required = false;
+  bool hidden = false;
+
+  attr() = default;
+  attr(attr&&) = default;
+  ~attr() = default;
+}
+
+struct token
+{
+  enum type
+  {
+    unknown,
+    l_paren,
+    r_paren,
+    equal,
+    comma,
+    identifier,
+    char_literal,
+    string_literal,
+    eof,
+  }
+
+  type type;
+  std::string_literal span;
+
+  token(type type, std::string_literal span)
+    : type(type), span(span)
+  {
+  }
+
+  token() = default;
+  token(token&) = default;
+  fn =(token mut &, token &) -> token mut & = default;
+  ~token() = default;
+}
+
+fn lex(std::string_literal &src, usize cursor, token mut &tok) -> usize
+{
+  while (cursor < src.len)
+  {
+    switch (src[cursor])
+    {
+      case ' ': case '\t': case '\r': case '\n':
+        cursor += 1;
+        continue;
+
+      case '(':
+        tok = token(token::type::l_paren, src[cursor .. ++cursor]);
+
+      case ')':
+        tok = token(token::type::r_paren, src[cursor .. ++cursor]);
+
+      case '=':
+        tok = token(token::type::equal, src[cursor .. ++cursor]);
+
+      case ',':
+        tok = token(token::type::comma, src[cursor .. ++cursor]);
+
+      case '"':
+        let beg = ++cursor;
+
+        while (cursor < src.len)
+        {
+          switch (src[cursor])
+          {
+            case '"':
+              cursor += 1;
+              break;
+
+            case '\\':
+              if (src[beg] == cast('"'))
+              {
+                cursor += 1;
+
+                if (cursor == src.len)
+                  break;
+              }
+          }
+
+          cursor += 1;
+        }
+
+        tok = token(token::type::string_literal, src[beg .. cursor - 1]);
+
+      case '\'':
+        let beg = ++cursor;
+
+        while (cursor < src.len)
+        {
+          switch (src[cursor])
+          {
+            case '\'':
+              cursor += 1;
+              break;
+          }
+
+          cursor += 1;
+        }
+
+        tok = token(token::type::char_literal, src[beg .. cursor - 1]);
+
+      case 'a' ..= 'z':
+      case 'A' ..= 'Z':
+        let beg = cursor;
+
+        while (cursor < src.len)
+        {
+          switch (src[cursor])
+          {
+            case '0' ..= '9':
+            case 'a' ..= 'z':
+            case 'A' ..= 'Z':
+              cursor += 1;
+
+            else:
+              break;
+          }
+        }
+
+        tok = token(token::type::identifier, src[beg .. cursor]);
+
+      else:
+        tok = token(token::type::unknown, src[cursor .. ++cursor]);
+    }
+
+    return cursor;
+  }
+
+  tok = token(token::type::eof, "");
+
+  return cursor;
+}
+
+fn flatten(std::string_literal str) -> std::string_literal
+{
+  return std::string(str).gsub(cast<u8>('_'), cast<u8>('-')).to_lowercase!.as_literal;
+}
+
+fn parse_defn(std::string_literal defn, std::source_location site) -> attr
+{
+  var attr = attr();
+
+  var tok = token();
+  var cursor = lex(defn, 0, &mut tok);
+
+  if (tok.type != token::type::l_paren)
+    std::panic(site, ": arg expected '('");
+
+  while (tok.type != token::type::eof)
+  {
+    cursor = lex(defn, cursor, &mut tok);
+
+    switch (tok.span)
+    {
+      case "flag":
+        attr.type = attr::type::flag;
+
+      case "value":
+        attr.type = attr::type::value;
+
+      case "count":
+        attr.type = attr::type::count;
+
+      case "command":
+        attr.type = attr::type::command;
+
+      case "free":
+        attr.type = attr::type::free;
+
+      case "short":
+        cursor = lex(defn, cursor, &mut tok);
+
+        if (tok.type != token::type::equal)
+          std::panic(site, ": arg expected '='");
+
+        cursor = lex(defn, cursor, &mut tok);
+
+        if (tok.type != token::type::char_literal)
+          std::panic(site, ": arg expected char literal");
+
+        attr.short = tok.span;
+
+      case "long":
+        cursor = lex(defn, cursor, &mut tok);
+
+        if (tok.type != token::type::equal)
+          std::panic(site, ": arg expected '='");
+
+        cursor = lex(defn, cursor, &mut tok);
+
+        if (tok.type != token::type::string_literal)
+          std::panic(site, ": arg expected string literal");
+
+        attr.long = tok.span;
+
+      case "help":
+        cursor = lex(defn, cursor, &mut tok);
+
+        if (tok.type != token::type::equal)
+          std::panic(site, ": arg expected '='");
+
+        cursor = lex(defn, cursor, &mut tok);
+
+        if (tok.type != token::type::string_literal)
+          std::panic(site, ": arg expected string literal");
+
+        attr.help = tok.span;
+
+      case "required":
+        attr.required = true;
+
+      case "hidden":
+        attr.hidden = true;
+
+      else:
+        std::panic(site, ": unknown arg attribute - ", tok.span);
+    }
+
+    cursor = lex(defn, cursor, &mut tok);
+
+    if (tok.type != token::type::comma)
+      break;
+  }
+
+  if (tok.type != token::type::r_paren)
+    std::panic(site, ": arg expected ')'");
+
+  return attr;
+}
+
+fn parse_options<Opts>() -> std::vector<attr>
+{
+  var options = std::vector<attr>::with_capacity(std::tuple_len<Opts>);
+
+  #for (const k : std::meta::fields_of($Opts))
+  {
+    var attr = #parse_defn(std::meta::attr(k, "arg"), std::meta::site(k));
+
+    if (attr.long.is_none)
+      attr.long = #flatten(std::meta::name_of(k));
+
+    options.push_back(attr);
+  }
+
+  return options;
+}
+
+pub fn usage<Opts>() -> void
+{
+  let options = #parse_options<Opts>().as_literal;
+
+  var gutter = 16;
+
+  std::print("Usage:");
+
+  for (var &opt : options)
+  {
+    if (opt.hidden)
+      continue;
+
+    switch (opt.type)
+    {
+      case free:
+        std::printf("  {:>*} : {}", gutter, opt.long.value, opt.help.value_or("..."));
+
+        if (opt.required)
+          std::printf(" [required]");
+
+        std::printf("\n");
+    }
+  }
+
+  std::print("Options:");
+
+  for (var &opt : options)
+  {
+    if (opt.hidden)
+      continue;
+
+    switch (opt.type)
+    {
+      case flag:
+      case value:
+      case count:
+        var label = std::string();
+
+        if (opt.short.is_some)
+          label += std::format("-{},", opt.short.value);
+
+        label += std::format("--{}", opt.long.value);
+
+        std::printf("  {:>*} : {}", gutter, label, opt.help.value_or("..."));
+
+        if (opt.required)
+          std::printf(" [required]");
+
+        std::printf("\n");
+    }
+  }
+}
+
+fn set_flag<Opts>(Opts mut &opts, usize field) -> std::errc
+{
+  switch (field)
+  {
+    #{
+      #for (const k = 0; k < std::tuple_len<Opts>; ++k)
+      {
+        #if (requires (Opts opts) { opts.#k = true; })
+          -> { case ${k}: opts.${k} = true; }
+      }
+    }
+
+    else:
+      return std::errc::format_error;
+  }
+
+  return cast(0);
+}
+
+fn set_value<Opts>(Opts mut &opts, usize field, std::string_view value) -> std::errc
+{
+  switch (field)
+  {
+    #{
+      #for (const k = 0; k < std::tuple_len<Opts>; ++k)
+      {
+        -> { case ${k}:
+          #if (requires (Opts opts) { opts.${k}.push_back(); })
+          {
+            var mut &back = opts.${k}.push_back();
+
+            if (var result = std::sscan(value, &mut back); result.error || result.len != value.len)
+              return std::errc::format_error;
+          }
+          #else
+          {
+            if (var result = std::sscan(value, &mut opts.${k}); result.error || result.len != value.len)
+              return std::errc::format_error;
+          }
+        }
+      }
+    }
+  }
+
+  return cast(0);
+}
+
+fn set_count<Opts>(Opts mut &opts, usize field) -> std::errc
+{
+  switch (field)
+  {
+    #{
+      #for (const k = 0; k < std::tuple_len<Opts>; ++k)
+      {
+        #if (requires (Opts opts) { opts.#k += 1; })
+          -> { case ${k}: opts.${k} += 1; }
+      }
+    }
+
+    else:
+      return std::errc::format_error;
+  }
+
+  return cast(0);
+}
+
+pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
+{
+  let options = #parse_options<Opts>().as_literal;
+
+  var present = [false; std::tuple_len<Opts>];
+
+  var i = args.begin;
+
+  if (i != args.end)
+    ++i;
+
+  var k = std::find_if(options, |k| k.type == attr::type::free);
+
+  for (; i != args.end; ++i)
+  {
+    var arg = args[i];
+    var errc = cast<std::errc>(0);
+
+    if (arg.starts_with("--"))
+    {
+      arg.drop_front!(2);
+
+      var (name, value) = arg.cut('=');
+
+      var j = std::find_if(options, |k| k.long.value_or_default == name) - options.begin;
+
+      if (j < options.len)
+      {
+        switch (options[j].type)
+        {
+          case flag:
+            errc = set_flag(&mut opts, j);
+
+          case value:
+            errc = set_value(&mut opts, j, value);
+
+          case count:
+            errc = set_count(&mut opts, j);
+
+          else:
+            errc = std::errc::invalid_argument;
+        }
+
+        present[j] = true;
+      }
+      else
+      {
+        errc = std::errc::not_found;
+      }
+    }
+
+    else if (arg.starts_with("-"))
+    {
+      arg.drop_front!(1);
+
+      var (names, value) = arg.cut('=');
+
+      for (var name : names)
+      {
+        var j = std::find_if(options, |k| k.short.value_or_default == std::string_view(&name, 1)) - options.begin;
+
+        if (j < options.len)
+        {
+          switch (options[j].type)
+          {
+            case flag:
+              errc = set_flag(&mut opts, j);
+
+            case value:
+              errc = set_value(&mut opts, j, value);
+
+            case count:
+              errc = set_count(&mut opts, j);
+
+            else:
+              errc = std::errc::invalid_argument;
+          }
+
+          present[j] = true;
+        }
+        else
+        {
+          errc = std::errc::not_found;
+        }
+      }
+    }
+
+    else
+    {
+      var j = k - options.begin;
+
+      if (j < options.len)
+      {
+        errc = set_value(&mut opts, j, arg);
+
+        if (var j = std::find_if(options, k + 1, options.end, |k| k.type == attr::type::free); j != options.end)
+          k = j;
+
+        present[j] = true;
+      }
+      else
+      {
+        errc = std::errc::not_found;
+      }
+    }
+
+    if (errc)
+    {
+      std::fprint(std::stderr, "invalid argument '", arg, "' : ", errc);
+    }
+  }
+
+  for (var i = 0; i < options.len; ++i)
+  {
+    if (options[i].required && !present[i])
+      std::fprint(std::stderr, "required argument '", options[i].long.value, "' : not present");
+  }
+}
+
+pub fn parse<Opts>(Range<std::string_view> &args) -> Opts
+{
+  var opts = Opts();
+
+  parse(&mut opts, args);
+
+  return opts;
+}

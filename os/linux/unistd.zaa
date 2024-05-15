@@ -4,34 +4,8 @@
 
 import std.stdlib;
 pub import os.linux.arch : *;
+import os.linux.signal;
 import os.linux.time : timeval, timespec;
-
-pub fn fork() -> int
-{
-  return cast<int>(std::bit_cast<intptr>(syscall0(sys_fork)));
-}
-
-pub fn execve(u8 *pathname, u8 **argv, u8 **envp) -> int
-{
-  return cast<int>(std::bit_cast<intptr>(syscall3(sys_execve, pathname, argv, envp)));
-}
-
-pub const WAIT_ANY = ~0;
-pub const WAIT_MYPGRP = 0;
-
-pub fn wexitstatus(int s) -> int { return (s & 0xff00) >> 8; }
-pub fn wtermsig(int s) -> int { return s & 0x7f; }
-pub fn wstopsig(int s) -> int { return wexitstatus(s); }
-pub fn wcoredump(int s) -> bool { return s & 0x80 != 0; }
-pub fn wifexited(int s) -> bool { return wtermsig(s) == 0; }
-pub fn wifstopped(int s) -> bool { return (((s & 0xffff) * 0x10001) >> 8) > 0x7f00; }
-pub fn wifsignaled(int s) -> bool { return ((s & 0xffff) - 1) < 0xff; }
-pub fn wifcontinued(int s) -> bool { return (s == 0xffff); }
-
-pub fn wait4(pid_t pid, int mut *wstatus, int options, void mut *rusage) -> int
-{
-  return cast<int>(std::bit_cast<intptr>(syscall4(sys_wait4, pid, wstatus, options, rusage)));
-}
 
 pub fn getuid() -> int
 {
@@ -58,6 +32,16 @@ pub fn setsid() -> int
   return cast<int>(std::bit_cast<intptr>(syscall0(sys_setsid)));
 }
 
+pub fn chdir(u8 *path) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_chdir, path)));
+}
+
+pub fn getcwd(u8 mut *buffer, usize size) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_getcwd, buffer, size)));
+}
+
 #[noreturn]
 pub fn exit(int rval) -> void
 {
@@ -72,4 +56,61 @@ pub const FUTEX_CLOCK_REALTIME = 256;
 pub fn futex(u32 *uaddr, int futex_op, u32 val, timespec *timeout) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall4(sys_futex, uaddr, futex_op, val, timeout)));
+}
+
+pub const CLONE_VM = 0x00000100;
+pub const CLONE_FS = 0x00000200;
+pub const CLONE_FILES = 0x00000400;
+pub const CLONE_SIGHAND = 0x00000800;
+pub const CLONE_PIDFD = 0x00001000;
+pub const CLONE_PTRACE = 0x00002000;
+pub const CLONE_VFORK = 0x00004000;
+pub const CLONE_PARENT = 0x00008000;
+pub const CLONE_THREAD = 0x00010000;
+pub const CLONE_NEWNS = 0x00020000;
+pub const CLONE_SYSVSEM = 0x00040000;
+pub const CLONE_SETTLS = 0x00080000;
+pub const CLONE_PARENT_SETTID = 0x00100000;
+pub const CLONE_CHILD_CLEARTID = 0x00200000;
+pub const CLONE_DETACHED = 0x00400000;
+pub const CLONE_UNTRACED = 0x00800000;
+pub const CLONE_CHILD_SETTID = 0x01000000;
+pub const CLONE_NEWCGROUP = 0x02000000;
+pub const CLONE_NEWUTS = 0x04000000;
+pub const CLONE_NEWIPC = 0x08000000;
+pub const CLONE_NEWUSER = 0x10000000;
+pub const CLONE_NEWPID = 0x20000000;
+pub const CLONE_NEWNET = 0x40000000;
+pub const CLONE_IO = 0x80000000;
+
+pub fn clone(void mut *stack, fn (*start_routine)(void mut *) -> int, u64 flags, int mut *parent_tid, int mut *child_tid, void *tls) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(__clone(stack, start_routine, flags, parent_tid, child_tid, tls)));
+}
+
+pub fn fork() -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall0(sys_fork)));
+}
+
+pub fn execve(u8 *pathname, u8 **argv, u8 **envp) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_execve, pathname, argv, envp)));
+}
+
+pub const WAIT_ANY = ~0;
+pub const WAIT_MYPGRP = 0;
+
+pub fn wexitstatus(int s) -> int { return (s & 0xff00) >> 8; }
+pub fn wtermsig(int s) -> int { return s & 0x7f; }
+pub fn wstopsig(int s) -> int { return wexitstatus(s); }
+pub fn wcoredump(int s) -> bool { return s & 0x80 != 0; }
+pub fn wifexited(int s) -> bool { return wtermsig(s) == 0; }
+pub fn wifstopped(int s) -> bool { return (((s & 0xffff) * 0x10001) >> 8) > 0x7f00; }
+pub fn wifsignaled(int s) -> bool { return ((s & 0xffff) - 1) < 0xff; }
+pub fn wifcontinued(int s) -> bool { return (s == 0xffff); }
+
+pub fn wait4(pid_t pid, int mut *wstatus, int options, void mut *rusage) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall4(sys_wait4, pid, wstatus, options, rusage)));
 }

@@ -3,6 +3,7 @@
 //
 
 import std.stdio : assert;
+import std.error;
 
 pub struct meta
 {
@@ -54,14 +55,24 @@ pub struct meta
 
   enum TypeQuery
   {
+    const is_enum = 0x1;
+    const is_array = 0x2;
+    const is_tuple = 0x3;
+    const is_union = 0x4;
+    const is_struct = 0x5;
+    const is_vtable = 0x6;
+    const is_builtin = 0x7;
     const add_const = 0xcd;
     const remove_const = 0x95;
     const add_pointer = 0xfa;
     const remove_pointer = 0x73;
     const add_reference = 0xeb;
     const remove_reference = 0xfc;
+    const field_type = 0x41;
     const return_type = 0xc8;
     const parameters_type = 0x93;
+    const type_size = 0x18;
+    const type_align = 0x19;
     const tuple_append = 0xe4;
   }
 
@@ -83,6 +94,19 @@ pub struct meta
   pub const fn children_of(declid decl, DeclKind filter = cast(0))
   {
     return __decl_children(decl, cast(filter));
+  }
+
+  pub const fn site(declid decl)
+  {
+    return std::source_location(__decl_site(decl));
+  }
+
+  pub const fn attr(declid decl, typeof("") name)
+  {
+    if (var id = __decl_attr(decl, name))
+      return __attr_text(id);
+
+    return "";
   }
 
   pub const fn name_of(typeid type)
@@ -160,6 +184,11 @@ pub struct meta
     return __type_query(TypeQuery::remove_reference, type);
   }
 
+  pub const fn field_type(typeid type, usize index) -> typeid
+  {
+    return __type_query(TypeQuery::field_type, type, index);
+  }
+
   pub const fn return_type(declid decl) -> typeid
   {
     return __type_query(TypeQuery::return_type, decl);
@@ -180,6 +209,20 @@ pub struct meta
     return __type_query(TypeQuery::tuple_append, tuple, type);
   }
 
+  pub const fn size_of(typeid type) -> usize
+  {
+    var size = usize(0);
+    __type_query(TypeQuery::type_size, type, &size);
+    return size;
+  }
+
+  pub const fn align_of(typeid type) -> usize
+  {
+    var align = usize(0);
+    __type_query(TypeQuery::type_align, type, &align);
+    return align;
+  }
+
   pub const fn enumerator_name<T>(T value)
   {
     switch (value)
@@ -187,7 +230,7 @@ pub struct meta
       #{
         #for (const k : std::meta::enumerators_of($T))
         {
-          -> { case $(T::#k): return $(std::meta::name_of(k)); }
+          -> { case ${T::#k}: return ${std::meta::name_of(k)}; }
         }
       }
     }

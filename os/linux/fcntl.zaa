@@ -3,6 +3,7 @@
 //
 
 import std.stdlib;
+import std.memory;
 pub import os.linux.arch : *;
 import os.linux.time : timeval, timespec;
 
@@ -108,6 +109,25 @@ pub struct stat
   pub ~stat() = default;
 }
 
+pub struct dirent
+{
+  pub ino_t d_ino;
+  pub off_t d_off;
+  pub u16 d_reclen;
+  pub u8 d_type;
+  pub u8[0] d_name;
+
+  pub fn name(this&) -> std::string_view
+  {
+    return std::string_view(this.d_name.data, std::memchr(this.d_name.data, 0, cast<usize>(this.d_reclen - offsetof(dirent::d_name))));
+  }
+
+  pub dirent() = default;
+  pub dirent(dirent&) = default;
+  pub fn =(dirent mut &, dirent &) -> dirent mut & = default;
+  pub ~dirent() = default;
+}
+
 pub fn open(u8 *path, u32 flags, mode_t mode) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall3(sys_open, path, flags, mode)));
@@ -128,9 +148,19 @@ pub fn dup3(int oldfd, int newfd, int flags) -> int
   return cast<int>(std::bit_cast<intptr>(syscall3(sys_dup3, oldfd, newfd, flags)));
 }
 
-pub fn fstat(int fd, stat mut *fs) -> int
+pub fn stat(u8 *path, stat mut *buf) -> int
 {
-  return cast<int>(std::bit_cast<intptr>(syscall2(sys_fstat, fd, fs)));
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_stat, path, buf)));
+}
+
+pub fn lstat(u8 *path, stat mut *buf) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_lstat, path, buf)));
+}
+
+pub fn fstat(int fd, stat mut *buf) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_fstat, fd, buf)));
 }
 
 pub fn close(int fd) -> int
@@ -236,4 +266,9 @@ pub fn fd_isset(fd_set &fds, int n) -> bool
 pub fn select(int n, fd_set *rfds, fd_set *wfds, fd_set *efds, timeval *tv) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall5(sys_select, n, rfds, wfds, efds, tv)));
+}
+
+pub fn getdents(int fd, void mut *dirp, usize count) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_getdents64, fd, dirp, count)));
 }

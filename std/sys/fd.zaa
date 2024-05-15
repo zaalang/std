@@ -15,10 +15,10 @@ pub enum filetype
   pub const block_device = 1;
   pub const character_device = 2;
   pub const directory = 3;
-  pub const regular_file = 4;
+  pub const regular = 4;
   pub const socket_dgram = 5;
   pub const socket_stream = 6;
-  pub const symbolic_link = 7;
+  pub const symlink = 7;
 }
 
 pub struct filestat
@@ -130,7 +130,7 @@ pub struct fd
     return handle;
   }
 
-  pub fn bool(this&) -> bool
+  pub fn bool(this &) -> bool
   {
     return this.fd != ~0;
   }

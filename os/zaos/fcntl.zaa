@@ -63,16 +63,16 @@ pub const EINVAL = -22;
 pub const EAGAIN = -11;
 pub const ETIMEDOUT = -110;
 
-pub enum ftype
+pub enum filetype
 {
   unknown,
   block_device,
   character_device,
   directory,
-  regular_file,
+  regular,
   socket_dgram,
   socket_stream,
-  symbolic_link,
+  symlink,
 }
 
 pub enum stats
@@ -109,33 +109,33 @@ pub struct stat
   pub ~stat() = default;
 }
 
-pub fn ftype(stat &stat) -> ftype
+pub fn type(stat &stat) -> filetype
 {
   switch (stat.mode & S_IFMT)
   {
     case S_IFREG:
-      return ftype::regular_file;
+      return filetype::regular;
 
     case S_IFBLK:
-      return ftype::block_device;
+      return filetype::block_device;
 
     case S_IFDIR:
-      return ftype::directory;
+      return filetype::directory;
 
     case S_IFCHR:
-      return ftype::character_device;
+      return filetype::character_device;
 
     case S_IFLNK:
-      return ftype::symbolic_link;
+      return filetype::symlink;
 
     case S_IFDATA:
-      return ftype::socket_dgram;
+      return filetype::socket_dgram;
 
     case S_IFSOCK:
-      return ftype::socket_stream;
+      return filetype::socket_stream;
   }
 
-  return ftype::unknown;
+  return filetype::unknown;
 }
 
 pub struct dirent
@@ -150,9 +150,9 @@ pub struct dirent
     return std::string_view(this.file_name.data, cast<usize>(this.name_len));
   }
 
-  pub fn ftype(this&) -> ftype
+  pub fn type(this&) -> filetype
   {
-    return cast<ftype>(this.file_type);
+    return cast<filetype>(this.file_type);
   }
 
   pub dirent() = default;

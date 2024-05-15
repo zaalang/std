@@ -58,12 +58,12 @@ pub union value
 
   pub fn is_int64(this&) -> bool
   {
-    return this.kind == typeof(this.kind)::Integer;
+    return this.kind == typeof(this.kind)::Int64;
   }
 
   pub fn is_uint64(this&) -> bool
   {
-    return this.kind == typeof(this.kind)::Integer;
+    return this.kind == typeof(this.kind)::UInt64;
   }
 
   pub fn is_number(this&) -> bool
@@ -129,7 +129,7 @@ pub union value
 
       case String[string]:
         #if (__is_same<T, std::string&>)
-          return T(&string);
+          return &string;
         #if (requires { T(std::string()); })
           return T(string);
     }
@@ -454,7 +454,7 @@ pub fn ==(value &lhs, value &rhs) -> bool
     {
       #{
         #for (const k = 1; k != std::meta::fields_of($value).len; ++k)
-          -> { case $(k): return lhs.$(k) == rhs.$(k); }
+          -> { case ${k}: return lhs.${k} == rhs.${k}; }
       }
     }
   }
@@ -470,7 +470,7 @@ pub fn <=>(value &lhs, value &rhs) -> int
     {
       #{
         #for (const k = 1; k != std::meta::fields_of($value).len; ++k)
-          -> { case $(k): return lhs.$(k) <=> rhs.$(k); }
+          -> { case ${k}: return lhs.${k} <=> rhs.${k}; }
       }
     }
   }

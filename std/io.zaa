@@ -3,7 +3,7 @@
 //
 
 import std.stdlib : assert;
-import std.memory : memcpy;
+import std.memory : memcpy, memmove;
 import std.string : String;
 import std.span : Span;
 import std.math;
@@ -60,6 +60,7 @@ pub struct input_stream
     return this._read(&mut this._stream, data, len);
   }
 
+  #[lifetime(depends(is))]
   pub input_stream<T>(T mut &is)
     : _stream(&is)
   {
@@ -70,6 +71,7 @@ pub struct input_stream
     };
   }
 
+  pub input_stream(input_stream &os) = default;
   pub ~input_stream() = default;
 }
 
@@ -83,6 +85,7 @@ pub struct output_stream
     return this._write(&mut this._stream, data, len);
   }
 
+  #[lifetime(depends(os))]
   pub output_stream<T>(T mut &os)
     : _stream(&os)
   {
@@ -93,18 +96,24 @@ pub struct output_stream
     };
   }
 
+  pub output_stream(output_stream &os) = default;
   pub ~output_stream() = default;
 }
 
-pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
+pub struct buffered_reader<Allocator = std::allocator, N = 0>
 {
-  T mut &reader;
+  void mut &_stream;
+  fn (*_read)(void mut &, u8 mut *, usize) throws(std::error) -> usize;
 
-  pub buffered_reader(T mut &reader, Allocator &allocator = Allocator())
-    : reader(&reader),
-      _buffer(allocator)
+  #[lifetime(depends(is))]
+  pub buffered_reader<T>(T mut &is, Allocator &allocator = Allocator())
+    : _stream(&is), _buffer(allocator)
   {
     assert(__is_match<InputStream, T>);
+
+    _read = fn (void mut &stream, u8 mut *data, usize len) throws -> usize {
+      return cast<T mut &>(stream).read(data, len);
+    };
 
     _head = 0;
     _tail = 0;
@@ -118,32 +127,35 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     return this._buffer.capacity;
   }
 
+  #[lifetime(depends(this))]
   pub fn buffer(this &) -> std::span<u8>
   {
     return std::span<u8>(this._buffer.data + this._head, this._buffer.data + this._tail);
   }
 
+  #[lifetime(depends(this))]
   pub fn fetch(this mut &) throws -> std::span<u8>
   {
     if (this._head == this._tail)
     {
       this._head = 0;
-      this._tail = this.reader.read(this._buffer.data, this._buffer.len);
+      this._tail = this._read(&mut this._stream, this._buffer.data, this._buffer.len);
     }
 
     return this.buffer;
   }
 
+  #[lifetime(depends(this))]
   pub fn pack_and_fetch(this mut &) throws -> std::span<u8>
   {
     if (this._head != 0)
     {
-      std::memmove(this._buffer.data, this._buffer.data + this._head, this._tail - this._head);
+      memmove(this._buffer.data, this._buffer.data + this._head, this._tail - this._head);
       this._tail -= this._head;
       this._head = 0;
     }
 
-    this._tail += this.reader.read(this._buffer.data + this._tail, this._buffer.len - this._tail);
+    this._tail += this._read(&mut this._stream, this._buffer.data + this._tail, this._buffer.len - this._tail);
 
     return this.buffer;
   }
@@ -184,7 +196,7 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
       }
       else
       {
-        ch += this.reader.read(ch, remaining);
+        ch += this._read(&mut this._stream, ch, remaining);
       }
     }
 
@@ -253,14 +265,14 @@ pub struct buffered_reader<T, Allocator = std::allocator, N = 0>
     ~end_iterator() = default;
   }
 
-  pub fn [](this&, line_iterator &iter)
+  pub fn [](this &, line_iterator &iter)
   {
     return std::string_view(this.buffer.data, iter.m);
   }
 
   pub fn lines(this mut &) throws
   {
-    return std::range_view(this, ++line_iterator(&mut this), end_iterator());
+    return std::range_view(&this, ++line_iterator(&mut this), end_iterator());
   }
 
   usize _head;
@@ -316,5 +328,61 @@ pub fn read_line(InputReader mut &reader, std::string mut &buf) throws -> usize
   return count;
 }
 
-//pub struct buffered_writer<T, Allocator = std::allocator, N = 0>
+pub struct buffered_writer<Allocator = std::allocator, N = 0>
+{
+  void mut &_stream;
+  fn (*_write)(void mut &, u8 *, usize) throws(std::error) -> usize;
+
+  #[lifetime(depends(os))]
+  pub buffered_writer<T>(T mut &os, Allocator &allocator = Allocator())
+    : _stream(&os), _buffer(allocator)
+  {
+    assert(__is_match<OutputStream, T>);
+
+    _write = fn (void mut &stream, u8 *data, usize len) throws -> usize {
+      return cast<T mut &>(stream).write(data, len);
+    };
+
+    _buffer.reserve(N == 0 ? 8192 : N);
+  }
+
+  pub ~buffered_writer() = default;
+
+  pub fn capacity(this &) -> usize
+  {
+    return this._buffer.capacity;
+  }
+
+  pub fn write(this mut &, u8 *data, usize len) throws -> usize
+  {
+    if (this._buffer.capacity - this._buffer.len < len)
+    {
+      flush(&mut this);
+    }
+
+    if (len < this._buffer.capacity)
+    {
+      this._buffer.append(data, data + len);
+    }
+    else
+    {
+      this._write(&mut this._stream, data, len);
+    }
+
+    return len;
+  }
+
+  pub fn flush(this mut &) throws -> void
+  {
+    if (this._buffer.len != 0)
+    {
+      this._write(&mut this._stream, this._buffer.data, this._buffer.len);
+
+      this._buffer.clear();
+    }
+  }
+
+  std::vector<u8, Allocator, N> _buffer;
+}
+
 //pub struct line_writer<T, Allocator = std::allocator, N = 0>

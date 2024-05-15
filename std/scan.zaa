@@ -18,7 +18,7 @@ pub struct scan_result
   pub usize count;
   pub std::errc error;
 
-  pub const fn bool(this&) -> bool
+  pub const fn bool(this &) -> bool
   {
     return !this.error;
   }
@@ -49,10 +49,23 @@ fn scan(std::string_view is, scan_context mut &ctx, bool mut &value) -> void
 
 fn scan(std::string_view is, scan_context mut &ctx, char mut &value) -> void
 {
-  var str = std::atoc(is.data, is.end, &mut value);
+  switch (ctx.type)
+  {
+    case 'd':
+    case 'b':
+    case 'B':
+    case 'o':
+    case 'O':
+    case 'x':
+    case 'X':
+      scan_int(is, &mut ctx, &mut value);
 
-  ctx.error = str.error;
-  ctx.cursor += str.len;
+    else:
+      var str = std::atoc(is.data, is.end, &mut value);
+
+      ctx.error = str.error;
+      ctx.cursor += str.len;
+  }
 }
 
 fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
@@ -76,7 +89,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
   if (is.len != 0 && is[0] == cast('+'))
   {
     ctx.cursor += 1;
-    is.remove_prefix!(1);
+    is.drop_front!(1);
   }
 
   if (is.len > 1 && is[0] == cast('0'))
@@ -89,7 +102,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
         {
           base = 2;
           ctx.cursor += 2;
-          is.remove_prefix!(2);
+          is.drop_front!(2);
         }
 
       case 'o':
@@ -97,7 +110,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
         {
           base = 8;
           ctx.cursor += 2;
-          is.remove_prefix!(2);
+          is.drop_front!(2);
         }
 
       case 'x':
@@ -106,7 +119,7 @@ fn scan_int<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
         {
           base = 16;
           ctx.cursor += 2;
-          is.remove_prefix!(2);
+          is.drop_front!(2);
         }
     }
   }
@@ -172,7 +185,7 @@ fn scan_flt<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
   if (is.len != 0 && is[0] == cast('+'))
   {
     ctx.cursor += 1;
-    is.remove_prefix!(1);
+    is.drop_front!(1);
   }
 
   var str = std::atof(is.data, is.end, &mut value);
@@ -203,6 +216,27 @@ fn scan(std::string_view is, scan_context mut &ctx, typeof(0.0) mut &literal) ->
   var tmp = float(0.0);
   scan(is, &mut ctx, &mut tmp);
   literal = cast(tmp);
+}
+
+fn scan<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
+  where __is_enum<T>
+{
+  var found = false;
+
+  #for (const k : std::meta::enumerators_of($T))
+  {
+    if (is == std::meta::name_of(k))
+    {
+      value = T::#k();
+
+      found = true;
+    }
+  }
+
+  if (!found)
+    ctx.error = std::errc::format_error;
+
+  ctx.cursor += is.len;
 }
 
 fn scan_str<T>(std::string_view is, scan_context mut &ctx, T mut &value) -> void
@@ -264,7 +298,7 @@ fn scan<T, N>(std::string_view is, scan_context mut &ctx, T[N] mut &array) -> vo
 {
   for (var mut &elem : array)
   {
-    scan(is.remove_prefix(ctx.cursor), &mut ctx, &mut elem);
+    scan(is.drop_front(ctx.cursor), &mut ctx, &mut elem);
   }
 }
 
@@ -396,8 +430,8 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
             #for (const k = 0; k < std::tuple_len<Args>; ++k)
             {
               -> {
-                case $(k):
-                  scan_to(std::string_view(beg, len), &mut ctx, &mut args.$(k));
+                case ${k}:
+                  scan_to(std::string_view(beg, len), &mut ctx, &mut args.${k});
               }
             }
           }

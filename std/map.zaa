@@ -29,7 +29,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, map &&other) -> map mut &
   {
     std::launder(other);
@@ -253,7 +253,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       if (this.empty)
         return this._tree.take(&mut other._tree);
 
-      return this.merge(&mut other);
+      return this.merge(&move other);
     }
 
     if (var first = other.begin, var last = other.end; first != last)
@@ -282,7 +282,8 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   }
 
   #[lifetime(consume(other))]
-  pub fn merge(this mut &, map mut &other) -> void
+  pub fn merge(this mut &, map &&other) -> void
+    where __is_rvalue<typeof(other)>
   {
     assert(&this != &other);
     assert(this.allocator == other.allocator);
@@ -330,7 +331,9 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(poison(this))]
   pub fn take_erase<Key>(this mut &, Key &key) -> T
   {
-    var result = &move std::launder(this[key]);
+    var result = &move this[key];
+
+    std::launder(this);
 
     erase(&mut this, key);
 
@@ -340,7 +343,9 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(poison(this), repose(position, this))]
   pub fn take_erase(this mut &, iterator position) -> T
   {
-    var result = &move std::launder(this[position].value);
+    var result = &move this[position].value;
+
+    std::launder(this);
 
     erase(&mut this, position);
 

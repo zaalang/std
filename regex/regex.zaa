@@ -105,13 +105,19 @@ pub struct regex
 
   pub regex(String &pattern, options flags = cast(0))
   {
-    var ast = std::vector<expr>();
+    var ast = parse(pattern, flags);
 
-    this.error = parse(pattern, &mut ast, flags);
+    if (ast.error)
+      this.error = ast.error;
 
     if (!this.error)
     {
-      this.error = compile(ast, &mut program, flags);
+      var code = compile(ast.regex, flags);
+
+      if (code.error)
+        this.error = code.error;
+
+      this.program = &move code.program;
     }
   }
 
@@ -128,15 +134,17 @@ pub struct regex
 
 fn build(std::string_literal pattern, options flags)
 {
-  var ast = std::vector<expr>();
-  if (var r = parse(pattern, &mut ast, flags); r != cast<errc>(0))
-    std::panic("regex parse error : ", r);
+  var ast = parse(pattern, flags);
 
-  var program = std::vector<u32>();
-  if (var r = compile(ast, &mut program, flags); r != cast<errc>(0))
-    std::panic("regex compile error : ", r);
+  if (ast.error)
+    std::panic("regex parse error : ", ast.error);
 
-  return program.as_literal;
+  var code = compile(ast.regex, flags);
+
+  if (code.error)
+    std::panic("regex compile error : ", code.error);
+
+  return code.program.as_literal;
 }
 
 fn match<Args>(std::span<u32> program, std::string_view text) -> bool

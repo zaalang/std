@@ -1,0 +1,88 @@
+//
+// spawn
+//
+
+import std.span;
+import std.string;
+import std.memory;
+
+pub struct spawn_attr_t
+{
+  pub const stdin = 0;
+  pub const stdout = 1;
+  pub const stderr = 2;
+  pub const fn dupfd(i32 fd) -> i32 { return fd; }
+  pub const enddup = 255;
+
+  pub i32 type;
+  pub i32 value;
+
+  pub spawn_attr_t() = default;
+  pub spawn_attr_t(spawn_attr_t&) = default;
+  pub fn =(spawn_attr_t mut &, spawn_attr_t &) -> spawn_attr_t mut & = default;
+  pub ~spawn_attr_t() = default;
+}
+
+#if __cfg("os.linux")
+
+  import os.linux.fcntl;
+  import os.linux.unistd;
+
+  struct thread_data
+  {
+    u8 *cwd;
+    u8 *path;
+    u8 **argv;
+    u8 **envp;
+
+    std::span<spawn_attr_t> attrs;
+  }
+
+  fn spawn_start(thread_data *td) -> int
+  {
+    using os;
+
+    chdir(td.cwd);
+
+    return execve(td.path, td.argv, td.envp);
+  }
+
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<spawn_attr_t> attrs) -> i32
+  {
+    using os;
+
+    std::assert(*(cwd.data + cwd.len) == 0);
+    std::assert(*(path.data + path.len) == 0);
+
+    var stack = [<u8>: 0; 16384];
+    var stacktop = cast<uintptr>(stack.data + stack.len);
+
+    var argc = 0;
+    var argv = cast<u8*[1024] mut *>(stacktop -= sizeof<u8*[1024]>);
+
+    for (var &arg : args)
+    {
+      argv[argc++] = arg.data;
+    }
+
+    var td = cast<thread_data mut *>(stacktop -= sizeof<thread_data>);
+
+    td.cwd = cwd.data;
+    td.path = path.data;
+    td.argv = argv.data;
+    td.envp = __envp__;
+    td.attrs = attrs;
+
+    var pid = clone(cast(stacktop), &cast<(thread_data mut *) -> int>(spawn_start), CLONE_VM | CLONE_VFORK | SIGCHLD, null, null, null);
+
+    if (pid < 0)
+      std::panic(pid);
+
+    var wstatus = 0;
+    var rc = wait4(pid, &wstatus, 0, null);
+    std::print(rc, " ", wstatus, " ", wexitstatus(wstatus));
+
+    return pid;
+  }
+
+#end

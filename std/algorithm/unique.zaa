@@ -39,18 +39,18 @@ pub fn unique<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 
 pub struct uniq_view<R, Cmp>
 {
-  R &range;
+  R range;
 
-  pub uniq_view(R &range, Cmp &cmp)
-    : range(&range), cmp(cmp)
+  pub const range_adaptor_type = true;
+
+  pub uniq_view(R &&range, Cmp &cmp)
+    : range(range), cmp(cmp)
   {
   }
 
-  pub ~uniq_view() = default;
-
-  pub struct uniq_iterator<X> : pub X
+  pub struct uniq_iterator<I> : pub I
   {
-    uniq_iterator(uniq_view &view, X base)
+    uniq_iterator(uniq_view &view, I base)
       : super(base), view(&view)
     {
     }
@@ -61,7 +61,7 @@ pub struct uniq_view<R, Cmp>
     pub ~uniq_iterator() = default;
 
     pub fn ++(uniq_iterator mut &this) -> uniq_iterator mut &
-      where requires (X mut &x) { ++x; }
+      where requires (I mut &i) { ++i; }
     {
       var &&current = this.view.range[this.super];
 
@@ -75,7 +75,7 @@ pub struct uniq_view<R, Cmp>
     }
 
     pub fn --(uniq_iterator mut &this) -> uniq_iterator mut &
-      where requires (X mut &x) { --x; }
+      where requires (I mut &i) { --i; }
     {
       var &&current = this.view.range[std::prev(this.super)];
 
@@ -95,18 +95,18 @@ pub struct uniq_view<R, Cmp>
     uniq_view &view;
   }
 
-  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, uniq_iterator<X> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, uniq_iterator<I> &iter) throws -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(depend(this))]
   pub fn begin(this &)
   {
     return uniq_iterator(this, this.range.begin);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(depend(this))]
   pub fn end(this &)
   {
     return uniq_iterator(this, this.range.end);
@@ -118,14 +118,17 @@ pub struct uniq_view<R, Cmp>
     return &&(&&this.range)[iter.super];
   }
 
+  pub uniq_view(uniq_view &&) = default;
+  pub ~uniq_view() = default;
+
   Cmp cmp;
 }
 
 #[nodiscard]
-#[lifetime(depend(range))]
+#[lifetime(depend(*range.[]))]
 pub fn uniq<T, Cmp>(Range<T> &&range, Cmp &cmp = std::equal_to)
 {
-  return uniq_view<typeof(range)>(&&range, &cmp);
+  return uniq_view(range.all, &cmp);
 }
 
 #[lifetime(depend(range))]
@@ -133,5 +136,5 @@ pub fn uniq!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::equal_to)
 {
   var last = unique(&mut range, range.begin, range.end, cmp);
 
-  return std::subrange(range, range.begin, last);
+  return std::subrange(&mut range, range.begin, last);
 }

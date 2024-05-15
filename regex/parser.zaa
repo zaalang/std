@@ -300,12 +300,11 @@ fn maybe_empty(expr *first, expr *last) -> bool
 
 struct parse_context
 {
-  std::vector<expr> mut &regex;
+  std::vector<expr> regex;
   std::vector<usize, N:64> stack;
   usize caps;
 
-  parse_context(std::vector<expr> mut &regex)
-    : regex(&regex)
+  parse_context()
   {
   }
 
@@ -316,6 +315,11 @@ fn push(parse_context mut &ctx, expr &&expr) -> void
 {
   ctx.regex.push_back(&&expr);
   ctx.stack.push_back(ctx.regex.len - 1);
+}
+
+fn insert(parse_context mut &ctx, usize position, expr &&expr) -> void
+{
+  ctx.regex.insert(ctx.regex.begin + position, &&expr);
 }
 
 fn collapse(parse_context mut &ctx) -> void
@@ -610,10 +614,8 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
   return cast<errc>(0);
 }
 
-pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast(0)) -> errc
+fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> errc
 {
-  var ctx = parse_context(&mut regex);
-
   for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
   {
     var s = std::next(ch);
@@ -662,7 +664,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
 
         rep.len = ctx.regex.len - ctx.stack.back + 1;
 
-        ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
+        ctx.insert(ctx.stack.back, expr::Repeat(rep));
 
       case '{':
         var min = 0;
@@ -691,7 +693,7 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
 
           rep.len = ctx.regex.len - ctx.stack.back + 1;
 
-          ctx.regex.insert(ctx.regex.begin + ctx.stack.back, expr::Repeat(rep));
+          ctx.insert(ctx.stack.back, expr::Repeat(rep));
 
           ++s;
         }
@@ -825,6 +827,31 @@ pub fn parse(String &pattern, std::vector<expr> mut &regex, options flags = cast
     return errc::missing_paren;
 
   return cast<errc>(0);
+}
+
+pub struct parse_result
+{
+  pub errc error;
+  pub std::vector<expr> regex;
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
+}
+
+pub fn parse(String &pattern, options flags = cast(0)) -> parse_result
+{
+  var result = parse_result();
+
+  var ctx = parse_context();
+
+  if (var rc = parse(&mut ctx, std::string_view(pattern), flags); !rc)
+    result.error = rc;
+
+  result.regex = &move ctx.regex;
+
+  return result;
 }
 
 fn dump(expr *first, expr *last) -> void

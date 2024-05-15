@@ -1,0 +1,151 @@
+//
+// unicode
+//
+
+import std.span : Span;
+import unicode.tables;
+
+fn search(Span<(char, char)> table, char ch) -> bool
+{
+  if (table[0].0 <= ch && ch <= table[table.len - 1].1)
+  {
+    var lo = 0;
+    var hi = table.len;
+
+    while (hi > lo)
+    {
+      var mid = (lo + hi) / 2;
+
+      if (ch > table[mid].1)
+        lo = mid + 1;
+      else if (ch < table[mid].0)
+        hi = mid;
+      else
+        return true;
+    }
+  }
+
+  return false;
+}
+
+pub fn is_control(char ch) -> bool
+{
+  return ch < 0x20 || ch == 0x7f || (ch > 0x7f && ch <= 0x9f);
+}
+
+pub fn is_numeric(char ch) -> bool
+{
+  return ('0' <= ch && ch <= '9') || (ch > 0x7f && search(unicode_numeric_table, ch));
+}
+
+pub fn is_alphabetic(char ch) -> bool
+{
+  return ('a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z') || (ch > 0x7f && search(unicode_alphabetic_table, ch));
+}
+
+pub fn is_lowercase(char ch) -> bool
+{
+  return ('a' <= ch && ch <= 'z') || (ch > 0x7f && search(unicode_lowercase_table, ch));
+}
+
+pub fn is_uppercase(char ch) -> bool
+{
+  return ('A' <= ch && ch <= 'Z') || (ch > 0x7f && search(unicode_uppercase_table, ch));
+}
+
+pub fn is_whitespace(char ch) -> bool
+{
+  return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\v' || ch == '\f' || ch == 0x85 || ch == 0xa0) || (ch > 0x7f && search(unicode_whitespace_table, ch));
+}
+
+pub fn is_incb_consonant(char ch) -> bool
+{
+  return search(incb_consonant_table, ch);
+}
+
+pub fn is_incb_extend(char ch) -> bool
+{
+  return search(incb_extend_table, ch);
+}
+
+pub fn is_incb_linker(char ch) -> bool
+{
+  return search(incb_linker_table, ch);
+}
+
+pub fn is_hangul_l(char ch) -> bool
+{
+  #for (var range : hangul_l_table)
+    if (range.0 <= ch && ch <= range.1)
+      return true;
+
+  return false;
+}
+
+pub fn is_hangul_v(char ch) -> bool
+{
+  #for (var range : hangul_v_table)
+    if (range.0 <= ch && ch <= range.1)
+      return true;
+
+  return false;
+}
+
+pub fn is_hangul_t(char ch) -> bool
+{
+  #for (var range : hangul_t_table)
+    if (range.0 <= ch && ch <= range.1)
+      return true;
+
+  return false;
+}
+
+pub fn is_hangul_lv(char ch) -> bool
+{
+  return search(hangul_lv_table, ch);
+}
+
+pub fn is_hangul_lvt(char ch) -> bool
+{
+  return search(hangul_lvt_table, ch);
+}
+
+pub fn is_emoji_regional_indicator(char ch) -> bool
+{
+  return ch >= 0x1f1e6 && ch <= 0x1f1ff;
+}
+
+pub fn is_emoji_extended_pictographic(char ch) -> bool
+{
+  return search(emoji_extended_pictographic_table, ch);
+}
+
+pub fn is_grapheme_control(char ch) -> bool
+{
+  return ch <= 0x9 || ch == 0xb || ch == 0xc || (ch >= 0xe && ch <= 0x1f) || ch == 0x7f || (ch > 0x7f && ch <= 0x9f) || (ch > 0x7f && search(grapheme_control_table, ch));
+}
+
+pub fn is_grapheme_prepend(char ch) -> bool
+{
+  return search(grapheme_prepend_table, ch);
+}
+
+pub fn is_grapheme_extend(char ch) -> bool
+{
+  return search(grapheme_extend_table, ch);
+}
+
+pub fn is_grapheme_spacing_mark(char ch) -> bool
+{
+  return search(grapheme_spacing_mark_table, ch);
+}
+
+pub fn is_nfc_allowed(char ch) -> bool
+{
+  return !search(normalization_nfc_table, ch);
+}
+
+pub fn is_nfd_allowed(char ch) -> bool
+{
+  return !search(normalization_nfd_table, ch);
+}

@@ -55,7 +55,7 @@ pub struct sockaddr_un : pub sockaddr
   pub u8[108] sun_path;
 
   pub sockaddr_un() = default;
-  pub sockaddr_un(sockaddr_in4&) = default;
+  pub sockaddr_un(sockaddr_un &) = default;
   pub fn =(sockaddr_un mut &, sockaddr_un &) -> sockaddr_un mut & = default;
   pub ~sockaddr_un() = default;
 }
@@ -66,7 +66,7 @@ pub struct in4_addr : pub u8[4]
 
   pub in4_addr() = default;
   pub in4_addr(u8[4] &addr) : super(addr) { }
-  pub in4_addr(in4_addr&) = default;
+  pub in4_addr(in4_addr &) = default;
   pub fn =(in4_addr mut &, in4_addr &) -> in4_addr mut & = default;
   pub ~in4_addr() = default;
 }
@@ -81,7 +81,7 @@ pub struct sockaddr_in4 : pub sockaddr
   pub u8[8] sin4_zero;
 
   pub sockaddr_in4() = default;
-  pub sockaddr_in4(sockaddr_in4&) = default;
+  pub sockaddr_in4(sockaddr_in4 &) = default;
   pub fn =(sockaddr_in4 mut &, sockaddr_in4 &) -> sockaddr_in4 mut & = default;
   pub ~sockaddr_in4() = default;
 }
@@ -94,7 +94,7 @@ pub struct in6_addr : pub u8[16]
 
   pub in6_addr() = default;
   pub in6_addr(u8[16] &addr) : super(addr) { }
-  pub in6_addr(in6_addr&) = default;
+  pub in6_addr(in6_addr &) = default;
   pub fn =(in6_addr mut &, in6_addr &) -> in6_addr mut & = default;
   pub ~in6_addr() = default;
 }
@@ -110,7 +110,7 @@ pub struct sockaddr_in6 : pub sockaddr
   pub u32 sin6_scope_id;
 
   pub sockaddr_in6() = default;
-  pub sockaddr_in6(sockaddr_in6&) = default;
+  pub sockaddr_in6(sockaddr_in6 &) = default;
   pub fn =(sockaddr_in6 mut &, sockaddr_in6 &) -> sockaddr_in6 mut & = default;
   pub ~sockaddr_in6() = default;
 }

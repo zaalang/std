@@ -69,7 +69,7 @@ pub const WNOWAIT = 0x2;
 extern fn __vdso_process_create(arg *argv, usize argc, arg *envp, usize envc, attr *attrs, usize n, u64 flags) -> i32;
 
 #[weak]
-extern fn __vdso_thread_create(void mut *stack, (fn (void mut *) -> void) *start_routine, void mut *start_argument, i32 priority, i32 mut *tid, u64 flags) -> i32;
+extern fn __vdso_thread_create(void mut *stack, fn (*start_routine)(void mut *) -> void, void mut *start_argument, i32 priority, i32 mut *tid, u64 flags) -> i32;
 
 #[weak]
 extern fn __vdso_wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32;
@@ -97,7 +97,7 @@ pub fn process_create(arg *argv, usize argc, arg *envp, usize envc, attr *attrs,
   return __vdso_process_create(argv, argc, envp, envc, attrs, n, flags);
 }
 
-pub fn thread_create(void mut *stack, (fn (void mut *) -> void) *start_routine, void mut *start_argument, i32 priority, i32 mut *tid, u64 flags) -> i32
+pub fn thread_create(void mut *stack, fn (*start_routine)(void mut *) -> void, void mut *start_argument, i32 priority, i32 mut *tid, u64 flags) -> i32
 {
   return __vdso_thread_create(stack, start_routine, start_argument, priority, tid, flags);
 }

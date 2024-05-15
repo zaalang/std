@@ -5,6 +5,7 @@
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
+#[unsafe]
 pub fn reverse<I>(I first, Sentinal<I> last) -> I
   where __is_match<BidirectionalIterator, I>()
 {

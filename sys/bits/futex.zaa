@@ -68,6 +68,7 @@ import chrono;
 
   import os.windows.kernel32;
   import os.windows.synchapi;
+  import os.windows.error;
 
   pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
   {
@@ -75,7 +76,7 @@ import chrono;
 
     if (WaitOnAddress(addr, &expected, sizeof<u32>, INFINITE) == 0)
     {
-      throw std::system_error(cast<std::errc>(GetLastError()));
+      throw std::system_error(error_code(GetLastError()));
     }
 
     return 0;
@@ -91,10 +92,6 @@ import chrono;
     if (timeout < chrono::milliseconds(0))
       timeout = chrono::milliseconds(0);
 
-    //var tp = timespec();
-    //tp.tv_sec = cast(seconds(timeout).count);
-    //tp.tv_nsec = cast(nanoseconds(timeout - seconds(timeout)).count);
-
     if (WaitOnAddress(addr, &expected, sizeof<u32>, cast(timeout.count)) == 0)
     {
       var rc = GetLastError();
@@ -102,7 +99,7 @@ import chrono;
       if (rc == 1460)
         return -110;
 
-      throw std::system_error(cast<std::errc>(rc));
+      throw std::system_error(error_code(rc));
     }
 
     return 0;

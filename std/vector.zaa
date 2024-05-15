@@ -31,7 +31,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     insert(&mut this, this.end, &&other);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), assign(this, depend(*other)), depend(this))]
   pub fn =<M>(this mut &, vector<T, Allocator, M> &&other) -> vector mut &
   {
     clear(&mut this);
@@ -41,7 +41,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return &this;
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, vector &&other) -> vector mut &
   {
     std::launder(other);
@@ -131,6 +131,18 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   pub fn data(this &&)
   {
     return this._data;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn span<T>(this &)
+  {
+    return span(this.data, this.len);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn mutable_span<T>(this mut &)
+  {
+    return mutable_span(this.data, this.len);
   }
 
   pub fn allocator(this &) -> Allocator &
@@ -260,6 +272,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return &*slot;
   }
 
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<Args>(this mut &, usize position, Args && ...args) -> T mut *
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    return insert(&mut this, this.begin + position, &&args...);
+  }
+
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<Args>(this mut &, T *position, Args && ...args) -> T mut *
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
@@ -272,6 +291,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     new<T>(slot)(&&args..., allocator?: this.allocator);
 
     return slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<U>(this mut &, usize position, Range<U> &&other) -> T mut *
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
+  {
+    return insert(&mut this, this.begin + position, &&other);
   }
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
@@ -297,6 +323,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return slot;
   }
 
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<I>(this mut &, usize position, I first, Sentinal<I> last) -> T mut *
+    where requires (I i) { T(*i); }
+  {
+    return insert(&mut this, this.begin + position, first, last);
+  }
+
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn insert<I>(this mut &, T *position, I first, Sentinal<I> last) -> T mut *
     where requires (I i) { T(*i); }
@@ -312,6 +345,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     }
 
     return slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Args>(this mut &, usize position, Args && ...args) -> T mut &
+      match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &*insert(&mut this, this.begin + position, &&args...);
   }
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
@@ -340,65 +380,71 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    erase(&mut this, this._data + this._len - 1, 1);
+    erase(&mut this, this._len - 1, 1);
   }
 
   #[lifetime(poison(this))]
   pub fn take_back(this mut &) -> T
   {
-    var result = &move std::launder(this.back);
+    var result = &move this.back;
 
-    erase(&mut this, this._data + this._len - 1, 1);
+    std::launder(this);
+
+    erase(&mut this, this._len - 1, 1);
 
     return result;
-  }
-
-  #[lifetime(poison(this), repose(position, this), depend(this))]
-  pub fn erase(this mut &, T *position) -> T mut *
-  {
-    return erase(&mut this, position, 1);
   }
 
   #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
   pub fn erase(this mut &, T *first, T *last) -> T mut *
   {
-    return erase(&mut this, first, last - first);
+    return erase(&mut this, first - this._data, last - first);
   }
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
-  pub fn erase(this mut &, T *position, usize count) -> T mut *
+  pub fn erase(this mut &, T *position, usize count = 1) -> T mut *
   {
-    assert(this._data <= position && position + count <= this._data + this._len);
+    return erase(&mut this, position - this._data, count);
+  }
 
-    var index = position - this._data;
+  #[lifetime(poison(this), depend(this))]
+  pub fn erase(this mut &, usize position, usize count = 1) -> T mut *
+  {
+    assert(position + count <= this._len);
 
-    initialised_move(&mut this, this._data + index, this._data + index + count, this._data + this._len);
+    initialised_move(&mut this, this._data + position, this._data + position + count, this._data + this._len);
     destruct(&mut this, this._data + this._len - count, this._data + this._len);
 
     this._len -= count;
 
-    return this._data + index;
+    return this._data + position;
   }
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
   pub fn swap_erase(this mut &, T *position) -> T mut *
   {
-    assert(this._data <= position && position < this._data + this._len);
-
-    var index = position - this._data;
-
-    if (position != this.end - 1)
-      initialised_move(&mut this, this._data + (position - this._data), this._data + this._len - 1, this._data + this._len);
-
-    erase(&mut this, this._data + this._len - 1, 1);
-
-    return this._data + index;
+    return swap_erase(&mut this, position - this._data);
   }
 
-  #[lifetime(poison(this), repose(position, this))]
-  pub fn take_erase(this mut &, T *position) -> T
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn swap_erase(this mut &, usize position) -> T mut *
   {
-    var result = &move std::launder(this[position]);
+    assert(position < this._len);
+
+    if (position != this._len - 1)
+      initialised_move(&mut this, this._data + position, this._data + this._len - 1, this._data + this._len);
+
+    erase(&mut this, this._len - 1, 1);
+
+    return this._data + position;
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_erase(this mut &, usize position) -> T
+  {
+    var result = &move this[position];
+
+    std::launder(this);
 
     erase(&mut this, position);
 
@@ -406,13 +452,27 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(poison(this), repose(position, this))]
-  pub fn take_swap_erase(this mut &, T *position) -> T
+  pub fn take_erase(this mut &, T *position) -> T
   {
-    var result = &move std::launder(this[position]);
+    return take_erase(&mut this, position - this._data);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_swap_erase(this mut &, usize position) -> T
+  {
+    var result = &move this[position];
+
+    std::launder(this);
 
     swap_erase(&mut this, position);
 
     return result;
+  }
+
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_swap_erase(this mut &, T *position) -> T
+  {
+    return take_swap_erase(&mut this, position - this._data);
   }
 
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
@@ -423,22 +483,6 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     erase(&mut this, first, last - first);
 
     return result;
-  }
-
-  #[lifetime(poison(this), depend(this))]
-  pub fn drop_n!(this mut &, usize n) -> vector mut &
-  {
-    erase(&mut this, this._data, std::min(this._len, n));
-
-    return &this;
-  }
-
-  #[lifetime(poison(this), depend(this))]
-  pub fn take_n!(this mut &, usize n) -> vector mut &
-  {
-    erase(&mut this, this._data + std::min(this._len, n), this.len - std::min(this._len, n));
-
-    return &this;
   }
 
   #[lifetime(poison(this))]
@@ -515,7 +559,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     reserve(&mut this, len);
   }
 
-  #[lifetime(poison(this), repose(position, this))]
+  #[lifetime(poison(this), repose(position, this), depend(this))]
   fn ensure_space(this mut &, T *position, usize len) -> T mut *
   {
     var index = position - this._data;
@@ -567,6 +611,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return this._data;
   }
 
+  #[unsafe]
   fn initialised_move(this mut &, T mut *dst, T mut *first, T mut *last) -> void
   {
     #if (!__is_trivial_copy<T>)
@@ -585,6 +630,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     }
   }
 
+  #[unsafe]
   fn initialised_move_backward(this mut &, T mut *dst, T mut *first, T mut *last) -> void
   {
     #if (!__is_trivial_copy<T>)
@@ -605,6 +651,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     }
   }
 
+  #[unsafe]
   fn uninitialised_move(this mut &, T mut *dst, T mut *first, T mut *last) -> void
   {
     #if (!__is_trivial_copy<T>)
@@ -645,10 +692,26 @@ pub fn hash<T>(var &hasher, vector<T> &vec) -> usize
   return hasher.combine_contiguous(vec.data, vec.len);
 }
 
-#[lifetime(poison(span), depend(span))]
-pub fn remove_suffix!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
+#[lifetime(poison(range), depend(range))]
+pub fn take_n!<T>(vector<T> mut &range, usize n) -> vector<T> mut &
 {
-  span.erase(span.end - n, n);
+  range.erase(range.begin + std::min(range.len, n), range.len - std::min(range.len, n));
+
+  return &range;
+}
+
+#[lifetime(poison(span), depend(span))]
+pub fn drop_back!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
+{
+  span.erase(span.begin + span.len - std::min(span.len, n), std::min(span.len, n));
+
+  return &span;
+}
+
+#[lifetime(poison(span), depend(span))]
+pub fn take_front!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
+{
+  span.erase(span.begin + std::min(span.len, n), span.len - std::min(span.len, n));
 
   return &span;
 }

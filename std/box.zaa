@@ -90,7 +90,7 @@ pub struct box<T, Allocator = std::allocator>
 
   fn destroy(Bx mut *ptr) -> void
   {
-    var allocator = &move ptr._allocator;
+    var allocator = ptr._allocator;
 
     Allocator::~Allocator(&mut ptr._allocator);
 

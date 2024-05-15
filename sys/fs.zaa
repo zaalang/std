@@ -1,0 +1,132 @@
+//
+// sys fs
+//
+
+import std.stdio;
+import std.string : String;
+import std.vector;
+import std.arc;
+import sys.bits.fs : getcwd, stat, lstat, filetype, dirp;
+
+pub fn stat(String &path) throws -> stat
+{
+  var stat = stat();
+
+  stat(std::string_view(path), &mut stat);
+
+  return stat;
+}
+
+pub fn lstat(String &path) throws -> stat
+{
+  var stat = stat();
+
+  lstat(std::string_view(path), &mut stat);
+
+  return stat;
+}
+
+pub fn exists(String &path) throws -> bool
+{
+  try
+  {
+    return lstat(path).type != filetype::unknown;
+  }
+  catch (std::error err)
+  {
+    if (err == std::errc::not_found)
+      return false;
+
+    throw err;
+  }
+}
+
+pub fn cwd() throws -> std::string
+{
+  var path = std::string();
+
+  getcwd(&mut path);
+
+  return path;
+}
+
+pub struct directory_view
+{
+  std::arc<dirp> state;
+
+  pub struct directory_iterator
+  {
+    std::arc<dirp> state;
+
+    pub directory_iterator(std::arc<dirp> state)
+      : state(&move state)
+    {
+    }
+
+    pub directory_iterator() = default;
+    pub directory_iterator(directory_iterator &&) = default;
+    pub fn =(directory_iterator mut &, directory_iterator &&) -> directory_iterator mut & = default;
+    pub ~directory_iterator() = default;
+
+    #[lifetime(poison(this))]
+    pub fn ++(directory_iterator mut &this) throws -> directory_iterator mut &
+    {
+      readdir(&mut *this.state);
+
+      return &this;
+    }
+
+    pub fn ==(directory_iterator &lhs, directory_sentinal &rhs) -> bool
+    {
+      return lhs.state.eof;
+    }
+  }
+
+  pub struct directory_sentinal
+  {
+    pub directory_sentinal() = default;
+    pub directory_sentinal(directory_sentinal &&) = default;
+    pub fn =(directory_sentinal mut &lhs, directory_sentinal &&rhs) -> directory_sentinal mut & = default;
+    pub ~directory_sentinal() = default;
+  }
+
+  #[lifetime(depend(*this))]
+  pub fn begin(this &) throws -> directory_iterator
+  {
+    return directory_iterator(this.state);
+  }
+
+  pub fn end(this &) -> directory_sentinal
+  {
+    return directory_sentinal();
+  }
+
+  #[lifetime(repose(iter, this), depend(iter))]
+  pub fn [](this &, directory_iterator &iter)
+  {
+    return &*iter.state;
+  }
+
+  directory_view(std::arc<dirp> &&state)
+    : state(&&state)
+  {
+  }
+
+  pub directory_view(directory_view &&) = default;
+  pub ~directory_view() = default;
+}
+
+pub fn read_dir(String &path) throws -> directory_view
+{
+  var state = std::arc<dirp>();
+
+  opendir(&mut *state, std::string_view(path));
+
+  return directory_view(&move state);
+}
+
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, directory_view &dir) throws -> void
+{
+  for (var &entry : dir)
+    std::print_to(&mut os, entry, " ");
+}

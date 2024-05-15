@@ -342,7 +342,7 @@ pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday n
     #{
       #for (const k : std::meta::enumerators_of($weekday))
       {
-        -> { case $(weekday::#k): std::fmt_to(&mut os, &mut ctx, $(std::meta::name_of(k))); }
+        -> { case ${weekday::#k}: std::fmt_to(&mut os, &mut ctx, ${std::meta::name_of(k)}); }
       }
     }
 

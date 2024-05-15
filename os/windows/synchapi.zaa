@@ -3,6 +3,15 @@
 //
 
 import os.windows.ntdef : *;
+import os.windows.kernel32 : *;
+
+pub const WAIT_TIMEOUT = 258;
+pub const WAIT_ABANDONED_0 = 0x00000080;
+pub const WAIT_OBJECT_0 = 0x00000000;
+pub const WAIT_FAILED = 0xFFFFFFFF;
+
+pub extern "C" fn WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds) -> DWORD;
+pub extern "C" fn WaitForMultipleObjects(DWORD nCount, HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds) -> DWORD;
 
 pub extern "C" fn WaitOnAddress(VOID *Address, PVOID CompareAddress, SIZE_T AddressSize, DWORD dwMilliseconds) -> BOOL;
 pub extern "C" fn WakeByAddressSingle(PVOID Address) -> void;

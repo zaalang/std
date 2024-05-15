@@ -1,0 +1,1031 @@
+//
+// fs
+//
+
+import std.string;
+import std.memory;
+import std.error;
+import std.env;
+import sys.path;
+import chrono;
+
+pub enum filetype
+{
+  unknown,
+  block_device,
+  character_device,
+  directory,
+  regular,
+  fifo,
+  socket,
+  symlink,
+}
+
+pub enum permissions
+{
+  pub const none = 0;
+
+  pub const owner_read = 0o400;
+  pub const owner_write = 0o200;
+  pub const owner_exec = 0o100;
+  pub const owner_all = 0o700;
+
+  pub const group_read = 0o40;
+  pub const group_write = 0o20;
+  pub const group_exec = 0o10;
+  pub const group_all = 0o70;
+
+  pub const others_read = 0o4;
+  pub const others_write = 0o2;
+  pub const others_exec = 0o1;
+  pub const others_all = 0o7;
+
+  pub const set_uid = 0o4000;
+  pub const set_gid = 0o2000;
+  pub const sticky_bit = 0o1000;
+
+  pub const all = 0o777;
+  pub const mask = 0o7777;
+}
+
+#if __cfg("os.linux")
+
+  import os.linux.fcntl;
+  import os.linux.unistd;
+
+  pub struct stat : pub os::stat
+  {
+    pub fn type(this &) -> filetype
+    {
+      using os;
+
+      switch (this.st_mode & S_IFMT)
+      {
+        case S_IFREG:
+          return filetype::regular;
+
+        case S_IFBLK:
+          return filetype::block_device;
+
+        case S_IFDIR:
+          return filetype::directory;
+
+        case S_IFCHR:
+          return filetype::character_device;
+
+        case S_IFLNK:
+          return filetype::symlink;
+
+        case S_IFIFO:
+          return filetype::fifo;
+
+        case S_IFSOCK:
+          return filetype::socket;
+      }
+
+      return filetype::unknown;
+    }
+
+    pub fn is_dir(this &) -> bool
+    {
+      return this.type == filetype::directory;
+    }
+
+    pub fn is_file(this &) -> bool
+    {
+      return this.type == filetype::regular;
+    }
+
+    pub fn is_symlink(this &) -> bool
+    {
+      return this.type == filetype::symlink;
+    }
+
+    pub fn filesize(this &) -> u64
+    {
+      return this.st_size;
+    }
+
+    pub fn modified(this &) -> chrono::system_time<chrono::nanoseconds>
+    {
+      return chrono::nanoseconds(this.st_mtim.tv_sec * 1_000_000_000 + this.st_mtim.tv_nsec);
+    }
+
+    pub fn permissions(this &) -> u32
+    {
+      return cast<u32>(this.st_mode & 0o777);
+    }
+
+    pub stat() = default;
+    pub stat(stat&) = default;
+    pub fn =(stat mut &, stat &) -> stat mut & = default;
+    pub ~stat() = default;
+  }
+
+  pub fn stat(std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = stat(pathstr.data, &stat); rc < 0)
+    {
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn lstat(std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = lstat(pathstr.data, &stat); rc < 0)
+    {
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn getcwd(std::string mut &path) throws -> i32
+  {
+    using os;
+
+    path.clear();
+    path.reserve(512);
+
+    for (;;)
+    {
+      if (var rc = getcwd(path.data, path.capacity); rc <= 0)
+      {
+        if (rc == ERANGE)
+        {
+          path.reserve(2 * path.capacity);
+
+          continue;
+        }
+
+        throw std::system_error(cast<std::errc>(-rc));
+      }
+
+      var len = std::memchr(path.data, 0, path.capacity);
+
+      path.append_from_capacity(len);
+
+      return cast(len);
+    }
+  }
+
+  pub struct dirp
+  {
+    int fd;
+    usize cursor;
+    usize buflen;
+    u8[1024] buffer;
+
+    usize pathlen;
+    std::string path;
+
+    fn head(this &) -> os::dirent *
+    {
+      return cast(this.buffer.data + this.cursor);
+    }
+
+    #[lifetime(depend(this))]
+    pub fn path(this &) -> sys::path_view
+    {
+      return this.path;
+    }
+
+    #[lifetime(depend(this))]
+    pub fn name(this &) -> std::string_view
+    {
+      return this.head.name;
+    }
+
+    pub fn type(this &) -> filetype
+    {
+      using os;
+
+      switch (this.head.d_type)
+      {
+        case 1:
+          return filetype::fifo;
+
+        case 2:
+          return filetype::character_device;
+
+        case 4:
+          return filetype::directory;
+
+        case 6:
+          return filetype::block_device;
+
+        case 8:
+          return filetype::regular;
+
+        case 10:
+          return filetype::symlink;
+
+        case 12:
+          return filetype::socket;
+      }
+
+      return filetype::unknown;
+    }
+
+    pub fn is_dir(this &) -> bool
+    {
+      return this.type == filetype::directory;
+    }
+
+    pub fn is_file(this &) -> bool
+    {
+      return this.type == filetype::regular;
+    }
+
+    pub fn is_symlink(this &) -> bool
+    {
+      return this.type == filetype::symlink;
+    }
+
+    pub fn stat(this &) throws -> stat
+    {
+      var stat = stat();
+
+      lstat(std::string_view(this.path), &mut stat);
+
+      return stat;
+    }
+
+    pub fn eof(this &) -> bool
+    {
+      return this.buflen == 0;
+    }
+
+    pub dirp()
+    {
+    }
+
+    pub ~dirp()
+    {
+      if (fd != 0)
+        os::close(fd);
+    }
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, entry.name);
+  }
+
+  pub fn opendir(dirp mut &dirp, std::string_view &path) throws -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    var fd = open(pathstr.data, O_RDONLY | O_DIRECTORY, 0);
+
+    if (fd < 0)
+      throw std::system_error(cast<std::errc>(-fd));
+
+    dirp.fd = fd;
+    dirp.path = path;
+
+    if (!path.ends_with(sys::sep_byte()))
+      dirp.path += sys::sep_byte();
+
+    dirp.pathlen = dirp.path.len;
+
+    readdir(&mut dirp);
+
+    return 0;
+  }
+
+  pub fn readdir(dirp mut &dirp) throws -> i32
+  {
+    using os;
+
+    for (;;)
+    {
+      if (dirp.cursor < dirp.buflen)
+      {
+        dirp.cursor += cast(dirp.head.d_reclen);
+      }
+
+      if (dirp.buflen <= dirp.cursor)
+      {
+        var cnt = getdents(dirp.fd, dirp.buffer.data, dirp.buffer.len);
+
+        if (cnt < 0)
+          throw std::system_error(cast<std::errc>(-cnt));
+
+        dirp.buflen = cast(cnt);
+        dirp.cursor = 0;
+      }
+
+      if (dirp.cursor < dirp.buflen)
+      {
+        var entry = dirp.head;
+
+        if (entry.name == "." || entry.name == "..")
+          continue;
+
+        dirp.path.replace(dirp.pathlen, ~0, dirp.head.name);
+      }
+
+      return 0;
+    }
+  }
+
+#end
+
+#if __cfg("os.windows")
+
+  import os.windows.kernel32;
+  import os.windows.error;
+
+  pub struct stat : pub os::WIN32_FILE_ATTRIBUTE_DATA
+  {
+    pub fn type(this &) -> filetype
+    {
+      using os;
+
+      if (this.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+        return filetype::symlink;
+
+      if (this.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0)
+        return filetype::directory;
+
+      return filetype::regular;
+    }
+
+    pub fn is_dir(this &) -> bool
+    {
+      return this.type == filetype::directory;
+    }
+
+    pub fn is_file(this &) -> bool
+    {
+      return this.type == filetype::regular;
+    }
+
+    pub fn is_symlink(this &) -> bool
+    {
+      return this.type == filetype::symlink;
+    }
+
+    pub fn filesize(this &) -> u64
+    {
+      return cast<u64>(this.nFileSizeHigh) << 32 + cast<u64>(this.nFileSizeLow);
+    }
+
+    pub fn modified(this &) -> chrono::system_time<chrono::nanoseconds>
+    {
+      return chrono::nanoseconds((std::max(cast<u64>(this.ftLastWriteTime.dwHighDateTime) << 32 + cast<u64>(this.ftLastWriteTime.dwLowDateTime), 116_444_736_000_000_000) - 116_444_736_000_000_000) * 100);
+    }
+
+    pub fn permissions(this &) -> u32
+    {
+      using os;
+
+      if (this.dwFileAttributes & FILE_ATTRIBUTE_READONLY != 0)
+        return 0o555;
+
+      return 0o777;
+    }
+
+    pub stat() = default;
+    pub stat(stat&) = default;
+    pub fn =(stat mut &, stat &) -> stat mut & = default;
+    pub ~stat() = default;
+  }
+
+  pub fn stat(std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    var pathlen = 0;
+    var pathstr = [<u16>: void; 2048];
+
+    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (nchars == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(nchars)] = 0;
+
+    if (GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat) != 0)
+    {
+      if (stat.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT == 0)
+        return 0;
+    }
+
+    var wfd = WIN32_FIND_DATAW();
+    var handle = FindFirstFileW(pathstr.data, &wfd);
+
+    if (handle == INVALID_HANDLE_VALUE)
+      throw std::system_error(error_code(GetLastError()));
+
+    if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT == 0)
+    {
+      stat.dwFileAttributes = wfd.dwFileAttributes;
+      stat.ftCreationTime = wfd.ftCreationTime;
+      stat.ftLastAccessTime = wfd.ftLastAccessTime;
+      stat.ftLastWriteTime = wfd.ftLastWriteTime;
+      stat.nFileSizeHigh = wfd.nFileSizeHigh;
+      stat.nFileSizeLow = wfd.nFileSizeLow;
+
+      FindClose(handle);
+
+      return 0;
+    }
+
+    FindClose(handle);
+
+    handle = CreateFileW(pathstr.data, 0, 0, null, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+
+    if (handle == INVALID_HANDLE_VALUE)
+      throw std::system_error(error_code(GetLastError()));
+
+    var hfi = BY_HANDLE_FILE_INFORMATION();
+
+    if (GetFileInformationByHandle(handle, &hfi) != 0)
+    {
+      stat.dwFileAttributes = hfi.dwFileAttributes;
+      stat.ftCreationTime = hfi.ftCreationTime;
+      stat.ftLastAccessTime = hfi.ftLastAccessTime;
+      stat.ftLastWriteTime = hfi.ftLastWriteTime;
+      stat.nFileSizeHigh = hfi.nFileSizeHigh;
+      stat.nFileSizeLow = hfi.nFileSizeLow;
+
+      CloseHandle(handle);
+
+      return 0;
+    }
+
+    CloseHandle(handle);
+
+    throw std::system_error(std::errc::not_supported);
+  }
+
+  pub fn lstat(std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    var pathlen = 0;
+    var pathstr = [<u16>: void; 2048];
+
+    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (nchars == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(nchars)] = 0;
+
+    if (GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat) != 0)
+      return 0;
+
+    var wfd = WIN32_FIND_DATAW();
+    var handle = FindFirstFileW(pathstr.data, &wfd);
+
+    if (handle == INVALID_HANDLE_VALUE)
+      throw std::system_error(error_code(GetLastError()));
+
+    stat.dwFileAttributes = wfd.dwFileAttributes;
+    stat.ftCreationTime = wfd.ftCreationTime;
+    stat.ftLastAccessTime = wfd.ftLastAccessTime;
+    stat.ftLastWriteTime = wfd.ftLastWriteTime;
+    stat.nFileSizeHigh = wfd.nFileSizeHigh;
+    stat.nFileSizeLow = wfd.nFileSizeLow;
+
+    FindClose(handle);
+
+    return 0;
+  }
+
+  pub fn getcwd(std::string mut &path) throws -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = GetCurrentDirectoryW(cast(pathstr.len), pathstr.data);
+
+    if (pathlen >= 2047)
+      throw std::system_error(std::errc::name_too_long);
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    path.clear();
+    path.reserve(cast(pathlen) * sizeof<u32>);
+
+    var nchars = WideCharToMultiByte(CP_UTF8, 0, pathstr.data, cast(pathlen), path.data, cast(path.capacity), null, null);
+
+    path.append_from_capacity(cast(nchars));
+
+    return 0;
+  }
+
+  pub struct dirp
+  {
+    os::HANDLE fd;
+    os::WIN32_FIND_DATAW wfd;
+    os::BOOL status;
+
+    usize pathlen;
+    std::string path;
+
+    #[lifetime(depend(this))]
+    pub fn path(this &) -> sys::path_view
+    {
+      return this.path;
+    }
+
+    #[lifetime(depend(this))]
+    pub fn name(this &) -> std::string_view
+    {
+      return std::string_view(this.path.begin + this.pathlen, this.path.end);
+    }
+
+    pub fn type(this &) -> filetype
+    {
+      using os;
+
+      if (this.wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+        return filetype::symlink;
+
+      if (this.wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0)
+        return filetype::directory;
+
+      return filetype::regular;
+    }
+
+    pub fn is_dir(this &) -> bool
+    {
+      return this.type == filetype::directory;
+    }
+
+    pub fn is_file(this &) -> bool
+    {
+      return this.type == filetype::regular;
+    }
+
+    pub fn is_symlink(this &) -> bool
+    {
+      return this.type == filetype::symlink;
+    }
+
+    pub fn stat(this &) throws -> stat
+    {
+      var stat = stat();
+
+      stat.dwFileAttributes = this.wfd.dwFileAttributes;
+      stat.ftCreationTime = this.wfd.ftCreationTime;
+      stat.ftLastAccessTime = this.wfd.ftLastAccessTime;
+      stat.ftLastWriteTime = this.wfd.ftLastWriteTime;
+      stat.nFileSizeHigh = this.wfd.nFileSizeHigh;
+      stat.nFileSizeLow = this.wfd.nFileSizeLow;
+
+      return stat;
+    }
+
+    pub fn eof(this &) -> bool
+    {
+      return this.status == 0;
+    }
+
+    pub dirp()
+    {
+    }
+
+    pub ~dirp()
+    {
+      if (fd != 0)
+        os::FindClose(fd);
+    }
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, entry.name);
+  }
+
+  pub fn opendir(dirp mut &dirp, std::string_view &path) throws -> i32
+  {
+    using os;
+
+    var pathlen = 0;
+    var pathstr = [<u16>: void; 2048];
+
+    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 3));
+
+    if (nchars == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(nchars + 0)] = cast('\\');
+    pathstr[cast(nchars + 1)] = cast('*');
+    pathstr[cast(nchars + 2)] = 0;
+
+    var handle = FindFirstFileW(pathstr.data, &dirp.wfd);
+
+    if (handle == INVALID_HANDLE_VALUE)
+      throw std::system_error(error_code(GetLastError()));
+
+    dirp.fd = handle;
+    dirp.path = path;
+    dirp.status = 1;
+
+    if (!path.ends_with(sys::sep_byte()))
+      dirp.path += sys::sep_byte();
+
+    dirp.pathlen = dirp.path.len;
+
+    while (dirp.wfd.cFileName[0] == 46 && (dirp.wfd.cFileName[1] == 0 || (dirp.wfd.cFileName[1] == 46 && dirp.wfd.cFileName[2] == 0)))
+    {
+      dirp.status = FindNextFileW(dirp.fd, &dirp.wfd);
+
+      if (dirp.status == 0)
+        break;
+    }
+
+    if (dirp.status != 0)
+    {
+      var len = std::find(dirp.wfd.cFileName, 0) - dirp.wfd.cFileName.data;
+
+      dirp.path.reserve(dirp.pathlen + len * sizeof<u32>);
+
+      var nchars = WideCharToMultiByte(CP_UTF8, 0, dirp.wfd.cFileName.data, cast(len), dirp.path.data + dirp.pathlen, cast(len * sizeof<u32>), null, null);
+
+      dirp.path.append_from_capacity(cast(nchars));
+    }
+
+    return 0;
+  }
+
+  pub fn readdir(dirp mut &dirp) throws -> i32
+  {
+    using os;
+
+    for (;;)
+    {
+      dirp.status = FindNextFileW(dirp.fd, &dirp.wfd);
+
+      if (dirp.status != 0)
+      {
+        if (dirp.wfd.cFileName[0] == 46 && (dirp.wfd.cFileName[1] == 0 || (dirp.wfd.cFileName[1] == 46 && dirp.wfd.cFileName[2] == 0)))
+          continue;
+
+        var len = std::find(dirp.wfd.cFileName, 0) - dirp.wfd.cFileName.data;
+
+        dirp.path.erase(dirp.pathlen, ~0);
+        dirp.path.reserve(dirp.pathlen + len * sizeof<u32>);
+
+        var nchars = WideCharToMultiByte(CP_UTF8, 0, dirp.wfd.cFileName.data, cast(len), dirp.path.data + dirp.pathlen, cast(len * sizeof<u32>), null, null);
+
+        dirp.path.append_from_capacity(cast(nchars));
+      }
+
+      return 0;
+    }
+  }
+
+#end
+
+#if __cfg("os.zaos")
+
+  import os.zaos.time;
+  import os.zaos.fcntl;
+
+  extern fn thread_ring() -> os::ioring mut &;
+
+  pub struct stat : pub os::stat
+  {
+    pub fn type(this &) -> filetype
+    {
+      using os;
+
+      switch (this.mode & S_IFMT)
+      {
+        case S_IFREG:
+          return filetype::regular;
+
+        case S_IFBLK:
+          return filetype::block_device;
+
+        case S_IFDIR:
+          return filetype::directory;
+
+        case S_IFCHR:
+          return filetype::character_device;
+
+        case S_IFLNK:
+          return filetype::symlink;
+
+        case S_IFDATA:
+        case S_IFSOCK:
+          return filetype::socket;
+      }
+
+      return filetype::unknown;
+    }
+
+    pub fn is_dir(this &) -> bool
+    {
+      return this.type == filetype::directory;
+    }
+
+    pub fn is_file(this &) -> bool
+    {
+      return this.type == filetype::regular;
+    }
+
+    pub fn is_symlink(this &) -> bool
+    {
+      return this.type == filetype::symlink;
+    }
+
+    pub fn filesize(this &) -> u64
+    {
+      return this.size;
+    }
+
+    pub fn modified(this &) -> chrono::system_time<chrono::nanoseconds>
+    {
+      return chrono::nanoseconds(this.mtime);
+    }
+
+    pub fn permissions(this &) -> u32
+    {
+      return cast<u32>(this.mode & 0o777);
+    }
+
+    pub stat() = default;
+    pub stat(stat&) = default;
+    pub fn =(stat mut &, stat &) -> stat mut & = default;
+    pub ~stat() = default;
+  }
+
+  pub fn stat(i32 dir, std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    var fd = open(&mut thread_ring, dir, os::string(path.data, path.len), 0, 0);
+
+    if (fd < 0)
+      throw std::system_error(cast<std::errc>(-fd));
+
+    if (var rc = stat(&mut thread_ring, fd, &stat, 0x7f); rc < 0)
+    {
+      close(&mut thread_ring, fd);
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    close(&mut thread_ring, fd);
+
+    return 0;
+  }
+
+  pub fn lstat(i32 dir, std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    var fd = open(&mut thread_ring, dir, os::string(path.data, path.len), O_NOFOLLOW, 0);
+
+    if (fd < 0)
+      throw std::system_error(cast<std::errc>(-fd));
+
+    if (var rc = stat(&mut thread_ring, fd, &stat, 0x7f); rc < 0)
+    {
+      close(&mut thread_ring, fd);
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    close(&mut thread_ring, fd);
+
+    return 0;
+  }
+
+  pub fn stat(std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    var dir = STDCWD_FILENO;
+
+    if (path.len > 0 && *path.data == cast('/'))
+      dir = STDROOT_FILENO;
+
+    stat(dir, path, &mut stat);
+
+    return 0;
+  }
+
+  pub fn lstat(std::string_view path, stat mut &stat) throws -> i32
+  {
+    using os;
+
+    var dir = STDCWD_FILENO;
+
+    if (path.len > 0 && *path.data == cast('/'))
+      dir = STDROOT_FILENO;
+
+    lstat(dir, path, &mut stat);
+
+    return 0;
+  }
+
+  pub fn getcwd(std::string mut &path) throws -> i32
+  {
+    using os;
+
+    switch (std::env::var("CWD"))
+    {
+      case Some[cwd]:
+        path = cwd;
+
+      else:
+        path.clear();
+    }
+
+    return 0;
+  }
+
+  pub struct dirp
+  {
+    i32 fd;
+    usize cursor;
+    usize buflen;
+    u8[1024] buffer;
+
+    usize pathlen;
+    std::string path;
+
+    fn head(this &) -> os::dirent *
+    {
+      return cast(this.buffer.data + this.cursor);
+    }
+
+    #[lifetime(depend(this))]
+    pub fn path(this &) -> sys::path_view
+    {
+      return this.path;
+    }
+
+    #[lifetime(depend(this))]
+    pub fn name(this &) -> std::string_view
+    {
+      return this.head.name;
+    }
+
+    pub fn type(this &) -> filetype
+    {
+      switch (this.head.type)
+      {
+        case block_device:
+          return filetype::block_device;
+
+        case character_device:
+          return filetype::character_device;
+
+        case directory:
+          return filetype::directory;
+
+        case regular:
+          return filetype::regular;
+
+        case symlink:
+          return filetype::symlink;
+
+        case socket_dgram:
+        case socket_stream:
+          return filetype::socket;
+      }
+
+      return filetype::unknown;
+    }
+
+    pub fn is_dir(this &) -> bool
+    {
+      return this.type == filetype::directory;
+    }
+
+    pub fn is_file(this &) -> bool
+    {
+      return this.type == filetype::regular;
+    }
+
+    pub fn is_symlink(this &) -> bool
+    {
+      return this.type == filetype::symlink;
+    }
+
+    pub fn stat(this &) throws -> stat
+    {
+      var stat = stat();
+
+      lstat(this.fd, this.name, &mut stat);
+
+      return stat;
+    }
+
+    pub fn eof(this &) -> bool
+    {
+      return this.buflen == 0;
+    }
+
+    pub dirp()
+    {
+    }
+
+    pub ~dirp()
+    {
+      if (fd != 0)
+        os::close(&mut thread_ring, fd);
+    }
+  }
+
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws -> void
+  {
+    std::fmt_to(&mut os, &mut ctx, entry.name);
+  }
+
+  pub fn opendir(dirp mut &dirp, std::string_view &path) throws -> i32
+  {
+    using os;
+
+    var fd = open(&mut thread_ring, os::string(path.data, path.len), O_RDONLY | O_DIRECTORY, 0);
+
+    if (fd < 0)
+      throw std::system_error(cast<std::errc>(-fd));
+
+    dirp.fd = fd;
+    dirp.path = path;
+
+    if (!path.ends_with(sys::sep_byte()))
+      dirp.path += sys::sep_byte();
+
+    dirp.pathlen = dirp.path.len;
+
+    readdir(&mut dirp);
+
+    return 0;
+  }
+
+  pub fn readdir(dirp mut &dirp) throws -> i32
+  {
+    using os;
+
+    for (;;)
+    {
+      if (dirp.cursor < dirp.buflen)
+      {
+        dirp.cursor += cast(dirp.head.rec_len);
+      }
+
+      if (dirp.buflen <= dirp.cursor)
+      {
+        var cnt = read(&mut thread_ring, dirp.fd, dirp.buffer.data, dirp.buffer.len);
+
+        if (cnt < 0)
+          throw std::system_error(cast<std::errc>(-cnt));
+
+        dirp.buflen = cast(cnt);
+        dirp.cursor = 0;
+      }
+
+      if (dirp.cursor < dirp.buflen)
+      {
+        var entry = dirp.head;
+
+        if (entry.name == "." || entry.name == "..")
+          continue;
+
+        dirp.path.replace(dirp.pathlen, ~0, dirp.head.name);
+      }
+
+      return 0;
+    }
+  }
+
+#end

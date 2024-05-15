@@ -1,0 +1,21 @@
+//
+// termios
+//
+
+#if __cfg("os.linux")
+
+  import termios.arch.linux;
+
+#end
+
+#if __cfg("os.windows")
+
+  import termios.arch.windows;
+
+#end
+
+#if __cfg("os.zaos")
+
+  import termios.arch.zaos;
+
+#end

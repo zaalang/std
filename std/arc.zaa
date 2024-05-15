@@ -152,9 +152,11 @@ pub struct arc<T, Allocator = std::allocator>
     return arc(ptr);
   }
 
-  #[lifetime(poison(this), repose(other, this), repose(this, other))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(arc mut &this, arc &&other) -> arc mut &
   {
+    std::launder(other);
+
     if (&this != &other)
     {
       reset(&mut this, cast<Ac mut *>(other.inner));
@@ -207,7 +209,7 @@ pub struct arc<T, Allocator = std::allocator>
 
   fn destroy(Ac mut *ptr) -> void
   {
-    var allocator = &move ptr._allocator;
+    var allocator = ptr._allocator;
 
     Allocator::~Allocator(&mut ptr._allocator);
 

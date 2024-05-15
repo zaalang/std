@@ -1,0 +1,315 @@
+//
+// unicode normalisation
+//
+
+import std.fmt;
+import std.span : Span;
+import std.string : String;
+import std.iterator : Iterator, Sentinal;
+import std.range : Range;
+import unicode.tables : *;
+
+using unicode::is_nfc_allowed;
+using unicode::is_nfd_allowed;
+
+fn <=>((char, char) range, char ch) -> int
+{
+  if (ch < range.0)
+    return +1;
+
+  if (ch > range.1)
+    return -1;
+
+  return 0;
+}
+
+fn search<T, K>(Span<T> table, K key) -> T
+{
+  if (table[0].0 <= key && key <= table[table.len - 1].0)
+  {
+    var lo = 0;
+    var hi = table.len;
+
+    while (hi > lo)
+    {
+      var mid = (lo + hi) / 2;
+
+      if (key > table[mid].0)
+        lo = mid + 1;
+      else if (key < table[mid].0)
+        hi = mid;
+      else
+        return table[mid];
+    }
+  }
+
+  return T();
+}
+
+pub enum nf
+{
+  c,
+  d,
+}
+
+pub const NFC = nf::c;
+pub const NFD = nf::d;
+
+pub struct decomp_result
+{
+  pub usize len;
+  pub fn data(this &) -> char * { return this.str.data; }
+
+  pub fn begin(this &) -> usize { return 0; }
+  pub fn end(this &) -> usize { return this.len; }
+  pub fn [](this &, usize index) -> char & { return &this.str[index]; }
+
+  pub decomp_result() = default;
+  pub decomp_result(decomp_result&) = default;
+  pub fn =(decomp_result mut &, decomp_result&) -> decomp_result mut & = default;
+  pub ~decomp_result() = default;
+
+  char[4] str;
+}
+
+pub fn decompose(char ch) -> decomp_result
+{
+  var result = decomp_result();
+
+  result.str[0] = ch;
+  result.len = 1;
+
+  if (ch > 0x7f)
+  {
+    if (0xac00 <= ch && ch <= 0xd7a3)
+    {
+      var idx = ch - 0xac00;
+
+      result.str[0] = 0x1100 + (idx / 0x24c);
+      result.str[1] = 0x1161 + (idx % 0x24c) / 0x1c;
+      result.len = 2;
+
+      if (idx % 0x1c != 0)
+      {
+        result.str[2] = 0x11a7 + idx % 0x1c;
+        result.len = 3;
+      }
+    }
+    else
+    {
+      if (var cc = search(unicode_decomp_index, ch); cc.0.0 <= ch && ch <= cc.0.1)
+      {
+        var len = cast<usize>(cc.1 & 0x7);
+        var idx = cast<usize>(cc.1 >> 3) + cast<usize>(ch - cc.0.0) * len;
+
+        for (var i = 0; i < len; ++i)
+          result.str[i] = unicode_decomp_table[idx + i];
+
+        result.len = len;
+      }
+    }
+  }
+
+  return result;
+}
+
+pub fn compose(char first, char second) -> char
+{
+  if (0x1100 <= first && first <= 0x1112)
+  {
+    if (0x1161 <= second && second <= 0x1175)
+    {
+      return 0xac00 + (first - 0x1100) * 0x24c + (second - 0x1161) * 0x1c;
+    }
+
+    return 0;
+  }
+
+  if (0xac00 <= first && first <= 0xd7a3)
+  {
+    var idx = first - 0xac00;
+
+    if (idx % 0x1c == 0 && 0x11a7 <= second && second <= 0x11c2)
+    {
+      return first + (second - 0x11a7);
+    }
+
+    return 0;
+  }
+
+  var hash = cast<u32>(first & 0xffff) << 16 | cast<u32>(second & 0xffff);
+
+  if (var cc = search(unicode_recomp_table, hash); cc.0 != 0 && cc.1 != 0)
+  {
+    return cc.1;
+  }
+
+  return 0;
+}
+
+pub fn combining_class(char ch) -> u8
+{
+  if (var cc = search(unicode_combining_table, ch); cc.0.0 <= ch && ch <= cc.0.1)
+  {
+    return cc.1;
+  }
+
+  return 0;
+}
+
+fn form_allowed<Form>(char ch) -> bool
+{
+  #if (Form == cast(NFC))
+    return is_nfc_allowed(ch);
+
+  #if (Form == cast(NFD))
+    return is_nfd_allowed(ch);
+}
+
+fn quick_check<Form, I>(I ch, Sentinal<I> end) -> (I, I)
+{
+  var last_cc = 0;
+  var last_stable = ch;
+  var state = 0;
+
+  for (; ch != end; ++ch)
+  {
+    var cc = combining_class(*ch);
+    var allowed = form_allowed<Form>(*ch);
+
+    switch (state)
+    {
+      case 0:
+
+        if (allowed && cc == 0)
+          last_stable = ch;
+
+        if (last_cc > cc && cc != 0)
+          state = 1;
+
+        if (!allowed)
+          state = 1;
+
+      case 1:
+
+        if (allowed && cc == 0)
+          break;
+    }
+
+    last_cc = cc;
+  }
+
+  if (state == 0)
+    last_stable = ch;
+
+  return (last_stable, ch);
+}
+
+fn append<Container, I>(Container mut &dst, I first, Sentinal<I> last) -> void
+{
+  for (; first != last; ++first)
+    dst.push_back(*first);
+}
+
+fn append(std::string mut &dst, std::string::char_iterator first, std::string::char_iterator last) -> void
+{
+  dst.insert(dst.end, first, last);
+}
+
+fn canonical_ordering_algorithm(Span<(u8, char)> mut &cp) -> void
+{
+  for (var i = cp.begin; i != cp.end; ++i)
+  {
+    if (var j = std::find_if(cp[i .. cp.end], |k| k.0 == 0); j != i)
+    {
+      std::stable_sort(&mut cp[i .. j], |a, b| a.0 < b.0);
+
+      i += j - i - 1;
+    }
+  }
+}
+
+fn canonical_composition_algorithm(Span<(u8, char)> mut &cp) -> void
+{
+  for (var i = std::find_if(cp, |k| k.0 == 0); i != cp.end; )
+  {
+    var starter = i;
+    var previous = 0;
+
+    for (++i; i != cp.end; ++i)
+    {
+      if (previous == 0 || cp[i].0 > previous)
+      {
+        if (var ch = compose(cp[starter].1, cp[i].1); ch != 0)
+        {
+          cp[starter].1 = ch;
+          cp[i].1 = 0;
+
+          continue;
+        }
+      }
+
+      if (cp[i].0 == 0)
+        break;
+
+      previous = cp[i].0;
+    }
+  }
+}
+
+pub fn normalize_into<Form, Container, I>(Container mut &dst, I first, Sentinal<I> last) -> void
+  where requires (I ch) { char(*++ch); }
+{
+  var cp = std::vector<(u8, char), N:64>();
+
+  for (; first != last; )
+  {
+    var target = quick_check<Form>(first, last);
+
+    append(&mut dst, first, target.0);
+
+    if (target.0 != last)
+    {
+      for (var ch = target.0; ch != target.1; ++ch)
+      {
+        for (var c : decompose(*ch))
+          cp.push_back(combining_class(c), c);
+      }
+
+      canonical_ordering_algorithm(&mut cp);
+
+      #if (Form == cast(NFC))
+      {
+        canonical_composition_algorithm(&mut cp);
+      }
+
+      for (var (cc, ch) : cp)
+      {
+        if (ch != 0)
+          dst.push_back(ch);
+      }
+
+      cp.clear();
+    }
+
+    first = target.1;
+  }
+}
+
+pub fn normalize<Form = NFC>(Span<char> &span) -> std::vector<char>
+{
+  var result = std::vector<char>::with_capacity(span.len);
+
+  normalize_into<Form>(&mut result, span.begin, span.end);
+
+  return result;
+}
+
+pub fn normalize<Form = NFC>(String &str) -> std::string
+{
+  var result = std::string::with_capacity(str.len);
+
+  normalize_into<Form>(&mut result, str.chars.begin, str.end);
+
+  return result;
+}

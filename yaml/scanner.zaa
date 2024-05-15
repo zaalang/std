@@ -170,6 +170,15 @@ pub struct scanner
     is.discard(1);
   }
 
+  fn take_front(scanner mut &this) -> token
+  {
+    var tok = &move this.tokens[this.tokens_head++];
+
+    std::launder(this.tokens);
+
+    return tok;
+  }
+
   pub scanner()
   {
     indent = -1;
@@ -1206,5 +1215,5 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
 
   this.tokens_parsed += 1;
 
-  return &move std::launder(this.tokens[this.tokens_head++]);
+  return this.take_front();
 }

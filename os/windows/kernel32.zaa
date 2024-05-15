@@ -34,6 +34,10 @@ pub const FILE_SHARE_READ = 0x00000001;
 pub const FILE_SHARE_WRITE = 0x00000002;
 pub const FILE_SHARE_DELETE = 0x00000004;
 
+pub const FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000;
+pub const FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
+pub const FILE_FLAG_OVERLAPPED = 0x40000000;
+
 pub const FILE_ATTRIBUTE_READONLY = 0x00000001;
 pub const FILE_ATTRIBUTE_HIDDEN = 0x00000002;
 pub const FILE_ATTRIBUTE_SYSTEM = 0x00000004;
@@ -49,6 +53,10 @@ pub const FILE_ATTRIBUTE_OFFLINE = 0x00001000;
 pub const FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x00002000;
 pub const FILE_ATTRIBUTE_ENCRYPTED = 0x00004000;
 
+pub const STD_INPUT_HANDLE = -DWORD(10);
+pub const STD_OUTPUT_HANDLE = -DWORD(11);
+pub const STD_ERROR_HANDLE = -DWORD(12);
+
 pub const INVALID_FILE_ATTRIBUTES = u32(0xffffffff);
 
 pub const INVALID_HANDLE_VALUE = uintptr(~0);
@@ -58,16 +66,122 @@ pub struct SECURITY_ATTRIBUTES
   pub DWORD nLength;
   pub LPVOID lpSecurityDescriptor;
   pub BOOL bInheritHandle;
+
+  pub SECURITY_ATTRIBUTES() = default;
+  pub SECURITY_ATTRIBUTES(SECURITY_ATTRIBUTES &) = default;
+  pub fn =(SECURITY_ATTRIBUTES mut &, SECURITY_ATTRIBUTES &) -> SECURITY_ATTRIBUTES mut & = default;
+  pub ~SECURITY_ATTRIBUTES() = default;
 }
 
-pub using LPSECURITY_ATTRIBUTES = SECURITY_ATTRIBUTES mut *;
+pub struct OVERLAPPED
+{
+  pub ULONG *Internal;
+  pub ULONG *InternalHigh;
+  pub VOID *Pointer;
+  pub HANDLE hEvent;
+
+  pub OVERLAPPED() = default;
+  pub OVERLAPPED(OVERLAPPED &) = default;
+  pub fn =(OVERLAPPED mut &, OVERLAPPED &) -> OVERLAPPED mut & = default;
+  pub ~OVERLAPPED() = default;
+}
 
 pub extern "C" fn GetLastError() -> DWORD;
-pub extern "C" fn MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCCH lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar) -> int;
+pub extern "C" fn MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar) -> int;
+pub extern "C" fn WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, LPCSTR lpDefaultChar, BOOL mut *lpUsedDefaultChar) -> int;
 pub extern "C" fn FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, void *Arguments) -> DWORD;
-pub extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
-pub extern "C" fn CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName) -> HANDLE;
+pub extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, SECURITY_ATTRIBUTES mut *lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
+pub extern "C" fn CreateFileMappingW(HANDLE hFile, SECURITY_ATTRIBUTES mut *lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName) -> HANDLE;
 pub extern "C" fn MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress) -> LPVOID;
 pub extern "C" fn UnmapViewOfFileEx(LPCVOID BaseAddress, ULONG UnmapFlags) -> BOOL;
 pub extern "C" fn GetFileSizeEx(HANDLE hFile, LARGE_INTEGER mut *lpFileSize) -> BOOL;
+pub extern "C" fn ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, DWORD mut *lpNumberOfBytesRead, OVERLAPPED mut *lpOverlapped) -> BOOL;
+pub extern "C" fn WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, DWORD mut *lpNumberOfBytesWritten, OVERLAPPED mut *lpOverlapped) -> BOOL;
+pub extern "C" fn PeekNamedPipe(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, DWORD mut *lpBytesRead, DWORD mut *lpTotalBytesAvail, DWORD mut *lpBytesLeftThisMessage) -> BOOL;
+pub extern "C" fn GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer) -> DWORD;
+pub extern "C" fn GetStdHandle(DWORD nStdHandle) -> HANDLE;
 pub extern "C" fn CloseHandle(HANDLE hObject) -> BOOL;
+
+pub const MAX_PATH = 260;
+pub const MAX_LONG_PATH = 32768;
+
+pub enum GET_FILEEX_INFO_LEVELS
+{
+  GetFileExInfoStandard,
+  GetFileExMaxInfoLevel,
+}
+
+pub struct FILETIME
+{
+  pub DWORD dwLowDateTime;
+  pub DWORD dwHighDateTime;
+
+  pub FILETIME() = default;
+  pub FILETIME(FILETIME &) = default;
+  pub fn =(FILETIME mut &, FILETIME &) -> FILETIME mut & = default;
+  pub ~FILETIME() = default;
+}
+
+pub struct BY_HANDLE_FILE_INFORMATION
+{
+  pub DWORD dwFileAttributes;
+  pub FILETIME ftCreationTime;
+  pub FILETIME ftLastAccessTime;
+  pub FILETIME ftLastWriteTime;
+  pub DWORD dwVolumeSerialNumber;
+  pub DWORD nFileSizeHigh;
+  pub DWORD nFileSizeLow;
+  pub DWORD nNumberOfLinks;
+  pub DWORD nFileIndexHigh;
+  pub DWORD nFileIndexLow;
+
+  pub BY_HANDLE_FILE_INFORMATION() = default;
+  pub BY_HANDLE_FILE_INFORMATION(BY_HANDLE_FILE_INFORMATION &) = default;
+  pub fn =(BY_HANDLE_FILE_INFORMATION mut &, BY_HANDLE_FILE_INFORMATION &) -> BY_HANDLE_FILE_INFORMATION mut & = default;
+  pub ~BY_HANDLE_FILE_INFORMATION() = default;
+}
+
+pub extern "C" fn GetFileInformationByHandle(HANDLE hFile, BY_HANDLE_FILE_INFORMATION mut *lpFileInformation) -> BOOL;
+
+pub struct WIN32_FILE_ATTRIBUTE_DATA
+{
+  pub DWORD dwFileAttributes;
+  pub FILETIME ftCreationTime;
+  pub FILETIME ftLastAccessTime;
+  pub FILETIME ftLastWriteTime;
+  pub DWORD nFileSizeHigh;
+  pub DWORD nFileSizeLow;
+
+  pub WIN32_FILE_ATTRIBUTE_DATA() = default;
+  pub WIN32_FILE_ATTRIBUTE_DATA(WIN32_FILE_ATTRIBUTE_DATA &) = default;
+  pub fn =(WIN32_FILE_ATTRIBUTE_DATA mut &, WIN32_FILE_ATTRIBUTE_DATA &) -> WIN32_FILE_ATTRIBUTE_DATA mut & = default;
+  pub ~WIN32_FILE_ATTRIBUTE_DATA() = default;
+}
+
+pub extern "C" fn GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation) -> BOOL;
+
+pub struct WIN32_FIND_DATAW
+{
+  pub DWORD dwFileAttributes;
+  pub FILETIME ftCreationTime;
+  pub FILETIME ftLastAccessTime;
+  pub FILETIME ftLastWriteTime;
+  pub DWORD nFileSizeHigh;
+  pub DWORD nFileSizeLow;
+  pub DWORD dwReserved0;
+  pub DWORD dwReserved1;
+  pub WCHAR[MAX_PATH] cFileName;
+  pub WCHAR[14] cAlternateFileName;
+  pub DWORD dwFileType; // Obsolete. Do not use.
+  pub DWORD dwCreatorType; // Obsolete. Do not use
+  pub WORD wFinderFlags; // Obsolete. Do not use
+
+  pub WIN32_FIND_DATAW() = default;
+  pub WIN32_FIND_DATAW(WIN32_FIND_DATAW &) = default;
+  pub fn =(WIN32_FIND_DATAW mut &, WIN32_FIND_DATAW &) -> WIN32_FIND_DATAW mut & = default;
+  pub ~WIN32_FIND_DATAW() = default;
+}
+
+pub extern "C" fn FindFirstFileW(LPCWSTR lpFileName, WIN32_FIND_DATAW mut *lpFindFileData) -> HANDLE;
+pub extern "C" fn FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW mut *lpFindFileData) -> BOOL;
+pub extern "C" fn FindClose(HANDLE hFindFile) -> BOOL;

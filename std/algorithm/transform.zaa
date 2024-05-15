@@ -2,9 +2,11 @@
 // std tansform
 //
 
+import std.stdlib : assert;
 import std.algorithm;
 import std.range : Iterator, BidirectionalIterator, RandomAccessIterator, Sentinal, Range;
 
+#[unsafe]
 pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, Func &&func) -> O
 {
   while (first != last)
@@ -17,6 +19,7 @@ pub fn transform<O, I, Func>(O dst, Sentinal<O> end, I first, Sentinal<I> last, 
   return dst;
 }
 
+#[unsafe]
 pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &&func) -> O
 {
   while (first != last)
@@ -29,6 +32,7 @@ pub fn transform_backward<O, I, Func>(O dst, O end, I first, I last, Func &&func
   return end;
 }
 
+#[unsafe]
 pub fn transform_n<O, I, N, Func>(O dst, Sentinal<O> end, I first, N n, Func &&func) -> O
 {
   while (n > 0)
@@ -48,7 +52,7 @@ pub fn transform<T, I, Func>(Range<T> mut &range, I first, Sentinal<I> last, Fun
 {
   for (; first != last; ++first)
   {
-    range[first] = func(&move std::launder(range[first]));
+    range[first] = func(&mut range[first]);
   }
 
   return first;
@@ -78,7 +82,7 @@ pub fn adjacent_transform<N, T, I, Func>(Range<T> mut &range, I first, Sentinal<
 
   for (; window[N - 1] != last; ++first)
   {
-    range[first] = func(&move deref(range, window...));
+    range[first] = func(&mut deref(range, window...));
 
     for (var k = 0; k < N; ++k)
       ++window[k];
@@ -92,7 +96,7 @@ pub fn adjacent_transform!<N, T, Func>(Range<T> mut &range, Func &&func)
 {
   var last = adjacent_transform<N>(&mut range, range.begin, range.end, &&func);
 
-  return std::subrange(range, range.begin, last);
+  return std::subrange(&mut range, range.begin, last);
 }
 
 #[lifetime(repose(first, range), repose(last, range), depend(range))]
@@ -105,7 +109,7 @@ pub fn inclusive_scan<S, T, I, Func>(Range<T> mut &range, I first, Sentinal<I> l
 
   while (++first != last)
   {
-    accumulator = func(&move accumulator, &move std::launder(range[first]));
+    accumulator = func(&move accumulator, &mut range[first]);
 
     range[first] = accumulator;
   }
@@ -129,7 +133,7 @@ pub fn exclusive_scan<S, T, I, Func>(Range<T> mut &range, I first, Sentinal<I> l
     return first;
 
   var accumulator = seed;
-  accumulator = func(&move accumulator, &move std::launder(range[first]));
+  accumulator = func(&move accumulator, &mut range[first]);
 
   while (first != last)
   {
@@ -138,7 +142,7 @@ pub fn exclusive_scan<S, T, I, Func>(Range<T> mut &range, I first, Sentinal<I> l
     if (++first != last)
     {
       seed = accumulator;
-      accumulator = func(&move accumulator, &move std::launder(range[first]));
+      accumulator = func(&move accumulator, &mut range[first]);
     }
   }
 

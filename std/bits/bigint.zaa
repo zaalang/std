@@ -101,7 +101,7 @@ pub struct bigint<N>
     return &this;
   }
 
-  pub fn ==(this&, bigint &that) -> bool
+  pub fn ==(this &, bigint &that) -> bool
   {
     if (this.n != that.n)
       return false;
@@ -113,7 +113,7 @@ pub struct bigint<N>
     return true;
   }
 
-  pub fn <=>(this&, bigint &that) -> int
+  pub fn <=>(this &, bigint &that) -> int
   {
     if (this.n != that.n)
       return (this.n > that.n) ? +1 : -1;

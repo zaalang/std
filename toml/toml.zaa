@@ -99,7 +99,7 @@ pub union node
 
       case String[string]:
         #if (__is_same<T, std::string&>)
-          return T(&string);
+          return &string;
         #if (requires { T(std::string()); })
           return T(string);
     }
@@ -337,7 +337,7 @@ pub fn ==(node &lhs, node &rhs) -> bool
     {
       #{
         #for (const k = 1; k != std::meta::fields_of($node).len; ++k)
-          -> { case $(k): return lhs.$(k) == rhs.$(k); }
+          -> { case ${k}: return lhs.${k} == rhs.${k}; }
       }
     }
   }
@@ -353,7 +353,7 @@ pub fn <=>(node &lhs, node &rhs) -> int
     {
       #{
         #for (const k = 1; k != std::meta::fields_of($node).len; ++k)
-          -> { case $(k): return lhs.$(k) <=> rhs.$(k); }
+          -> { case ${k}: return lhs.${k} <=> rhs.${k}; }
       }
     }
   }

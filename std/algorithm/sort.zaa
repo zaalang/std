@@ -247,7 +247,7 @@ pub fn stable_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cm
 {
   if (last - first < 16)
   {
-    insertion_sort(&mut range, first, last, cmp);
+    merge_sort(&mut range, first, last, cmp);
   }
   else
   {
@@ -266,7 +266,7 @@ pub fn stable_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less) -> void
   stable_sort(&mut range, range.begin, range.end, cmp);
 }
 
-#[lifetime(repose(first, range), repose(last, range))]
+#[lifetime(repose(first, range), repose(middle, range), repose(last, range))]
 pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I first, I middle, Sentinal<I> last, Cmp &cmp = std::less) -> void
   where __is_match<RandomAccessIterator, I>()
 {
@@ -288,6 +288,7 @@ pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I first, I middle, Sentinal<
   std::sort_heap(&mut range, first, middle, cmp);
 }
 
+#[lifetime(repose(middle, range))]
 pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less) -> void
   where __is_match<RandomAccessIterator, typeof(range.begin)>()
   where __is_match<Sortable, typeof(range)>()
@@ -315,7 +316,7 @@ pub fn stable_sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
   return &range;
 }
 
-#[lifetime(depend(range))]
+#[lifetime(repose(middle, range), depend(range))]
 pub fn partial_sort!<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::less)
   where __is_match<RandomAccessIterator, typeof(range.begin)>()
   where __is_match<Sortable, typeof(range)>()

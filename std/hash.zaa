@@ -6,7 +6,7 @@ import std.memory;
 
 pub struct hash
 {
-  pub fn ()<T>(this&, T &item) -> usize
+  pub fn ()<T>(this &, T &item) -> usize
   {
     using T;
 

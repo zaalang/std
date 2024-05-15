@@ -27,6 +27,8 @@ pub struct span<T>
   pub usize len;
   pub T *data;
 
+  pub const range_adaptor_type = true;
+
   #[lifetime(depend(*data))]
   pub span(T *data, usize len)
     : len(len), data(data)
@@ -125,6 +127,7 @@ pub struct span<T>
   }
 
   pub span() = default;
+  pub span(span &that) = default;
   pub fn =(this mut &, span &that) -> span mut & = default;
   pub ~span() = default;
 }
@@ -133,6 +136,8 @@ pub struct mutable_span<T>
 {
   pub usize len;
   pub T mut *data;
+
+  pub const range_adaptor_type = true;
 
   #[lifetime(depend(*data))]
   pub mutable_span(T mut *data, usize len)
@@ -260,6 +265,8 @@ pub struct moveable_span<T>
   pub usize len;
   pub T mut *data;
 
+  pub const range_adaptor_type = true;
+
   #[lifetime(depend(*data))]
   pub moveable_span(T mut *data, usize len)
     : len(len), data(data)
@@ -311,40 +318,10 @@ pub struct moveable_span<T>
   pub ~moveable_span() = default;
 }
 
-#[lifetime(consume(span))]
+#[lifetime(consume(span), depend())]
 pub fn move<T>(mutable_span<T> &&span)
 {
   return moveable_span(span.data, span.len);
-}
-
-pub fn remove_prefix!<T>(span<T> mut &span, usize n) -> void
-{
-  assert(n <= span.len);
-
-  span.len -= n;
-  span.data += n;
-}
-
-pub fn remove_suffix!<T>(span<T> mut &span, usize n) -> void
-{
-  assert(n <= span.len);
-
-  span.len -= n;
-}
-
-pub fn remove_prefix!<T>(mutable_span<T> mut &span, usize n) -> void
-{
-  assert(n <= span.len);
-
-  span.len -= n;
-  span.data += n;
-}
-
-pub fn remove_suffix!<T>(mutable_span<T> mut &span, usize n) -> void
-{
-  assert(n <= span.len);
-
-  span.len -= n;
 }
 
 #[lifetime(depend(array))]
@@ -371,25 +348,37 @@ pub fn []<T, N>(T[N] mut &array, (usize, usize, void) range) -> mutable_span<T>
   return mutable_span(&mut array)[range];
 }
 
+pub fn as_literal<T>(Span<T> &span)
+{
+  return __array_literal(span.data, span.len);
+}
+
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn remove_prefix<T>(Span<T> &&span, usize n)
+pub fn drop_front<T>(Span<T> &&span, usize n)
 {
   return (&&span)[n .. span.len];
 }
 
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn remove_suffix<T>(Span<T> &&span, usize n)
+pub fn take_front<T>(Span<T> &&span, usize n)
+{
+  return (&&span)[0 ..  n];
+}
+
+#[nodiscard]
+#[lifetime(depend(*span.[]))]
+pub fn drop_back<T>(Span<T> &&span, usize n)
 {
   return (&&span)[0 .. span.len - n];
 }
 
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn all<T>(Span<T> &&span)
+pub fn take_back<T>(Span<T> &&span, usize n)
 {
-  return (&&span)[0 .. span.len];
+  return (&&span)[span.len - n .. span.len];
 }
 
 #[nodiscard]
@@ -413,23 +402,94 @@ pub fn subspan<T>(Span<T> &&span, usize offset, usize count)
   return (&&span)[offset .. offset + count];
 }
 
-#[nodiscard]
-#[lifetime(depend(*span.[]))]
-pub fn front_n<T>(Span<T> &&span, usize n)
+pub fn drop_n!<T>(span<T> mut &span, usize n) -> void
 {
-  return (&&span)[0 .. n];
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
 }
 
-#[nodiscard]
-#[lifetime(depend(*span.[]))]
-pub fn back_n<T>(Span<T> &&span, usize n)
+pub fn take_n!<T>(span<T> mut &span, usize n) -> void
 {
-  return (&&span)[span.len - n .. span.len];
+  assert(n <= span.len);
+
+  span.len -= n;
 }
 
-pub fn as_literal<T>(Span<T> &span)
+pub fn drop_front!<T>(span<T> mut &span, usize n) -> void
 {
-  return __array_literal(span.data, span.len);
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
+}
+
+pub fn drop_back!<T>(span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+pub fn take_front!<T>(span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+pub fn take_back!<T>(span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
+}
+
+pub fn drop_n!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
+}
+
+pub fn take_n!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+pub fn drop_front!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
+}
+
+pub fn drop_back!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+pub fn take_front!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+}
+
+pub fn take_back!<T>(mutable_span<T> mut &span, usize n) -> void
+{
+  assert(n <= span.len);
+
+  span.len -= n;
+  span.data += n;
 }
 
 pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize
@@ -438,7 +498,7 @@ pub fn read(Span<u8> mut &span, u8 mut *data, usize len) -> usize
 
   std::memcpy(data, span.data, bytes);
 
-  span.remove_prefix!(bytes);
+  span.drop_front!(bytes);
 
   return bytes;
 }
@@ -449,7 +509,7 @@ pub fn write(std::mutable_span<u8> mut &span, u8 *data, usize len) -> usize
 
   std::memcpy(span.data, data, bytes);
 
-  span.remove_prefix!(bytes);
+  span.drop_front!(bytes);
 
   return bytes;
 }
