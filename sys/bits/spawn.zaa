@@ -5,6 +5,7 @@
 import std.span;
 import std.string;
 import std.memory;
+import std.atomic;
 
 pub struct spawn_attr_t
 {
@@ -15,7 +16,12 @@ pub struct spawn_attr_t
   pub const enddup = 255;
 
   pub i32 type;
-  pub i32 value;
+  pub uintptr value;
+
+  pub spawn_attr_t(i32 type, var value)
+    : type(type), value(cast<uintptr>(value))
+  {
+  }
 
   pub spawn_attr_t() = default;
   pub spawn_attr_t(spawn_attr_t&) = default;
@@ -27,6 +33,26 @@ pub struct spawn_attr_t
 
   import os.linux.fcntl;
   import os.linux.unistd;
+
+  pub struct process
+  {
+    i32 pid;
+
+    pub fn id(this &) -> u32
+    {
+      return cast(this.pid);
+    }
+
+    process(i32 pid)
+      : pid(pid)
+    {
+    }
+
+    pub process() = default;
+    pub process(process&) = default;
+    pub fn =(process mut &, process &) -> process mut & = default;
+    pub ~process() = default;
+  }
 
   struct thread_data
   {
@@ -44,45 +70,450 @@ pub struct spawn_attr_t
 
     chdir(td.cwd);
 
+    for (var &attr : td.attrs)
+    {
+      switch (attr.type)
+      {
+        case spawn_attr_t::stdin:
+          dup2(cast(attr.value), STDIN_FILENO);
+
+        case spawn_attr_t::stdout:
+          dup2(cast(attr.value), STDOUT_FILENO);
+
+        case spawn_attr_t::stderr:
+          dup2(cast(attr.value), STDERR_FILENO);
+
+        case 3 ..= 255:
+          dup2(cast(attr.value), cast(attr.type));
+      }
+    }
+
     return execve(td.path, td.argv, td.envp);
   }
 
-  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<spawn_attr_t> attrs) -> i32
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws -> process
   {
     using os;
 
-    std::assert(*(cwd.data + cwd.len) == 0);
-    std::assert(*(path.data + path.len) == 0);
-
-    var stack = [<u8>: 0; 16384];
+    var stack = std::vector<u8>::with_size(4096 + args.len*8 + vars.len*8);
     var stacktop = cast<uintptr>(stack.data + stack.len);
 
     var argc = 0;
-    var argv = cast<u8*[1024] mut *>(stacktop -= sizeof<u8*[1024]>);
+    var argv = cast<u8* mut *>(stacktop -= (1 + args.len + 1) * sizeof<u8*>);
+
+    *(argv + argc++) = path.data;
 
     for (var &arg : args)
     {
-      argv[argc++] = arg.data;
+      *(argv + argc++) = arg.data;
+    }
+
+    var envc = 0;
+    var envp = cast<u8* mut *>(stacktop -= (vars.len + 1) * sizeof<u8*>);
+
+    for (var &arg : vars)
+    {
+      *(envp + envc++) = arg.data;
     }
 
     var td = cast<thread_data mut *>(stacktop -= sizeof<thread_data>);
 
     td.cwd = cwd.data;
     td.path = path.data;
-    td.argv = argv.data;
-    td.envp = __envp__;
+    td.argv = argv;
+    td.envp = envp;
     td.attrs = attrs;
 
     var pid = clone(cast(stacktop), &cast<(thread_data mut *) -> int>(spawn_start), CLONE_VM | CLONE_VFORK | SIGCHLD, null, null, null);
 
     if (pid < 0)
-      std::panic(pid);
-
-    var wstatus = 0;
-    var rc = wait4(pid, &wstatus, 0, null);
-    std::print(rc, " ", wstatus, " ", wexitstatus(wstatus));
+      throw std::system_error(cast<std::errc>(-pid));
 
     return pid;
+  }
+
+  pub fn wait(process &process) throws -> i32
+  {
+    using os;
+
+    var siginfo = siginfo_t();
+    if (var rc = waitid(P_PID, process.pid, &siginfo, WEXITED); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return cast<i32>(std::bit_cast<i8>(cast<u8>(siginfo.sigchld.si_status)));
+  }
+
+  pub fn try_wait(process &process) throws -> std::optional<i32>
+  {
+    using os;
+
+    var siginfo = siginfo_t();
+    if (var rc = waitid(P_PID, process.pid, &siginfo, WEXITED | WNOHANG); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    if (siginfo.si_code == 0)
+      return None;
+
+    return cast<i32>(std::bit_cast<i8>(cast<u8>(siginfo.sigchld.si_status)));
+  }
+
+  pub fn pipe(std::file mut &read, std::file mut &write) throws -> i32
+  {
+    using os;
+
+    var fds = [0, 0];
+    if (var rc = pipe(&fds); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    read = std::file(std::fd(fds[0]));
+    write = std::file(std::fd(fds[1]));
+
+    return 0;
+  }
+
+#end
+
+#if __cfg("os.windows")
+
+  import os.windows.kernel32;
+  import os.windows.synchapi;
+  import os.windows.error;
+
+  pub struct process
+  {
+    using os;
+
+    HANDLE hProcess;
+    HANDLE hThread;
+
+    pub fn id(this &) -> u32
+    {
+      return GetProcessId(this.hProcess);
+    }
+
+    process(HANDLE hProcess, HANDLE hThread)
+      : hProcess(hProcess), hThread(hThread)
+    {
+    }
+
+    pub process() = default;
+    pub process(process&) = default;
+    pub fn =(process mut &, process &) -> process mut & = default;
+    pub ~process() = default;
+  }
+
+  fn append_wide(std::vector<u16> mut &dst, std::string &src) throws -> usize
+  {
+    using os;
+
+    dst.reserve(dst.len + src.len);
+
+    var nchars = MultiByteToWideChar(CP_UTF8, 0, src.data, cast(src.len), dst.data + dst.len, cast(src.len));
+
+    if (nchars == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    dst.append_from_capacity(cast(nchars));
+
+    return dst.len;
+  }
+
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws -> process
+  {
+    using os;
+    static lock = #std::spin_lock();
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
+
+    var cwdptr = null<u16*>();
+    var cwdstr = std::vector<u16>();
+
+    if (cwd != "")
+    {
+      append_wide(&mut cwdstr, cwd);
+
+      cwdstr.push_back(0);
+
+      cwdptr = cwdstr.data;
+    }
+
+    var argsstr = std::vector<u16>();
+
+    append_wide(&mut argsstr, path);
+
+    for (var &arg : args)
+    {
+      argsstr.push_back(cast<u16>(' '));
+
+      append_wide(&mut argsstr, arg);
+    }
+
+    argsstr.push_back(0);
+
+    var varsstr = std::vector<u16>();
+
+    for (var &arg : vars)
+    {
+      append_wide(&mut varsstr, arg);
+
+      varsstr.push_back(0);
+    }
+
+    varsstr.push_back(0);
+    varsstr.push_back(0);
+
+    var flags = CREATE_UNICODE_ENVIRONMENT;
+
+    var StartupInfo = STARTUPINFOW();
+    StartupInfo.cb = sizeof(StartupInfo);
+
+    StartupInfo.dwFlags |= STARTF_USESTDHANDLES;
+    StartupInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    StartupInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    StartupInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+    var guard = std::lock_guard(&mut lock);
+
+    for (var &attr : attrs)
+    {
+      switch (attr.type)
+      {
+        case spawn_attr_t::stdin:
+
+          if (attr.value != 0)
+          {
+            var proc = GetCurrentProcess();
+            DuplicateHandle(proc, cast(attr.value), proc, &StartupInfo.hStdInput, 0, 1, DUPLICATE_SAME_ACCESS);
+          }
+
+        case spawn_attr_t::stdout:
+
+          if (attr.value != 1)
+          {
+            var proc = GetCurrentProcess();
+            DuplicateHandle(proc, cast(attr.value), proc, &StartupInfo.hStdOutput, 0, 1, DUPLICATE_SAME_ACCESS);
+          }
+
+        case spawn_attr_t::stderr:
+
+          if (attr.value != 2)
+          {
+            var proc = GetCurrentProcess();
+            DuplicateHandle(proc, cast(attr.value), proc, &StartupInfo.hStdError, 0, 1, DUPLICATE_SAME_ACCESS);
+          }
+      }
+    }
+
+    var ProcessInformation = PROCESS_INFORMATION();
+
+    if (CreateProcessW(pathstr.data, argsstr.data, null, null, 1, flags, varsstr.data, cwdptr, &StartupInfo, &ProcessInformation) == 0)
+    {
+      var R = GetLastError();
+
+      CloseHandle(StartupInfo.hStdInput);
+      CloseHandle(StartupInfo.hStdOutput);
+      CloseHandle(StartupInfo.hStdError);
+
+      throw std::system_error(error_code(R));
+    }
+
+    CloseHandle(StartupInfo.hStdInput);
+    CloseHandle(StartupInfo.hStdOutput);
+    CloseHandle(StartupInfo.hStdError);
+
+    return process(ProcessInformation.hProcess, ProcessInformation.hThread);
+  }
+
+  pub fn wait(process &process) throws -> i32
+  {
+    using os;
+
+    if (WaitForSingleObject(process.hProcess, INFINITE) != WAIT_OBJECT_0)
+      throw std::system_error(error_code(GetLastError()));
+
+    var status = DWORD(0);
+    if (GetExitCodeProcess(process.hProcess, &status) == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+
+    return std::bit_cast<i32>(status);
+  }
+
+  pub fn try_wait(process &process) throws -> std::optional<i32>
+  {
+    using os;
+
+    if (WaitForSingleObject(process.hProcess, 0) != WAIT_OBJECT_0)
+      return None;
+
+    var status = DWORD(0);
+    if (GetExitCodeProcess(process.hProcess, &status) == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    CloseHandle(process.hThread);
+    CloseHandle(process.hProcess);
+
+    return std::bit_cast<i32>(status);
+  }
+
+  pub fn pipe(std::file mut &read, std::file mut &write) throws -> i32
+  {
+    using os;
+
+    var fds = [HANDLE(), HANDLE()];
+    if (CreatePipe(&fds[0], &fds[1], null, 0) == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    read = std::file(std::fd(fds[0]));
+    write = std::file(std::fd(fds[1]));
+
+    return 0;
+  }
+
+#end
+
+#if __cfg("os.zaos")
+
+  import os.zaos.sched;
+
+  extern fn thread_ring() -> os::ioring mut &;
+
+  pub struct process
+  {
+    i32 pid;
+
+    pub fn id(this &) -> u32
+    {
+      return cast(this.pid);
+    }
+
+    process(i32 pid)
+      : pid(pid)
+    {
+    }
+
+    pub process() = default;
+    pub process(process&) = default;
+    pub fn =(process mut &, process &) -> process mut & = default;
+    pub ~process() = default;
+  }
+
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws -> process
+  {
+    using os;
+
+    var argv = std::vector<os::arg>();
+    var envp = std::vector<os::arg>();
+    var attv = std::vector<os::attr>();
+
+    argv.push_back(os::arg(path.data, path.len));
+
+    for (var &arg : args)
+    {
+      argv.push_back(os::arg(arg.data, arg.len));
+    }
+
+    for (var &arg : vars)
+    {
+      envp.push_back(os::arg(arg.data, arg.len));
+    }
+
+    var stdin = STDIN_FILENO;
+    var stdout = STDOUT_FILENO;
+    var stderr = STDERR_FILENO;
+    var stdcwd = STDCWD_FILENO;
+
+    for (var &attr : attrs)
+    {
+      switch (attr.type)
+      {
+        case spawn_attr_t::stdin:
+          stdin = attr.value;
+
+        case spawn_attr_t::stdout:
+          stdout = attr.value;
+
+        case spawn_attr_t::stderr:
+          stderr = attr.value;
+      }
+    }
+
+    if (cwd != "")
+    {
+      stdcwd = open(&mut thread_ring, os::string(cwd.data, cwd.len), O_RDONLY | O_DIRECTORY, 0);
+
+      if (stdcwd < 0)
+        throw std::system_error(cast<std::errc>(-stdcwd));
+    }
+
+    attv.push_back(os::attr(attr::stdin, stdin));
+    attv.push_back(os::attr(attr::stdout, stdout));
+    attv.push_back(os::attr(attr::stderr, stderr));
+    attv.push_back(os::attr(attr::stdroot, STDROOT_FILENO));
+    attv.push_back(os::attr(attr::stdcwd, stdcwd));
+    attv.push_back(os::attr(os::attr::dupfd(7), 7));
+
+    var pid = process_create(argv.data, argv.len, envp.data, envp.len, attv.data, attv.len, 0);
+
+    if (pid < 0)
+    {
+      if (stdcwd != STDCWD_FILENO)
+        close(&mut thread_ring, stdcwd);
+
+      throw std::system_error(cast<std::errc>(-pid));
+    }
+
+    if (stdcwd != STDCWD_FILENO)
+      close(&mut thread_ring, stdcwd);
+
+    return pid;
+  }
+
+  pub fn wait(process &process) throws -> i32
+  {
+    using os;
+
+    var rval = 0;
+    if (var rc = wait(process.pid, &rval, 0); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return rval;
+  }
+
+  pub fn try_wait(process &process) throws -> std::optional<i32>
+  {
+    using os;
+
+    if (wait(process.pid, null, WNOHANG | WNOWAIT) == 0)
+      return None;
+
+    var rval = 0;
+    if (var rc = wait(process.pid, &rval, 0); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return rval;
+  }
+
+  pub fn pipe(std::file mut &read, std::file mut &write) throws -> i32
+  {
+    using os;
+
+    var fds = [0, 0];
+    if (var rc = buffer_create(&mut thread_ring, &fds, 16384, 0); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    read = std::file(std::fd(fds[0]));
+    write = std::file(std::fd(fds[1]));
+
+    return 0;
   }
 
 #end

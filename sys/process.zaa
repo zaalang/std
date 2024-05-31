@@ -4,42 +4,217 @@
 
 import std.stdlib;
 import std.string : String;
-import sys.bits.spawn : spawn, spawn_attr_t;
+import std.flat_hash_map;
+import std.env;
+import sys.bits.spawn : process, spawn, wait, try_wait, spawn_attr_t, pipe;
+
+pub struct env
+{
+  bool clear;
+  std::flat_hash_map<std::string, std::optional<std::string>> vars;
+
+  pub fn clear(this mut &) -> void
+  {
+    this.clear = true;
+    this.vars.clear();
+  }
+
+  pub fn set(this mut &, String &&name, String &&value) -> void
+  {
+    this.vars.insert(&&name, &&value);
+  }
+
+  pub fn unset(this mut &, String &&name) -> void
+  {
+    if (this.clear)
+      this.vars.erase(name);
+    else
+      this.vars.insert(&&name);
+  }
+
+  pub env() = default;
+  pub env(env &) = default;
+  pub fn =(env mut &, env &) -> env mut & = default;
+  pub ~env() = default;
+}
+
+pub union stdio
+{
+  pub inherit,
+  pub fd(std::fd),
+  pub file(std::file),
+  pub piped,
+
+  pub stdio()
+    : inherit()
+  {
+  }
+
+  pub stdio(std::fd &fd)
+    : fd(fd)
+  {
+  }
+
+  pub fn =(this mut &, std::fd &fd) -> stdio mut &
+  {
+    this = stdio(fd);
+
+    return &this;
+  }
+
+  pub stdio(std::file &&file)
+    where __is_rvalue<typeof(file)>
+    : file(&&file)
+  {
+  }
+
+  pub fn =(this mut &, std::file &&file) -> stdio mut &
+    where __is_rvalue<typeof(file)>
+  {
+    this = stdio(&&file);
+
+    return &this;
+  }
+
+  pub stdio(stdio &&) = default;
+  pub fn =(stdio mut &, stdio &&) -> stdio mut & = default;
+  pub ~stdio() = default;
+}
 
 pub struct command
 {
   pub std::string program;
   pub std::string working_directory;
   pub std::vector<std::string> arguments;
-  pub std::vector<spawn_attr_t> attributes;
+  pub env environment;
+
+  pub stdio stdin;
+  pub stdio stdout;
+  pub stdio stderr;
 
   pub command(String &&program)
     : program(&&program)
   {
-    arguments.push_back(program);
   }
 
-  pub fn set_working_directory(this mut &, String &&working_directory) -> void
-  {
-    this.working_directory = &&working_directory;
-  }
-
+  pub command() = default;
+  pub command(command &&) = default;
+  pub fn =(command mut &, command &&) -> command mut & = default;
   pub ~command() = default;
 }
 
-fn ensure_nul_terminated(std::string mut &str) -> void
+pub struct child : pub process
 {
-  str.reserve(str.len + 1);
-  *(str.data + str.len) = 0;
+  pub std::file stdin;
+  pub std::file stdout;
+  pub std::file stderr;
+
+  pub child() = default;
+  pub child(child &&) = default;
+  pub fn =(child mut &, child &&) -> child mut & = default;
+  pub ~child() = default;
 }
 
-pub fn spawn(command mut &cmd) -> void
+fn capture(env &env) -> std::vector<std::string>
 {
-  ensure_nul_terminated(&mut cmd.program);
-  ensure_nul_terminated(&mut cmd.working_directory);
+  var result = std::vector<std::string>();
 
-  for (var mut &argument : cmd.arguments)
-    ensure_nul_terminated(&mut argument);
+  if (!env.clear)
+  {
+    for (var &arg : std::env::vars)
+    {
+      if (std::find_if(env.vars, |v| arg.starts_with(v.key) && arg[v.key.len] == cast('=')) != env.vars.end)
+        continue;
 
-  spawn(cmd.working_directory, cmd.program, std::span(cmd.arguments), std::span(cmd.attributes));
+      result.push_back(arg);
+    }
+  }
+
+  for (var &(name, value) : env.vars)
+  {
+    if (value.is_some)
+      result.push_back(std::format("{}={}", name, value.value));
+  }
+
+  return result;
+}
+
+pub fn spawn(command &cmd) throws -> child
+{
+  var child = child();
+
+  var stdin = std::file();
+  var stdout = std::file();
+  var stderr = std::file();
+
+  var attributes = std::vector<spawn_attr_t>();
+
+  switch (cmd.stdin)
+  {
+    case fd[fd]:
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdin, std::bit_cast<uintptr>(fd)));
+
+    case file[file]:
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdin, std::bit_cast<uintptr>(file)));
+
+    case piped:
+      pipe(&mut child.stdin, &mut stdin);
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdin, std::bit_cast<uintptr>(stdin)));
+  }
+
+  switch (cmd.stdout)
+  {
+    case fd[fd]:
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdout, std::bit_cast<uintptr>(fd)));
+
+    case file[file]:
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdout, std::bit_cast<uintptr>(file)));
+
+    case piped:
+      pipe(&mut child.stdout, &mut stdout);
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdout, std::bit_cast<uintptr>(stdout)));
+  }
+
+  switch (cmd.stderr)
+  {
+    case fd[fd]:
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stderr, std::bit_cast<uintptr>(fd)));
+
+    case file[file]:
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stdin, std::bit_cast<uintptr>(file)));
+
+    case piped:
+      pipe(&mut child.stderr, &mut stderr);
+      attributes.push_back(spawn_attr_t(spawn_attr_t::stderr, std::bit_cast<uintptr>(stderr)));
+  }
+
+  var variables = capture(cmd.environment);
+
+  child.super = spawn(cmd.working_directory, cmd.program, std::span(cmd.arguments), std::span(variables), std::span(attributes));
+
+  return child;
+}
+
+pub fn wait(child &child) -> i32
+{
+  try
+  {
+    return wait(child.super);
+  }
+  catch(std::error e)
+  {
+    std::panic("spawn wait failure");
+  }
+}
+
+pub fn try_wait(child &child) -> std::optional<i32>
+{
+  try
+  {
+    return try_wait(child.super);
+  }
+  catch(std::error e)
+  {
+    std::panic("spawn wait failure");
+  }
 }

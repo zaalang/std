@@ -90,14 +90,16 @@ pub extern "C" fn GetLastError() -> DWORD;
 pub extern "C" fn MultiByteToWideChar(UINT CodePage, DWORD dwFlags, LPCSTR lpMultiByteStr, int cbMultiByte, LPWSTR lpWideCharStr, int cchWideChar) -> int;
 pub extern "C" fn WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWideCharStr, int cchWideChar, LPSTR lpMultiByteStr, int cbMultiByte, LPCSTR lpDefaultChar, BOOL mut *lpUsedDefaultChar) -> int;
 pub extern "C" fn FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, void *Arguments) -> DWORD;
-pub extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, SECURITY_ATTRIBUTES mut *lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
+pub extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, SECURITY_ATTRIBUTES *lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
 pub extern "C" fn CreateFileMappingW(HANDLE hFile, SECURITY_ATTRIBUTES mut *lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName) -> HANDLE;
 pub extern "C" fn MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress) -> LPVOID;
 pub extern "C" fn UnmapViewOfFileEx(LPCVOID BaseAddress, ULONG UnmapFlags) -> BOOL;
 pub extern "C" fn GetFileSizeEx(HANDLE hFile, LARGE_INTEGER mut *lpFileSize) -> BOOL;
 pub extern "C" fn ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, DWORD mut *lpNumberOfBytesRead, OVERLAPPED mut *lpOverlapped) -> BOOL;
 pub extern "C" fn WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, DWORD mut *lpNumberOfBytesWritten, OVERLAPPED mut *lpOverlapped) -> BOOL;
+pub extern "C" fn CreatePipe(HANDLE mut *hReadPipe, HANDLE mut *hWritePipe, SECURITY_ATTRIBUTES *lpPipeAttributes, DWORD nSize) -> BOOL;
 pub extern "C" fn PeekNamedPipe(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, DWORD mut *lpBytesRead, DWORD mut *lpTotalBytesAvail, DWORD mut *lpBytesLeftThisMessage) -> BOOL;
+pub extern "C" fn DuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, HANDLE mut *lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions) -> BOOL;
 pub extern "C" fn GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer) -> DWORD;
 pub extern "C" fn GetStdHandle(DWORD nStdHandle) -> HANDLE;
 pub extern "C" fn CloseHandle(HANDLE hObject) -> BOOL;
@@ -185,3 +187,75 @@ pub struct WIN32_FIND_DATAW
 pub extern "C" fn FindFirstFileW(LPCWSTR lpFileName, WIN32_FIND_DATAW mut *lpFindFileData) -> HANDLE;
 pub extern "C" fn FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW mut *lpFindFileData) -> BOOL;
 pub extern "C" fn FindClose(HANDLE hFindFile) -> BOOL;
+
+pub const CREATE_BREAKAWAY_FROM_JOB = 0x01000000;
+pub const CREATE_DEFAULT_ERROR_MODE = 0x04000000;
+pub const CREATE_NEW_CONSOLE = 0x00000010;
+pub const CREATE_NEW_PROCESS_GROUP = 0x00000200;
+pub const CREATE_NO_WINDOW = 0x08000000;
+pub const CREATE_PROTECTED_PROCESS = 0x00040000;
+pub const CREATE_PRESERVE_CODE_AUTHZ_LEVEL = 0x02000000;
+pub const CREATE_SEPARATE_WOW_VDM = 0x00000800;
+pub const CREATE_SHARED_WOW_VDM = 0x00001000;
+pub const CREATE_SUSPENDED = 0x00000004;
+pub const CREATE_UNICODE_ENVIRONMENT = 0x00000400;
+pub const DEBUG_ONLY_THIS_PROCESS = 0x00000002;
+pub const DEBUG_PROCESS = 0x00000001;
+pub const DETACHED_PROCESS = 0x00000008;
+pub const EXTENDED_STARTUPINFO_PRESENT = 0x00080000;
+pub const INHERIT_PARENT_AFFINITY = 0x00010000;
+
+pub const HANDLE_FLAG_INHERIT = 0x00000001;
+pub const STARTF_USESTDHANDLES = 0x00000100;
+pub const STARTF_USESHOWWINDOW = 0x00000001;
+pub const DUPLICATE_CLOSE_SOURCE = 0x00000001;
+pub const DUPLICATE_SAME_ACCESS = 0x00000002;
+
+pub struct STARTUPINFOW
+{
+  pub DWORD cb;
+  pub LPWSTR lpReserved;
+  pub LPWSTR lpDesktop;
+  pub LPWSTR lpTitle;
+  pub DWORD dwX;
+  pub DWORD dwY;
+  pub DWORD dwXSize;
+  pub DWORD dwYSize;
+  pub DWORD dwXCountChars;
+  pub DWORD dwYCountChars;
+  pub DWORD dwFillAttribute;
+  pub DWORD dwFlags;
+  pub WORD wShowWindow;
+  pub WORD cbReserved2;
+  pub BYTE *lpReserved2;
+  pub HANDLE hStdInput;
+  pub HANDLE hStdOutput;
+  pub HANDLE hStdError;
+
+  pub STARTUPINFOW() = default;
+  pub STARTUPINFOW(STARTUPINFOW &) = default;
+  pub fn =(STARTUPINFOW mut &, STARTUPINFOW &) -> STARTUPINFOW mut & = default;
+  pub ~STARTUPINFOW() = default;
+}
+
+pub struct PROCESS_INFORMATION
+{
+  pub HANDLE hProcess;
+  pub HANDLE hThread;
+  pub DWORD dwProcessId;
+  pub DWORD dwThreadId;
+
+  pub PROCESS_INFORMATION() = default;
+  pub PROCESS_INFORMATION(PROCESS_INFORMATION &) = default;
+  pub fn =(PROCESS_INFORMATION mut &, PROCESS_INFORMATION &) -> PROCESS_INFORMATION mut & = default;
+  pub ~PROCESS_INFORMATION() = default;
+}
+
+pub extern "C" fn GetCurrentProcess() -> HANDLE;
+pub extern "C" fn GetCurrentProcessId() -> DWORD;
+pub extern "C" fn GetCurrentThread() -> HANDLE;
+pub extern "C" fn GetCurrentThreadId() -> DWORD;
+pub extern "C" fn GetThreadId(HANDLE Thread) -> DWORD;
+pub extern "C" fn GetProcessId(HANDLE Process) -> DWORD;
+pub extern "C" fn CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, SECURITY_ATTRIBUTES *lpProcessAttributes, SECURITY_ATTRIBUTES *lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, STARTUPINFOW *lpStartupInfo, PROCESS_INFORMATION mut *lpProcessInformation) -> BOOL;
+pub extern "C" fn GetExitCodeProcess(HANDLE hProcess, DWORD mut *lpExitCode) -> BOOL;

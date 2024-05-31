@@ -424,15 +424,13 @@ pub enum permissions
   {
     using os;
 
-    var pathlen = 0;
     var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
 
-    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
-
-    if (nchars == 0)
+    if (pathlen == 0)
       throw std::system_error(error_code(GetLastError()));
 
-    pathstr[cast(nchars)] = 0;
+    pathstr[cast(pathlen)] = 0;
 
     if (GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat) != 0)
     {
@@ -492,15 +490,13 @@ pub enum permissions
   {
     using os;
 
-    var pathlen = 0;
     var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
 
-    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
-
-    if (nchars == 0)
+    if (pathlen == 0)
       throw std::system_error(error_code(GetLastError()));
 
-    pathstr[cast(nchars)] = 0;
+    pathstr[cast(pathlen)] = 0;
 
     if (GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat) != 0)
       return 0;
@@ -634,17 +630,15 @@ pub enum permissions
   {
     using os;
 
-    var pathlen = 0;
     var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 3));
 
-    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 3));
-
-    if (nchars == 0)
+    if (pathlen == 0)
       throw std::system_error(error_code(GetLastError()));
 
-    pathstr[cast(nchars + 0)] = cast('\\');
-    pathstr[cast(nchars + 1)] = cast('*');
-    pathstr[cast(nchars + 2)] = 0;
+    pathstr[cast(pathlen + 0)] = cast('\\');
+    pathstr[cast(pathlen + 1)] = cast('*');
+    pathstr[cast(pathlen + 2)] = 0;
 
     var handle = FindFirstFileW(pathstr.data, &dirp.wfd);
 

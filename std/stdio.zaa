@@ -86,6 +86,11 @@ pub struct file
     return std::format_to(&mut this, format, args..., site: site);
   }
 
+  pub fn bool(this &) -> bool
+  {
+    return !!this.fd;
+  }
+
   pub file()
   {
   }

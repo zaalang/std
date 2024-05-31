@@ -687,7 +687,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     this._len = 0;
 
     if (_data != _smallbuffer.data)
-      this._allocator.free(_data, _capacity);
+      this._allocator.free(this._data, this._capacity + 1);
   }
 
   pub fn len(this &) -> usize
@@ -709,6 +709,12 @@ pub struct string<Allocator = std::allocator, N = 24>
   pub fn data(this &&)
   {
     return this._data;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn view(this &)
+  {
+    return std::string_view(this.data, this.len);
   }
 
   pub fn allocator(this &) -> Allocator &
@@ -786,12 +792,12 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     if (this._capacity < mincapacity)
     {
-      var newdata = cast<u8 mut *>(this._allocator.allocate(mincapacity, alignof<u8>));
+      var newdata = cast<u8 mut *>(this._allocator.allocate(mincapacity + 1, alignof<u8>));
 
       memcpy(newdata, this._data, this._len);
 
       if (this._data != this._smallbuffer.data)
-        this._allocator.free(this._data, this._capacity);
+        this._allocator.free(this._data, this._capacity + 1);
 
       this._data = newdata;
       this._capacity = mincapacity;
@@ -825,6 +831,8 @@ pub struct string<Allocator = std::allocator, N = 24>
     assert(this._len + count <= this._capacity);
 
     this._len += count;
+
+    *(this._data + this._len) = 0;
   }
 
   #[lifetime(poison(this), repose(position, this), depend(this))]
@@ -976,6 +984,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     if (this._len < this._capacity)
     {
       *(this._data + this._len++) = ch;
+      *(this._data + this._len) = 0;
     }
     else
     {
@@ -989,6 +998,8 @@ pub struct string<Allocator = std::allocator, N = 24>
     if (this._len + 4 < this._capacity)
     {
       this._len += utf::encode(this._data + this._len, ch);
+
+      *(this._data + this._len) = 0;
     }
     else
     {
@@ -1071,7 +1082,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     this._len = 0;
     this._data = this._smallbuffer.data;
-    this._capacity = this._smallbuffer.len;
+    this._capacity = std::max(this._smallbuffer.len, 1) - 1;
   }
 
   #[lifetime(poison(this), poison(other))]
@@ -1102,7 +1113,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     if (this._capacity < this._len + len)
     {
-      var newcapacity = this._len + len;
+      var newcapacity = this._len + len + 1;
 
       if (newcapacity < 2*this._capacity)
         newcapacity = 2*this._capacity;
@@ -1114,10 +1125,10 @@ pub struct string<Allocator = std::allocator, N = 24>
       memcpy(newdata + position + len, this._data + position, this._len - position);
 
       if (this._data != this._smallbuffer.data)
-        this._allocator.free(this._data, this._capacity);
+        this._allocator.free(this._data, this._capacity + 1);
 
       this._data = newdata;
-      this._capacity = newcapacity;
+      this._capacity = newcapacity - 1;
     }
     else
     {
@@ -1143,6 +1154,8 @@ pub struct string<Allocator = std::allocator, N = 24>
     }
 
     this._len += len;
+
+    *(this._data + this._len) = 0;
   }
 
   usize _len;

@@ -140,8 +140,8 @@ pub struct fd
     return lhs.fd == rhs.fd;
   }
 
-  pub fd(uintptr fd)
-    : fd(fd)
+  pub fd(var fd)
+    : fd(cast(fd))
   {
   }
 

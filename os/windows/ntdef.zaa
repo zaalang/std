@@ -3,6 +3,7 @@
 //
 
 pub using BOOL = i32;
+pub using BYTE = u8;
 pub using SHORT = i16;
 pub using INT = i32;
 pub using UINT = u32;

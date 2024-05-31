@@ -101,6 +101,69 @@ pub fn execve(u8 *pathname, u8 **argv, u8 **envp) -> int
 pub const WAIT_ANY = ~0;
 pub const WAIT_MYPGRP = 0;
 
+pub const WNOHANG = 1;
+pub const WSTOPPED = 2;
+pub const WEXITED = 4;
+pub const WCONTINUED = 8;
+pub const WNOWAIT = 0x1000000;
+
+pub const P_ALL = 0;
+pub const P_PID = 1;
+pub const P_PGID = 2;
+pub const P_PIDFD = 3;
+
+pub struct siginfo_t
+{
+  pub i32 si_signo;
+  pub i32 si_errno;
+  pub i32 si_code;
+  pub i64[14] fields;
+
+  pub struct sigkill
+  {
+    pid_t si_pid;
+    uid_t si_uid;
+  }
+
+  pub fn sigkill(this &) { return &cast<sigkill&>(this.fields); }
+
+  pub struct sigchld
+  {
+    pub pid_t si_pid;
+    pub uid_t si_uid;
+    pub i32 si_status;
+    pub i32 si_utime;
+    pub i32 si_stime;
+  }
+
+  pub fn sigchld(this &) { return &cast<sigchld&>(this.fields); }
+
+  pub struct sigfault
+  {
+    void *si_addr;
+  }
+
+  pub fn sigfault(this &) { return &cast<sigfault&>(this.fields); }
+
+  pub struct sigpoll
+  {
+    i64 si_band;
+    i32 si_fd;
+  }
+
+  pub fn sigpoll(this &) { return &cast<sigpoll&>(this.fields); }
+
+  pub siginfo_t() = default;
+  pub siginfo_t(siginfo_t&) = default;
+  pub fn =(siginfo_t mut &, siginfo_t &) -> siginfo_t mut & = default;
+  pub ~siginfo_t() = default;
+}
+
+pub fn waitid(i32 type, i32 id, siginfo_t mut *infop, int options) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall5(sys_waitid, type, id, infop, options, 0)));
+}
+
 pub fn wexitstatus(int s) -> int { return (s & 0xff00) >> 8; }
 pub fn wtermsig(int s) -> int { return s & 0x7f; }
 pub fn wstopsig(int s) -> int { return wexitstatus(s); }
@@ -114,3 +177,4 @@ pub fn wait4(pid_t pid, int mut *wstatus, int options, void mut *rusage) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall4(sys_wait4, pid, wstatus, options, rusage)));
 }
+

@@ -38,11 +38,11 @@ pub struct attr
   pub const fn dupfd(i32 fd) -> i32 { return fd; }
   pub const enddup = 255;
 
-  pub int type;
-  pub int value;
+  pub i32 type;
+  pub uintptr value;
 
-  pub attr(int type, int value)
-    : type(type), value(value)
+  pub attr(i32 type, var value)
+    : type(type), value(cast<uintptr>(value))
   {
   }
 
