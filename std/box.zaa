@@ -56,11 +56,16 @@ pub struct box<T, Allocator = std::allocator>
     return box(ptr);
   }
 
-  #[lifetime(poison(this))]
+  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(box mut &this, box &&other) -> box mut &
     where __is_rvalue<typeof(other)>
   {
-    reset(&mut this, release(&move other));
+    std::launder(other);
+
+    if (&this != &other)
+    {
+      reset(&mut this, release(&move other));
+    }
 
     return &this;
   }

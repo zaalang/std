@@ -6,7 +6,7 @@ import std.stdlib;
 import std.string : String;
 import std.flat_hash_map;
 import std.env;
-import sys.bits.spawn : process, spawn, wait, try_wait, spawn_attr_t, pipe;
+import sys.bits.spawn : process, spawn, wait, pipe, try_wait, spawn_attr_t, pipe;
 
 pub struct env
 {

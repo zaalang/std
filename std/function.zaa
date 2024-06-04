@@ -52,6 +52,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
   pub delegate() = default;
   pub delegate(#delegate&) = default;
 
+  #[lifetime(depends(*fx))]
   pub delegate<Y>(Y &&fx)
     where requires (Y fx, V v) -> R { try { return fx(&&v...); } catch(Throws) {} }
   {
@@ -75,6 +76,14 @@ pub struct delegate<R(V), Throws = void, N = 24>
     return this._fx.invoke(this._storage.data, v);
   }
 
+  pub fn =(this mut &, null) -> delegate mut &
+  {
+    this = delegate();
+
+    return &this;
+  }
+
+  #[lifetime(launder(this), repose(fx, this), assign(this, depend(*fx)), depends(this))]
   pub fn =<Y>(this mut &, Y &&fx) -> delegate mut &
     where requires (Y fx, V v) -> R { try { return fx(&&v...); } catch(Throws) {} }
   {
@@ -83,13 +92,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
     return &this;
   }
 
-  pub fn =(this mut &, null) -> delegate mut &
-  {
-    this = delegate();
-
-    return &this;
-  }
-
+  #[lifetime(depend(*other))]
   pub delegate(delegate &&other)
     where __is_rvalue<typeof(other)>
   {
@@ -99,6 +102,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
       this._fx.exchange(this._storage.data, other._storage.data);
   }
 
+  #[lifetime(launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(delegate mut &this, delegate &&other) -> delegate mut &
     where __is_rvalue<typeof(other)>
   {
