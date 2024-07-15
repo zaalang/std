@@ -137,6 +137,9 @@ pub fn isatty(i32 fd) -> bool
 
 pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
 {
+  if (poll(fd, 0) <= 0)
+    return os::EAGAIN;
+
   return os::read(&mut thread_ring, fd, buffer, len);
 }
 
