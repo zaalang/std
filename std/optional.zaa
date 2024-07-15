@@ -233,6 +233,9 @@ pub union optional<T, Allocator = std::allocator>
   {
     switch (other)
     {
+      case None:
+        new<optional>(&this)();
+
       case Some:
         new<optional>(&this)((&&other).value, allocator?: allocator);
     }
@@ -306,6 +309,18 @@ pub fn scan<T>(std::string_view is, std::scan_context mut &ctx, std::optional<T>
 
   if (!ctx.error)
     optional = v;
+}
+
+pub fn or_else<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<T>
+{
+  switch (optional)
+  {
+    case Some:
+      return &&optional;
+
+    else:
+      return func();
+  }
 }
 
 pub fn transform<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<typeof(func(&&optional.value))>

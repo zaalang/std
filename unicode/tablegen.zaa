@@ -118,7 +118,7 @@ fn load_properties(String &path) -> PropList
 
       names.trim!();
 
-      var (start_code, end_code) = range.cut("..");
+      var [start_code, end_code] = range.cut("..");
 
       var lo = char();
       std::atoi(start_code.begin, start_code.end, &mut lo, 16);
@@ -202,7 +202,7 @@ fn load_unicode_data(String &path) -> UnicodeData
       if (decomp_mapping != "" && !decomp_mapping.starts_with("<"))
       {
         var chars = ['\0'; 2];
-        for (var (i, pt) : std::enumerate(decomp_mapping.words))
+        for (var [i, pt] : std::enumerate(decomp_mapping.words))
           std::atoi(pt.begin, pt.end, &mut chars[i], 16);
 
         data.decomp_mapping.insert(lo, chars);
@@ -274,7 +274,7 @@ fn load_case_folding(String &path) -> CaseFolding
         continue;
 
       var chars = ['\0'; 3];
-      for (var (i, pt) : std::enumerate(sequence.strip(";").words))
+      for (var [i, pt] : std::enumerate(sequence.strip(";").words))
         std::atoi(pt.begin, pt.end, &mut chars[i], 16);
 
       cases.mapping.insert(code, chars);
@@ -331,7 +331,7 @@ fn load_special_casing(String &path) -> SpecialCasing
       if (lower != base)
       {
         var chars = ['\0'; 3];
-        for (var (i, pt) : std::enumerate(lower.strip(";").words))
+        for (var [i, pt] : std::enumerate(lower.strip(";").words))
           std::atoi(pt.begin, pt.end, &mut chars[i], 16);
 
         casing.special_lowercase_mapping.insert(code, chars);
@@ -340,7 +340,7 @@ fn load_special_casing(String &path) -> SpecialCasing
       if (title != base && title != upper)
       {
         var chars = ['\0'; 3];
-        for (var (i, pt) : std::enumerate(title.strip(";").words))
+        for (var [i, pt] : std::enumerate(title.strip(";").words))
           std::atoi(pt.begin, pt.end, &mut chars[i], 16);
 
         casing.special_titlecase_mapping.insert(code, chars);
@@ -349,7 +349,7 @@ fn load_special_casing(String &path) -> SpecialCasing
       if (upper != base)
       {
         var chars = ['\0'; 3];
-        for (var (i, pt) : std::enumerate(upper.strip(";").words))
+        for (var [i, pt] : std::enumerate(upper.strip(";").words))
           std::atoi(pt.begin, pt.end, &mut chars[i], 16);
 
         casing.special_uppercase_mapping.insert(code, chars);
@@ -384,7 +384,7 @@ fn load_exclusions(String &path) -> std::vector<(char, char)>
       if (!std::sscanf(line, "{}# {}", &mut range, &mut comment))
         std::panic("error scaning input '", line, "'");
 
-      var (start_code, end_code) = range.cut("..");
+      var [start_code, end_code] = range.cut("..");
 
       var lo = char();
       std::atoi(start_code.begin, start_code.end, &mut lo, 16);
@@ -509,7 +509,7 @@ fn write_caseing_tables(UnicodeData &chardata, SpecialCasing &specialcasing, Cas
   for (var mapping : specialcasing.special_uppercase_mapping)
     casing.emplace(mapping.key);
 
-  for (var (code, (lower, upper)) : casing)
+  for (var [code, [lower, upper]] : casing)
   {
     if (case_table.empty || case_table.back.0.1 + 1 != code || case_table.back.1 != lower || case_table.back.2 != upper)
       case_table.push_back((code, code), lower, upper);
@@ -538,7 +538,7 @@ fn write_caseing_tables(UnicodeData &chardata, SpecialCasing &specialcasing, Cas
     }
   }
 
-  for (var (code, chars) : specialcasing.special_lowercase_mapping)
+  for (var [code, chars] : specialcasing.special_lowercase_mapping)
   {
     if (chars[1] == 0 && chars[2] == 0 && chars[0] == chardata.simple_lowercase_mapping[code])
       continue;
@@ -548,7 +548,7 @@ fn write_caseing_tables(UnicodeData &chardata, SpecialCasing &specialcasing, Cas
 
   std::sort(&mut special_lowercase_table);
 
-  for (var (code, chars) : specialcasing.special_uppercase_mapping)
+  for (var [code, chars] : specialcasing.special_uppercase_mapping)
   {
     if (chars[1] == 0 && chars[2] == 0 && chars[0] == chardata.simple_uppercase_mapping[code])
       continue;
@@ -566,7 +566,7 @@ fn write_caseing_tables(UnicodeData &chardata, SpecialCasing &specialcasing, Cas
     special_titlecase_table.push_back(mapping.key, [ mapping.value, 0, 0 ]);
   }
 
-  for (var (code, chars) : specialcasing.special_titlecase_mapping)
+  for (var [code, chars] : specialcasing.special_titlecase_mapping)
   {
     if (chars[1] == 0 && chars[2] == 0 && chardata.simple_titlecase_mapping.contains(code) && chardata.simple_titlecase_mapping[code] == chars[0])
       continue;
@@ -576,7 +576,7 @@ fn write_caseing_tables(UnicodeData &chardata, SpecialCasing &specialcasing, Cas
 
   std::sort(&mut special_titlecase_table);
 
-  for (var (code, chars) : casefolding.mapping)
+  for (var [code, chars] : casefolding.mapping)
   {
     if (chars[1] == 0 && chars[2] == 0 && chardata.simple_lowercase_mapping.contains(code) && chardata.simple_lowercase_mapping[code] == chars[0])
       continue;
@@ -829,7 +829,7 @@ fn write_decomp_table(UnicodeData &chardata) -> void
 
   std::printf("pub const unicode_decomp_table = [<char>:");
 
-  for (var (i, entry) : std::enumerate(decomp))
+  for (var [i, entry] : std::enumerate(decomp))
   {
     if (i % 8 == 0)
       std::printf("\n  ");
@@ -864,7 +864,7 @@ fn write_recomp_table(UnicodeData &chardata, std::vector<(char, char)> &exclusio
 
   std::printf("pub const unicode_recomp_table = [<(u32, char)>:");
 
-  for (var (i, entry) : std::enumerate(recomp))
+  for (var [i, entry] : std::enumerate(recomp))
   {
     if (i % 4 == 0)
       std::printf("\n  ");
@@ -882,7 +882,7 @@ fn write_combining_table(UnicodeData &chardata) -> void
   var combing = std::map<char, u8>();
   var comb_table = std::vector<((char, char), u8)>();
 
-  for (var &(k, klass) : chardata.canonical_combining_class)
+  for (var &[k, klass] : chardata.canonical_combining_class)
   {
     if (k == 0)
       continue;
@@ -892,7 +892,7 @@ fn write_combining_table(UnicodeData &chardata) -> void
         combing.insert(ch, k);
   }
 
-  for (var (code, key) : combing)
+  for (var [code, key] : combing)
   {
     if (comb_table.empty || comb_table.back.0.1 + 1 != code || comb_table.back.1 != key)
       comb_table.push_back((code, code), key);

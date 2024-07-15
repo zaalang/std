@@ -81,7 +81,7 @@ pub struct file
     return std::format_to(&mut this, format, args...);
   }
   
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) throws -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) throws -> usize
   {
     return std::format_to(&mut this, format, args..., site: site);
   }
@@ -332,7 +332,7 @@ pub struct StdOut
     }
   }
 
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) -> usize
   {
     try
     {
@@ -402,7 +402,7 @@ pub struct StdOutLocked
     return this.inner.printf(format, args...);
   }
 
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) -> usize
   {
     return this.inner.printf(format, args..., site: site);
   }
@@ -463,7 +463,7 @@ pub struct StdOutLocker
     return this.lock().printf(format, args...);
   }
 
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) -> usize
   {
     return this.lock().printf(format, args..., site: site);
   }
@@ -574,7 +574,7 @@ pub struct StdErr
     }
   }
 
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) -> usize
   {
     try
     {
@@ -694,7 +694,7 @@ pub fn printf(String &format, var & ...args) -> usize
   return stdout.lock().inner.printf(format, args...);
 }
 
-pub fn printf(#std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+pub fn printf(#std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return stdout.lock().inner.printf(format, args..., site: site);
 }
@@ -719,12 +719,12 @@ pub fn fprintf(StdOutLocker &&os, String &format, var & ...args) -> usize
   return os.lock().inner.printf(format, args...);
 }
 
-pub fn fprintf(StdOutLocked &&os, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+pub fn fprintf(StdOutLocked &&os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return os.inner.printf(format, args..., site: site);
 }
 
-pub fn fprintf(StdOutLocker &&os, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+pub fn fprintf(StdOutLocker &&os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return os.lock().inner.printf(format, args..., site: site);
 }
@@ -739,7 +739,7 @@ pub fn fprintf(StdErr &&os, String &format, var & ...args) -> usize
   return os.printf(format, args...);
 }
 
-pub fn fprintf(StdErr &&os, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) -> usize
+pub fn fprintf(StdErr &&os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return os.printf(format, args..., site: site);
 }
@@ -754,7 +754,7 @@ pub fn fprintf(file &&os, String &format, var & ...args) throws -> usize
   return os.printf(format, args...);
 }
 
-pub fn fprintf(file &&os, #std::string_literal format, var & ...args, #var site = std::source_location(__site__)) throws -> usize
+pub fn fprintf(file &&os, #std::string_literal format, var & ...args, #var site = __site__) throws -> usize
 {
   return os.printf(format, args..., site: site);
 }

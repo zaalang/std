@@ -425,7 +425,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
     {
       arg.drop_front!(2);
 
-      var (name, value) = arg.cut('=');
+      var [name, value] = arg.cut('=');
 
       var j = std::find_if(options, |k| k.long.value_or_default == name) - options.begin;
 
@@ -458,7 +458,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
     {
       arg.drop_front!(1);
 
-      var (names, value) = arg.cut('=');
+      var [names, value] = arg.cut('=');
 
       for (var name : names)
       {

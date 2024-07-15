@@ -175,8 +175,11 @@ struct heap
     for (var addr = cast<uintptr>(memory.addr); addr + sizeof<region> <= cast<uintptr>(memory.addr) + memory.size; addr += sizeof<region>)
     {
       *prev = cast<region mut *>(addr);
+
       prev = &prev.next;
     }
+
+    *prev = null;
   }
 
   fn new_region(heap mut &heap, mem_result allocation, usize klass) -> region mut *
@@ -283,12 +286,17 @@ struct heap
             return result;
           }
 
-          var prev = &region.firstfree;
-          for (var addr = cast<uintptr>(memory.addr) + sizeof<header>; addr + sz <= cast<uintptr>(memory.addr) + memory.size; addr += sz)
           {
-            *prev = cast<entry mut *>(addr);
-            prev.region = region;
-            prev = &prev.next;
+            var prev = &region.firstfree;
+            for (var addr = cast<uintptr>(memory.addr) + sizeof<header>; addr + sz <= cast<uintptr>(memory.addr) + memory.size; addr += sz)
+            {
+              *prev = cast<entry mut *>(addr);
+              prev.region = region;
+
+              prev = &prev.next;
+            }
+
+            *prev = null;
           }
 
           entry = pop(&mut region.firstfree);

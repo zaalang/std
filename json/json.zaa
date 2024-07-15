@@ -41,67 +41,67 @@ pub union value
   pub Array(std::vector<value>),
   pub Map(std::flat_hash_map<std::string, value>),
 
-  pub fn bool(this&) -> bool
+  pub fn bool(this &) -> bool
   {
     return this.kind != cast(0);
   }
 
-  pub fn is_null(this&) -> bool
+  pub fn is_null(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Null;
   }
 
-  pub fn is_real(this&) -> bool
+  pub fn is_real(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Real;
   }
 
-  pub fn is_int64(this&) -> bool
+  pub fn is_int64(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Int64;
   }
 
-  pub fn is_uint64(this&) -> bool
+  pub fn is_uint64(this &) -> bool
   {
     return this.kind == typeof(this.kind)::UInt64;
   }
 
-  pub fn is_number(this&) -> bool
+  pub fn is_number(this &) -> bool
   {
     return this.is_real || this.is_int64 || this.is_uint64;
   }
 
-  pub fn is_boolean(this&) -> bool
+  pub fn is_boolean(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Boolean;
   }
 
-  pub fn is_string(this&) -> bool
+  pub fn is_string(this &) -> bool
   {
     return this.kind == typeof(this.kind)::String;
   }
 
-  pub fn is_array(this&) -> bool
+  pub fn is_array(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Array;
   }
 
-  pub fn is_object(this&) -> bool
+  pub fn is_object(this &) -> bool
   {
     return this.kind == typeof(this.kind)::Map;
   }
 
-  pub fn is_primitive(this&) -> bool
+  pub fn is_primitive(this &) -> bool
   {
     return !is_array && !is_object;
   }
 
-  pub fn is_structured(this&) -> bool
+  pub fn is_structured(this &) -> bool
   {
     return is_array || is_object;
   }
 
-  pub fn as<T>(this&)
+  pub fn as<T>(this &)
   {
     switch (this)
     {
@@ -192,7 +192,7 @@ pub union value
   }
 
   #[lifetime(depend(this))]
-  pub fn []<Key>(this&, Key &key) -> value &
+  pub fn []<Key>(this &, Key &key) -> value &
   {
     static const emptyvalue = #value();
 

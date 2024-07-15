@@ -163,6 +163,12 @@ pub struct mutable_span<T>
   }
 
   #[lifetime(depend(*this))]
+  pub fn span(this &)
+  {
+    return std::span(this.data, this.len);
+  }
+
+  #[lifetime(depend(*this))]
   pub fn begin(this &&)
   {
     return this.data;
@@ -324,6 +330,11 @@ pub fn move<T>(mutable_span<T> &&span)
   return moveable_span(span.data, span.len);
 }
 
+pub fn hash<T>(var &hasher, Span<T> &span) -> usize
+{
+  return hasher.combine_contiguous(span.data, span.len);
+}
+
 #[lifetime(depend(array))]
 pub fn []<T, N>(T[N] &array, (usize, usize) range) -> span<T>
 {
@@ -362,7 +373,7 @@ pub fn drop_front<T>(Span<T> &&span, usize n)
 
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn take_front<T>(Span<T> &&span, usize n)
+pub fn front_n<T>(Span<T> &&span, usize n)
 {
   return (&&span)[0 ..  n];
 }
@@ -376,7 +387,7 @@ pub fn drop_back<T>(Span<T> &&span, usize n)
 
 #[nodiscard]
 #[lifetime(depend(*span.[]))]
-pub fn take_back<T>(Span<T> &&span, usize n)
+pub fn back_n<T>(Span<T> &&span, usize n)
 {
   return (&&span)[span.len - n .. span.len];
 }
@@ -414,7 +425,7 @@ pub fn take_n!<T>(span<T> mut &span, usize n) -> void
 {
   assert(n <= span.len);
 
-  span.len -= n;
+  span.len = n;
 }
 
 pub fn drop_front!<T>(span<T> mut &span, usize n) -> void
@@ -436,7 +447,7 @@ pub fn take_front!<T>(span<T> mut &span, usize n) -> void
 {
   assert(n <= span.len);
 
-  span.len -= n;
+  span.len = n;
 }
 
 pub fn take_back!<T>(span<T> mut &span, usize n) -> void
@@ -459,7 +470,7 @@ pub fn take_n!<T>(mutable_span<T> mut &span, usize n) -> void
 {
   assert(n <= span.len);
 
-  span.len -= n;
+  span.len = n;
 }
 
 pub fn drop_front!<T>(mutable_span<T> mut &span, usize n) -> void
@@ -481,7 +492,7 @@ pub fn take_front!<T>(mutable_span<T> mut &span, usize n) -> void
 {
   assert(n <= span.len);
 
-  span.len -= n;
+  span.len = n;
 }
 
 pub fn take_back!<T>(mutable_span<T> mut &span, usize n) -> void

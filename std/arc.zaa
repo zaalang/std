@@ -7,6 +7,7 @@ import std.memory;
 import std.atomic;
 import std.optional;
 import std.string : String;
+import std.hash;
 import std.fmt;
 import std.scan;
 
@@ -152,6 +153,11 @@ pub struct arc<T, Allocator = std::allocator>
     return arc(ptr);
   }
 
+  pub static fn strong_count(this &) -> i32
+  {
+    return std::atomic_load(&this.inner.refcnt);
+  }
+
   #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(arc mut &this, arc &&other) -> arc mut &
   {
@@ -171,6 +177,16 @@ pub struct arc<T, Allocator = std::allocator>
     }
 
     return &this;
+  }
+
+  pub fn ==(arc &lhs, arc &rhs) -> bool
+  {
+    return *lhs == *rhs;
+  }
+
+  pub fn <=>(arc &lhs, arc &rhs) -> int
+  {
+    return *lhs <=> *rhs;
   }
 
   pub static fn downgrade(this &) -> weak
@@ -225,6 +241,11 @@ pub struct arc<T, Allocator = std::allocator>
   {
     reset(&mut this);
   }
+}
+
+pub fn hash<T>(var &hasher, std::arc<T> &arced) -> usize
+{
+  return hasher(*arced);
 }
 
 pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::arc<T> &arced) throws -> void

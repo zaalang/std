@@ -717,6 +717,18 @@ pub struct string<Allocator = std::allocator, N = 24>
     return std::string_view(this.data, this.len);
   }
 
+  #[lifetime(depend(this))]
+  pub fn span<T>(this &)
+  {
+    return std::span(this.data, this.len);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn mutable_span<T>(this mut &)
+  {
+    return std::mutable_span(this.data, this.len);
+  }
+
   pub fn allocator(this &) -> Allocator &
   {
     return &this._allocator;
@@ -1045,7 +1057,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
-  pub fn appendf<Args>(this mut &, #string_literal format, Args & ...args, #var site = std::source_location(__site__)) -> usize
+  pub fn appendf<Args>(this mut &, #string_literal format, Args & ...args, #var site = __site__) -> usize
   {
     try
     {
@@ -1250,7 +1262,7 @@ pub fn sprint<Args>(Span<u8> mut &os, Args & ...args) -> usize
   }
 }
 
-pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args, #var site = std::source_location(__site__)) -> usize
+pub fn sprintf<Args>(Span<u8> mut &os, #string_literal format, Args & ...args, #var site = __site__) -> usize
 {
   try
   {
@@ -1858,7 +1870,7 @@ pub fn drop_n!(string mut &str, usize n) -> string mut &
 #[lifetime(poison(str), depend(str))]
 pub fn take_n!(string mut &str, usize n) -> string mut &
 {
-  str = str.take_front(n);
+  str = str.front_n(n);
 
   return &str;
 }
@@ -1882,7 +1894,7 @@ pub fn drop_back!(string mut &str, usize n) -> string mut &
 #[lifetime(poison(str), depend(str))]
 pub fn take_front!(string mut &str, usize n) -> string mut &
 {
-  str = str.take_front(n);
+  str = str.front_n(n);
 
   return &str;
 }
@@ -1890,7 +1902,7 @@ pub fn take_front!(string mut &str, usize n) -> string mut &
 #[lifetime(poison(str), depend(str))]
 pub fn take_back!(string mut &str, usize n) -> string mut &
 {
-  str = str.take_back(n);
+  str = str.back_n(n);
 
   return &str;
 }

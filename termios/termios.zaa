@@ -4,18 +4,18 @@
 
 #if __cfg("os.linux")
 
-  import termios.arch.linux;
+  import termios.linux;
 
 #end
 
 #if __cfg("os.windows")
 
-  import termios.arch.windows;
+  import termios.windows;
 
 #end
 
 #if __cfg("os.zaos")
 
-  import termios.arch.zaos;
+  import termios.zaos;
 
 #end

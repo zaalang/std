@@ -982,12 +982,12 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throw
   }
 }
 
-pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args, #var site = std::source_location(__site__)) throws -> usize
+pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args, #var site = __site__) throws -> usize
 { 
   var ctx = fmt_context();
   var os = std::output_stream(&mut os);
 
-  const fmt = #parse_args<Args>(format, site);
+  const fmt = #parse_args<Args>(format, std::source_location(site));
 
   #for (const k = 0; k < std::tuple_len<Args>; ++k)
   {

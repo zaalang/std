@@ -5,6 +5,7 @@
 import std.stdlib;
 import std.memory;
 import std.string : String;
+import std.hash;
 import std.fmt;
 import std.scan;
 
@@ -70,6 +71,16 @@ pub struct box<T, Allocator = std::allocator>
     return &this;
   }
 
+  pub fn ==(box &lhs, box &rhs) -> bool
+  {
+    return *lhs == *rhs;
+  }
+
+  pub fn <=>(box &lhs, box &rhs) -> int
+  {
+    return *lhs <=> *rhs;
+  }
+
   pub static fn release(box &&this) -> Bx mut *
     where __is_rvalue<typeof(this)>
   {
@@ -111,6 +122,11 @@ pub struct box<T, Allocator = std::allocator>
   {
     reset(&mut this);
   }
+}
+
+pub fn hash<T>(var &hasher, std::box<T> &boxed) -> usize
+{
+  return hasher(*boxed);
 }
 
 pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::box<T> &boxed) throws -> void

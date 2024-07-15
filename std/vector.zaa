@@ -136,13 +136,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   #[lifetime(depend(this))]
   pub fn span<T>(this &)
   {
-    return span(this.data, this.len);
+    return std::span(this.data, this.len);
   }
 
   #[lifetime(depend(this))]
   pub fn mutable_span<T>(this mut &)
   {
-    return mutable_span(this.data, this.len);
+    return std::mutable_span(this.data, this.len);
   }
 
   pub fn allocator(this &) -> Allocator &
@@ -544,7 +544,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     this._data = cast(this._smallbuffer.data);
     this._capacity = this._smallbuffer.len / sizeof<T>;
 
-    assert(cast<usize>(this._data) & (alignof<T> - 1) == 0);
+    #assert(N == 0 || alignof<T> <= 8, "vector smallbuffer invalid alignment");
   }
 
   #[lifetime(poison(this))]

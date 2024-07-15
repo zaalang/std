@@ -283,7 +283,7 @@ pub fn normalize_into<Form, Container, I>(Container mut &dst, I first, Sentinal<
         canonical_composition_algorithm(&mut cp);
       }
 
-      for (var (cc, ch) : cp)
+      for (var [cc, ch] : cp)
       {
         if (ch != 0)
           dst.push_back(ch);

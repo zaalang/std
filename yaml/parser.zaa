@@ -109,7 +109,7 @@ fn parse_error(parse_context mut &ctx, errc error) -> state
   return ctx.state;
 }
 
-fn parser_process_directives(parse_context mut &ctx, InputReader mut &is) throws -> void
+fn parse_process_directives(parse_context mut &ctx, InputReader mut &is) throws -> void
 {
   while (ctx.tok.type == token::type::directive)
   {
@@ -139,7 +139,7 @@ fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) th
       ctx.state = state::end;
 
     case directive:
-      parser_process_directives(&mut ctx, &mut is);
+      parse_process_directives(&mut ctx, &mut is);
 
     case document_start:
       ctx.consume_token(&mut is);
@@ -150,7 +150,7 @@ fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) th
       if (!implicit)
         return parse_error(&mut ctx, yaml::errc::expected_document_start);
 
-      parser_process_directives(&mut ctx, &mut is);
+      parse_process_directives(&mut ctx, &mut is);
       ctx.push_state(state::document_end);
       ctx.state = state::block_node;
   }
@@ -339,7 +339,7 @@ fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var entry = ctx.stack.take_back;
+  var entry = ctx.stack.take_back();
   var mut &array = ctx.stack.back.Array;
 
   array.push_back(&move entry);
@@ -377,8 +377,8 @@ fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
 
 fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
 {
-  var value = ctx.stack.take_back;
-  var key = ctx.stack.take_back;
+  var value = ctx.stack.take_back();
+  var key = ctx.stack.take_back();
   var mut &map = ctx.stack.back.Map;
 
   map.insert(&move key, &move value);

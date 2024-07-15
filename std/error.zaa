@@ -14,9 +14,9 @@ pub vtable error_category
 
 pub struct source_location
 {
-  pub source_location(source_location &that) = default;
-  pub fn =(source_location mut &, source_location &) -> source_location mut & = default;
-  pub ~source_location() = default;
+  pub int lineno;
+  pub std::string_literal file_name;
+  pub std::string_literal function_name;
 
   pub source_location((std::string_literal, int, int, std::string_literal) &site)
     : lineno(site.1),
@@ -25,9 +25,9 @@ pub struct source_location
   {
   }
 
-  pub int lineno;
-  pub std::string_literal file_name;
-  pub std::string_literal function_name;
+  pub source_location(source_location &that) = default;
+  pub fn =(source_location mut &, source_location &) -> source_location mut & = default;
+  pub ~source_location() = default;
 }
 
 pub struct error
