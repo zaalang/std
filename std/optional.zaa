@@ -32,7 +32,7 @@ pub union optional<T, Allocator = std::allocator>
   pub fn =<Args>(this mut &, Args && ...args) -> optional mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    this.insert(&&args...);
+    insert(&mut this, &&args...);
 
     return &this;
   }
@@ -193,14 +193,14 @@ pub union optional<T, Allocator = std::allocator>
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
     optional::~optional(&mut this);
-    new<optional>(&this)(&&args..., allocator?: allocator);
+    new<optional>(&this)(&&args..., allocator: allocator);
   }
 
   #[lifetime(poison(this))]
   pub fn emplace<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator()) -> T mut &
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    insert(&mut this, &&args..., allocator?: allocator);
+    insert(&mut this, &&args..., allocator: allocator);
 
     return &this.Some;
   }
@@ -237,7 +237,7 @@ pub union optional<T, Allocator = std::allocator>
         new<optional>(&this)();
 
       case Some:
-        new<optional>(&this)((&&other).value, allocator?: allocator);
+        new<optional>(&this)((&&other).value, allocator: allocator);
     }
   }
 
@@ -253,7 +253,7 @@ pub union optional<T, Allocator = std::allocator>
         new<optional>(&this)();
 
       case Some:
-        new<optional>(&this)((&&other).value, allocator?: Allocator());
+        new<optional>(&this)((&&other).value, allocator: Allocator());
     }
 
     return &this;
@@ -275,9 +275,9 @@ pub union optional<T, Allocator = std::allocator>
 
         case Some[value]:
           #if (__is_reference<T>)
-            new<optional>(&this)(&value, allocator?: Allocator());
+            new<optional>(&this)(&value, allocator: Allocator());
           #else
-            new<optional>(&this)(&&value, allocator?: Allocator());
+            new<optional>(&this)(&&value, allocator: Allocator());
 
       }
     }
