@@ -20,6 +20,11 @@ pub concept Range<U>
   requires<T> (T x) { x.end; }
 }
 
+pub concept RangeAdaptor<U>
+{
+  requires<range> range::range_adaptor_type
+}
+
 #[lifetime(depend(array))]
 pub fn Range<T, N>(T[N] &&array)
 {
