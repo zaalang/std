@@ -56,12 +56,6 @@ pub union optional<T, Allocator = std::allocator>
 
     pub Some(std::remove_reference<T> &&),
 
-    #[lifetime(depend(this))]
-    pub fn *(this &&)
-    {
-      return &&this.value;
-    }
-
     #[lifetime(depend(*this))]
     pub fn value(this &&)
     {
@@ -70,63 +64,65 @@ pub union optional<T, Allocator = std::allocator>
       return &this.Some;
     }
 
-    pub fn value_or<U>(this &&, U &&default) -> std::remove_reference<T>
-      match (U default) { std::remove_reference<T>(default); }
+    #[lifetime(depend(*this))]
+    pub fn unwrap(this &&)
     {
-      return (this.is_some) ? this.Some : std::remove_reference<T>(&&default);
+      return &this.value;
     }
 
-    pub fn value_or_default(this &&) -> std::remove_reference<T>
+    #[lifetime(depend(*this), depend(default))]
+    pub fn unwrap_or(this &&, std::remove_reference<T> &&default)
+    {
+      return (this.is_some) ? &this.Some : &default;
+    }
+
+    pub fn unwrap_or_else<Func>(this &&, Func &&func) -> std::remove_reference<T>
+    {
+      return (this.is_some) ? this.Some : func();
+    }
+
+    pub fn unwrap_or_default(this &&) -> std::remove_reference<T>
     {
       return (this.is_some) ? this.Some : std::remove_reference<T>();
     }
 
-    #[lifetime(depend(*this))]
-    pub fn unwrap(this mut &)
-    {
-      std::assert(this.is_some);
-
-      return &this.Some;
-    }
+    //#[lifetime(depend(*this))]
+    //pub fn *(this &&)
+    //{
+    //  return &this.value;
+    //}
 
     #[lifetime(depend(*this))]
-    pub fn ?!(this mut &)
+    pub fn ?!(this &&)
     {
-      std::assert(this.is_some);
-
-      return &this.Some;
+      return &this.value;
     }
 
-    #[lifetime(depend(*this),depend(default))]
-    pub fn unwrap_or(this mut &, std::remove_reference<T> &&default)
+    #[lifetime(depend(*this), depend(default))]
+    pub fn ??(this &&, std::remove_reference<T> &&default)
     {
       return (this.is_some) ? &this.Some : &default;
     }
 
-    #[lifetime(depend(*this),depend(default))]
-    pub fn ??(this mut &, std::remove_reference<T> &&default)
+    pub fn ==(optional &lhs, std::remove_reference<T> &rhs) -> bool
     {
-      return (this.is_some) ? &this.Some : &default;
+      if (lhs.is_none)
+        return false;
+
+      return lhs.value == rhs;
     }
 
-    #[lifetime(depend(*this))]
-    pub fn expect(this mut &, String &msg)
+    pub fn <=>(optional &lhs, std::remove_reference<T> &rhs) -> int
     {
-      if (!this.is_some)
-        std::panic(msg);
+      if (lhs.is_none)
+        return -1;
 
-      return &this.Some;
+      return lhs.value <=> rhs;
     }
 
   #else
 
     pub Some(T),
-
-    #[lifetime(depend(this))]
-    pub fn *(this &&)
-    {
-      return &&this.value;
-    }
 
     #[lifetime(depend(this))]
     pub fn value(this &&)
@@ -136,54 +132,60 @@ pub union optional<T, Allocator = std::allocator>
       return &(&&this.Some);
     }
 
-    pub fn value_or<U>(this &&, U &&default) -> T
+    #[lifetime(depend(this))]
+    pub fn unwrap(this &&)
+    {
+      return &(&&this).unwrap;
+    }
+
+    pub fn unwrap_or<U>(this &&, U &&default) -> T
       match (U default) { T(default); }
     {
       return (this.is_some) ? &&this.Some : T(&&default);
     }
 
-    pub fn value_or_default(this &&) -> T
+    pub fn unwrap_or_else<Func>(this &&, Func &&func) -> T
+    {
+      return (this.is_some) ? &&this.Some : func();
+    }
+
+    pub fn unwrap_or_default(this &&) -> T
     {
       return (this.is_some) ? &&this.Some : T();
     }
 
-    #[lifetime(consume(this))]
-    pub fn unwrap(this mut &) -> T
-    {
-      std::assert(this.is_some);
+    //#[lifetime(depend(this))]
+    //pub fn *(this &&)
+    //{
+    //  return &(&&this).value;
+    //}
 
-      return &move this.Some;
+    #[lifetime(depend(this))]
+    pub fn ?!(this &&)
+    {
+      return &(&&this).value;
     }
 
-    #[lifetime(consume(this))]
-    pub fn ?!(this mut &) -> T
-    {
-      std::assert(this.is_some);
-
-      return &move this.Some;
-    }
-
-    #[lifetime(consume(this))]
-    pub fn unwrap_or<U>(this mut &, U &&default) -> T
+    pub fn ??<U>(this &&, U &&default) -> T
       match (U default) { T(default); }
     {
-      return (this.is_some) ? &move this.Some : T(&&default);
+      return (this.is_some) ? &&this.Some : T(&&default);
     }
 
-    #[lifetime(consume(this))]
-    pub fn ??<U>(this mut &, U &&default) -> T
-      match (U default) { T(default); }
+    pub fn ==(optional &lhs, T &rhs) -> bool
     {
-      return (this.is_some) ? &move this.Some : T(&&default);
+      if (lhs.is_none)
+        return false;
+
+      return lhs.value == rhs;
     }
 
-    #[lifetime(consume(this))]
-    pub fn expect(this mut &, String &msg) -> T
+    pub fn <=>(optional &lhs, T &rhs) -> int
     {
-      if (!this.is_some)
-        std::panic(msg);
+      if (lhs.is_none)
+        return -1;
 
-      return &move this.Some;
+      return lhs.value <=> rhs;
     }
 
   #end
@@ -233,11 +235,11 @@ pub union optional<T, Allocator = std::allocator>
   {
     switch (other)
     {
-      case None:
-        new<optional>(&this)();
-
       case Some:
         new<optional>(&this)((&&other).value, allocator: allocator);
+
+      case None:
+        new<optional>(&this)();
     }
   }
 
@@ -249,11 +251,11 @@ pub union optional<T, Allocator = std::allocator>
 
     switch (other)
     {
-      case None:
-        new<optional>(&this)();
-
       case Some:
         new<optional>(&this)((&&other).value, allocator: Allocator());
+
+      case None:
+        new<optional>(&this)();
     }
 
     return &this;
@@ -270,15 +272,14 @@ pub union optional<T, Allocator = std::allocator>
 
       switch (other)
       {
-        case None:
-          new<optional>(&this)();
-
         case Some[value]:
           #if (__is_reference<T>)
             new<optional>(&this)(&value, allocator: Allocator());
           #else
             new<optional>(&this)(&&value, allocator: Allocator());
 
+        case None:
+          new<optional>(&this)();
       }
     }
 
@@ -293,8 +294,8 @@ pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optiona
 {
   switch (optional)
   {
-    case Some:
-      ctx.written += std::format_to(&mut os, "Some({})", optional.value);
+    case Some[value]:
+      ctx.written += std::format_to(&mut os, "Some({})", value);
 
     case None:
       ctx.written += std::format_to(&mut os, "None");
@@ -323,7 +324,7 @@ pub fn or_else<T, Func>(std::optional<T> &&optional, Func &&func) -> std::option
   }
 }
 
-pub fn transform<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<typeof(func(&&optional.value))>
+pub fn transform<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<typeof(func((&&optional).value))>
 {
   switch (optional)
   {

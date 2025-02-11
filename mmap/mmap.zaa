@@ -113,7 +113,7 @@ pub struct file
     return &*(this._data + index);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize) range) -> span<u8>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
@@ -121,7 +121,7 @@ pub struct file
     return span(this._data + range.0, this._data + range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize, void) range) -> span<u8>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
@@ -252,7 +252,7 @@ pub struct mutable_file
     return &cast<&&typeof(this)>(*(this._data + index));
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize) range) -> span<u8>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
@@ -260,7 +260,7 @@ pub struct mutable_file
     return span(this._data + range.0, this._data + range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize, void) range) -> span<u8>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
@@ -268,7 +268,7 @@ pub struct mutable_file
     return span(this._data + range.0, this._data + range.1 + 1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this mut &, (usize, usize) range) -> mutable_span<u8>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
@@ -276,7 +276,7 @@ pub struct mutable_file
     return mutable_span(this._data + range.0, this._data + range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<u8>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);

@@ -15,8 +15,7 @@ import std.string : String;
 pub extern fn exit(i32) -> void;
 
 #[lifetime(consume(x))]
-pub fn move<T>(T &&x)
-  where !__is_const<typeof(x)>
+pub fn move<T>(T mut &x)
 {
   return & &move x;
 }

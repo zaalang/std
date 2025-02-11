@@ -579,7 +579,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 }
 
 #[lifetime(poison(range), depend(range))]
-pub fn drop_n!<T>(circular_buffer<T> mut &range, usize n) -> circular_buffer<T> mut &
+pub fn drop_n!<T>(circular_buffer<T> mut &range, usize n)
 {
   range.erase(range.begin, std::min(range.len, n));
 
@@ -587,7 +587,7 @@ pub fn drop_n!<T>(circular_buffer<T> mut &range, usize n) -> circular_buffer<T> 
 }
 
 #[lifetime(poison(range), depend(range))]
-pub fn take_n!<T>(circular_buffer<T> mut &range, usize n) -> circular_buffer<T> mut &
+pub fn take_n!<T>(circular_buffer<T> mut &range, usize n)
 {
   range.erase(range.begin + std::min(range.len, n), range.len - std::min(range.len, n));
 
@@ -600,7 +600,7 @@ pub fn erase<T, Value>(circular_buffer<T> mut &range, Value &value) -> usize
 {
   var n = range.len;
 
-  range.erase(std::remove(range, value), range.end);
+  range.erase(std::remove(&mut range, value), range.end);
 
   return n - range.len;
 }
@@ -611,7 +611,7 @@ pub fn erase_if<T, Pred>(circular_buffer<T> mut &range, Pred &pred) -> usize
 {
   var n = range.len;
 
-  range.erase(std::remove_if(range, pred), range.end);
+  range.erase(std::remove_if(&mut range, pred), range.end);
 
   return n - range.len;
 }

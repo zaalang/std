@@ -192,6 +192,8 @@ pub struct lineintersect<U, T, N> : pub std::optional<U>
   pub T s;
   pub T t;
 
+  pub fn *(this &&) { return &(&&this).value; }
+
   pub fn segseg(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.s <= 1.0 && this.t >= 0.0 && this.t <= 1.0; }
   pub fn segray(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.s <= 1.0 && this.t >= 0.0; }
   pub fn rayseg(this&) -> bool { return this.u != 0.0 && this.s >= 0.0 && this.t >= 0.0 && this.t <= 1.0; }

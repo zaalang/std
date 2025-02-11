@@ -134,13 +134,13 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(depend(this))]
-  pub fn span<T>(this &)
+  pub fn span(this &)
   {
     return std::span(this.data, this.len);
   }
 
   #[lifetime(depend(this))]
-  pub fn mutable_span<T>(this mut &)
+  pub fn mutable_span(this mut &)
   {
     return std::mutable_span(this.data, this.len);
   }
@@ -170,7 +170,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return &cast<&&typeof(this)>(*(this._data + index));
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
@@ -178,7 +178,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return span(this._data + range.0, this._data + range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
@@ -186,7 +186,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return span(this._data + range.0, this._data + range.1 + 1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
@@ -194,7 +194,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return mutable_span(this._data + range.0, this._data + range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
@@ -693,7 +693,7 @@ pub fn hash<T>(var &hasher, vector<T> &vec) -> usize
 }
 
 #[lifetime(poison(range), depend(range))]
-pub fn take_n!<T>(vector<T> mut &range, usize n) -> vector<T> mut &
+pub fn take_n!<T>(vector<T> mut &range, usize n)
 {
   range.erase(range.begin + std::min(range.len, n), range.len - std::min(range.len, n));
 
@@ -701,7 +701,7 @@ pub fn take_n!<T>(vector<T> mut &range, usize n) -> vector<T> mut &
 }
 
 #[lifetime(poison(span), depend(span))]
-pub fn drop_back!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
+pub fn drop_back!<T>(vector<T> mut &span, usize n)
 {
   span.erase(span.begin + span.len - std::min(span.len, n), std::min(span.len, n));
 
@@ -709,7 +709,7 @@ pub fn drop_back!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
 }
 
 #[lifetime(poison(span), depend(span))]
-pub fn take_front!<T>(vector<T> mut &span, usize n) -> vector<T> mut &
+pub fn take_front!<T>(vector<T> mut &span, usize n)
 {
   span.erase(span.begin + std::min(span.len, n), span.len - std::min(span.len, n));
 
@@ -722,7 +722,7 @@ pub fn erase<T, Value>(vector<T> mut &range, Value &value) -> usize
 {
   var n = range.len;
 
-  range.erase(std::remove(range, value), range.end);
+  range.erase(std::remove(&mut range, value), range.end);
 
   return n - range.len;
 }
@@ -733,7 +733,7 @@ pub fn erase_if<T, Pred>(vector<T> mut &range, Pred &pred) -> usize
 {
   var n = range.len;
 
-  range.erase(std::remove_if(range, pred), range.end);
+  range.erase(std::remove_if(&mut range, pred), range.end);
 
   return n - range.len;
 }

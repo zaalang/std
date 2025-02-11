@@ -133,7 +133,7 @@ fn capture(env &env) -> std::vector<std::string>
   for (var &[name, value] : env.vars)
   {
     if (value.is_some)
-      result.push_back(std::format("{}={}", name, value.value));
+      result.push_back(std::format("{}={}", name, value?!));
   }
 
   return result;

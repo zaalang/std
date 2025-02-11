@@ -481,7 +481,7 @@ pub fn hash<T>(var &hasher, list<T> &lst) -> usize
 }
 
 #[lifetime(poison(range), depend(range))]
-pub fn drop_n!<T>(list<T> mut &range, usize n) -> list<T> mut &
+pub fn drop_n!<T>(list<T> mut &range, usize n)
 {
   range.erase(range.begin, std::next(range.begin, n, range.end));
 
@@ -489,7 +489,7 @@ pub fn drop_n!<T>(list<T> mut &range, usize n) -> list<T> mut &
 }
 
 #[lifetime(poison(range), depend(range))]
-pub fn take_n!<T>(list<T> mut &range, usize n) -> list<T> mut &
+pub fn take_n!<T>(list<T> mut &range, usize n)
 {
   range.erase(std::next(range.begin, n, range.end), range.end);
 

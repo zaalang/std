@@ -92,6 +92,11 @@ pub struct uniq_view<R, Cmp>
     pub fn +(uniq_iterator lhs, usize rhs) -> uniq_iterator = delete;
     pub fn -(uniq_iterator lhs, usize rhs) -> uniq_iterator = delete;
 
+    pub fn ==(uniq_iterator &lhs, uniq_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
     uniq_view &view;
   }
 
@@ -112,7 +117,7 @@ pub struct uniq_view<R, Cmp>
     return uniq_iterator(this, this.range.end);
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &, uniq_iterator<I> &iter)
   {
     return &&(&&this.range)[iter.super];

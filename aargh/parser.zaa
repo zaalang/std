@@ -299,7 +299,7 @@ pub fn usage<Opts>() -> void
     switch (opt.type)
     {
       case free:
-        std::printf("  {:>*} : {}", gutter, opt.long.value, opt.help.value_or("..."));
+        std::printf("  {:>*} : {}", gutter, opt.long?!, opt.help.unwrap_or("..."));
 
         if (opt.required)
           std::printf(" [required]");
@@ -323,11 +323,11 @@ pub fn usage<Opts>() -> void
         var label = std::string();
 
         if (opt.short.is_some)
-          label += std::format("-{},", opt.short.value);
+          label += std::format("-{},", opt.short?!);
 
-        label += std::format("--{}", opt.long.value);
+        label += std::format("--{}", opt.long?!);
 
-        std::printf("  {:>*} : {}", gutter, label, opt.help.value_or("..."));
+        std::printf("  {:>*} : {}", gutter, label, opt.help.unwrap_or("..."));
 
         if (opt.required)
           std::printf(" [required]");
@@ -427,7 +427,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
 
       var [name, value] = arg.cut('=');
 
-      var j = std::find_if(options, |k| k.long.value_or_default == name) - options.begin;
+      var j = std::find_if(options, |k| k.long.unwrap_or_default == name) - options.begin;
 
       if (j < options.len)
       {
@@ -462,7 +462,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
 
       for (var name : names)
       {
-        var j = std::find_if(options, |k| k.short.value_or_default == std::string_view(&name, 1)) - options.begin;
+        var j = std::find_if(options, |k| k.short.unwrap_or_default == std::string_view(&name, 1)) - options.begin;
 
         if (j < options.len)
         {
@@ -518,7 +518,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
   for (var i = 0; i < options.len; ++i)
   {
     if (options[i].required && !present[i])
-      std::fprint(std::stderr, "required argument '", options[i].long.value, "' : not present");
+      std::fprint(std::stderr, "required argument '", options[i].long?!, "' : not present");
   }
 }
 

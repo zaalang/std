@@ -648,7 +648,7 @@ pub fn remove<I, Value>(I first, Sentinal<I> last, Value &value) -> I
 }
 
 #[lifetime(repose(first, range), repose(last, range), depend(*range.begin))]
-pub fn remove<T, I, Value>(Range<T> &&range, I first, Sentinal<I> last, Value &value) -> I
+pub fn remove<T, I, Value>(Range<T> mut &range, I first, Sentinal<I> last, Value &value) -> I
   match (T u, Value v) { u == v; }
 {
   first = find(range, first, last, value);
@@ -666,7 +666,7 @@ pub fn remove<T, I, Value>(Range<T> &&range, I first, Sentinal<I> last, Value &v
 }
 
 #[lifetime(depend(*range.begin))]
-pub fn remove<T, Value>(Range<T> &&range, Value &value)
+pub fn remove<T, Value>(Range<T> mut &range, Value &value)
   match (T u, Value v) { u == v; }
 {
   return remove(&&range, range.begin, range.end, value);
@@ -690,7 +690,7 @@ pub fn remove_if<I, Pred>(I first, Sentinal<I> last, Pred &pred) -> I
 }
 
 #[lifetime(repose(first, range), repose(last, range), depend(*range.begin))]
-pub fn remove_if<T, I, Pred>(Range<T> &&range, I first, Sentinal<I> last, Pred &pred) -> I
+pub fn remove_if<T, I, Pred>(Range<T> mut &range, I first, Sentinal<I> last, Pred &pred) -> I
 {
   first = find_if(range, first, last, pred);
 
@@ -707,7 +707,7 @@ pub fn remove_if<T, I, Pred>(Range<T> &&range, I first, Sentinal<I> last, Pred &
 }
 
 #[lifetime(depend(*range.begin))]
-pub fn remove_if<T, Pred>(Range<T> &&range, Pred &pred)
+pub fn remove_if<T, Pred>(Range<T> mut &range, Pred &pred)
 {
   return remove_if(&&range, range.begin, range.end, pred);
 }

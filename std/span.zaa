@@ -72,7 +72,7 @@ pub struct span<T>
     return &*(this.data + index);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
@@ -80,7 +80,7 @@ pub struct span<T>
     return span(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
@@ -188,7 +188,7 @@ pub struct mutable_span<T>
     return &*(this.data + index);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (usize, usize) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
@@ -196,7 +196,7 @@ pub struct mutable_span<T>
     return span(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (usize, usize, void) range) -> span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
@@ -204,7 +204,7 @@ pub struct mutable_span<T>
     return span(this.data + range.0, this.data + range.1 + 1);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this mut &, (usize, usize) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
@@ -212,7 +212,7 @@ pub struct mutable_span<T>
     return mutable_span(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this mut &, (usize, usize, void) range) -> mutable_span<T>
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
@@ -325,7 +325,7 @@ pub struct moveable_span<T>
 }
 
 #[lifetime(consume(span), depend())]
-pub fn move<T>(mutable_span<T> &&span)
+pub fn move<T>(mutable_span<T> mut &span)
 {
   return moveable_span(span.data, span.len);
 }
@@ -335,25 +335,25 @@ pub fn hash<T>(var &hasher, Span<T> &span) -> usize
   return hasher.combine_contiguous(span.data, span.len);
 }
 
-#[lifetime(depend(array))]
+#[lifetime(repose(range, array), depend(array))]
 pub fn []<T, N>(T[N] &array, (usize, usize) range) -> span<T>
 {
   return span(array)[range];
 }
 
-#[lifetime(depend(array))]
+#[lifetime(repose(range, array), depend(array))]
 pub fn []<T, N>(T[N] &array, (usize, usize, void) range) -> span<T>
 {
   return span(array)[range];
 }
 
-#[lifetime(depend(array))]
+#[lifetime(repose(range, array), depend(array))]
 pub fn []<T, N>(T[N] mut &array, (usize, usize) range) -> mutable_span<T>
 {
   return mutable_span(&mut array)[range];
 }
 
-#[lifetime(depend(array))]
+#[lifetime(repose(range, array), depend(array))]
 pub fn []<T, N>(T[N] mut &array, (usize, usize, void) range) -> mutable_span<T>
 {
   return mutable_span(&mut array)[range];

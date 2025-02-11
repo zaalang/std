@@ -45,8 +45,8 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::optional<T> &optional
 {
   switch (optional)
   {
-    case Some:
-      fmt_to(&mut os, &mut ctx, optional.value);
+    case Some[value]:
+      fmt_to(&mut os, &mut ctx, value);
 
     case None:
       ctx.written += std::print_to(&mut os, "undefined");

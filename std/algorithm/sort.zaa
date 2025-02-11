@@ -297,23 +297,25 @@ pub fn partial_sort<T, I, Cmp>(Range<T> mut &range, I middle, Cmp &cmp = std::le
 }
 
 #[lifetime(depend(range))]
-pub fn sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+pub fn sort!<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
+  where !__is_const<typeof(range)>
   where __is_match<RandomAccessIterator, typeof(range.begin)>()
   where __is_match<Sortable, typeof(range)>()
 {
   sort(&mut range, cmp);
 
-  return &range;
+  return & &&range;
 }
 
 #[lifetime(depend(range))]
-pub fn stable_sort!<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less)
+pub fn stable_sort!<T, Cmp>(Range<T> &&range, Cmp &cmp = std::less)
+  where !__is_const<typeof(range)>
   where __is_match<RandomAccessIterator, typeof(range.begin)>()
   where __is_match<Sortable, typeof(range)>()
 {
   stable_sort(&mut range, cmp);
 
-  return &range;
+  return & &&range;
 }
 
 #[lifetime(repose(middle, range), depend(range))]

@@ -217,11 +217,9 @@ pub fn stdin_raw -> file mut &
   return &instance;
 }
 
-pub fn stdin -> StdIn mut &
+pub fn stdin -> StdIn
 {
-  static instance = #StdIn();
-
-  return &instance;
+  return StdIn();
 }
 
 pub struct StdOut
@@ -602,11 +600,9 @@ pub fn stderr_raw -> file mut &
   return &instance;
 }
 
-pub fn stderr -> StdErr mut &
+pub fn stderr -> StdErr
 {
-  static instance = #StdErr();
-
-  return &instance;
+  return StdErr();
 }
 
 pub fn putc(u8 ch) -> usize
@@ -619,42 +615,42 @@ pub fn putc(char ch) -> usize
   return stdout.lock().inner.putc(ch);
 }
 
-pub fn fputc(StdOutLocked &&os, u8 ch) -> usize
+pub fn fputc(StdOutLocked mut &os, u8 ch) -> usize
 {
   return os.inner.putc(ch);
 }
 
-pub fn fputc(StdOutLocker &&os, u8 ch) -> usize
+pub fn fputc(StdOutLocker mut &os, u8 ch) -> usize
 {
   return os.lock().inner.putc(ch);
 }
 
-pub fn fputc(StdOutLocked &&os, char ch) -> usize
+pub fn fputc(StdOutLocked mut &os, char ch) -> usize
 {
   return os.inner.putc(ch);
 }
 
-pub fn fputc(StdOutLocker &&os, char ch) -> usize
+pub fn fputc(StdOutLocker mut &os, char ch) -> usize
 {
   return os.lock().inner.putc(ch);
 }
 
-pub fn fputc(StdErr &&os, u8 ch) -> usize
+pub fn fputc(StdErr mut &os, u8 ch) -> usize
 {
   return os.putc(ch);
 }
 
-pub fn fputc(StdErr &&os, char ch) -> usize
+pub fn fputc(StdErr mut &os, char ch) -> usize
 {
   return os.putc(ch);
 }
 
-pub fn fputc(file &&os, u8 ch) throws -> usize
+pub fn fputc(file mut &os, u8 ch) throws -> usize
 {
   return os.putc(ch);
 }
 
-pub fn fputc(file &&os, char ch) throws -> usize
+pub fn fputc(file mut &os, char ch) throws -> usize
 {
   return os.putc(ch);
 }
@@ -664,22 +660,22 @@ pub fn puts(String &str) -> usize
   return stdout.lock().inner.puts(str);
 }
 
-pub fn fputs(StdOutLocked &&os, String &str) -> usize
+pub fn fputs(StdOutLocked mut &os, String &str) -> usize
 {
   return os.inner.puts(str);
 }
 
-pub fn fputs(StdOutLocker &&os, String &str) -> usize
+pub fn fputs(StdOutLocker mut &os, String &str) -> usize
 {
   return os.lock().inner.puts(str);
 }
 
-pub fn fputs(StdErr &&os, String &str) -> usize
+pub fn fputs(StdErr mut &os, String &str) -> usize
 {
   return os.puts(str);
 }
 
-pub fn fputs(file &&os, String &str) throws -> usize
+pub fn fputs(file mut &os, String &str) throws -> usize
 {
   return os.puts(str);
 }
@@ -699,62 +695,62 @@ pub fn printf(#std::string_literal format, var & ...args, #var site = __site__) 
   return stdout.lock().inner.printf(format, args..., site: site);
 }
 
-pub fn fprint(StdOutLocked &&os, var & ...args) -> usize
+pub fn fprint(StdOutLocked mut &os, var & ...args) -> usize
 {
   return os.inner.print(args...);
 }
 
-pub fn fprint(StdOutLocker &&os, var & ...args) -> usize
+pub fn fprint(StdOutLocker mut &os, var & ...args) -> usize
 {
   return os.lock().inner.print(args...);
 }
 
-pub fn fprintf(StdOutLocked &&os, String &format, var & ...args) -> usize
+pub fn fprintf(StdOutLocked mut &os, String &format, var & ...args) -> usize
 {
   return os.inner.printf(format, args...);
 }
 
-pub fn fprintf(StdOutLocker &&os, String &format, var & ...args) -> usize
+pub fn fprintf(StdOutLocker mut &os, String &format, var & ...args) -> usize
 {
   return os.lock().inner.printf(format, args...);
 }
 
-pub fn fprintf(StdOutLocked &&os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
+pub fn fprintf(StdOutLocked mut &os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return os.inner.printf(format, args..., site: site);
 }
 
-pub fn fprintf(StdOutLocker &&os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
+pub fn fprintf(StdOutLocker mut &os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return os.lock().inner.printf(format, args..., site: site);
 }
 
-pub fn fprint(StdErr &&os, var & ...args) -> usize
+pub fn fprint(StdErr mut &os, var & ...args) -> usize
 {
   return os.print(args...);
 }
 
-pub fn fprintf(StdErr &&os, String &format, var & ...args) -> usize
+pub fn fprintf(StdErr mut &os, String &format, var & ...args) -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprintf(StdErr &&os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
+pub fn fprintf(StdErr mut &os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
   return os.printf(format, args..., site: site);
 }
 
-pub fn fprint(file &&os, var & ...args) throws -> usize
+pub fn fprint(file mut &os, var & ...args) throws -> usize
 {
   return os.print(args...);
 }
 
-pub fn fprintf(file &&os, String &format, var & ...args) throws -> usize
+pub fn fprintf(file mut &os, String &format, var & ...args) throws -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprintf(file &&os, #std::string_literal format, var & ...args, #var site = __site__) throws -> usize
+pub fn fprintf(file mut &os, #std::string_literal format, var & ...args, #var site = __site__) throws -> usize
 {
   return os.printf(format, args..., site: site);
 }

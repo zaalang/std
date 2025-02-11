@@ -73,7 +73,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
 
   pub fn ()(this mut &, V ...v) throws(Throws) -> R
   {
-    return this._fx.invoke(this._storage.data, v);
+    return this._fx.invoke(this._storage.data, &&v);
   }
 
   pub fn =(this mut &, null) -> delegate mut &

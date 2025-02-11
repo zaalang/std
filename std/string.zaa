@@ -33,6 +33,12 @@ pub struct string_ref : pub std::span<u8>
   }
 
   #[lifetime(depend(*this))]
+  pub fn view(this &) -> string_view
+  {
+    return string_view(this.data, this.len);
+  }
+
+  #[lifetime(depend(*this))]
   pub fn String(this &) -> string_view
   {
     return string_view(this.data, this.len);
@@ -62,7 +68,7 @@ pub struct string_view : pub std::span<u8>
   {
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (usize, usize) range) -> string_view
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 <= this.len);
@@ -70,7 +76,7 @@ pub struct string_view : pub std::span<u8>
     return string_view(this.data + range.0, this.data + range.1);
   }
 
-  #[lifetime(depend(*this))]
+  #[lifetime(repose(range, this), depend(*this))]
   pub fn [](this &, (usize, usize, void) range) -> string_view
   {
     assert(range.0 <= range.1 && range.0 <= this.len && range.1 + 1 <= this.len);
@@ -718,13 +724,13 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(depend(this))]
-  pub fn span<T>(this &)
+  pub fn span(this &)
   {
     return std::span(this.data, this.len);
   }
 
   #[lifetime(depend(this))]
-  pub fn mutable_span<T>(this mut &)
+  pub fn mutable_span(this mut &)
   {
     return std::mutable_span(this.data, this.len);
   }
@@ -754,7 +760,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     return &*(this._data + index);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize) range) -> string_view
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 <= this._len);
@@ -762,7 +768,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     return string_view(this._data + range.0, this._data + range.1);
   }
 
-  #[lifetime(depend(this))]
+  #[lifetime(repose(range, this), depend(this))]
   pub fn [](this &, (usize, usize, void) range) -> string_view
   {
     assert(range.0 <= range.1 && range.0 <= this._len && range.1 + 1 <= this._len);
@@ -1662,16 +1668,16 @@ pub fn drop(String &str, usize n) -> string_view
   return string_view(i, str.end);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn drop!(string_view mut &str, usize n) -> string_view
+#[lifetime(depend(str))]
+pub fn drop!(string_view mut &str, usize n)
 {
   str = drop(str, n);
 
-  return str;
+  return &str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn drop!(string mut &str, usize n) -> string mut &
+pub fn drop!(string mut &str, usize n)
 {
   str = drop(str, n);
 
@@ -1695,16 +1701,16 @@ pub fn take(String &str, usize n) -> string_view
   return string_view(str.begin, i);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn take!(string_view mut &str, usize n) -> string_view
+#[lifetime(depend(str))]
+pub fn take!(string_view mut &str, usize n)
 {
   str = take(str, n);
 
-  return str;
+  return &str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn take!(string mut &str, usize n) -> string mut &
+pub fn take!(string mut &str, usize n)
 {
   str = take(str, n);
 
@@ -1757,16 +1763,16 @@ pub fn trim_left(String &str) -> string_view
   return string_view(i, str.end);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn trim_left!(string_view mut &str) -> string_view
+#[lifetime(depend(str))]
+pub fn trim_left!(string_view mut &str)
 {
   str = trim_left(str);
 
-  return str;
+  return &str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn trim_left!(string mut &str) -> string mut &
+pub fn trim_left!(string mut &str)
 {
   str = trim_left(str);
 
@@ -1790,16 +1796,16 @@ pub fn trim_right(String &str) -> string_view
   return string_view(str.begin, j);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn trim_right!(string_view mut &str) -> string_view
+#[lifetime(depend(str))]
+pub fn trim_right!(string_view mut &str)
 {
   str = trim_right(str);
 
-  return str;
+  return &str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn trim_right!(string mut &str) -> string mut &
+pub fn trim_right!(string mut &str)
 {
   str = trim_right(str);
 
@@ -1813,16 +1819,16 @@ pub fn trim(String &str) -> string_view
   return trim_right(trim_left(str));
 }
 
-#[lifetime(depend(*str.data))]
-pub fn trim!(string_view mut &str) -> string_view
+#[lifetime(depend(str))]
+pub fn trim!(string_view mut &str)
 {
   str = trim(str);
 
-  return str;
+  return &str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn trim!(string mut &str) -> string mut &
+pub fn trim!(string mut &str)
 {
   str = trim(str);
 
@@ -1860,51 +1866,57 @@ pub fn ends_with(String &haystack, String &needle) -> bool
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn drop_n!(string mut &str, usize n) -> string mut &
+pub fn drop_n!(string &&str, usize n)
+  where !__is_const<typeof(str)>
 {
   str = str.drop_front(n);
 
-  return &str;
+  return & &&str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn take_n!(string mut &str, usize n) -> string mut &
+pub fn take_n!(string &&str, usize n)
+  where !__is_const<typeof(str)>
 {
   str = str.front_n(n);
 
-  return &str;
+  return & &&str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn drop_front!(string mut &str, usize n) -> string mut &
+pub fn drop_front!(string &&str, usize n)
+  where !__is_const<typeof(str)>
 {
   str = str.drop_front(n);
 
-  return &str;
+  return & &&str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn drop_back!(string mut &str, usize n) -> string mut &
+pub fn drop_back!(string &&str, usize n)
+  where !__is_const<typeof(str)>
 {
   str = str.drop_back(n);
 
-  return &str;
+  return & &&str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn take_front!(string mut &str, usize n) -> string mut &
+pub fn take_front!(string &&str, usize n)
+  where !__is_const<typeof(str)>
 {
   str = str.front_n(n);
 
-  return &str;
+  return & &&str;
 }
 
 #[lifetime(poison(str), depend(str))]
-pub fn take_back!(string mut &str, usize n) -> string mut &
+pub fn take_back!(string &&str, usize n)
+  where !__is_const<typeof(str)>
 {
   str = str.back_n(n);
 
-  return &str;
+  return & &&str;
 }
 
 #[nodiscard]
@@ -1917,20 +1929,21 @@ pub fn strip_prefix(String &str, String &prefix) -> string_view
   return string_view(str.data, str.len);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn strip_prefix!(string_view mut &str, String &prefix) -> string_view
-{
-  str = strip_prefix(str, prefix);
-
-  return str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn strip_prefix!(string mut &str, String &prefix) -> string mut &
+#[lifetime(depend(str))]
+pub fn strip_prefix!(string_view mut &str, String &prefix)
 {
   str = strip_prefix(str, prefix);
 
   return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn strip_prefix!(string &&str, String &prefix)
+  where !__is_const<typeof(str)>
+{
+  str = strip_prefix(str, prefix);
+
+  return & &&str;
 }
 
 #[nodiscard]
@@ -1943,20 +1956,21 @@ pub fn strip_suffix(String &str, String &suffix) -> string_view
   return string_view(str.data, str.len);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn strip_suffix!(string_view mut &str, String &suffix) -> string_view
-{
-  str = strip_suffix(str, suffix);
-
-  return str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn strip_suffix!(string mut &str, String &suffix) -> string mut &
+#[lifetime(depend(str))]
+pub fn strip_suffix!(string_view mut &str, String &suffix)
 {
   str = strip_suffix(str, suffix);
 
   return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn strip_suffix!(string &&str, String &suffix)
+  where !__is_const<typeof(str)>
+{
+  str = strip_suffix(str, suffix);
+
+  return & &&str;
 }
 
 #[nodiscard]
@@ -1966,20 +1980,21 @@ pub fn strip(String &str, String &fix) -> string_view
   return strip_suffix(strip_prefix(str, fix), fix);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn strip!(string_view mut &str, String &fix) -> string_view
-{
-  str = strip(str, fix);
-
-  return str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn strip!(string mut &str, String &fix) -> string mut &
+#[lifetime(depend(str))]
+pub fn strip!(string_view mut &str, String &fix)
 {
   str = strip(str, fix);
 
   return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn strip!(string &&str, String &fix)
+  where !__is_const<typeof(str)>
+{
+  str = strip(str, fix);
+
+  return & &&str;
 }
 
 #[nodiscard]
@@ -1997,20 +2012,21 @@ pub fn chop(String &str) -> string_view
   return string_view(str.data, str.len);
 }
 
-#[lifetime(depend(*str.data))]
-pub fn chop!(string_view mut &str) -> string_view
-{
-  str = chop(str);
-
-  return str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn chop!(string mut &str) -> string mut &
+#[lifetime(depend(str))]
+pub fn chop!(string_view mut &str)
 {
   str = chop(str);
 
   return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn chop!(string &&str)
+  where !__is_const<typeof(str)>
+{
+  str = chop(str);
+
+  return & &&str;
 }
 
 #[nodiscard]
@@ -2028,20 +2044,21 @@ pub fn chomp(String &str) -> string_view
   return string_view(str.data, str.len);
 }
 
-#[lifetime(poison(str), depend(str))]
-pub fn chomp!(string_view mut &str) -> string mut &
-{
-  str = chomp(str);
-
-  return str;
-}
-
-#[lifetime(poison(str), depend(str))]
-pub fn chomp!(string mut &str) -> string mut &
+#[lifetime(depend(str))]
+pub fn chomp!(string_view mut &str)
 {
   str = chomp(str);
 
   return &str;
+}
+
+#[lifetime(poison(str), depend(str))]
+pub fn chomp!(string &&str)
+  where !__is_const<typeof(str)>
+{
+  str = chomp(str);
+
+  return & &&str;
 }
 
 #[nodiscard]
@@ -2077,12 +2094,13 @@ pub fn to_lowercase(String &&str) -> string
 }
 
 #[lifetime(depend(str))]
-pub fn to_lowercase!(string mut &str) -> string mut &
+pub fn to_lowercase!(string &&str)
+  where !__is_const<typeof(str)>
 {
   for (var mut &ch : str)
     ch = to_lowercase(ch);
 
-  return &str;
+  return & &&str;
 }
 
 #[nodiscard]
@@ -2094,12 +2112,13 @@ pub fn to_uppercase(String &&str) -> string
 }
 
 #[lifetime(depend(str))]
-pub fn to_uppercase!(string mut &str) -> string mut &
+pub fn to_uppercase!(string &&str)
+  where !__is_const<typeof(str)>
 {
   for (var mut &ch : str)
     ch = to_uppercase(ch);
 
-  return &str;
+  return & &&str;
 }
 
 #[nodiscard]

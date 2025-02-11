@@ -118,7 +118,7 @@ pub struct moveable_range_view<R, I, J>
 }
 
 #[lifetime(consume(range), depend())]
-pub fn move<R, I, J>(range_view<R, I, J> &&range)
+pub fn move<R, I, J>(range_view<R, I, J> mut &range)
 {
   return moveable_range_view(&mut range.range, range.begin, range.end);
 }
@@ -162,7 +162,7 @@ pub static fn count<T>(Range<T> &&range) -> usize
 }
 
 pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
-  where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] == y[y.begin]; }
+  where requires (typeof(lhs) x, typeof(rhs) y) { typeof(x)::[](x, x.begin) == typeof(y)::[](y, y.begin); }
 {
   #if (requires (typeof(lhs) lhs, typeof(rhs) rhs) { lhs.len == rhs.len; })
     if (lhs.len != rhs.len)
@@ -187,7 +187,7 @@ pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
 }
 
 pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
-  where requires (typeof(lhs) x, typeof(rhs) y) { x[x.begin] <=> y[y.begin]; }
+  where requires (typeof(lhs) x, typeof(rhs) y) { typeof(x)::[](x, x.begin) <=> typeof(y)::[](y, y.begin); }
 {
   var i = lhs.begin;
   var j = rhs.begin;
@@ -605,7 +605,7 @@ pub struct cycle_view<R>
     return cycle_sentinal();
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &&, cycle_iterator<I> &iter)
   {
     return &&(&&this.range)[iter.super];
@@ -646,21 +646,26 @@ pub struct flatten_view<R>
     pub I base;
     pub typeof(std::as_const(std::declval<R>)[std::declval<I>].begin) current;
 
-    flatten_iterator(flatten_view &view, I beg)
+    flatten_iterator(flatten_view &view, I beg, Sentinal<I> end)
       : view(&view), base(beg)
     {
-      if (this.base != this.view.range.end)
+      if (this.base != end)
       {
         this.current = this.view.range[this.base].begin;
 
         while (this.current == this.view.range[this.base].end)
         {
-          if (++this.base == this.view.range.end)
+          if (++this.base == end)
             break;
 
           this.current = this.view.range[this.base].begin;
         }
       }
+    }
+
+    flatten_iterator(flatten_view &view, I beg)
+      : view(&view), base(beg)
+    {
     }
 
     pub flatten_iterator() = default;
@@ -711,18 +716,16 @@ pub struct flatten_view<R>
 
     pub fn ==<J>(flatten_iterator &lhs, flatten_sentinal<J> &rhs) -> bool
     {
-      return lhs.base == rhs.base;
+      return lhs.base == rhs.super;
     }
 
     flatten_view &view;
   }
 
-  pub struct flatten_sentinal<J>
+  pub struct flatten_sentinal<J> : J
   {
-    pub J base;
-
     pub flatten_sentinal(J end)
-      : base(end)
+      : super(end)
     {
     }
 
@@ -750,7 +753,7 @@ pub struct flatten_view<R>
   #[lifetime(depend(this))]
   pub fn begin(this &)
   {
-    return flatten_iterator(this, this.range.begin);
+    return flatten_iterator(this, this.range.begin, this.range.end);
   }
 
   #[lifetime(depend(this))]
@@ -759,7 +762,7 @@ pub struct flatten_view<R>
     return flatten_sentinal(this.range.end);
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &&, flatten_iterator<I> &iter)
   {
     return &&(&&this.range)[iter.base][iter.current];
@@ -780,7 +783,7 @@ pub fn flatten<T, Pred>(Range<Range<T>> &&range)
 
 #[nodiscard]
 #[lifetime(consume(range), depend())]
-pub fn move<R>(flatten_view<R> &&range)
+pub fn move<R>(flatten_view<R> mut &range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -841,6 +844,11 @@ pub struct reverse_view<R>
     {
       return reverse_iterator(lhs.super + rhs);
     }
+
+    pub fn ==(reverse_iterator &lhs, reverse_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
   }
 
   pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, reverse_iterator<I> &iter) throws -> void
@@ -863,7 +871,7 @@ pub struct reverse_view<R>
     return reverse_iterator(this.range.begin);
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &&, reverse_iterator<I> &iter)
   {
     return &&(&&this.range)[std::prev(iter.super)];
@@ -891,7 +899,7 @@ pub fn reverse<T>(Range<T> &&range)
 
 #[nodiscard]
 #[lifetime(consume(range), depend())]
-pub fn move<R>(reverse_view<R> &&range)
+pub fn move<R>(reverse_view<R> mut &range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -960,6 +968,11 @@ pub struct filter_view<R, Pred>
     pub fn +(filter_iterator &, usize) -> filter_iterator = delete;
     pub fn -(filter_iterator &, usize) -> filter_iterator = delete;
 
+    pub fn ==(filter_iterator &lhs, filter_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
     filter_view &view;
   }
 
@@ -980,7 +993,7 @@ pub struct filter_view<R, Pred>
     return filter_iterator(this, this.range.end);
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &&, filter_iterator<I> &iter)
   {
     return &&(&&this.range)[iter.super];
@@ -1004,7 +1017,7 @@ pub fn filter<T, Pred>(Range<T> &&range, Pred &&pred)
 
 #[nodiscard]
 #[lifetime(consume(range), depend())]
-pub fn move<R, Pred>(filter_view<R, Pred> &&range)
+pub fn move<R, Pred>(filter_view<R, Pred> mut &range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -1050,6 +1063,11 @@ pub struct take_view<R>
       return &this;
     }
 
+    pub fn ==(take_iterator &lhs, take_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
     pub fn ==<J>(take_iterator &lhs, take_sentinal<J> &rhs) -> bool
     {
       return lhs.n == 0 || lhs.super == rhs.super;
@@ -1076,18 +1094,18 @@ pub struct take_view<R>
   }
 
   #[lifetime(depend(*this))]
-  pub fn begin(this &&)
+  pub fn begin(this &)
   {
     return take_iterator(this.range.begin, this.n);
   }
 
   #[lifetime(depend(*this))]
-  pub fn end(this &&)
+  pub fn end(this &)
   {
     return take_sentinal(this.range.end);
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &&, take_iterator<I> &iter)
   {
     return &&(&&this.range)[iter.super];
@@ -1111,7 +1129,7 @@ pub fn take_n<T>(Range<T> &&range, usize n)
 
 #[nodiscard]
 #[lifetime(consume(range), depend())]
-pub fn move<R>(take_view<R> &&range)
+pub fn move<R>(take_view<R> mut &range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -1171,6 +1189,11 @@ pub struct transform_view<R, Func>
       where requires (I i, usize j) { i - j; }
     {
       return transform_iterator<I>(lhs.super - rhs);
+    }
+
+    pub fn ==(transform_iterator &lhs, transform_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
     }
   }
 
@@ -1279,10 +1302,20 @@ pub struct adjacent_view<N, R>
       return adjacent_iterator(lhs.window[0] - rhs, lhs.window[0] - rhs + N);
     }
 
+    pub fn ==(adjacent_iterator &lhs, adjacent_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
+    pub fn ==<J>(adjacent_iterator &lhs, adjacent_sentinal<J> &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
     I[N] window;
   }
 
-  pub struct adjacent_sentinal<J> : pub J
+  pub struct adjacent_sentinal<J> : J
   {
     adjacent_sentinal(J end)
       : super(end)
@@ -1311,7 +1344,7 @@ pub struct adjacent_view<N, R>
     return adjacent_sentinal(this.range.end);
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn []<I>(this &&, adjacent_iterator<I> &iter)
   {
     fn deref(var &&range, var & ...is)
@@ -1319,7 +1352,7 @@ pub struct adjacent_view<N, R>
       return ((&&range[is])...,);
     }
 
-    return deref(this.range, iter.window...);
+    return deref(&&this.range, iter.window...);
   }
 
   pub fn [](this &&, usize index)
@@ -1393,9 +1426,19 @@ pub struct enumerate_view<R>
     {
       return enumerate_iterator(lhs.super - rhs, lhs.index - rhs);
     }
+
+    pub fn ==(enumerate_iterator &lhs, enumerate_iterator &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
+
+    pub fn ==<J>(enumerate_iterator &lhs, enumerate_sentinal<J> &rhs) -> bool
+    {
+      return lhs.super == rhs.super;
+    }
   }
 
-  pub struct enumerate_sentinal<J> : pub J
+  pub struct enumerate_sentinal<J> : J
   {
     enumerate_sentinal(J end)
       : super(end)
@@ -1462,13 +1505,29 @@ pub struct chain_view<Rs, I, J>
   pub const range_adaptor_type = true;
 
   pub chain_view(Rs rs, I beg, J end)
-    : rs(rs), first(this, 0, beg), second(this, __tuple_len<J>, end)
+    : rs(rs), first(this, 0, beg, end), second(this, __tuple_len<J>, end)
   {
   }
 
   pub struct chain_iterator<X> : pub X
   {
     usize n;
+
+    chain_iterator(chain_view &view, usize n, X base, Sentinal<X> end)
+      : super(base), view(&view), n(n)
+    {
+      while (this.n != __tuple_len<X>)
+      {
+        switch (this.n)
+        {
+          #{ #for (const k = 0; k < __tuple_len<X>; ++k)
+            -> { case ${k}: if (this.super.${k} != end.${k}) break; }
+          }
+        }
+
+        ++this.n;
+      }
+    }
 
     chain_iterator(chain_view &view, usize n, X base)
       : super(base), view(&view), n(n)
@@ -1537,7 +1596,7 @@ pub struct chain_view<Rs, I, J>
       return true;
     }
 
-    chain_view mut &view;
+    chain_view &view;
   }
 
   pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, chain_iterator<X> &iter) throws -> void
@@ -1577,7 +1636,7 @@ pub struct chain_view<Rs, I, J>
     return this.second;
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn [](this &&, chain_iterator<I> &iter)
   {
     switch (iter.n)
@@ -1587,7 +1646,7 @@ pub struct chain_view<Rs, I, J>
       }
     }
 
-    std::panic();
+    std::panic("overflow");
   }
 
   pub chain_view(chain_view &&) = default;
@@ -1604,7 +1663,7 @@ pub fn chain(var && ...ranges)
 
 #[nodiscard]
 #[lifetime(consume(range), depend())]
-pub fn move<Rs, I, J>(chain_view<Rs, I, J> &&range)
+pub fn move<Rs, I, J>(chain_view<Rs, I, J> mut &range)
 {
   return moveable_range_view(&mut range, range.begin, range.end);
 }
@@ -1740,7 +1799,7 @@ pub struct zip_view<Rs, I, J>
     return this.second;
   }
 
-  #[lifetime(repose(iter, this), depend(*this))]
+  #[lifetime(repose(iter, this))]
   pub fn [](this &&, zip_iterator &iter)
   {
     fn deref(Rs ...rs, var & ...is)
@@ -1751,7 +1810,6 @@ pub struct zip_view<Rs, I, J>
     return deref(this.rs..., iter.super...);
   }
 
-  #[lifetime(depend(*this))]
   pub fn [](this &&, usize index)
     where is_random_access()
   {
@@ -1787,14 +1845,14 @@ pub fn subrange<T, I>(Range<T> &&range, I first, Sentinal<I> last)
   #if (!requires() { typeof(range)::range_adaptor_type; })
     return range_view(& &&range, first, last);
   #else
-    return range_view(range, first, last);
+    return range_view(&&range, first, last);
 }
 
 #[nodiscard]
 #[lifetime(repose(first, range), repose(last, range), depend(*range))]
 pub fn subrange<R, I, J>(range_view<R, I, J> &&range, I first, Sentinal<I> last)
 {
-  return range_view(range.range, first, last);
+  return range_view(&&range.range, first, last);
 }
 
 #[nodiscard]
