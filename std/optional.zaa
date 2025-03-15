@@ -194,7 +194,7 @@ pub union optional<T, Allocator = std::allocator>
   pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
   {
-    optional::~optional(&mut this);
+    optional::~optional(this);
     new<optional>(&this)(&&args..., allocator: allocator);
   }
 
@@ -210,7 +210,7 @@ pub union optional<T, Allocator = std::allocator>
   #[lifetime(launder(this), poison(this))]
   pub fn clear(this mut &) -> void
   {
-    optional::~optional(&mut this);
+    optional::~optional(this);
     new<optional>(&this)();
   }
 
@@ -247,7 +247,7 @@ pub union optional<T, Allocator = std::allocator>
   pub fn =<U>(this mut &, optional<U> &&other) -> optional mut &
     match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>()); }
   {
-    optional::~optional(&mut this);
+    optional::~optional(this);
 
     switch (other)
     {
@@ -268,7 +268,7 @@ pub union optional<T, Allocator = std::allocator>
 
     if (&this != &other)
     {
-      optional::~optional(&mut this);
+      optional::~optional(this);
 
       switch (other)
       {

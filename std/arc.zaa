@@ -25,7 +25,7 @@ pub struct arc<T, Allocator = std::allocator>
     {
       refcnt = 1;
       weakcnt = 1;
-      new<T>(&value)(&&args..., allocator?: _allocator);
+      new<T>(cast<void mut *>(&value))(&&args..., allocator?: _allocator);
     }
 
     Allocator _allocator;
@@ -213,7 +213,7 @@ pub struct arc<T, Allocator = std::allocator>
     {
       if (std::atomic_sub(&this.inner.refcnt, 1) == 1)
       {
-        T::~T(&mut this.inner.value);
+        T::~T(this.inner.value);
 
         if (std::atomic_sub(&this.inner.weakcnt, 1) == 1)
           destroy(this.inner);
@@ -227,7 +227,7 @@ pub struct arc<T, Allocator = std::allocator>
   {
     var allocator = ptr._allocator;
 
-    Allocator::~Allocator(&mut ptr._allocator);
+    Allocator::~Allocator(ptr._allocator);
 
     allocator.free(ptr, sizeof<Ac>);
   }

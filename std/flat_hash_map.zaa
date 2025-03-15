@@ -360,7 +360,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     this._len -= 1;
     *(this._ctrl + index) = deleted;
-    value_type::~key_value_pair(&mut *(this._data + index));
+    value_type::~key_value_pair(*(this._data + index));
 
     return iterator(this._ctrl + index, this._data + index);
   }
@@ -526,7 +526,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   {
     new<value_type>(dst)(&move *src, allocator?: this.allocator);
 
-    value_type::~key_value_pair(&mut *src);
+    value_type::~key_value_pair(*src);
   }
 
   #[lifetime(poison(this))]
@@ -544,7 +544,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     for (var i = 0; i != this._capacity; ++i)
     {
       if (is_full(this._ctrl + i))
-        value_type::~key_value_pair(&mut *(this._data + i));
+        value_type::~key_value_pair(*(this._data + i));
     }
 
     this._len = 0;

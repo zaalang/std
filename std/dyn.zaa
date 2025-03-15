@@ -33,10 +33,10 @@ pub struct dyn<Fx, Allocator = std::allocator>
       : super(&impl value, &value, allocator),
         value(void)
     {
-      new<T>(&value)(&&arg, allocator?: this._allocator);
+      new<T>(cast<void mut *>(&value))(&&arg, allocator?: this._allocator);
 
       this.size = sizeof(this);
-      this.destruct = fn (void mut &self) -> void { T::~T(&mut cast<T mut &>(self)); };
+      this.destruct = fn (void mut &self) -> void { T::~T(cast<T mut &>(self)); };
     }
   }
 
@@ -104,7 +104,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
     var size = ptr.size;
     var allocator = ptr._allocator;
 
-    Allocator::~Allocator(&mut ptr._allocator);
+    Allocator::~Allocator(ptr._allocator);
 
     allocator.free(ptr, size);
   }

@@ -619,7 +619,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
       while (first != last)
       {
         #if (!__is_trivial_destroy<T>)
-          T::~T(&mut *dst);
+          T::~T(*dst);
 
         new<T>(dst++)(&move *first++, allocator?: this.allocator);
       }
@@ -640,7 +640,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
       while (first != last)
       {
         #if (!__is_trivial_destroy<T>)
-          T::~T(&mut *(end - 1));
+          T::~T(*(end - 1));
 
         new<T>(--end)(&move *--last, allocator?: this.allocator);
       }
@@ -672,7 +672,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     #if (!__is_trivial_destroy<T>)
     {
       while (first != last)
-        T::~T(&mut *first++);
+        T::~T(*first++);
     }
   }
 

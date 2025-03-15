@@ -278,7 +278,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
 
       extract(&mut this, node, next);
 
-      Node::~Node(&mut *cast<Node mut *>(node));
+      Node::~Node(*cast<Node mut *>(node));
       this.allocator.free(node, sizeof<Node>);
 
       node = next;
@@ -296,7 +296,7 @@ pub struct tree<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
       destroy(&mut this, node.left);
       destroy(&mut this, node.right);
 
-      Node::~Node(&mut *node);
+      Node::~Node(*node);
       this.allocator.free(node, sizeof<Node>);
     }
   }

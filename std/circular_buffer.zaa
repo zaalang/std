@@ -354,7 +354,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    T::~T(&mut *(this._data + this._head & (this._capacity - 1)));
+    T::~T(*(this._data + this._head & (this._capacity - 1)));
 
     this._len -= 1;
     this._head = (this._head + 1) & (this._capacity - 1);
@@ -365,7 +365,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    T::~T(&mut *(this._data + (this._head + this._len - 1) & (this._capacity - 1)));
+    T::~T(*(this._data + (this._head + this._len - 1) & (this._capacity - 1)));
 
     this._len -= 1;
   }
@@ -506,7 +506,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
     while (first != last)
     {
-      T::~T(&mut *dst);
+      T::~T(*dst);
 
       new<T>(dst++)(&move *first++, allocator?: this.allocator);
 
@@ -533,7 +533,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
       if (last == this._data)
         last = this._data + this._capacity;
 
-      T::~T(&mut *(end - 1));
+      T::~T(*(end - 1));
 
       new<T>(--end)(&move *--last, allocator?: this.allocator);
     }
@@ -562,7 +562,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     #if (!__is_trivial_destroy<T>)
     {
       while (first != last)
-        T::~T(&mut *(this._data + first++ & (this._capacity - 1)));
+        T::~T(*(this._data + first++ & (this._capacity - 1)));
     }
   }
 

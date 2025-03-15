@@ -454,7 +454,7 @@ pub struct list<T, Allocator = std::allocator>
     {
       var next = node.next;
 
-      Node::~Node(&mut *cast<Node mut *>(node));
+      Node::~Node(*cast<Node mut *>(node));
       this._allocator.free(node, sizeof<Node>);
 
       count += 1;

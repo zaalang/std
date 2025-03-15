@@ -37,7 +37,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
 
     fn destroy(void mut *this) -> void
     {
-      Holder::~Holder(&mut *cast<Holder<Y> mut *>(this));
+      Holder::~Holder(*cast<Holder<Y> mut *>(this));
     }
 
     Holder(Y &&fx)

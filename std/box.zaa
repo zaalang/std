@@ -18,7 +18,7 @@ pub struct box<T, Allocator = std::allocator>
     Bx<Args>(Args && ...args, Allocator &allocator)
       : value(void), _allocator(allocator)
     {
-      new<T>(&value)(&&args..., allocator?: _allocator);
+      new<T>(cast<void mut *>(&value))(&&args..., allocator?: _allocator);
     }
 
     Allocator _allocator;
@@ -96,7 +96,7 @@ pub struct box<T, Allocator = std::allocator>
   {
     if (this.inner)
     {
-      T::~T(&mut this.inner.value);
+      T::~T(this.inner.value);
 
       destroy(this.inner);
     }
@@ -108,7 +108,7 @@ pub struct box<T, Allocator = std::allocator>
   {
     var allocator = ptr._allocator;
 
-    Allocator::~Allocator(&mut ptr._allocator);
+    Allocator::~Allocator(ptr._allocator);
 
     allocator.free(ptr, sizeof<Bx>);
   }
