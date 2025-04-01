@@ -121,11 +121,6 @@ pub struct dirent
   {
     return std::string_view(this.d_name.data, std::memchr(this.d_name.data, 0, cast<usize>(this.d_reclen - offsetof(dirent::d_name))));
   }
-
-  pub dirent() = default;
-  pub dirent(dirent&) = default;
-  pub fn =(dirent mut &, dirent &) -> dirent mut & = default;
-  pub ~dirent() = default;
 }
 
 pub fn open(u8 *path, u32 flags, mode_t mode) -> int

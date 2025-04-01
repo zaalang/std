@@ -56,6 +56,12 @@ pub const fn signbit<T>(T x) -> int
   return __signbit(x);
 }
 
+pub const fn signextend<T, U>(U x, U signbit) -> T
+  where __is_integral<T> && __is_integral<U>
+{
+  return std::bit_cast<T>(__sub_with_borrow(x ^ signbit, signbit).0);
+}
+
 pub const fn byteswap<T>(T x) -> T
   where __is_integral<T>
 {

@@ -846,8 +846,8 @@ pub fn parse(String &pattern, options flags = cast(0)) -> parse_result
 
   var ctx = parse_context();
 
-  if (var rc = parse(&mut ctx, std::string_view(pattern), flags); !rc)
-    result.error = rc;
+  if (var err = parse(&mut ctx, std::string_view(pattern), flags); err)
+    result.error = err;
 
   result.regex = &move ctx.regex;
 

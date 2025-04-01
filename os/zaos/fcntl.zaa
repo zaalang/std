@@ -154,11 +154,6 @@ pub struct dirent
   {
     return cast<filetype>(this.file_type);
   }
-
-  pub dirent() = default;
-  pub dirent(dirent&) = default;
-  pub fn =(dirent mut &, dirent &) -> dirent mut & = default;
-  pub ~dirent() = default;
 }
 
 pub const POLLIN = 0x001;
