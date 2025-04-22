@@ -148,7 +148,7 @@ pub fn intro_sort<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp
 pub fn intro_sort<T, Cmp>(Range<T> mut &range, Cmp &cmp = std::less, int maxdepth = 16) -> void
   where __is_match<RandomAccessIterator, typeof(range.begin)>()
 {
-  intro_sort(&mut range, range.begin, range.end, cmp);
+  intro_sort(&mut range, range.begin, range.end, cmp, maxdepth);
 }
 
 fn inplace_merge<T, I, Cmp>(Range<T> mut &range, I first, I middle, Sentinal<I> last, usize n1, usize n2, Cmp &cmp = std::less) -> void

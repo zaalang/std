@@ -23,6 +23,7 @@ pub const O_TRUNC = 0o1000;
 pub const O_APPEND = 0o2000;
 pub const O_DIRECTORY = 0o200000;
 pub const O_NOFOLLOW = 0o400000;
+pub const O_FILESYSTEM = 0o1000000;
 
 pub const S_IUMSK = 0o7777;  // user settable bits
 
@@ -52,6 +53,19 @@ pub const S_IFBLK = 0x6000;  // block device
 pub const S_IFDIR = 0x4000;  // directory
 pub const S_IFCHR = 0x2000;  // character device
 pub const S_IFIFO = 0x1000;  // fifo
+
+pub const N_ACCESS = 0x1;
+pub const N_ATTRIB = 0x2;
+pub const N_CLOSE_WRITE = 0x4;
+pub const N_CLOSE_NOWRITE = 0x8;
+pub const N_MKDIR = 0x10;
+pub const N_CREATE = 0x20;
+pub const N_UNLINK = 0x40;
+pub const N_MODIFY = 0x100;
+pub const N_MOVED = 0x400;
+pub const N_RENAME = 0x1000;
+pub const N_OPEN = 0x2000;
+pub const N_ALL = 0xffff;
 
 pub const STDIN_FILENO = 0;
 pub const STDOUT_FILENO = 1;
@@ -145,12 +159,12 @@ pub struct dirent
   pub u16 name_len;
   pub u8[0] file_name;
 
-  pub fn name(this&) -> std::string_view
+  pub fn name(this &) -> std::string_view
   {
     return std::string_view(this.file_name.data, cast<usize>(this.name_len));
   }
 
-  pub fn type(this&) -> filetype
+  pub fn type(this &) -> filetype
   {
     return cast<filetype>(this.file_type);
   }
@@ -161,10 +175,6 @@ pub const POLLOUT = 0x004;
 
 pub const POLLFD = 0x1;
 pub const POLLTHREAD = 0x2;
-
-pub const EPOLL_CTL_ADD = 0x1;
-pub const EPOLL_CTL_MOD = 0x2;
-pub const EPOLL_CTL_DEL = 0x3;
 
 pub struct pollevt
 {
@@ -182,6 +192,44 @@ pub struct pollevt
   pub pollevt(pollevt&) = default;
   pub fn =(pollevt mut &, pollevt &) -> pollevt mut & = default;
   pub ~pollevt() = default;
+}
+
+pub struct watchevt
+{
+  pub u32 len;
+  pub u32 pad;
+  pub u64 mask;
+  pub uintptr user_data;
+
+  pub struct info
+  {
+    pub const id = 1;
+    pub const dir = 2;
+    pub const name = 3;
+
+    pub u16 type;
+    pub u16 len;
+  }
+
+  pub struct id_info : pub info
+  {
+    pub uintptr id;
+  }
+
+  pub struct dir_info : pub info
+  {
+    pub uintptr id;
+  }
+
+  pub struct name_info : pub info
+  {
+    pub u8[0] file_name;
+
+    pub fn name(this &) -> std::string_view
+    {
+      return std::string_view(this.file_name.data, cast<usize>(this.len - sizeof<info>));
+    }
+  }
 }
 
 pub struct string
@@ -245,15 +293,21 @@ pub enum ioring_ops
   pub const link = 0x0c;
   pub const symlink = 0x0d;
   pub const unlink = 0x0e;
-  pub const epoll_create = 0x10;
-  pub const epoll_ctl = 0x11;
-  pub const epoll_wait = 0x12;
-  pub const event_create = 0x13;
-  pub const buffer_create = 0x14;
-  pub const channel_create = 0x15;
-  pub const channel_read = 0x16;
-  pub const channel_write = 0x17;
-  pub const channel_call = 0x18;
+  pub const poll_create = 0x10;
+  pub const poll_add = 0x11;
+  pub const poll_modify = 0x12;
+  pub const poll_remove = 0x13;
+  pub const poll_wait = 0x14;
+  pub const notify_create = 0x15;
+  pub const notify_add = 0x16;
+  pub const notify_modify = 0x17;
+  pub const notify_remove = 0x18;
+  pub const event_create = 0x19;
+  pub const buffer_create = 0x1a;
+  pub const channel_create = 0x1b;
+  pub const channel_read = 0x1c;
+  pub const channel_write = 0x1d;
+  pub const channel_call = 0x1e;
 }
 
 pub enum ioring_flags
@@ -396,11 +450,10 @@ pub fn ioring_advance_cqe(ioring mut &ring) -> void
 pub fn ioring_prep_sqe_open(ioring_sqe mut *sqe, i32 dir, string path, u64 flags, u32 mode) -> void
 {
   sqe.op = ioring_ops::open;
-  sqe.args[0] = cast(dir);
+  sqe.args[0] = cast<uintptr>(dir) << 32 | cast<uintptr>(path.len);
   sqe.args[1] = cast(path.data);
-  sqe.args[2] = cast(path.len);
-  sqe.args[3] = cast(flags);
-  sqe.args[4] = cast(mode);
+  sqe.args[2] = cast(flags);
+  sqe.args[3] = cast(mode);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -475,84 +528,118 @@ pub fn ioring_prep_sqe_dup2(ioring_sqe mut *sqe, i32 oldfd, i32 newfd) -> void
 pub fn ioring_prep_sqe_mkdir(ioring_sqe mut *sqe, i32 dir, string path, u64 flags, u32 mode) -> void
 {
   sqe.op = ioring_ops::mkdir;
-  sqe.args[0] = cast(dir);
+  sqe.args[0] = cast<uintptr>(dir) << 32 | cast<uintptr>(path.len);
   sqe.args[1] = cast(path.data);
-  sqe.args[2] = cast(path.len);
-  sqe.args[3] = cast(flags);
-  sqe.args[4] = cast(mode);
+  sqe.args[2] = cast(flags);
+  sqe.args[3] = cast(mode);
   sqe.flags = ioring_flags::fin;
 }
 
 pub fn ioring_prep_sqe_rename(ioring_sqe mut *sqe, i32 olddir, string oldpath, i32 newdir, string newpath, u64 flags) -> void
 {
   sqe.op = ioring_ops::rename;
-  sqe.args[0] = cast<uintptr>(olddir) << 32 | cast<uintptr>(newdir);
+  sqe.args[0] = cast<uintptr>(olddir) << 32 | cast<uintptr>(oldpath.len);
   sqe.args[1] = cast(oldpath.data);
-  sqe.args[2] = cast(oldpath.len);
+  sqe.args[2] = cast<uintptr>(newdir) << 32 | cast<uintptr>(newpath.len);
   sqe.args[3] = cast(newpath.data);
-  sqe.args[4] = cast(newpath.len);
-  sqe.args[5] = cast(flags);
+  sqe.args[4] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
 pub fn ioring_prep_sqe_link(ioring_sqe mut *sqe, i32 olddir, string oldpath, i32 newdir, string newpath, u64 flags) -> void
 {
   sqe.op = ioring_ops::link;
-  sqe.args[0] = cast<uintptr>(olddir) << 32 | cast<uintptr>(newdir);
+  sqe.args[0] = cast<uintptr>(olddir) << 32 | cast<uintptr>(oldpath.len);
   sqe.args[1] = cast(oldpath.data);
-  sqe.args[2] = cast(oldpath.len);
+  sqe.args[2] = cast<uintptr>(newdir) << 32 | cast<uintptr>(newpath.len);
   sqe.args[3] = cast(newpath.data);
-  sqe.args[4] = cast(newpath.len);
-  sqe.args[5] = cast(flags);
+  sqe.args[4] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
 pub fn ioring_prep_sqe_symlink(ioring_sqe mut *sqe, i32 dir, string path, string target, u64 flags) -> void
 {
   sqe.op = ioring_ops::symlink;
-  sqe.args[0] = cast(dir);
+  sqe.args[0] = cast<uintptr>(dir) << 32 | cast<uintptr>(path.len);
   sqe.args[1] = cast(path.data);
-  sqe.args[2] = cast(path.len);
+  sqe.args[2] = cast(target.len);
   sqe.args[3] = cast(target.data);
-  sqe.args[4] = cast(target.len);
-  sqe.args[5] = cast(flags);
+  sqe.args[4] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
 pub fn ioring_prep_sqe_unlink(ioring_sqe mut *sqe, i32 dir, string path, u64 flags) -> void
 {
   sqe.op = ioring_ops::unlink;
-  sqe.args[0] = cast(dir);
+  sqe.args[0] = cast<uintptr>(dir) << 32 | cast<uintptr>(path.len);
   sqe.args[1] = cast(path.data);
-  sqe.args[2] = cast(path.len);
-  sqe.args[3] = cast(flags);
+  sqe.args[2] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_epoll_create(ioring_sqe mut *sqe, u64 flags) -> void
+pub fn ioring_prep_sqe_poll_create(ioring_sqe mut *sqe, u64 flags) -> void
 {
-  sqe.op = ioring_ops::epoll_create;
+  sqe.op = ioring_ops::poll_create;
   sqe.args[0] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_epoll_ctl(ioring_sqe mut *sqe, i32 fd, i32 op, pollevt *evt, u64 flags) -> void
+pub fn ioring_prep_sqe_poll_add(ioring_sqe mut *sqe, i32 fd, i32 id, u16 type, u16 mask, uintptr user_data, u64 flags) -> void
 {
-  sqe.op = ioring_ops::epoll_ctl;
+  sqe.op = ioring_ops::poll_add;
   sqe.args[0] = cast(fd);
-  sqe.args[1] = cast(op);
-  sqe.args[2] = cast(evt);
-  sqe.args[3] = cast(flags);
+  sqe.args[1] = cast(id);
+  sqe.args[2] = cast(type);
+  sqe.args[3] = cast(mask);
+  sqe.args[4] = cast(user_data);
+  sqe.args[5] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_epoll_wait(ioring_sqe mut *sqe, i32 fd, pollevt mut *evts, usize n, u64 timeout) -> void
+pub fn ioring_prep_sqe_poll_remove(ioring_sqe mut *sqe, i32 fd, i32 id, u16 type) -> void
 {
-  sqe.op = ioring_ops::epoll_wait;
+  sqe.op = ioring_ops::poll_remove;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(id);
+  sqe.args[2] = cast(type);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_poll_wait(ioring_sqe mut *sqe, i32 fd, pollevt mut *evts, usize n, u64 timeout) -> void
+{
+  sqe.op = ioring_ops::poll_wait;
   sqe.args[0] = cast(fd);
   sqe.args[1] = cast(evts);
   sqe.args[2] = cast(n);
   sqe.args[3] = cast(timeout);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_notify_create(ioring_sqe mut *sqe, u64 flags) -> void
+{
+  sqe.op = ioring_ops::notify_create;
+  sqe.args[0] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_notify_add(ioring_sqe mut *sqe, i32 fd, i32 dir, string path, u64 mask, uintptr user_data, u64 flags) -> void
+{
+  sqe.op = ioring_ops::notify_add;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast<uintptr>(dir) << 32 | cast<uintptr>(path.len);
+  sqe.args[2] = cast(path.data);
+  sqe.args[3] = cast(mask);
+  sqe.args[4] = cast(user_data);
+  sqe.args[5] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_notify_remove(ioring_sqe mut *sqe, i32 fd, i32 dir, string path) -> void
+{
+  sqe.op = ioring_ops::notify_remove;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast<uintptr>(dir) << 32 | cast<uintptr>(path.len);
+  sqe.args[2] = cast(path.data);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -940,10 +1027,10 @@ pub fn unlink(ioring mut &ring, string path, u64 flags) -> i32
   return unlink(&mut ring, dir, path, flags);
 }
 
-pub fn epoll_create(ioring mut &ring, u64 flags) -> i32
+pub fn poll_create(ioring mut &ring, u64 flags) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_epoll_create(sqe, flags);
+  ioring_prep_sqe_poll_create(sqe, flags);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -956,10 +1043,16 @@ pub fn epoll_create(ioring mut &ring, u64 flags) -> i32
   return result;
 }
 
-pub fn epoll_ctl(ioring mut &ring, i32 fd, i32 op, pollevt *evt, u64 flags) -> i32
+pub fn poll_add(ioring mut &ring, i32 fd, i32 id, u16 type, u16 mask, uintptr user_data, u64 flags) -> i32
 {
+  if (fd < 0)
+    return EINVAL;
+
+  if (id < 0)
+    return EINVAL;
+
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_epoll_ctl(sqe, fd, op, evt, flags);
+  ioring_prep_sqe_poll_add(sqe, fd, id, type, mask, user_data, flags);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -972,10 +1065,95 @@ pub fn epoll_ctl(ioring mut &ring, i32 fd, i32 op, pollevt *evt, u64 flags) -> i
   return result;
 }
 
-pub fn epoll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize n, u64 timeout) -> i32
+pub fn poll_remove(ioring mut &ring, i32 fd, i32 id, u16 type) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  if (id < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_poll_remove(sqe, fd, id, type);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn poll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize n, u64 timeout) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_poll_wait(sqe, fd, evts, n, timeout);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn notify_create(ioring mut &ring, u64 flags) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_epoll_wait(sqe, fd, evts, n, timeout);
+  ioring_prep_sqe_notify_create(sqe, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn notify_add(ioring mut &ring, i32 fd, i32 dir, string path, u64 mask, uintptr user_data, u64 flags) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  if (dir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_notify_add(sqe, fd, dir, path, mask, user_data, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn notify_remove(ioring mut &ring, i32 fd, i32 dir, string path, u64 mask) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  if (dir < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_notify_remove(sqe, fd, dir, path, mask);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)

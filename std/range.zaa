@@ -142,18 +142,18 @@ pub const fn is_all_ranges<Rs, T>() -> bool
   return true;
 }
 
-pub fn empty<T>(Range<T> &&range) -> bool
+pub fn empty<T>(Range<T> &range) -> bool
 {
   return range.begin == range.end;
 }
 
-pub fn len<T>(Range<T> &&range) -> usize
+pub fn len<T>(Range<T> &range) -> usize
   where requires (typeof(range) range) { range.end - range.begin; }
 {
   return std::distance(range.begin, range.end);
 }
 
-pub static fn count<T>(Range<T> &&range) -> usize
+pub static fn count<T>(Range<T> &range) -> usize
 {
   #if (requires (typeof(range) range) { range.len; })
     return range.len;
@@ -161,12 +161,15 @@ pub static fn count<T>(Range<T> &&range) -> usize
   return std::distance(range.begin, range.end);
 }
 
-pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
+pub fn ==<T>(Range<T> &lhs, Range<T> &rhs) -> bool
   where requires (typeof(lhs) x, typeof(rhs) y) { typeof(x)::[](x, x.begin) == typeof(y)::[](y, y.begin); }
 {
   #if (requires (typeof(lhs) lhs, typeof(rhs) rhs) { lhs.len == rhs.len; })
     if (lhs.len != rhs.len)
       return false;
+
+  #if (__is_match<Span<u8>, typeof(lhs)> && __is_match<Span<u8>, typeof(rhs)>)
+    return std::memcmp(lhs.data, rhs.data, lhs.len) == 0;
 
   var i = lhs.begin;
   var j = rhs.begin;
@@ -186,7 +189,7 @@ pub fn ==<T>(Range<T> &&lhs, Range<T> &&rhs) -> bool
   return true;
 }
 
-pub fn <=><T>(Range<T> &&lhs, Range<T> &&rhs) -> int
+pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
   where requires (typeof(lhs) x, typeof(rhs) y) { typeof(x)::[](x, x.begin) <=> typeof(y)::[](y, y.begin); }
 {
   var i = lhs.begin;
@@ -914,8 +917,6 @@ pub struct filter_view<R, Pred>
     : range(&&range), pred(&&pred)
   {
   }
-
-  pub ~filter_view() = default;
 
   pub struct filter_iterator<I> : pub I
   {

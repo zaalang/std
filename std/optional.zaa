@@ -135,7 +135,7 @@ pub union optional<T, Allocator = std::allocator>
     #[lifetime(depend(this))]
     pub fn unwrap(this &&)
     {
-      return &(&&this).unwrap;
+      return &(&&this).value;
     }
 
     pub fn unwrap_or<U>(this &&, U &&default) -> T

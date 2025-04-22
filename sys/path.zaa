@@ -35,9 +35,20 @@ pub struct path_view
     return this.str;
   }
 
+  pub fn len(this &) -> usize
+  {
+    return this.str.len;
+  }
+
   pub fn empty(this &) -> bool
   {
     return this.str.empty;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn data(this &)
+  {
+    return this.str.data;
   }
 
   pub fn as_literal(this &)
@@ -109,6 +120,16 @@ pub struct path_view
   pub fn [](this &, iterator &iter) -> std::string_ref
   {
     return std::string_ref(iter.pos, iter.scan.0);
+  }
+
+  pub fn ==(this &, String &other) -> bool
+  {
+    return this.str == other;
+  }
+
+  pub fn <=>(this &, String &other) -> bool
+  {
+    return this.str <=> other;
   }
 
   pub path_view() = default;

@@ -28,6 +28,8 @@ pub fn unique<T, I, Cmp>(Range<T> mut &range, I first, Sentinal<I> last, Cmp &cm
     ++next;
   }
 
+  std::launder(range);
+
   return next;
 }
 

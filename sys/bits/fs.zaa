@@ -122,7 +122,7 @@ pub enum permissions
     pub ~stat() = default;
   }
 
-  pub fn stat(std::string_view path, stat mut &stat) throws -> i32
+  pub fn stat(sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -141,7 +141,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn lstat(std::string_view path, stat mut &stat) throws -> i32
+  pub fn lstat(sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -197,7 +197,7 @@ pub enum permissions
     u8[1024] buffer;
 
     usize pathlen;
-    std::string path;
+    std::string pathname;
 
     fn head(this &) -> os::dirent *
     {
@@ -207,13 +207,13 @@ pub enum permissions
     #[lifetime(depend(this))]
     pub fn path(this &) -> sys::path_view
     {
-      return this.path;
+      return this.pathname;
     }
 
     #[lifetime(depend(this))]
-    pub fn name(this &) -> std::string_view
+    pub fn name(this &) -> sys::path_view
     {
-      return this.head.name;
+      return sys::path_view(this.pathname.begin + this.pathlen, this.pathname.end);
     }
 
     pub fn type(this &) -> filetype
@@ -266,7 +266,7 @@ pub enum permissions
     {
       var stat = stat();
 
-      lstat(std::string_view(this.path), &mut stat);
+      lstat(this.path, &mut stat);
 
       return stat;
     }
@@ -292,7 +292,7 @@ pub enum permissions
     std::fmt_to(&mut os, &mut ctx, entry.name);
   }
 
-  pub fn opendir(dirp mut &dirp, std::string_view &path) throws -> i32
+  pub fn opendir(dirp mut &dirp, sys::path_view &path) throws -> i32
   {
     using os;
 
@@ -309,12 +309,12 @@ pub enum permissions
       throw std::system_error(cast<std::errc>(-fd));
 
     dirp.fd = fd;
-    dirp.path = path;
+    dirp.pathname = path;
 
     if (!path.ends_with(sys::sep_byte()))
-      dirp.path += sys::sep_byte();
+      dirp.pathname += sys::sep_byte();
 
-    dirp.pathlen = dirp.path.len;
+    dirp.pathlen = dirp.pathname.len;
 
     readdir(&mut dirp);
 
@@ -350,7 +350,7 @@ pub enum permissions
         if (entry.name == "." || entry.name == "..")
           continue;
 
-        dirp.path.replace(dirp.pathlen, ~0, dirp.head.name);
+        dirp.pathname.replace(dirp.pathlen, ~0, dirp.head.name);
       }
 
       return 0;
@@ -420,7 +420,7 @@ pub enum permissions
     pub ~stat() = default;
   }
 
-  pub fn stat(std::string_view path, stat mut &stat) throws -> i32
+  pub fn stat(sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -486,7 +486,7 @@ pub enum permissions
     throw std::system_error(std::errc::not_supported);
   }
 
-  pub fn lstat(std::string_view path, stat mut &stat) throws -> i32
+  pub fn lstat(sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -549,18 +549,18 @@ pub enum permissions
     os::BOOL status;
 
     usize pathlen;
-    std::string path;
+    std::string pathname;
 
     #[lifetime(depend(this))]
     pub fn path(this &) -> sys::path_view
     {
-      return this.path;
+      return this.pathname;
     }
 
     #[lifetime(depend(this))]
-    pub fn name(this &) -> std::string_view
+    pub fn name(this &) -> sys::path_view
     {
-      return std::string_view(this.path.begin + this.pathlen, this.path.end);
+      return sys::path_view(this.pathname.begin + this.pathlen, this.pathname.end);
     }
 
     pub fn type(this &) -> filetype
@@ -626,7 +626,7 @@ pub enum permissions
     std::fmt_to(&mut os, &mut ctx, entry.name);
   }
 
-  pub fn opendir(dirp mut &dirp, std::string_view &path) throws -> i32
+  pub fn opendir(dirp mut &dirp, sys::path_view &path) throws -> i32
   {
     using os;
 
@@ -646,13 +646,13 @@ pub enum permissions
       throw std::system_error(error_code(GetLastError()));
 
     dirp.fd = handle;
-    dirp.path = path;
+    dirp.pathname = path;
     dirp.status = 1;
 
     if (!path.ends_with(sys::sep_byte()))
-      dirp.path += sys::sep_byte();
+      dirp.pathname += sys::sep_byte();
 
-    dirp.pathlen = dirp.path.len;
+    dirp.pathlen = dirp.pathname.len;
 
     while (dirp.wfd.cFileName[0] == 46 && (dirp.wfd.cFileName[1] == 0 || (dirp.wfd.cFileName[1] == 46 && dirp.wfd.cFileName[2] == 0)))
     {
@@ -666,11 +666,11 @@ pub enum permissions
     {
       var len = std::find(dirp.wfd.cFileName, 0) - dirp.wfd.cFileName.data;
 
-      dirp.path.reserve(dirp.pathlen + len * sizeof<u32>);
+      dirp.pathname.reserve(dirp.pathlen + len * sizeof<u32>);
 
-      var nchars = WideCharToMultiByte(CP_UTF8, 0, dirp.wfd.cFileName.data, cast(len), dirp.path.data + dirp.pathlen, cast(len * sizeof<u32>), null, null);
+      var nchars = WideCharToMultiByte(CP_UTF8, 0, dirp.wfd.cFileName.data, cast(len), dirp.pathname.data + dirp.pathlen, cast(len * sizeof<u32>), null, null);
 
-      dirp.path.append_from_capacity(cast(nchars));
+      dirp.pathname.append_from_capacity(cast(nchars));
     }
 
     return 0;
@@ -691,12 +691,12 @@ pub enum permissions
 
         var len = std::find(dirp.wfd.cFileName, 0) - dirp.wfd.cFileName.data;
 
-        dirp.path.erase(dirp.pathlen, ~0);
-        dirp.path.reserve(dirp.pathlen + len * sizeof<u32>);
+        dirp.pathname.erase(dirp.pathlen, ~0);
+        dirp.pathname.reserve(dirp.pathlen + len * sizeof<u32>);
 
-        var nchars = WideCharToMultiByte(CP_UTF8, 0, dirp.wfd.cFileName.data, cast(len), dirp.path.data + dirp.pathlen, cast(len * sizeof<u32>), null, null);
+        var nchars = WideCharToMultiByte(CP_UTF8, 0, dirp.wfd.cFileName.data, cast(len), dirp.pathname.data + dirp.pathlen, cast(len * sizeof<u32>), null, null);
 
-        dirp.path.append_from_capacity(cast(nchars));
+        dirp.pathname.append_from_capacity(cast(nchars));
       }
 
       return 0;
@@ -779,7 +779,7 @@ pub enum permissions
     pub ~stat() = default;
   }
 
-  pub fn stat(i32 dir, std::string_view path, stat mut &stat) throws -> i32
+  pub fn stat(i32 dir, sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -800,7 +800,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn lstat(i32 dir, std::string_view path, stat mut &stat) throws -> i32
+  pub fn lstat(i32 dir, sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -821,7 +821,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn stat(std::string_view path, stat mut &stat) throws -> i32
+  pub fn stat(sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -835,7 +835,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn lstat(std::string_view path, stat mut &stat) throws -> i32
+  pub fn lstat(sys::path_view path, stat mut &stat) throws -> i32
   {
     using os;
 
@@ -873,7 +873,7 @@ pub enum permissions
     u8[1024] buffer;
 
     usize pathlen;
-    std::string path;
+    std::string pathname;
 
     fn head(this &) -> os::dirent *
     {
@@ -883,13 +883,13 @@ pub enum permissions
     #[lifetime(depend(this))]
     pub fn path(this &) -> sys::path_view
     {
-      return this.path;
+      return this.pathname;
     }
 
     #[lifetime(depend(this))]
-    pub fn name(this &) -> std::string_view
+    pub fn name(this &) -> sys::path_view
     {
-      return this.head.name;
+      return sys::path_view(this.pathname.begin + this.pathlen, this.pathname.end);
     }
 
     pub fn type(this &) -> filetype
@@ -964,7 +964,7 @@ pub enum permissions
     std::fmt_to(&mut os, &mut ctx, entry.name);
   }
 
-  pub fn opendir(dirp mut &dirp, std::string_view &path) throws -> i32
+  pub fn opendir(dirp mut &dirp, sys::path_view &path) throws -> i32
   {
     using os;
 
@@ -974,12 +974,12 @@ pub enum permissions
       throw std::system_error(cast<std::errc>(-fd));
 
     dirp.fd = fd;
-    dirp.path = path;
+    dirp.pathname = path;
 
     if (!path.ends_with(sys::sep_byte()))
-      dirp.path += sys::sep_byte();
+      dirp.pathname += sys::sep_byte();
 
-    dirp.pathlen = dirp.path.len;
+    dirp.pathlen = dirp.pathname.len;
 
     readdir(&mut dirp);
 
@@ -1015,7 +1015,7 @@ pub enum permissions
         if (entry.name == "." || entry.name == "..")
           continue;
 
-        dirp.path.replace(dirp.pathlen, ~0, dirp.head.name);
+        dirp.pathname.replace(dirp.pathlen, ~0, dirp.head.name);
       }
 
       return 0;

@@ -662,6 +662,8 @@ pub fn remove<T, I, Value>(Range<T> mut &range, I first, Sentinal<I> last, Value
     }
   }
 
+  std::launder(range);
+
   return first;
 }
 
@@ -702,6 +704,8 @@ pub fn remove_if<T, I, Pred>(Range<T> mut &range, I first, Sentinal<I> last, Pre
         range[first++] = &move range[i];
     }
   }
+
+  std::launder(range);
 
   return first;
 }

@@ -100,6 +100,7 @@ pub enum errc : u32
   no_buffer_space = 105,
   already_connected = 106,
   not_connected = 107,
+  shutdown = 108,
   timed_out = 110,
   connection_refused = 111,
   host_unreachable = 113,
