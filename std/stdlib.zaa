@@ -39,7 +39,7 @@ pub fn abort(var & ...args) -> void
 pub fn panic(var & ...args) -> void
 {
   if (args.len != 0)
-    std::print(&&args...);
+    std::fprint(std::stderr, &&args...);
 
   exit(1);
 }
