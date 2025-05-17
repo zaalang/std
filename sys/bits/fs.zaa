@@ -62,28 +62,28 @@ pub enum permissions
       switch (this.st_mode & S_IFMT)
       {
         case S_IFREG:
-          return filetype::regular;
+          return regular;
 
         case S_IFBLK:
-          return filetype::block_device;
+          return block_device;
 
         case S_IFDIR:
-          return filetype::directory;
+          return directory;
 
         case S_IFCHR:
-          return filetype::character_device;
+          return character_device;
 
         case S_IFLNK:
-          return filetype::symlink;
+          return symlink;
 
         case S_IFIFO:
-          return filetype::fifo;
+          return fifo;
 
         case S_IFSOCK:
-          return filetype::socket;
+          return socket;
       }
 
-      return filetype::unknown;
+      return unknown;
     }
 
     pub fn is_dir(this &) -> bool
@@ -219,28 +219,28 @@ pub enum permissions
       switch (this.head.d_type)
       {
         case 1:
-          return filetype::fifo;
+          return fifo;
 
         case 2:
-          return filetype::character_device;
+          return character_device;
 
         case 4:
-          return filetype::directory;
+          return directory;
 
         case 6:
-          return filetype::block_device;
+          return block_device;
 
         case 8:
-          return filetype::regular;
+          return regular;
 
         case 10:
-          return filetype::symlink;
+          return symlink;
 
         case 12:
-          return filetype::socket;
+          return socket;
       }
 
-      return filetype::unknown;
+      return unknown;
     }
 
     pub fn is_dir(this &) -> bool
@@ -413,12 +413,12 @@ pub enum permissions
       using os;
 
       if (this.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0)
-        return filetype::symlink;
+        return symlink;
 
       if (this.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0)
-        return filetype::directory;
+        return directory;
 
-      return filetype::regular;
+      return regular;
     }
 
     pub fn is_dir(this &) -> bool
@@ -610,12 +610,12 @@ pub enum permissions
       using os;
 
       if (this.wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT != 0)
-        return filetype::symlink;
+        return symlink;
 
       if (this.wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0)
-        return filetype::directory;
+        return directory;
 
-      return filetype::regular;
+      return regular;
     }
 
     pub fn is_dir(this &) -> bool
@@ -809,26 +809,26 @@ pub enum permissions
       switch (this.mode & S_IFMT)
       {
         case S_IFREG:
-          return filetype::regular;
+          return regular;
 
         case S_IFBLK:
-          return filetype::block_device;
+          return block_device;
 
         case S_IFDIR:
-          return filetype::directory;
+          return directory;
 
         case S_IFCHR:
-          return filetype::character_device;
+          return character_device;
 
         case S_IFLNK:
-          return filetype::symlink;
+          return symlink;
 
         case S_IFDATA:
         case S_IFSOCK:
-          return filetype::socket;
+          return socket;
       }
 
-      return filetype::unknown;
+      return unknown;
     }
 
     pub fn is_dir(this &) -> bool
@@ -985,26 +985,26 @@ pub enum permissions
       switch (this.head.type)
       {
         case block_device:
-          return filetype::block_device;
+          return block_device;
 
         case character_device:
-          return filetype::character_device;
+          return character_device;
 
         case directory:
-          return filetype::directory;
+          return directory;
 
         case regular:
-          return filetype::regular;
+          return regular;
 
         case symlink:
-          return filetype::symlink;
+          return symlink;
 
         case socket_dgram:
         case socket_stream:
-          return filetype::socket;
+          return socket;
       }
 
-      return filetype::unknown;
+      return unknown;
     }
 
     pub fn is_dir(this &) -> bool
