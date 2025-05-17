@@ -210,11 +210,9 @@ pub struct StdIn
   ~StdIn() = default;
 }
 
-pub fn stdin_raw -> file mut &
+pub fn stdin_raw -> file
 {
-  static instance = #file(fd(STDIN));
-
-  return &instance;
+  return file(fd(STDIN));
 }
 
 pub fn stdin -> StdIn
@@ -481,11 +479,9 @@ pub struct StdOutLocker
   pub ~StdOutLocker() = default;
 }
 
-pub fn stdout_raw -> file mut &
+pub fn stdout_raw -> file
 {
-  static instance = #file(fd(STDOUT));
-
-  return &instance;
+  return file(fd(STDOUT));
 }
 
 pub fn stdout -> StdOutLocker
@@ -593,11 +589,9 @@ pub struct StdErr
   ~StdErr() = default;
 }
 
-pub fn stderr_raw -> file mut &
+pub fn stderr_raw -> file
 {
-  static instance = #file(fd(STDERR));
-
-  return &instance;
+  return file(fd(STDERR));
 }
 
 pub fn stderr -> StdErr

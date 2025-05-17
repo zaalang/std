@@ -204,3 +204,19 @@ pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, directory_view 
   for (var &entry : dir)
     std::print_to(&mut os, entry, " ");
 }
+
+pub fn mkdir(String &path) throws -> void
+{
+  mkdir(sys::path_view(path));
+}
+
+pub fn mkpath(String &path) throws -> void
+{
+  for (var part : sys::path_view(path))
+    mkdir(sys::path_view(path.begin, part.end));
+}
+
+pub fn unlink(String &path) throws -> void
+{
+  unlink(sys::path_view(path));
+}

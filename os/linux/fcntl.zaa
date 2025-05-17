@@ -267,3 +267,18 @@ pub fn getdents(int fd, void mut *dirp, usize count) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall3(sys_getdents64, fd, dirp, count)));
 }
+
+pub fn mkdir(u8 *path, mode_t mode) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_mkdir, path, mode)));
+}
+
+pub fn rmdir(u8 *path) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_rmdir, path)));
+}
+
+pub fn unlink(u8 *path) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall1(sys_unlink, path)));
+}

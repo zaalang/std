@@ -92,6 +92,7 @@ pub extern "C" fn WideCharToMultiByte(UINT CodePage, DWORD dwFlags, LPCWSTR lpWi
 pub extern "C" fn FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, void *Arguments) -> DWORD;
 pub extern "C" fn CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, SECURITY_ATTRIBUTES *lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile) -> HANDLE;
 pub extern "C" fn CreateFileMappingW(HANDLE hFile, SECURITY_ATTRIBUTES mut *lpFileMappingAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName) -> HANDLE;
+pub extern "C" fn CreateDirectoryW(LPCWSTR lpPathName, SECURITY_ATTRIBUTES *lpSecurityAttributes) -> BOOL;
 pub extern "C" fn MapViewOfFileEx(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, SIZE_T dwNumberOfBytesToMap, LPVOID lpBaseAddress) -> LPVOID;
 pub extern "C" fn UnmapViewOfFileEx(LPCVOID BaseAddress, ULONG UnmapFlags) -> BOOL;
 pub extern "C" fn GetFileSizeEx(HANDLE hFile, LARGE_INTEGER mut *lpFileSize) -> BOOL;
@@ -99,6 +100,8 @@ pub extern "C" fn ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesTo
 pub extern "C" fn WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, DWORD mut *lpNumberOfBytesWritten, OVERLAPPED mut *lpOverlapped) -> BOOL;
 pub extern "C" fn CreatePipe(HANDLE mut *hReadPipe, HANDLE mut *hWritePipe, SECURITY_ATTRIBUTES *lpPipeAttributes, DWORD nSize) -> BOOL;
 pub extern "C" fn PeekNamedPipe(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, DWORD mut *lpBytesRead, DWORD mut *lpTotalBytesAvail, DWORD mut *lpBytesLeftThisMessage) -> BOOL;
+pub extern "C" fn DeleteFileW(LPCWSTR lpFileName) -> BOOL;
+pub extern "C" fn RemoveDirectoryW(LPCWSTR lpPathName) -> BOOL;
 pub extern "C" fn DuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, HANDLE mut *lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions) -> BOOL;
 pub extern "C" fn GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer) -> DWORD;
 pub extern "C" fn GetStdHandle(DWORD nStdHandle) -> HANDLE;

@@ -134,9 +134,7 @@ pub enum permissions
     pathstr[path.len] = 0;
 
     if (var rc = stat(pathstr.data, &stat); rc < 0)
-    {
       throw std::system_error(cast<std::errc>(-rc));
-    }
 
     return 0;
   }
@@ -153,9 +151,7 @@ pub enum permissions
     pathstr[path.len] = 0;
 
     if (var rc = lstat(pathstr.data, &stat); rc < 0)
-    {
       throw std::system_error(cast<std::errc>(-rc));
-    }
 
     return 0;
   }
@@ -355,6 +351,52 @@ pub enum permissions
 
       return 0;
     }
+  }
+
+  pub fn mkdir(sys::path_view path) throws -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = mkdir(pathstr.data, 0o755); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+  pub fn unlink(sys::path_view path) throws -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    var stat = os::stat();
+    if (var rc = stat(pathstr.data, &stat); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    switch (stat.st_mode & S_IFMT)
+    {
+      case S_IFDIR:
+        if (var rc = rmdir(pathstr.data); rc < 0)
+          throw std::system_error(cast<std::errc>(-rc));
+
+      else:
+        if (var rc = unlink(pathstr.data); rc < 0)
+          throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
   }
 
 #end
@@ -703,6 +745,52 @@ pub enum permissions
     }
   }
 
+  pub fn mkdir(sys::path_view path) throws -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
+
+    if (CreateDirectoryW(pathstr.data, null) == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    return 0;
+  }
+
+  pub fn unlink(sys::path_view path) throws -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
+
+    var stat = stat();
+    GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat);
+
+    switch (stat.type)
+    {
+      case directory:
+        if (RemoveDirectoryW(pathstr.data) == 0)
+          throw std::system_error(error_code(GetLastError()));
+
+      else:
+        if (DeleteFileW(pathstr.data) == 0)
+          throw std::system_error(error_code(GetLastError()));
+    }
+
+    return 0;
+  }
 #end
 
 #if __cfg("os.zaos")
@@ -1020,6 +1108,26 @@ pub enum permissions
 
       return 0;
     }
+  }
+
+  pub fn mkdir(sys::path_view path) throws -> i32
+  {
+    using os;
+
+    if (var rc = os::mkdir(&mut thread_ring, os::string(path.data, path.len), 0, 0o775); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+  pub fn unlink(sys::path_view path) throws -> i32
+  {
+    using os;
+
+    if (var rc = os::unlink(&mut thread_ring, os::string(path.data, path.len), 0); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
   }
 
 #end

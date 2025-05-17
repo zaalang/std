@@ -421,7 +421,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
     var arg = args[i];
     var errc = cast<std::errc>(0);
 
-    if (arg.starts_with("--"))
+    if (arg.starts_with("--") && arg != "--")
     {
       arg.drop_front!(2);
 
@@ -454,7 +454,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
       }
     }
 
-    else if (arg.starts_with("-"))
+    else if (arg.starts_with("-") && arg != "-")
     {
       arg.drop_front!(1);
 

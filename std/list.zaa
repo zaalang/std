@@ -409,11 +409,17 @@ pub struct list<T, Allocator = std::allocator>
     this._root.next = this._root.prev = &this._root;
   }
 
+  #[lifetime(depend(this))]
+  fn slot(this mut &, Node mut *node) -> T mut *
+  {
+    return &node.value;
+  }
+
   fn insert<Args>(this mut &, Link *position, Args && ...args) -> Node mut *
   {
     var node = new<Node>(this._allocator.allocate(sizeof<Node>, alignof<Node>));
 
-    new<T>(&node.value)(&&args..., allocator?: this.allocator);
+    new<T>(slot(&mut this, node))(&&args..., allocator?: this.allocator);
 
     node.next = cast(position);
     node.prev = cast(position.prev);
