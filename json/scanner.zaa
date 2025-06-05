@@ -89,7 +89,7 @@ pub struct scanner
 {
   mark loc;
 
-  fn peek(this mut &, InputReader mut &is) throws -> u8
+  fn peek(this mut &, InputReader mut &is) throws(std::error) -> u8
   {
     if (var buffer = is.fetch(); buffer.len != 0)
       return buffer[0];
@@ -97,7 +97,7 @@ pub struct scanner
     return 0;
   }
 
-  fn peek(this mut &, InputReader mut &is, usize index) throws -> u8
+  fn peek(this mut &, InputReader mut &is, usize index) throws(std::error) -> u8
   {
     if (var buffer = this.prefix(&mut is, index + 1); index < buffer.len)
       return buffer[index];
@@ -105,7 +105,7 @@ pub struct scanner
     return 0;
   }
 
-  fn prefix(this mut &, InputReader mut &is, usize len) throws -> std::string_view
+  fn prefix(this mut &, InputReader mut &is, usize len) throws(std::error) -> std::string_view
   {
     if (is.buffer.len < len)
       is.pack_and_fetch();
@@ -168,13 +168,13 @@ fn is_breakz(u8 ch) -> bool
   return ch == cast('\0') || ch == cast('\r') || ch == cast('\n');
 }
 
-fn skip_blank(scanner mut &this, InputReader mut &is) throws -> void
+fn skip_blank(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   while (is_blank(this.peek(&mut is)))
     this.eat(&mut is);
 }
 
-fn skip_break(scanner mut &this, InputReader mut &is) throws -> void
+fn skip_break(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   if (is_break(this.peek(&mut is)))
   {
@@ -185,7 +185,7 @@ fn skip_break(scanner mut &this, InputReader mut &is) throws -> void
   }
 }
 
-fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   for (;;)
   {
@@ -205,7 +205,7 @@ fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
   }
 }
 
-fn scan_token(scanner mut &this, InputReader mut &is, token::type type) throws -> token
+fn scan_token(scanner mut &this, InputReader mut &is, token::type type) throws(std::error) -> token
 {
   var loc = this.loc;
 
@@ -214,7 +214,7 @@ fn scan_token(scanner mut &this, InputReader mut &is, token::type type) throws -
   return make_token(type, loc);
 }
 
-fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws -> token
+fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws(std::error) -> token
 {
   var loc = this.loc;
   var value = std::string();
@@ -279,7 +279,7 @@ fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style
   return make_token(token::type::scalar, style, value, loc);
 }
 
-fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> token
+fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws(std::error) -> token
 {
   var loc = this.loc;
   var value = std::string();
@@ -319,7 +319,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> token
   return make_token(token::type::scalar, scalar_style::plain, value, loc);
 }
 
-pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
+pub fn fetch(scanner mut &this, InputReader mut &is) throws(std::error) -> token
 {
   scan_to_next_token(&mut this, &mut is);
 

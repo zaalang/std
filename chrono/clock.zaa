@@ -99,7 +99,7 @@ pub fn system_time<R, P>(chrono::duration<R, P> &time_since_epoch)
   return system_time<chrono::duration<R, P>>(time_since_epoch);
 }
 
-pub fn fmt<Duration>(std::OutputStream mut &os, std::fmt_context mut &ctx, time_point<system_clock, Duration> &tp) throws -> void
+pub fn fmt<Duration>(std::OutputStream mut &os, std::fmt_context mut &ctx, time_point<system_clock, Duration> &tp) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = chrono::fmt_to(&mut buf, "%F %T%z", tp);
@@ -138,7 +138,7 @@ pub fn local_time<R, P>(chrono::duration<R, P> &time_since_epoch)
   return local_time<chrono::duration<R, P>>(time_since_epoch);
 }
 
-pub fn fmt<Duration>(std::OutputStream mut &os, std::fmt_context mut &ctx, time_point<local_t, Duration> &tp) throws -> void
+pub fn fmt<Duration>(std::OutputStream mut &os, std::fmt_context mut &ctx, time_point<local_t, Duration> &tp) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = chrono::fmt_to(&mut buf, "%Y-%m-%d %H:%M:%S", tp);

@@ -137,6 +137,11 @@ pub const fn seconds<R, P>(duration<R, P> &value) -> duration<f64, ratio<1, 1>>
   return duration_cast<duration<f64, ratio<1, 1>>>(value);
 }
 
+pub const fn seconds<T, R, P>(duration<R, P> &value) -> duration<T, ratio<1, 1>>
+{
+  return duration_cast<duration<T, ratio<1, 1>>>(value);
+}
+
 pub const fn minutes<T>(T count) -> duration<i64, ratio<60, 1>>
   where __is_integral<T>
 {
@@ -358,7 +363,7 @@ pub fn duration_suffix<Period>()
   std::panic("unknown duration suffix");
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, duration<R, P> &duration) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, duration<R, P> &duration) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}{}", duration.count, duration_suffix<P>);

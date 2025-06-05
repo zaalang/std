@@ -133,7 +133,7 @@ pub struct scanner
 
   mark loc;
 
-  fn peek(this mut &, InputReader mut &is) throws -> u8
+  fn peek(this mut &, InputReader mut &is) throws(std::error) -> u8
   {
     if (var buffer = is.fetch(); buffer.len != 0)
       return buffer[0];
@@ -141,7 +141,7 @@ pub struct scanner
     return 0;
   }
 
-  fn peek(this mut &, InputReader mut &is, usize index) throws -> u8
+  fn peek(this mut &, InputReader mut &is, usize index) throws(std::error) -> u8
   {
     if (var buffer = this.prefix(&mut is, index + 1); index < buffer.len)
       return buffer[index];
@@ -149,7 +149,7 @@ pub struct scanner
     return 0;
   }
 
-  fn prefix(this mut &, InputReader mut &is, usize len) throws -> std::string_view
+  fn prefix(this mut &, InputReader mut &is, usize len) throws(std::error) -> std::string_view
   {
     if (is.buffer.len < len)
       is.pack_and_fetch();
@@ -229,13 +229,13 @@ fn is_flow(u8 ch) -> bool
   return ch == cast(',') || ch == cast('[') || ch == cast(']') || ch == cast('{') || ch == cast('}');
 }
 
-fn skip_blank(scanner mut &this, InputReader mut &is) throws -> void
+fn skip_blank(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   while (is_blank(this.peek(&mut is)))
     this.eat(&mut is);
 }
 
-fn skip_break(scanner mut &this, InputReader mut &is) throws -> void
+fn skip_break(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   if (is_break(this.peek(&mut is)))
   {
@@ -246,7 +246,7 @@ fn skip_break(scanner mut &this, InputReader mut &is) throws -> void
   }
 }
 
-fn read_break(scanner mut &this, InputReader mut &is, std::string mut &result) throws -> void
+fn read_break(scanner mut &this, InputReader mut &is, std::string mut &result) throws(std::error) -> void
 {
   if (is_break(this.peek(&mut is)))
   {
@@ -256,13 +256,13 @@ fn read_break(scanner mut &this, InputReader mut &is, std::string mut &result) t
   }
 }
 
-fn scan_to_next_break(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_to_next_break(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   while (!is_breakz(this.peek(&mut is)))
     this.eat(&mut is);
 }
 
-fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_to_next_token(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   for (;;)
   {
@@ -388,12 +388,12 @@ fn emit_stream_end(scanner mut &this) -> void
   this.tokens.push_back(make_token(token::type::stream_end, this.loc));
 }
 
-fn is_directive(scanner mut &this, InputReader mut &is) throws -> bool
+fn is_directive(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
 {
   return this.loc.column == 0 && this.peek(&mut is) == cast('%');
 }
 
-fn scan_directive(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_directive(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -420,12 +420,12 @@ fn scan_directive(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::directive, scalar_style::plain, value, loc));
 }
 
-fn is_document_start(scanner mut &this, InputReader mut &is) throws -> bool
+fn is_document_start(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
 {
   return this.loc.column == 0 && this.peek(&mut is) == cast('-') && this.prefix(&mut is, 3) == "---" && is_whitespace(this.peek(&mut is, 3));
 }
 
-fn scan_document_start(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_document_start(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -441,12 +441,12 @@ fn scan_document_start(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::document_start, loc));
 }
 
-fn is_document_end(scanner mut &this, InputReader mut &is) throws -> bool
+fn is_document_end(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
 {
   return this.loc.column == 0 && this.peek(&mut is) == cast('.') && this.prefix(&mut is, 3) == "..." && is_whitespace(this.peek(&mut is, 3));
 }
 
-fn scan_document_end(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_document_end(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -460,7 +460,7 @@ fn scan_document_end(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::document_end, loc));
 }
 
-fn scan_flow_collection_start(scanner mut &this, InputReader mut &is, token::type type) throws -> void
+fn scan_flow_collection_start(scanner mut &this, InputReader mut &is, token::type type) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -476,7 +476,7 @@ fn scan_flow_collection_start(scanner mut &this, InputReader mut &is, token::typ
   this.tokens.push_back(make_token(type, loc));
 }
 
-fn scan_flow_collection_end(scanner mut &this, InputReader mut &is, token::type type) throws -> void
+fn scan_flow_collection_end(scanner mut &this, InputReader mut &is, token::type type) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -491,7 +491,7 @@ fn scan_flow_collection_end(scanner mut &this, InputReader mut &is, token::type 
   this.tokens.push_back(make_token(type, loc));
 }
 
-fn scan_flow_entry(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_flow_entry(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -504,7 +504,7 @@ fn scan_flow_entry(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::flow_entry, loc));
 }
 
-fn scan_tag(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_tag(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -525,7 +525,7 @@ fn scan_tag(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::tag, scalar_style::plain, value, loc));
 }
 
-fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws -> void
+fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -726,7 +726,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
   this.tokens.push_back(make_token(token::type::scalar, style, value, loc));
 }
 
-fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws -> void
+fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -749,12 +749,12 @@ fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws 
   this.tokens.push_back(make_token(type, value, loc));
 }
 
-fn is_key(scanner mut &this, InputReader mut &is) throws -> bool
+fn is_key(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
 {
   return this.flow_level > 0 || is_whitespace(this.peek(&mut is, 1));
 }
 
-fn scan_key(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_key(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -776,12 +776,12 @@ fn scan_key(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::key, loc));
 }
 
-fn is_value(scanner mut &this, InputReader mut &is) throws -> bool
+fn is_value(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
 {
   return (this.flow_level > 0 && (is_flow(this.peek(&mut is, 1)) || this.allow_adjacent_value)) || is_whitespace(this.peek(&mut is, 1));
 }
 
-fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_value(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -818,12 +818,12 @@ fn scan_value(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::value, loc));
 }
 
-fn is_block_entry(scanner mut &this, InputReader mut &is) throws -> bool
+fn is_block_entry(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
 {
   return is_whitespace(this.peek(&mut is, 1));
 }
 
-fn scan_block_entry(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_block_entry(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -845,7 +845,7 @@ fn scan_block_entry(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::block_entry, loc));
 }
 
-fn block_scalar_breaks(scanner mut &this, InputReader mut &is, int mut &indent, std::string mut &result) throws -> void
+fn block_scalar_breaks(scanner mut &this, InputReader mut &is, int mut &indent, std::string mut &result) throws(std::error) -> void
 {
   var max_indent = 0;
 
@@ -875,7 +875,7 @@ fn block_scalar_breaks(scanner mut &this, InputReader mut &is, int mut &indent, 
   }
 }
 
-fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws -> void
+fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -988,7 +988,7 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
   this.tokens.push_back(make_token(token::type::scalar, style, value, loc));
 }
 
-fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> void
+fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   var loc = this.loc;
 
@@ -1114,7 +1114,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws -> void
   this.tokens.push_back(make_token(token::type::scalar, scalar_style::plain, value, loc));
 }
 
-fn scan(scanner mut &this, InputReader mut &is) throws -> void
+fn scan(scanner mut &this, InputReader mut &is) throws(std::error) -> void
 {
   scan_to_next_token(&mut this, &mut is);
 
@@ -1181,7 +1181,7 @@ fn scan(scanner mut &this, InputReader mut &is) throws -> void
   return scan_plain_scalar(&mut this, &mut is);
 }
 
-pub fn fetch(scanner mut &this, InputReader mut &is) throws -> token
+pub fn fetch(scanner mut &this, InputReader mut &is) throws(std::error) -> token
 {
   for (;;)
   {

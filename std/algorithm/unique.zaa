@@ -102,7 +102,7 @@ pub struct uniq_view<R, Cmp>
     uniq_view &view;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, uniq_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, uniq_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }

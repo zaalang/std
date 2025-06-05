@@ -49,7 +49,7 @@ pub fn mmap_error(uintptr code) -> std::error
 
 pub struct file
 {
-  pub fn open(String &path, u64 offset = 0, usize length = 0) throws -> file
+  pub fn open(String &path, u64 offset = 0, usize length = 0) throws(std::error) -> file
   {
     var fd = open_file(std::string_view(path), mode::readonly);
 
@@ -60,7 +60,7 @@ pub struct file
     return file(addr, length);
   }
 
-  pub fn map(std::fd &fd, u64 offset = 0, usize length = 0) throws -> file
+  pub fn map(std::fd &fd, u64 offset = 0, usize length = 0) throws(std::error) -> file
   {
     var addr = map_file(cast(std::bit_cast<uintptr>(fd)), offset, &mut length, mode::readonly);
 
@@ -188,7 +188,7 @@ pub struct file
 
 pub struct mutable_file
 {
-  pub fn open(String &path, u64 offset = 0, usize length = 0) throws -> mutable_file
+  pub fn open(String &path, u64 offset = 0, usize length = 0) throws(std::error) -> mutable_file
   {
     var fd = open_file(std::string_view(path), mode::readwrite);
 
@@ -199,7 +199,7 @@ pub struct mutable_file
     return mutable_file(addr, length);
   }
 
-  pub fn map(std::fd &fd, u64 offset = 0, usize length = 0) throws -> mutable_file
+  pub fn map(std::fd &fd, u64 offset = 0, usize length = 0) throws(std::error) -> mutable_file
   {
     var addr = map_file(cast(std::bit_cast<uintptr>(fd)), offset, &mut length, mode::readwrite);
 
@@ -367,7 +367,7 @@ pub struct mutable_file
     return std::meta::enumerator_name(cast<std::errc>(value));
   }
 
-  fn open_file(std::string_view path, mode mode) throws -> int
+  fn open_file(std::string_view path, mode mode) throws(std::error) -> int
   {
     var pathstr = [0; 2048];
 
@@ -384,7 +384,7 @@ pub struct mutable_file
     return fd;
   }
 
-  fn map_file(int fd, u64 offset, usize mut &length, mode mode) throws -> u8 mut *
+  fn map_file(int fd, u64 offset, usize mut &length, mode mode) throws(std::error) -> u8 mut *
   {
     if (length == 0)
     {
@@ -434,7 +434,7 @@ pub struct mutable_file
     return std::string_view(buffer, cast<usize>(nchars)).trim_right;
   }
 
-  fn open_file(std::string_view path, mode mode) throws -> HANDLE
+  fn open_file(std::string_view path, mode mode) throws(std::error) -> HANDLE
   {
     var pathstr = [0; 2048];
 
@@ -453,7 +453,7 @@ pub struct mutable_file
     return handle;
   }
 
-  fn map_file(HANDLE fd, u64 offset, usize mut &length, mode mode) throws -> u8 mut *
+  fn map_file(HANDLE fd, u64 offset, usize mut &length, mode mode) throws(std::error) -> u8 mut *
   {
     if (length == 0)
     {
@@ -526,7 +526,7 @@ pub struct mutable_file
     return std::meta::enumerator_name(cast<std::errc>(value));
   }
 
-  fn open_file(std::string_view path, mode mode) throws -> int
+  fn open_file(std::string_view path, mode mode) throws(std::error) -> int
   {
     var fd = open(&mut thread_ring, string(path.data, path.len), (mode == mode::readonly) ? O_RDONLY : O_RDWR, 0o666);
 
@@ -536,7 +536,7 @@ pub struct mutable_file
     return fd;
   }
 
-  fn map_file(int fd, u64 offset, usize mut &length, mode mode) throws -> u8 mut *
+  fn map_file(int fd, u64 offset, usize mut &length, mode mode) throws(std::error) -> u8 mut *
   {
     if (length == 0)
     {

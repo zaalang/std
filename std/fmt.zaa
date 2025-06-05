@@ -43,7 +43,7 @@ pub struct fmt_context
   ~fmt_context() = default;
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, bool value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, bool value) throws(std::error) -> void
 {
   var buf = [0; 16];
   var str = std::btoa(buf.begin, buf.end, value);
@@ -51,7 +51,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, bool value) throws -> void
   ctx.written += os.write(str.ptr, str.len);
 }
 
-fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
+fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws(std::error) -> void
 {
   switch (value)
   {
@@ -97,7 +97,7 @@ fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> voi
   }
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws(std::error) -> void
 {
   switch (ctx.spec.type)
   {
@@ -123,7 +123,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
   }
 }
 
-fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) throws -> void
+fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) throws(std::error) -> void
 {
   var buf = [0; 64];
   var str = std::strconv_result(void);
@@ -191,32 +191,32 @@ fn fmt_int(OutputStream mut &os, fmt_context mut &ctx, int sign, usize value) th
   fmt_str(&mut os, &mut ctx, buf.data, beg, str.ptr, str.ptr + str.len, str.ptr + str.len - beg);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, u8 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, u8 value) throws(std::error) -> void
 {
   fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, u16 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, u16 value) throws(std::error) -> void
 {
   fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, u32 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, u32 value) throws(std::error) -> void
 {
   fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, u64 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, u64 value) throws(std::error) -> void
 {
   fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, usize value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, usize value) throws(std::error) -> void
 {
   fmt_int(&mut os, &mut ctx, +1, value);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, i8 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, i8 value) throws(std::error) -> void
 {
   if (value < 0)
     fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
@@ -224,7 +224,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, i8 value) throws -> void
     fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, i16 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, i16 value) throws(std::error) -> void
 {
   if (value < 0)
     fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
@@ -232,7 +232,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, i16 value) throws -> void
     fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, i32 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, i32 value) throws(std::error) -> void
 {
   if (value < 0)
     fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
@@ -240,7 +240,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, i32 value) throws -> void
     fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, i64 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, i64 value) throws(std::error) -> void
 {
   if (value < 0)
     fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
@@ -248,7 +248,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, i64 value) throws -> void
     fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, isize value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, isize value) throws(std::error) -> void
 {
   if (value < 0)
     fmt_int(&mut os, &mut ctx, -1, cast<usize>(~value) + 1);
@@ -256,7 +256,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, isize value) throws -> void
     fmt_int(&mut os, &mut ctx, +1, cast<usize>(value));
 }
 
-fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
+fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws(std::error) -> void
 {
   var buf = [0; 64];
   var str = std::strconv_result(void);
@@ -311,17 +311,17 @@ fn fmt_flt(OutputStream mut &os, fmt_context mut &ctx, var value) throws -> void
   fmt_str(&mut os, &mut ctx, buf.data, beg, beg, str.ptr + str.len, str.ptr + str.len - beg);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, f32 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, f32 value) throws(std::error) -> void
 {
   fmt_flt(&mut os, &mut ctx, value);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, f64 value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, f64 value) throws(std::error) -> void
 {
   fmt_flt(&mut os, &mut ctx, value);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws(std::error) -> void
 {
   var buf = [0; 18];
   var str = std::itoa(buf.begin, buf.end, cast<uintptr>(pointer), 16);
@@ -335,12 +335,12 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws -> void
   ctx.written += os.write(buf.data, buf.len);
 }
 
-fn put(OutputStream mut &os, fmt_context mut &ctx, String &str) throws -> void
+fn put(OutputStream mut &os, fmt_context mut &ctx, String &str) throws(std::error) -> void
 {
   ctx.written += os.write(str.data, str.len);
 }
 
-fn pad(OutputStream mut &os, fmt_context mut &ctx, usize n) throws -> void
+fn pad(OutputStream mut &os, fmt_context mut &ctx, usize n) throws(std::error) -> void
 {
   var buf = [ctx.spec.fill; 64];
 
@@ -357,7 +357,7 @@ fn pad(OutputStream mut &os, fmt_context mut &ctx, usize n) throws -> void
   }
 }
 
-fn fmt_str(OutputStream mut &os, fmt_context mut &ctx, u8 mut *beg, u8 *start, u8 *prefix, u8 *end, usize length) throws -> void
+fn fmt_str(OutputStream mut &os, fmt_context mut &ctx, u8 mut *beg, u8 *start, u8 *prefix, u8 *end, usize length) throws(std::error) -> void
 {
   var padding_left = 0;
   var padding_right = 0;
@@ -463,7 +463,7 @@ fn cell_width(String &str) -> usize
   return x;
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws(std::error) -> void
 {
   if (ctx.spec.type == cast('?'))
   {
@@ -516,49 +516,49 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_view str) throws 
   fmt_str(&mut os, &mut ctx, null, str.data, str.data, str.data + str.len, length);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_literal str) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_literal str) throws(std::error) -> void
 {
   fmt(&mut os, &mut ctx, std::string_view(str.data, str.len));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_ref str) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string_ref str) throws(std::error) -> void
 {
   fmt(&mut os, &mut ctx, std::string_view(str.data, str.len));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string &str) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::string &str) throws(std::error) -> void
 {
   fmt(&mut os, &mut ctx, std::string_view(str.data, str.len));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::source_location &loc) throws(std::error) -> void
 {
   ctx.written += format_to(&mut os, "{}:{}", loc.file_name, loc.lineno);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::error &error) throws(std::error) -> void
 {
   var buf = [0; 256];
 
   fmt(&mut os, &mut ctx, error.message(buf.data, buf.len));
 }
 
-fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, fn (&)(V...) -> R) throws -> void
+fn fmt<R, V>(OutputStream mut &os, fmt_context mut &ctx, fn (&)(V...) -> R) throws(std::error) -> void
 {
   put(&mut os, &mut ctx, "fn&");
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, null &) throws(std::error) -> void
 {
   put(&mut os, &mut ctx, "null");
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, void &) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, void &) throws(std::error) -> void
 {
   put(&mut os, &mut ctx, "void");
 }
 
-fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws -> void
+fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws(std::error) -> void
 {
   put(&mut os, &mut ctx, "[");
 
@@ -573,7 +573,7 @@ fn fmt_array<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &array) throws 
   put(&mut os, &mut ctx, "]");
 }
 
-fn fmt_slice<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &slice) throws -> void
+fn fmt_slice<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &slice) throws(std::error) -> void
 {
   put(&mut os, &mut ctx, "[");
 
@@ -588,7 +588,7 @@ fn fmt_slice<T, N>(OutputStream mut &os, fmt_context mut &ctx, T &slice) throws 
   put(&mut os, &mut ctx, "]");
 }
 
-fn fmt_tuple<T>(OutputStream mut &os, fmt_context mut &ctx, T &tuple) throws -> void
+fn fmt_tuple<T>(OutputStream mut &os, fmt_context mut &ctx, T &tuple) throws(std::error) -> void
 {
   put(&mut os, &mut ctx, "(");
 
@@ -603,7 +603,7 @@ fn fmt_tuple<T>(OutputStream mut &os, fmt_context mut &ctx, T &tuple) throws -> 
   put(&mut os, &mut ctx, ")");
 }
 
-fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
 {
   switch (ctx.spec.type)
   {
@@ -642,7 +642,7 @@ fn fmt_enum<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> 
   }
 }
 
-fn fmt_union<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+fn fmt_union<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
 {
   var dtx = fmt_context();
   dtx.spec.type = cast('?');
@@ -660,7 +660,7 @@ fn fmt_union<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws ->
   ctx.written += dtx.written;
 }
 
-fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
 {
   var dtx = fmt_context();
   dtx.spec.type = cast('?');
@@ -684,7 +684,7 @@ fn fmt_struct<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -
   ctx.written += dtx.written;
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
 {
   #if (__is_array<T>)
   {
@@ -722,7 +722,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   }
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::declid declid) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::declid declid) throws(std::error) -> void
 {
   if (declid)
     fmt(&mut os, &mut ctx, std::meta::name_of(declid));
@@ -730,7 +730,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::declid declid) thr
     fmt(&mut os, &mut ctx, 0);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::typeid typeid) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::typeid typeid) throws(std::error) -> void
 {
   if (typeid)
     fmt(&mut os, &mut ctx, std::meta::name_of(typeid));
@@ -738,24 +738,24 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, std::meta::typeid typeid) thr
     fmt(&mut os, &mut ctx, 0);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0) literal) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0) literal) throws(std::error) -> void
 {
   fmt(&mut os, &mut ctx, cast<int>(literal));
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0.0) literal) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, typeof(0.0) literal) throws(std::error) -> void
 {
   fmt(&mut os, &mut ctx, cast<float>(literal));
 }
 
-pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
 {
   using T;
 
   fmt(&mut os, &mut ctx, object);
 }
 
-pub fn print_to(OutputStream mut &os, var & ...args) throws -> usize
+pub fn print_to(OutputStream mut &os, var & ...args) throws(std::error) -> usize
 {
   var ctx = fmt_context();
   var os = std::output_stream(&mut os);
@@ -959,7 +959,7 @@ fn parse_args<Args>(std::string_literal format, std::source_location site) -> ar
   return args;
 }
 
-fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &piece) throws -> void
+fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &piece) throws(std::error) -> void
 {
   if (piece.len != 0)
   {
@@ -967,7 +967,7 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, std::string_literal &pi
   }
 }
 
-fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throws -> void
+fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throws(std::error) -> void
 {
   while (beg != end)
   {
@@ -982,7 +982,7 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throw
   }
 }
 
-pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args, #var site = __site__) throws -> usize
+pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args, #var site = __site__) throws(std::error) -> usize
 { 
   var ctx = fmt_context();
   var os = std::output_stream(&mut os);
@@ -1020,7 +1020,7 @@ pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args &
   return ctx.written;
 }
 
-pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) throws -> usize
+pub fn format_to<Args>(OutputStream mut &os, String &format, Args & ...args) throws(std::error) -> usize
 {
   var ctx = fmt_context();
   var os = std::output_stream(&mut os);

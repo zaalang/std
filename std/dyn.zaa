@@ -120,7 +120,7 @@ pub struct dyn<Fx, Allocator = std::allocator>
   }
 }
 
-pub fn fmt<Fx>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::dyn<Fx> &dyned) throws -> void
+pub fn fmt<Fx>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::dyn<Fx> &dyned) throws(std::error) -> void
 {
   ctx.written += std::print_to(&mut os, __type_name($Fx));
 }

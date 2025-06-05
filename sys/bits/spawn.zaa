@@ -91,7 +91,7 @@ pub struct spawn_attr_t
     return execve(td.path, td.argv, td.envp);
   }
 
-  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws -> process
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws(std::error) -> process
   {
     using os;
 
@@ -132,7 +132,7 @@ pub struct spawn_attr_t
     return pid;
   }
 
-  pub fn wait(process &process) throws -> i32
+  pub fn wait(process &process) throws(std::error) -> i32
   {
     using os;
 
@@ -143,7 +143,7 @@ pub struct spawn_attr_t
     return cast<i32>(std::bit_cast<i8>(cast<u8>(siginfo.sigchld.si_status)));
   }
 
-  pub fn try_wait(process &process) throws -> std::optional<i32>
+  pub fn try_wait(process &process) throws(std::error) -> std::optional<i32>
   {
     using os;
 
@@ -157,7 +157,7 @@ pub struct spawn_attr_t
     return cast<i32>(std::bit_cast<i8>(cast<u8>(siginfo.sigchld.si_status)));
   }
 
-  pub fn pipe(std::file mut &read, std::file mut &write) throws -> i32
+  pub fn pipe(std::file mut &read, std::file mut &write) throws(std::error) -> i32
   {
     using os;
 
@@ -202,7 +202,7 @@ pub struct spawn_attr_t
     pub ~process() = default;
   }
 
-  fn append_wide(std::vector<u16> mut &dst, std::string &src) throws -> usize
+  fn append_wide(std::vector<u16> mut &dst, std::string &src) throws(std::error) -> usize
   {
     using os;
 
@@ -218,7 +218,7 @@ pub struct spawn_attr_t
     return dst.len;
   }
 
-  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws -> process
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws(std::error) -> process
   {
     using os;
     static lock = #std::spin_lock();
@@ -330,7 +330,7 @@ pub struct spawn_attr_t
     return process(ProcessInformation.hProcess, ProcessInformation.hThread);
   }
 
-  pub fn wait(process &process) throws -> i32
+  pub fn wait(process &process) throws(std::error) -> i32
   {
     using os;
 
@@ -347,7 +347,7 @@ pub struct spawn_attr_t
     return std::bit_cast<i32>(status);
   }
 
-  pub fn try_wait(process &process) throws -> std::optional<i32>
+  pub fn try_wait(process &process) throws(std::error) -> std::optional<i32>
   {
     using os;
 
@@ -364,7 +364,7 @@ pub struct spawn_attr_t
     return std::bit_cast<i32>(status);
   }
 
-  pub fn pipe(std::file mut &read, std::file mut &write) throws -> i32
+  pub fn pipe(std::file mut &read, std::file mut &write) throws(std::error) -> i32
   {
     using os;
 
@@ -406,7 +406,7 @@ pub struct spawn_attr_t
     pub ~process() = default;
   }
 
-  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws -> process
+  pub fn spawn(std::string &cwd, std::string &path, std::span<std::string> args, std::span<std::string> vars, std::span<spawn_attr_t> attrs) throws(std::error) -> process
   {
     using os;
 
@@ -477,7 +477,7 @@ pub struct spawn_attr_t
     return pid;
   }
 
-  pub fn wait(process &process) throws -> i32
+  pub fn wait(process &process) throws(std::error) -> i32
   {
     using os;
 
@@ -488,7 +488,7 @@ pub struct spawn_attr_t
     return rval;
   }
 
-  pub fn try_wait(process &process) throws -> std::optional<i32>
+  pub fn try_wait(process &process) throws(std::error) -> std::optional<i32>
   {
     using os;
 
@@ -502,7 +502,7 @@ pub struct spawn_attr_t
     return rval;
   }
 
-  pub fn pipe(std::file mut &read, std::file mut &write) throws -> i32
+  pub fn pipe(std::file mut &read, std::file mut &write) throws(std::error) -> i32
   {
     using os;
 

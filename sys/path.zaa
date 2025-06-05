@@ -4,7 +4,9 @@
 
 import std.stdlib : assert;
 import std.string : String;
+import std.range : Range;
 import sys.bits.path : is_sep_byte, scan_path_prefix;
+import sys.fs;
 import std.fmt;
 
 pub struct path_view
@@ -56,26 +58,26 @@ pub struct path_view
     return this.str.as_literal;
   }
 
-  pub struct iterator
+  pub struct part_iterator : pub u8 *
   {
-    pub iterator() = default;
-    pub iterator(iterator&) = default;
-    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
-    pub ~iterator() = default;
+    pub part_iterator() = default;
+    pub part_iterator(part_iterator&) = default;
+    pub fn =(part_iterator mut &this, part_iterator &that) -> part_iterator mut & = default;
+    pub ~part_iterator() = default;
 
     #[lifetime(depend(this))]
-    pub fn ++(iterator mut &this) -> iterator mut &
+    pub fn ++(part_iterator mut &this) -> part_iterator mut &
     {
       for (;;)
       {
-        this.pos += this.scan.0;
-        this.pos += this.scan.1;
-        this.scan = scan_path_next(std::string_view(this.pos, this.end));
+        this.super += this.scan.0;
+        this.super += this.scan.1;
+        this.scan = scan_path_next(std::string_view(this.super, this.end));
 
-        if (this.scan.0 == 1 && *this.pos == cast('.'))
+        if (this.scan.0 == 1 && *this.super == cast('.'))
           continue;
 
-        if (this.scan.0 == 0 && this.pos != this.end)
+        if (this.scan.0 == 0 && this.super != this.end)
           continue;
 
         break;
@@ -84,42 +86,34 @@ pub struct path_view
       return &this;
     }
 
-    iterator(u8 *pos, (usize, usize) scan, u8 *end)
-      : pos(pos), scan(scan), end(end)
+    pub fn -(u8 *, part_iterator &) -> usize = delete;
+    pub fn +(part_iterator &, usize) -> part_iterator = delete;
+    pub fn -(part_iterator &, usize) -> part_iterator = delete;
+
+    part_iterator(u8 *cursor, (usize, usize) scan, u8 *end)
+      : super(cursor), scan(scan), end(end)
     {
     }
 
-    u8 *pos;
     (usize, usize) scan;
     u8 *end;
   }
 
-  pub fn ==(iterator &lhs, iterator &rhs) -> bool
+  #[lifetime(repose(iter, this), depend(*this))]
+  pub fn [](this &, part_iterator &iter) -> std::string_ref
   {
-    return lhs.pos == rhs.pos;
+    return std::string_ref(iter.super, iter.scan.0);
   }
 
   #[lifetime(depend(*this))]
-  pub fn begin(this &)
+  pub fn parts(this &)
   {
     var scan = (scan_path_prefix(this.str), 0);
 
     if (scan.0 == 0)
       scan = scan_path_next(this.str);
 
-    return iterator(this.str.data, scan, this.str.end);
-  }
-
-  #[lifetime(depend(*this))]
-  pub fn end(this &)
-  {
-    return iterator(this.str.end, (0, 0), this.str.end);
-  }
-
-  #[lifetime(depend(*this))]
-  pub fn [](this &, iterator &iter) -> std::string_ref
-  {
-    return std::string_ref(iter.pos, iter.scan.0);
+    return std::range_view(&this, part_iterator(this.str.data, scan, this.str.end), part_iterator(this.str.end, (0, 0), this.str.end));
   }
 
   pub fn ==(this &, String &other) -> bool
@@ -148,7 +142,7 @@ fn scan_path_next(std::string_view path) -> (usize, usize)
   return (j - path.begin, 1);
 }
 
-pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, path_view &path) throws -> void
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, path_view &path) throws(std::error) -> void
 {
   std::fmt_to(&mut os, &mut ctx, path.str);
 }
@@ -176,7 +170,7 @@ pub fn basename(path_view &path) -> std::string_view
 {
   var base = std::string_view();
 
-  for (var i = path.begin, var end = path.end; i != end; ++i)
+  for (var i = path.parts.begin, var end = path.str.end; i != end; ++i)
     base = path[i];
 
   if (base == "/")
@@ -211,33 +205,33 @@ pub fn extension(path_view &path) -> std::string_view
 pub fn parent(path_view &path) -> path_view
 {
   var dir = path_view();
-  var base = std::string_view(path.str.data, 0);
+  var base = std::string_view(path.data, 0);
 
-  for (var i = path.begin, var end = path.end; i != end; ++i)
+  for (var i = path.parts.begin, var end = path.str.end; i != end; ++i)
   {
-    dir = path_view(path.str.data, base.end);
+    dir = path_view(path.data, base.end);
     base = path[i];
   }
 
   return dir;
 }
 
-pub fn starts_with(path_view &path, String &base) -> bool
+pub fn starts_with(path_view &path, String &prefix) -> bool
 {
-  for (var i = path.begin, var end = path.end; i != end; ++i)
+  for (var i = path.parts.begin, var end = path.str.end; i != end; ++i)
   {
-    if (std::string_view(path.str.begin, i.pos + i.scan.0) == base)
+    if (std::string_view(path.data, i.super + i.scan.0) == prefix)
       return true;
   }
 
   return false;
 }
 
-pub fn ends_with(path_view &path, String &child) -> bool
+pub fn ends_with(path_view &path, String &suffix) -> bool
 {
-  for (var i = path.begin, var end = path.end; i != end; ++i)
+  for (var i = path.parts.begin, var end = path.str.end; i != end; ++i)
   {
-    if (std::string_view(i.pos, path.str.end) == child)
+    if (std::string_view(i, end) == suffix)
       return true;
   }
 
@@ -248,11 +242,96 @@ pub fn ends_with(path_view &path, String &child) -> bool
 #[lifetime(depend(*path))]
 pub fn strip_prefix(path_view &path, String &prefix) -> path_view
 {
-  for (var i = path.begin, var end = path.end; i != end; ++i)
+  for (var i = path.parts.begin, var end = path.str.end; i != end; ++i)
   {
-    if (std::string_view(path.str.begin, i.pos + i.scan.0) == prefix)
-      return path_view(i.pos + i.scan.0 + i.scan.1, i.end);
+    if (std::string_view(path.data, i.super + i.scan.0) == prefix)
+      return path_view(i.super + i.scan.0 + i.scan.1, i.end);
   }
 
   return path;
+}
+
+pub struct path
+{
+  #[nodiscard]
+  pub fn join<Args>(Args & ...paths) -> std::string
+  {
+    var len = 0;
+
+    #for (var &path : paths)
+    {
+      len += path.len + 1;
+    }
+
+    var str = std::string::with_capacity(len);
+
+    #for (var &path : paths)
+    {
+      if (!str.empty && !str.ends_with(sys::sep_byte))
+        str += sys::sep_byte;
+
+      str += path;
+    }
+
+    return str;
+  }
+
+  #[nodiscard]
+  pub fn join(Range<String> &paths) -> std::string
+  {
+    var len = 0;
+
+    for (var &path : paths)
+    {
+      len += path.len + 1;
+    }
+
+    var str = std::string::with_capacity(len);
+
+    for (var &path : paths)
+    {
+      if (!str.empty && !str.ends_with(sys::sep_byte))
+        str += sys::sep_byte;
+
+      str += path;
+    }
+
+    return str;
+  }
+
+  #[nodiscard]
+  pub fn normalise(String &path) -> std::string
+  {
+    var parts = std::vector<std::string_view>::with_capacity(32);
+
+    for (var &part : sys::path_view(path).parts)
+    {
+      if (part == ".." && !parts.empty && scan_path_prefix(parts.back) == 0)
+        parts.pop_back();
+      else
+        parts.push_back(part);
+    }
+
+    return path::join(parts);
+  }
+
+  #[nodiscard]
+  pub fn canonicalise(String &path) throws(std::error) -> std::string
+  {
+    var str = std::string();
+
+    if (var rc = sys::realpath(path, &mut str); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return str;
+  }
+
+  #[nodiscard]
+  pub fn resolve(String &base, String &path) -> std::string
+  {
+    if (path_view(path).is_absolute)
+      return path;
+
+    return path::join(base, path);
+  }
 }

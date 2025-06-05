@@ -46,7 +46,7 @@ fn make12(chrono::hours h)
   return h - 12.hours;
 }
 
-fn fmt_to<R, P>(OutputStream mut &os, std::string_view format, chrono::year_month_day &date, chrono::weekday &weekday, chrono::duration<R, P> &time, std::string_view zone_name = std::string_view(), int zone_offset = 0) throws -> usize
+fn fmt_to<R, P>(OutputStream mut &os, std::string_view format, chrono::year_month_day &date, chrono::weekday &weekday, chrono::duration<R, P> &time, std::string_view zone_name = std::string_view(), int zone_offset = 0) throws(std::error) -> usize
 {
   var written = 0;
 
@@ -176,12 +176,12 @@ fn fmt_to<R, P>(OutputStream mut &os, std::string_view format, chrono::year_mont
   return written;
 }
 
-pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::duration<R, P> &duration) throws -> usize
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::duration<R, P> &duration) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(), chrono::weekday(), duration);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::system_time<Duration> &tp) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::system_time<Duration> &tp) throws(std::error) -> usize
 {
   let days = tp.floor<chrono::days>();
   let date = chrono::year_month_day(chrono::local_time(days.time_since_epoch));
@@ -191,7 +191,7 @@ pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::system_tim
   return fmt_to(&mut os, std::string_view(format), date, weekday, time, std::string_view("UTC"), +0000);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::local_time<Duration> &tp) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::local_time<Duration> &tp) throws(std::error) -> usize
 {
   let days = tp.floor<chrono::days>();
   let date = chrono::year_month_day(days);
@@ -201,84 +201,84 @@ pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::local_time
   return fmt_to(&mut os, std::string_view(format), date, weekday, time);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::day &day) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::day &day) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(chrono::year(), chrono::month(), day), chrono::weekday(), 0.seconds);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month &month) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month &month) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(chrono::year(), month, chrono::day()), chrono::weekday(), 0.seconds);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::year &year) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::year &year) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(year, chrono::month(), chrono::day()), chrono::weekday(), 0.seconds);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday &weekday) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday &weekday) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(), weekday, 0.seconds);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday_indexed &day) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday_indexed &day) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), day.weekday);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday_last &day) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::weekday_last &day) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), day.weekday);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_day &md) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_day &md) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(chrono::year(), md));
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_day_last &mdl) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_day_last &mdl) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(chrono::year(), mdl));
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_weekday &mw) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_weekday &mw) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(chrono::year(), mw.month, chrono::day()), mw.weekday, 0.seconds);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_weekday_last &mwl) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::month_weekday_last &mwl) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(chrono::year(), mwl.month, chrono::day()), mwl.weekday, 0.seconds);
 }
 
-pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::year_month &ym) throws -> usize
+pub fn fmt_to<Duration>(OutputStream mut &os, String &format, chrono::year_month &ym) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(ym.year, ym.month, chrono::day()));
 }
 
-pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_day &ymd) throws -> usize
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_day &ymd) throws(std::error) -> usize
 {
   let weekday = chrono::weekday(ymd.as_local_time);
 
   return fmt_to(&mut os, std::string_view(format), ymd, weekday, 0.seconds);
 }
 
-pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_day_last &ymdl) throws -> usize
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_day_last &ymdl) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(ymdl));
 }
 
-pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_weekday &ymw) throws -> usize
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_weekday &ymw) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(ymw.as_local_time));
 }
 
-pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_weekday_last &ymwl) throws -> usize
+pub fn fmt_to<R, P>(OutputStream mut &os, String &format, chrono::year_month_weekday_last &ymwl) throws(std::error) -> usize
 {
   return fmt_to(&mut os, std::string_view(format), chrono::year_month_day(ymwl.as_local_time));
 }
 
-pub fn format_to<T>(OutputStream mut &os, String &format, T &value) throws -> usize
+pub fn format_to<T>(OutputStream mut &os, String &format, T &value) throws(std::error) -> usize
   where requires (T value) { try { fmt_to(&mut std::string(), std::string_view(), value); } catch(std::error) {}}
 {
   var os = std::output_stream(&mut os);

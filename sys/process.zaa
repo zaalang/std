@@ -139,7 +139,7 @@ fn capture(env &env) -> std::vector<std::string>
   return result;
 }
 
-pub fn spawn(command &cmd) throws -> child
+pub fn spawn(command &cmd) throws(std::error) -> child
 {
   var child = child();
 

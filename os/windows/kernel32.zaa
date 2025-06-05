@@ -191,6 +191,8 @@ pub extern "C" fn FindFirstFileW(LPCWSTR lpFileName, WIN32_FIND_DATAW mut *lpFin
 pub extern "C" fn FindNextFileW(HANDLE hFindFile, WIN32_FIND_DATAW mut *lpFindFileData) -> BOOL;
 pub extern "C" fn FindClose(HANDLE hFindFile) -> BOOL;
 
+pub extern "C" fn GetFinalPathNameByHandleW(HANDLE hFile, LPWSTR lpszFilePath, DWORD cchFilePath, DWORD dwFlags) -> DWORD;
+
 pub const CREATE_BREAKAWAY_FROM_JOB = 0x01000000;
 pub const CREATE_DEFAULT_ERROR_MODE = 0x04000000;
 pub const CREATE_NEW_CONSOLE = 0x00000010;

@@ -129,7 +129,7 @@ pub fn hash<T>(var &hasher, std::box<T> &boxed) -> usize
   return hasher(*boxed);
 }
 
-pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::box<T> &boxed) throws -> void
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::box<T> &boxed) throws(std::error) -> void
 {
   ctx.written += std::print_to(&mut os, *boxed);
 }

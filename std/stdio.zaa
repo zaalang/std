@@ -14,51 +14,51 @@ using std::OutputStream;
 
 pub struct file
 {
-  pub fn create(String &path) throws -> file
+  pub fn create(String &path) throws(std::error) -> file
   {
     var fd = fd::open(path, fd::oflags::create | fd::oflags::trunc, fd::rights::read | fd::rights::write);
 
     return file(fd);
   }
 
-  pub fn open(String &path) throws -> file
+  pub fn open(String &path) throws(std::error) -> file
   {
     var fd = fd::open(path, fd::oflags::open, fd::rights::read);
 
     return file(fd);
   }
 
-  pub fn stat(this mut &) throws -> std::filestat
+  pub fn stat(this mut &) throws(std::error) -> std::filestat
   {
     return this.fd.stat();
   }
 
-  pub fn read(this mut &, u8 mut *data, usize len) throws -> usize
+  pub fn read(this mut &, u8 mut *data, usize len) throws(std::error) -> usize
   {
     return this.fd.read(data, len);
   }
 
-  pub fn read_at(this mut &, u64 offset, u8 mut *data, usize len) throws -> usize
+  pub fn read_at(this mut &, u64 offset, u8 mut *data, usize len) throws(std::error) -> usize
   {
     return this.fd.read_at(offset, data, len);
   }
 
-  pub fn write(this mut &, u8 *data, usize len) throws -> usize
+  pub fn write(this mut &, u8 *data, usize len) throws(std::error) -> usize
   {
     return this.fd.write(data, len);
   }
 
-  pub fn write_at(this mut &, u64 offset, u8 *data, usize len) throws -> usize
+  pub fn write_at(this mut &, u64 offset, u8 *data, usize len) throws(std::error) -> usize
   {
     return this.fd.write_at(offset, data, len);
   }
 
-  pub fn putc(this mut &, u8 ch) throws -> usize
+  pub fn putc(this mut &, u8 ch) throws(std::error) -> usize
   {
     return this.fd.write(&ch, 1);
   }
 
-  pub fn putc(this mut &, char ch) throws -> usize
+  pub fn putc(this mut &, char ch) throws(std::error) -> usize
   {
     var buf = [0; 8];
     var len = std::ctoa(buf.data, buf.end, ch).len;
@@ -66,22 +66,22 @@ pub struct file
     return this.fd.write(buf.data, len);
   }
   
-  pub fn puts(this mut &, String &str) throws -> usize
+  pub fn puts(this mut &, String &str) throws(std::error) -> usize
   {
     return this.fd.write(str.data, str.len);
   }
   
-  pub fn print(this mut &, var & ...args) throws -> usize
+  pub fn print(this mut &, var & ...args) throws(std::error) -> usize
   {
     return std::print_to(&mut this, args..., '\n');
   }
 
-  pub fn printf(this mut &, String &format, var & ...args) throws -> usize
+  pub fn printf(this mut &, String &format, var & ...args) throws(std::error) -> usize
   {
     return std::format_to(&mut this, format, args...);
   }
   
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) throws -> usize
+  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) throws(std::error) -> usize
   {
     return std::format_to(&mut this, format, args..., site: site);
   }
@@ -136,7 +136,7 @@ pub struct file
 }
 
 #[lifetime(poison(buf))]
-pub fn read_into(file mut &fd, std::vector<u8> mut &buf, usize maxread = ~0) throws
+pub fn read_into(file mut &fd, std::vector<u8> mut &buf, usize maxread = ~0) throws(std::error)
 {
   var size = cast<usize>(fd.stat().size);
 
@@ -150,7 +150,7 @@ pub fn read_into(file mut &fd, std::vector<u8> mut &buf, usize maxread = ~0) thr
 }
 
 #[lifetime(poison(buf))]
-pub fn read_into(file mut &fd, std::string mut &buf, usize maxread = ~0) throws
+pub fn read_into(file mut &fd, std::string mut &buf, usize maxread = ~0) throws(std::error)
 {
   var size = cast<usize>(fd.stat().size);
 
@@ -163,7 +163,7 @@ pub fn read_into(file mut &fd, std::string mut &buf, usize maxread = ~0) throws
   return &buf;
 }
 
-pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws
+pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws(std::error)
 {
   var buf = std::vector<u8, Alloc, N>(alloc);
 
@@ -172,7 +172,7 @@ pub fn readfile_to_vector<Alloc = std::allocator, N = 0>(String &path, Alloc &al
   return buf;
 }
 
-pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws
+pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws(std::error)
 {
   var buf = std::string<Alloc, N>(alloc);
 
@@ -181,12 +181,12 @@ pub fn readfile_to_string<Alloc = std::allocator, N = 0>(String &path, Alloc &al
   return buf;
 }
 
-pub fn readfile<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws
+pub fn readfile<Alloc = std::allocator, N = 0>(String &path, Alloc &alloc = Alloc(), usize maxread = ~0) throws(std::error)
 {
   return readfile_to_string<Alloc, N>(path, alloc, maxread);
 }
 
-pub fn writefile(String &path, std::string &content) throws
+pub fn writefile(String &path, std::string &content) throws(std::error)
 {
   std::file::create(path).write(content.data, content.len);
 }
@@ -197,7 +197,9 @@ pub struct StdIn
   {
     try
     {
-      return fd(STDIN).read(data, len);
+      var fin = fd(STDIN);
+
+      return fin.read(data, len);
     }
     catch(std::error e)
     {
@@ -241,18 +243,20 @@ pub struct StdOut
   {
     try
     {
+      var fout = fd(STDOUT);
+
       if (this.n != 0 && this.n + len < this.buffer.len)
       {
         std::memcpy(this.buffer.data + this.n, data, len);
 
-        fd(STDOUT).write(this.buffer.data, this.n + len);
+        fout.write(this.buffer.data, this.n + len);
       }
       else
       {
         if (this.n != 0)
-          fd(STDOUT).write(this.buffer.data, this.n);
+          fout.write(this.buffer.data, this.n);
 
-        fd(STDOUT).write(data, len);
+        fout.write(data, len);
       }
 
       this.n = 0;
@@ -346,7 +350,9 @@ pub struct StdOut
     {
       if (this.n != 0)
       {
-        fd(STDOUT).write(this.buffer.data, this.n);
+        var fout = fd(STDOUT);
+
+        fout.write(this.buffer.data, this.n);
 
         this.n = 0;
       }
@@ -497,7 +503,9 @@ pub struct StdErr
   {
     try
     {
-      return fd(STDERR).write(data, len);
+      var fout = fd(STDERR);
+
+      return fout.write(data, len);
     }
     catch(std::error e)
     {
@@ -639,12 +647,12 @@ pub fn fputc(StdErr mut &os, char ch) -> usize
   return os.putc(ch);
 }
 
-pub fn fputc(file mut &os, u8 ch) throws -> usize
+pub fn fputc(file mut &os, u8 ch) throws(std::error) -> usize
 {
   return os.putc(ch);
 }
 
-pub fn fputc(file mut &os, char ch) throws -> usize
+pub fn fputc(file mut &os, char ch) throws(std::error) -> usize
 {
   return os.putc(ch);
 }
@@ -669,7 +677,7 @@ pub fn fputs(StdErr mut &os, String &str) -> usize
   return os.puts(str);
 }
 
-pub fn fputs(file mut &os, String &str) throws -> usize
+pub fn fputs(file mut &os, String &str) throws(std::error) -> usize
 {
   return os.puts(str);
 }
@@ -734,17 +742,17 @@ pub fn fprintf(StdErr mut &os, #std::string_literal format, var & ...args, #var 
   return os.printf(format, args..., site: site);
 }
 
-pub fn fprint(file mut &os, var & ...args) throws -> usize
+pub fn fprint(file mut &os, var & ...args) throws(std::error) -> usize
 {
   return os.print(args...);
 }
 
-pub fn fprintf(file mut &os, String &format, var & ...args) throws -> usize
+pub fn fprintf(file mut &os, String &format, var & ...args) throws(std::error) -> usize
 {
   return os.printf(format, args...);
 }
 
-pub fn fprintf(file mut &os, #std::string_literal format, var & ...args, #var site = __site__) throws -> usize
+pub fn fprintf(file mut &os, #std::string_literal format, var & ...args, #var site = __site__) throws(std::error) -> usize
 {
   return os.printf(format, args..., site: site);
 }

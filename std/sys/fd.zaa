@@ -119,7 +119,7 @@ pub struct fd
     pub const fn |(fdflags lhs, fdflags rhs) -> fdflags { return cast<fdflags>(cast<isize>(lhs) | cast<isize>(rhs)); }
   }
 
-  pub fn open(String &path, oflags oflags, rights rights, fdflags fdflags = cast(0)) throws -> fd
+  pub fn open(String &path, oflags oflags, rights rights, fdflags fdflags = cast(0)) throws(std::error) -> fd
   {
     var handle = fd(0);
     var result = fd_open(&handle.fd, string(path.data, path.len), cast(oflags), cast(rights), cast(fdflags));
@@ -153,7 +153,7 @@ pub struct fd
   uintptr fd = ~0;
 }
 
-pub fn stat(fd &fd) throws -> filestat
+pub fn stat(fd &fd) throws(std::error) -> filestat
 {
   var fs = filestat();
   var result = fd_stat(fd.fd, &fs);
@@ -164,7 +164,7 @@ pub fn stat(fd &fd) throws -> filestat
   return fs;
 }
 
-pub fn read(fd &fd, u8 mut *data, usize len) throws -> usize
+pub fn read(fd &fd, u8 mut *data, usize len) throws(std::error) -> usize
 {
   var buf = iovec(void);
   buf.data = data;
@@ -178,7 +178,7 @@ pub fn read(fd &fd, u8 mut *data, usize len) throws -> usize
   return result.length;
 }
 
-pub fn read_at(fd &fd, u64 offset, u8 mut *data, usize len) throws -> usize
+pub fn read_at(fd &fd, u64 offset, u8 mut *data, usize len) throws(std::error) -> usize
 {
   var buf = iovec(void);
   buf.data = data;
@@ -192,7 +192,7 @@ pub fn read_at(fd &fd, u64 offset, u8 mut *data, usize len) throws -> usize
   return result.length;
 }
 
-pub fn write(fd &fd, u8 *data, usize len) throws -> usize
+pub fn write(fd &fd, u8 *data, usize len) throws(std::error) -> usize
 {
   var buf = ciovec(void);
   buf.data = data;
@@ -206,7 +206,7 @@ pub fn write(fd &fd, u8 *data, usize len) throws -> usize
   return result.length;
 }
 
-pub fn write_at(fd &fd, u64 offset, u8 *data, usize len) throws -> usize
+pub fn write_at(fd &fd, u64 offset, u8 *data, usize len) throws(std::error) -> usize
 {
   var buf = ciovec(void);
   buf.data = data;
@@ -222,5 +222,6 @@ pub fn write_at(fd &fd, u64 offset, u8 *data, usize len) throws -> usize
 
 pub fn close(fd &fd)
 {
-  fd_close(fd.fd);
+  if (fd.fd != STDIN && fd.fd != STDOUT && fd.fd != STDERR)
+    fd_close(fd.fd);
 }

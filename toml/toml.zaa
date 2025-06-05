@@ -373,12 +373,12 @@ pub fn load_from_string(String &src) -> parse_result
   }
 }
 
-pub fn load_from_file(String &path) throws -> parse_result
+pub fn load_from_file(String &path) throws(std::error) -> parse_result
 {
   return load_from(&mut std::buffered_reader(&mut std::file::open(path)));
 }
 
-pub fn load_from(InputReader mut &is) throws -> parse_result
+pub fn load_from(InputReader mut &is) throws(std::error) -> parse_result
 {
   return parse(&mut is);
 }

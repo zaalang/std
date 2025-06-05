@@ -9,7 +9,7 @@ import chrono;
 
   import os.linux.unistd;
 
-  pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
+  pub fn futex_wait(u32 *addr, u32 expected) throws(std::error) -> i32
   {
     using os;
 
@@ -24,7 +24,7 @@ import chrono;
     return 0;
   }
 
-  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws -> i32
+  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws(std::error) -> i32
   {
     using os;
     using chrono;
@@ -52,7 +52,7 @@ import chrono;
     return 0;
   }
 
-  pub fn futex_wake(u32 *addr, u32 count) throws -> i32
+  pub fn futex_wake(u32 *addr, u32 count) throws(std::error) -> i32
   {
     using os;
 
@@ -70,7 +70,7 @@ import chrono;
   import os.windows.synchapi;
   import os.windows.error;
 
-  pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
+  pub fn futex_wait(u32 *addr, u32 expected) throws(std::error) -> i32
   {
     using os;
 
@@ -82,7 +82,7 @@ import chrono;
     return 0;
   }
 
-  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws -> i32
+  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws(std::error) -> i32
   {
     using os;
     using chrono;
@@ -105,7 +105,7 @@ import chrono;
     return 0;
   }
 
-  pub fn futex_wake(u32 *addr, u32 count) throws -> i32
+  pub fn futex_wake(u32 *addr, u32 count) throws(std::error) -> i32
   {
     using os;
 
@@ -126,7 +126,7 @@ import chrono;
   import os.zaos.sched;
   import os.zaos.fcntl;
 
-  pub fn futex_wait(u32 *addr, u32 expected) throws -> i32
+  pub fn futex_wait(u32 *addr, u32 expected) throws(std::error) -> i32
   {
     using os;
 
@@ -141,7 +141,7 @@ import chrono;
     return 0;
   }
 
-  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws -> i32
+  pub fn futex_wait_until<Clock, Duration>(u32 *addr, u32 expected, chrono::time_point<Clock, Duration> &abstime) throws(std::error) -> i32
   {
     using os;
     using chrono;
@@ -162,7 +162,7 @@ import chrono;
     return 0;
   }
 
-  pub fn futex_wake(u32 *addr, u32 count) throws -> i32
+  pub fn futex_wake(u32 *addr, u32 count) throws(std::error) -> i32
   {
     using os;
 

@@ -290,7 +290,7 @@ pub union optional<T, Allocator = std::allocator>
   pub ~optional() = default;
 }
 
-pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optional<T> &optional) throws -> void
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::optional<T> &optional) throws(std::error) -> void
 {
   switch (optional)
   {

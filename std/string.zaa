@@ -468,7 +468,7 @@ pub struct string_view : pub std::span<u8>
     }
   }
 
-  pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
+  pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws(std::error) -> void
   {
     std::fmt(&mut os, &mut ctx, range);
   }
@@ -620,9 +620,10 @@ pub struct string<Allocator = std::allocator, N = 24>
   {
     std::launder(other);
 
-    if (this._data <= other.data && other.data < this._data + this._len)
+    if (this._data <= other.data && other.data < this._data + this._capacity)
     {
       memmove(this._data, other.data, other.len);
+      *(this._data + other.len) = 0;
       this._len = other.len;
       return &this;
     }
@@ -952,6 +953,8 @@ pub struct string<Allocator = std::allocator, N = 24>
     memmove(this._data + position, this._data + position + count, this._len - position - count);
 
     this._len -= count;
+
+    *(this._data + this._len) = 0;
 
     return this._data + position;
   }

@@ -108,7 +108,7 @@ fn foldl<U, T, N, Func>(Func &&func, Vector<U, T, N> &u) -> T
   return result;
 }
 
-pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, vector<T, N> &vector) throws -> void
+pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, vector<T, N> &vector) throws(std::error) -> void
 {
   std::fmt_to(&mut os, &mut ctx, vector.super);
 }

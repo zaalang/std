@@ -25,7 +25,7 @@ pub struct clock
     monotonic,
   }
 
-  pub fn res(id clock) throws -> u64
+  pub fn res(id clock) throws(std::error) -> u64
   {
     var result = clk_getres(cast(clock));
 
@@ -35,7 +35,7 @@ pub struct clock
     return result.timestamp;
   }
 
-  pub fn tick(id clock) throws -> u64
+  pub fn tick(id clock) throws(std::error) -> u64
   {
     var result = clk_gettime(cast(clock));
 

@@ -55,7 +55,7 @@ pub struct matrix<T, M, N> : pub T[N][M]
   pub ~matrix() = default;
 }
 
-pub fn fmt<T, M, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, matrix<T, M, N> &matrix) throws -> void
+pub fn fmt<T, M, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, matrix<T, M, N> &matrix) throws(std::error) -> void
 {
   std::fmt_to(&mut os, &mut ctx, matrix.super);
 }

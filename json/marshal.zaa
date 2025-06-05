@@ -19,29 +19,29 @@ pub struct fmt_context
   ~fmt_context() = default;
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, char value) throws(std::error) -> void
 {
   ctx.written += std::print_to(&mut os, cast<u32>(value));
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T value) throws -> void
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T value) throws(std::error) -> void
   where __is_builtin<T>
 {
   ctx.written += std::print_to(&mut os, value);
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T value) throws -> void
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T value) throws(std::error) -> void
     where __is_enum<T>
 {
   ctx.written += std::format_to(&mut os, "\"{}\"", value);
 }
 
-fn fmt(OutputStream mut &os, fmt_context mut &ctx, String &value) throws -> void
+fn fmt(OutputStream mut &os, fmt_context mut &ctx, String &value) throws(std::error) -> void
 {
   ctx.written += std::format_to(&mut os, "{:?}", value);
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::optional<T> &optional) throws -> void
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::optional<T> &optional) throws(std::error) -> void
 {
   switch (optional)
   {
@@ -53,7 +53,7 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::optional<T> &optional
   }
 }
 
-fn fmt<T>(std::OutputStream mut &os, fmt_context mut &ctx, Range<T> &range) throws -> void
+fn fmt<T>(std::OutputStream mut &os, fmt_context mut &ctx, Range<T> &range) throws(std::error) -> void
 {
   ctx.written += std::print_to(&mut os, "[");
 
@@ -68,7 +68,7 @@ fn fmt<T>(std::OutputStream mut &os, fmt_context mut &ctx, Range<T> &range) thro
   ctx.written += std::print_to(&mut os, "]");
 }
 
-fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
   where __is_struct<T>
 {
   ctx.written += std::print_to(&mut os, "{");
@@ -86,14 +86,14 @@ fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
   ctx.written += std::print_to(&mut os, "}");
 }
 
-pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws -> void
+pub fn fmt_to<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
 {
   using T;
 
   fmt(&mut os, &mut ctx, object);
 }
 
-pub fn marshal_to(OutputStream mut &os, var &value) throws -> usize
+pub fn marshal_to(OutputStream mut &os, var &value) throws(std::error) -> usize
 {
   var ctx = fmt_context();
   var os = std::output_stream(&mut os);

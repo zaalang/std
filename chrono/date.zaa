@@ -63,7 +63,7 @@ pub const fn -(day lhs, day rhs) -> chrono::days
   return cast<i64>(lhs) - cast<i64>(rhs);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, day n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, day n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{:02}", cast<u8>(n));
@@ -142,7 +142,7 @@ pub const fn -(month lhs, month rhs) -> chrono::months
   return cast<i64>(lhs) - cast<i64>(rhs);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{:02}", cast<u8>(n));
@@ -221,7 +221,7 @@ pub const fn -(year lhs, year rhs) -> chrono::years
   return cast<i64>(lhs) - cast<i64>(rhs);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{:04}", cast<i16>(n));
@@ -335,7 +335,7 @@ pub const fn -(weekday lhs, weekday rhs) -> chrono::days
   return n - dw * 7;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday n) throws(std::error) -> void
 {
   switch (n)
   {
@@ -384,7 +384,7 @@ pub struct weekday_indexed
   pub ~weekday_indexed() = default;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday_indexed n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday_indexed n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}[{}]", n.day, n.index);
@@ -419,7 +419,7 @@ pub struct weekday_last
   pub ~weekday_last() = default;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday_last n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, weekday_last n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}[last]", n.day);
@@ -461,7 +461,7 @@ pub struct month_day
   pub ~month_day() = default;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_day n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_day n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}", n.month, n.day);
@@ -497,7 +497,7 @@ pub struct month_day_last
   pub ~month_day_last() = default;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_day_last n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_day_last n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/last", n.month);
@@ -548,7 +548,7 @@ pub struct month_weekday
   pub ~month_weekday() = default;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_weekday n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_weekday n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}", n.month, n.day);
@@ -594,7 +594,7 @@ pub struct month_weekday_last
   pub ~month_weekday_last() = default;
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_weekday_last n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, month_weekday_last n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}", n.month, n.day);
@@ -695,7 +695,7 @@ pub const fn -(year_month &lhs, year_month &rhs) -> chrono::months
  return (lhs.year - rhs.year) + (lhs.month - rhs.month);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}", n.year, n.month);
@@ -855,7 +855,7 @@ pub const fn -(year_month_day &lhs, chrono::months &rhs) -> year_month_day
   return year_month_day(year_month(lhs.year, lhs.month) - rhs, lhs.day);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_day n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_day n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}/{}", n.year, n.month, n.day);
@@ -978,7 +978,7 @@ pub const fn -(year_month_day_last &lhs, chrono::months &rhs) -> year_month_day_
   return year_month_day_last(year_month(lhs.year, lhs.month) - rhs);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_day_last n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_day_last n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}/last", n.year, n.month);
@@ -1121,7 +1121,7 @@ pub const fn -(year_month_weekday &lhs, chrono::months &rhs) -> year_month_weekd
   return year_month_weekday(year_month(lhs.year, lhs.month) - rhs, lhs.day);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_weekday n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_weekday n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}/{}", n.year, n.month, n.day);
@@ -1233,7 +1233,7 @@ pub const fn -(year_month_weekday_last &lhs, chrono::months &rhs) -> year_month_
   return year_month_weekday_last(year_month(lhs.year, lhs.month) - rhs, lhs.day);
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_weekday_last n) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year_month_weekday_last n) throws(std::error) -> void
 {
   var buf = [0; 256];
   var len = std::format_to(&mut buf, "{}/{}/{}", n.year, n.month, n.day);

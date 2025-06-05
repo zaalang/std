@@ -2,11 +2,11 @@
 // fs
 //
 
-import std.string;
+import std.stdlib;
+import std.string : String;
 import std.memory;
 import std.error;
 import std.env;
-import sys.path;
 import chrono;
 
 pub enum filetype
@@ -86,7 +86,7 @@ pub enum permissions
       return unknown;
     }
 
-    pub fn is_dir(this &) -> bool
+    pub fn is_directory(this &) -> bool
     {
       return this.type == filetype::directory;
     }
@@ -122,7 +122,32 @@ pub enum permissions
     pub ~stat() = default;
   }
 
-  pub fn stat(sys::path_view path, stat mut &stat) throws -> i32
+  pub fn stat(i32 fd, stat mut &stat) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = fstat(fd, &stat); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+  pub fn stat(std::string &path, stat mut &stat) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = stat(path.data, &stat); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn stat(String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
@@ -134,12 +159,32 @@ pub enum permissions
     pathstr[path.len] = 0;
 
     if (var rc = stat(pathstr.data, &stat); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM)
+        return rc;
+
       throw std::system_error(cast<std::errc>(-rc));
+    }
 
     return 0;
   }
 
-  pub fn lstat(sys::path_view path, stat mut &stat) throws -> i32
+  pub fn lstat(std::string &path, stat mut &stat) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = lstat(path.data, &stat); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn lstat(String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
@@ -151,25 +196,142 @@ pub enum permissions
     pathstr[path.len] = 0;
 
     if (var rc = lstat(pathstr.data, &stat); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL)
+        return rc;
+
       throw std::system_error(cast<std::errc>(-rc));
+    }
 
     return 0;
   }
 
-  pub fn getcwd(std::string mut &path) throws -> i32
+  pub fn readlink(std::string &path, std::string mut &buffer) throws(std::error) -> i32
   {
     using os;
 
-    path.clear();
-    path.reserve(512);
+    buffer.clear();
+    buffer.reserve(4096);
+
+    if (var rc = os::readlink(path.data, buffer.data, buffer.capacity); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+    else
+    {
+      buffer.append_from_capacity(cast(rc));
+    }
+
+    return 0;
+  }
+
+  pub fn readlink(String &path, std::string mut &buffer) throws(std::error) -> i32
+  {
+    using os;
+
+    buffer.clear();
+    buffer.reserve(4096);
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = os::readlink(pathstr.data, buffer.data, buffer.capacity); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+    else
+    {
+      buffer.append_from_capacity(cast(rc));
+    }
+
+    return 0;
+  }
+
+  pub fn realpath(String &path, std::string mut &buffer) throws(std::error) -> i32
+  {
+    var i = 0;
+    var j = 0;
+    var tgt = std::string();
+    var stack = std::string(path);
+
+    if (var rc = get_cwd(&mut buffer); rc < 0)
+      return rc;
+
+    for (; i < stack.len; )
+    {
+      if (stack[i] == cast<u8>('/'))
+      {
+        buffer = "/";
+
+        ++i;
+      }
+
+      for (; i < stack.len; i = j + 1)
+      {
+        j = i + std::memchr(stack.data + i, cast('/'), stack.len - i);
+
+        if (stack[i .. j] == "" || stack[i .. j] == ".")
+        {
+          continue;
+        }
+
+        if (stack[i .. j] == "..")
+        {
+          buffer.erase(buffer.find_last('/'), buffer.end);
+
+          continue;
+        }
+
+        var n = buffer.len;
+
+        if (!buffer.ends_with(cast<u8>('/')))
+          buffer += cast<u8>('/');
+
+        buffer += stack[i .. j];
+
+        if (var rc = readlink(buffer, &mut tgt); rc < 0)
+        {
+          if (rc == os::EINVAL)
+            continue;
+
+          return rc;
+        }
+
+        buffer.resize(n);
+
+        stack.replace(i, j - i, tgt);
+
+        break;
+      }
+    }
+
+    return 0;
+  }
+
+  pub fn get_cwd(std::string mut &buffer) throws(std::error) -> i32
+  {
+    using os;
+
+    buffer.clear();
+    buffer.reserve(512);
 
     for (;;)
     {
-      if (var rc = getcwd(path.data, path.capacity); rc <= 0)
+      if (var rc = getcwd(buffer.data, buffer.capacity); rc <= 0)
       {
         if (rc == ERANGE)
         {
-          path.reserve(2 * path.capacity);
+          buffer.reserve(2 * buffer.capacity);
 
           continue;
         }
@@ -177,12 +339,234 @@ pub enum permissions
         throw std::system_error(cast<std::errc>(-rc));
       }
 
-      var len = std::memchr(path.data, 0, path.capacity);
+      var len = std::memchr(buffer.data, 0, buffer.capacity);
 
-      path.append_from_capacity(len);
+      buffer.append_from_capacity(len);
 
       return cast(len);
     }
+  }
+
+  pub fn mkdir(std::string &path) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = mkdir(path.data, 0o755); rc < 0)
+    {
+      if (rc == EEXIST || rc == EACCES || rc == EPERM || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn mkdir(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = mkdir(pathstr.data, 0o755); rc < 0)
+    {
+      if (rc == EEXIST || rc == EACCES || rc == EPERM || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn mkpath(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+
+    for (var i = 0; i < path.len; )
+    {
+      var j = i + std::memchr(pathstr.data + i, cast('/'), path.len - i);
+
+      if (i != j)
+      {
+        pathstr[j] = 0;
+
+        var stat = os::stat(void);
+
+        if (var rc = stat(pathstr.data, &stat); rc < 0)
+        {
+          if (var rc = mkdir(pathstr.data, 0o755); rc < 0)
+            throw std::system_error(cast<std::errc>(-rc));
+        }
+        else
+        {
+          if (stat.st_mode & S_IFMT != S_IFDIR)
+            throw std::system_error(std::errc::not_a_directory);
+        }
+
+        pathstr[j] = cast('/');
+      }
+
+      i = j + 1;
+    }
+
+    return 0;
+  }
+
+  pub fn chmod(std::string &path, u32 permissions) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = chmod(path.data, permissions); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn chmod(String &path, u32 permissions) throws(std::error) -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = chmod(pathstr.data, permissions); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn chown(std::string &path, std::optional<u32> uid, std::optional<u32> gid) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = chown(path.data, uid.unwrap_or(~0), gid.unwrap_or(~0)); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn chown(String &path, std::optional<u32> uid, std::optional<u32> gid) throws(std::error) -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    if (var rc = chown(pathstr.data, uid.unwrap_or(~0), gid.unwrap_or(~0)); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn unlink(std::string &path) throws(std::error) -> i32
+  {
+    using os;
+
+    var stat = os::stat();
+    if (var rc = stat(path.data, &stat); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    switch (stat.st_mode & S_IFMT)
+    {
+      case S_IFDIR:
+        if (var rc = rmdir(path.data); rc < 0)
+        {
+          if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EROFS)
+            return rc;
+
+          throw std::system_error(cast<std::errc>(-rc));
+        }
+
+      else:
+        if (var rc = unlink(path.data); rc < 0)
+        {
+          if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EROFS)
+            return rc;
+
+          throw std::system_error(cast<std::errc>(-rc));
+        }
+    }
+
+    return 0;
+  }
+
+  pub fn unlink(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    if (path.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var pathstr = [<u8>: void; 4096];
+    std::memcpy(pathstr.data, path.data, path.len);
+    pathstr[path.len] = 0;
+
+    var stat = os::stat();
+    if (var rc = stat(pathstr.data, &stat); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    switch (stat.st_mode & S_IFMT)
+    {
+      case S_IFDIR:
+        if (var rc = rmdir(pathstr.data); rc < 0)
+        {
+          if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EROFS)
+            return rc;
+
+          throw std::system_error(cast<std::errc>(-rc));
+        }
+
+      else:
+        if (var rc = unlink(pathstr.data); rc < 0)
+        {
+          if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EROFS)
+            return rc;
+
+          throw std::system_error(cast<std::errc>(-rc));
+        }
+    }
+
+    return 0;
   }
 
   pub struct dirp
@@ -201,15 +585,15 @@ pub enum permissions
     }
 
     #[lifetime(depend(this))]
-    pub fn path(this &) -> sys::path_view
+    pub fn path(this &) -> std::string &
     {
-      return this.pathname;
+      return &this.pathname;
     }
 
     #[lifetime(depend(this))]
-    pub fn name(this &) -> sys::path_view
+    pub fn name(this &) -> std::string_view
     {
-      return sys::path_view(this.pathname.begin + this.pathlen, this.pathname.end);
+      return std::string_view(this.pathname.begin + this.pathlen, this.pathname.end);
     }
 
     pub fn type(this &) -> filetype
@@ -243,7 +627,7 @@ pub enum permissions
       return unknown;
     }
 
-    pub fn is_dir(this &) -> bool
+    pub fn is_directory(this &) -> bool
     {
       return this.type == filetype::directory;
     }
@@ -258,11 +642,12 @@ pub enum permissions
       return this.type == filetype::symlink;
     }
 
-    pub fn stat(this &) throws -> stat
+    pub fn stat(this &) throws(std::error) -> stat
     {
       var stat = stat();
 
-      lstat(this.path, &mut stat);
+      if (var rc = lstat(this.path, &mut stat); rc < 0)
+        throw std::system_error(cast<std::errc>(-rc));
 
       return stat;
     }
@@ -283,12 +668,39 @@ pub enum permissions
     }
   }
 
-  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws -> void
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, entry.name);
   }
 
-  pub fn opendir(dirp mut &dirp, sys::path_view &path) throws -> i32
+  pub fn opendir(dirp mut &dirp, std::string &path) throws(std::error) -> i32
+  {
+    using os;
+
+    var fd = open(path.data, O_RDONLY | O_DIRECTORY, 0);
+
+    if (fd < 0)
+    {
+      if (fd == ENOENT || fd == EACCES || fd == EPERM || fd == ENOTDIR || fd == EINVAL)
+        return fd;
+
+      throw std::system_error(cast<std::errc>(-fd));
+    }
+
+    dirp.fd = fd;
+    dirp.pathname = path;
+
+    if (!path.ends_with(cast<u8>('/')))
+      dirp.pathname += cast<u8>('/');
+
+    dirp.pathlen = dirp.pathname.len;
+
+    readdir(&mut dirp);
+
+    return 0;
+  }
+
+  pub fn opendir(dirp mut &dirp, String &path) throws(std::error) -> i32
   {
     using os;
 
@@ -302,13 +714,18 @@ pub enum permissions
     var fd = open(pathstr.data, O_RDONLY | O_DIRECTORY, 0);
 
     if (fd < 0)
+    {
+      if (fd == ENOENT || fd == EACCES || fd == EPERM || fd == ENOTDIR || fd == EINVAL)
+        return fd;
+
       throw std::system_error(cast<std::errc>(-fd));
+    }
 
     dirp.fd = fd;
     dirp.pathname = path;
 
-    if (!path.ends_with(sys::sep_byte()))
-      dirp.pathname += sys::sep_byte();
+    if (!path.ends_with(cast<u8>('/')))
+      dirp.pathname += cast<u8>('/');
 
     dirp.pathlen = dirp.pathname.len;
 
@@ -317,7 +734,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn readdir(dirp mut &dirp) throws -> i32
+  pub fn readdir(dirp mut &dirp) throws(std::error) -> i32
   {
     using os;
 
@@ -353,52 +770,6 @@ pub enum permissions
     }
   }
 
-  pub fn mkdir(sys::path_view path) throws -> i32
-  {
-    using os;
-
-    if (path.len >= 4095)
-      throw std::system_error(std::errc::name_too_long);
-
-    var pathstr = [<u8>: void; 4096];
-    std::memcpy(pathstr.data, path.data, path.len);
-    pathstr[path.len] = 0;
-
-    if (var rc = mkdir(pathstr.data, 0o755); rc < 0)
-      throw std::system_error(cast<std::errc>(-rc));
-
-    return 0;
-  }
-
-  pub fn unlink(sys::path_view path) throws -> i32
-  {
-    using os;
-
-    if (path.len >= 4095)
-      throw std::system_error(std::errc::name_too_long);
-
-    var pathstr = [<u8>: void; 4096];
-    std::memcpy(pathstr.data, path.data, path.len);
-    pathstr[path.len] = 0;
-
-    var stat = os::stat();
-    if (var rc = stat(pathstr.data, &stat); rc < 0)
-      throw std::system_error(cast<std::errc>(-rc));
-
-    switch (stat.st_mode & S_IFMT)
-    {
-      case S_IFDIR:
-        if (var rc = rmdir(pathstr.data); rc < 0)
-          throw std::system_error(cast<std::errc>(-rc));
-
-      else:
-        if (var rc = unlink(pathstr.data); rc < 0)
-          throw std::system_error(cast<std::errc>(-rc));
-    }
-
-    return 0;
-  }
-
 #end
 
 #if __cfg("os.windows")
@@ -421,7 +792,7 @@ pub enum permissions
       return regular;
     }
 
-    pub fn is_dir(this &) -> bool
+    pub fn is_directory(this &) -> bool
     {
       return this.type == filetype::directory;
     }
@@ -462,7 +833,7 @@ pub enum permissions
     pub ~stat() = default;
   }
 
-  pub fn stat(sys::path_view path, stat mut &stat) throws -> i32
+  pub fn stat(String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
@@ -484,7 +855,14 @@ pub enum permissions
     var handle = FindFirstFileW(pathstr.data, &wfd);
 
     if (handle == INVALID_HANDLE_VALUE)
-      throw std::system_error(error_code(GetLastError()));
+    {
+      var rc = error_code(GetLastError());
+
+      if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+        return -cast<i32>(rc);
+
+      throw std::system_error(rc);
+    }
 
     if (wfd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT == 0)
     {
@@ -528,7 +906,7 @@ pub enum permissions
     throw std::system_error(std::errc::not_supported);
   }
 
-  pub fn lstat(sys::path_view path, stat mut &stat) throws -> i32
+  pub fn lstat(String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
@@ -547,7 +925,14 @@ pub enum permissions
     var handle = FindFirstFileW(pathstr.data, &wfd);
 
     if (handle == INVALID_HANDLE_VALUE)
-      throw std::system_error(error_code(GetLastError()));
+    {
+      var rc = error_code(GetLastError());
+
+      if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+        return -cast<i32>(rc);
+
+      throw std::system_error(rc);
+    }
 
     stat.dwFileAttributes = wfd.dwFileAttributes;
     stat.ftCreationTime = wfd.ftCreationTime;
@@ -561,7 +946,45 @@ pub enum permissions
     return 0;
   }
 
-  pub fn getcwd(std::string mut &path) throws -> i32
+  pub fn realpath(String &path, std::string mut &buffer) throws(std::error) -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
+
+    var handle = CreateFileW(pathstr.data, 0, 0, null, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+
+    if (handle == INVALID_HANDLE_VALUE)
+    {
+      var rc = error_code(GetLastError());
+
+      if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+        return -cast<i32>(rc);
+
+      throw std::system_error(rc);
+    }
+
+    var len = GetFinalPathNameByHandleW(handle, pathstr.data, cast(pathstr.len), 8);
+
+    buffer.clear();
+    buffer.reserve(cast(pathlen) * sizeof<u32>);
+
+    var nchars = WideCharToMultiByte(CP_UTF8, 0, pathstr.data, cast(len), buffer.data, cast(buffer.capacity), null, null);
+
+    buffer.append_from_capacity(cast(nchars));
+
+    CloseHandle(handle);
+
+    return 0;
+  }
+
+  pub fn get_cwd(std::string mut &buffer) throws(std::error) -> i32
   {
     using os;
 
@@ -574,12 +997,117 @@ pub enum permissions
     if (pathlen == 0)
       throw std::system_error(error_code(GetLastError()));
 
-    path.clear();
-    path.reserve(cast(pathlen) * sizeof<u32>);
+    buffer.clear();
+    buffer.reserve(cast(pathlen) * sizeof<u32>);
 
-    var nchars = WideCharToMultiByte(CP_UTF8, 0, pathstr.data, cast(pathlen), path.data, cast(path.capacity), null, null);
+    var nchars = WideCharToMultiByte(CP_UTF8, 0, pathstr.data, cast(pathlen), buffer.data, cast(buffer.capacity), null, null);
 
-    path.append_from_capacity(cast(nchars));
+    buffer.append_from_capacity(cast(nchars));
+
+    return 0;
+  }
+
+  pub fn mkdir(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
+
+    if (CreateDirectoryW(pathstr.data, null) == 0)
+    {
+      var rc = error_code(GetLastError());
+
+      if (rc == std::errc::already_exists || rc == std::errc::permission_denied)
+        return -cast<i32>(rc);
+
+      throw std::system_error(rc);
+    }
+
+    return 0;
+  }
+
+  pub fn mkpath(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    for (var i = 1; i <= path.len; ++i)
+    {
+      if (pathstr[i] == cast('\\') || pathstr[i] == cast('/') || i == path.len)
+      {
+        pathstr[i] = 0;
+
+        var stat = os::WIN32_FILE_ATTRIBUTE_DATA(void);
+
+        if (GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat) == 0)
+        {
+          if (CreateDirectoryW(pathstr.data, null) == 0)
+            throw std::system_error(error_code(GetLastError()));
+        }
+        else
+        {
+          if (stat.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY == 0)
+            throw std::system_error(std::errc::not_a_directory);
+        }
+
+        pathstr[i] = cast('\\');
+      }
+    }
+
+    return 0;
+  }
+
+  pub fn unlink(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    var pathstr = [<u16>: void; 2048];
+    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (pathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
+
+    var stat = stat();
+    GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat);
+
+    switch (stat.type)
+    {
+      case directory:
+        if (RemoveDirectoryW(pathstr.data) == 0)
+        {
+          var rc = error_code(GetLastError());
+
+          if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+            return -cast<i32>(rc);
+
+          throw std::system_error(rc);
+        }
+
+      else:
+        if (DeleteFileW(pathstr.data) == 0)
+        {
+          var rc = error_code(GetLastError());
+
+          if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+            return -cast<i32>(rc);
+
+          throw std::system_error(rc);
+        }
+
+    }
 
     return 0;
   }
@@ -594,15 +1122,15 @@ pub enum permissions
     std::string pathname;
 
     #[lifetime(depend(this))]
-    pub fn path(this &) -> sys::path_view
+    pub fn path(this &) -> std::string &
     {
-      return this.pathname;
+      return &this.pathname;
     }
 
     #[lifetime(depend(this))]
-    pub fn name(this &) -> sys::path_view
+    pub fn name(this &) -> std::string_view
     {
-      return sys::path_view(this.pathname.begin + this.pathlen, this.pathname.end);
+      return std::string_view(this.pathname.begin + this.pathlen, this.pathname.end);
     }
 
     pub fn type(this &) -> filetype
@@ -618,7 +1146,7 @@ pub enum permissions
       return regular;
     }
 
-    pub fn is_dir(this &) -> bool
+    pub fn is_directory(this &) -> bool
     {
       return this.type == filetype::directory;
     }
@@ -633,7 +1161,7 @@ pub enum permissions
       return this.type == filetype::symlink;
     }
 
-    pub fn stat(this &) throws -> stat
+    pub fn stat(this &) throws(std::error) -> stat
     {
       var stat = stat();
 
@@ -663,12 +1191,12 @@ pub enum permissions
     }
   }
 
-  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws -> void
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, entry.name);
   }
 
-  pub fn opendir(dirp mut &dirp, sys::path_view &path) throws -> i32
+  pub fn opendir(dirp mut &dirp, String &path) throws(std::error) -> i32
   {
     using os;
 
@@ -685,14 +1213,21 @@ pub enum permissions
     var handle = FindFirstFileW(pathstr.data, &dirp.wfd);
 
     if (handle == INVALID_HANDLE_VALUE)
-      throw std::system_error(error_code(GetLastError()));
+    {
+      var rc = error_code(GetLastError());
+
+      if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+        return -cast<i32>(rc);
+
+      throw std::system_error(rc);
+    }
 
     dirp.fd = handle;
     dirp.pathname = path;
     dirp.status = 1;
 
-    if (!path.ends_with(sys::sep_byte()))
-      dirp.pathname += sys::sep_byte();
+    if (!path.ends_with(cast<u8>('\\')) && !path.ends_with(cast<u8>('/')))
+      dirp.pathname += cast<u8>('\\');
 
     dirp.pathlen = dirp.pathname.len;
 
@@ -718,7 +1253,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn readdir(dirp mut &dirp) throws -> i32
+  pub fn readdir(dirp mut &dirp) throws(std::error) -> i32
   {
     using os;
 
@@ -745,52 +1280,6 @@ pub enum permissions
     }
   }
 
-  pub fn mkdir(sys::path_view path) throws -> i32
-  {
-    using os;
-
-    var pathstr = [<u16>: void; 2048];
-    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
-
-    if (pathlen == 0)
-      throw std::system_error(error_code(GetLastError()));
-
-    pathstr[cast(pathlen)] = 0;
-
-    if (CreateDirectoryW(pathstr.data, null) == 0)
-      throw std::system_error(error_code(GetLastError()));
-
-    return 0;
-  }
-
-  pub fn unlink(sys::path_view path) throws -> i32
-  {
-    using os;
-
-    var pathstr = [<u16>: void; 2048];
-    var pathlen = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
-
-    if (pathlen == 0)
-      throw std::system_error(error_code(GetLastError()));
-
-    pathstr[cast(pathlen)] = 0;
-
-    var stat = stat();
-    GetFileAttributesExW(pathstr.data, GET_FILEEX_INFO_LEVELS::GetFileExInfoStandard, &stat);
-
-    switch (stat.type)
-    {
-      case directory:
-        if (RemoveDirectoryW(pathstr.data) == 0)
-          throw std::system_error(error_code(GetLastError()));
-
-      else:
-        if (DeleteFileW(pathstr.data) == 0)
-          throw std::system_error(error_code(GetLastError()));
-    }
-
-    return 0;
-  }
 #end
 
 #if __cfg("os.zaos")
@@ -831,7 +1320,7 @@ pub enum permissions
       return unknown;
     }
 
-    pub fn is_dir(this &) -> bool
+    pub fn is_directory(this &) -> bool
     {
       return this.type == filetype::directory;
     }
@@ -867,14 +1356,29 @@ pub enum permissions
     pub ~stat() = default;
   }
 
-  pub fn stat(i32 dir, sys::path_view path, stat mut &stat) throws -> i32
+  pub fn stat(i32 fd, stat mut &stat) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = stat(&mut thread_ring, fd, &stat, 0x7f); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+  pub fn stat(i32 dir, String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
     var fd = open(&mut thread_ring, dir, os::string(path.data, path.len), 0, 0);
 
     if (fd < 0)
+    {
+      if (fd == EPERM || fd == ENOENT || fd == EACCES || fd == EINVAL)
+        return fd;
+
       throw std::system_error(cast<std::errc>(-fd));
+    }
 
     if (var rc = stat(&mut thread_ring, fd, &stat, 0x7f); rc < 0)
     {
@@ -888,14 +1392,34 @@ pub enum permissions
     return 0;
   }
 
-  pub fn lstat(i32 dir, sys::path_view path, stat mut &stat) throws -> i32
+  pub fn stat(String &path, stat mut &stat) throws(std::error) -> i32
+  {
+    using os;
+
+    var dir = STDCWD_FILENO;
+
+    if (path.len > 0 && *path.data == cast('/'))
+      dir = STDROOT_FILENO;
+
+    if (var rc = stat(dir, path, &mut stat); rc < 0)
+      return rc;
+
+    return 0;
+  }
+
+  pub fn lstat(i32 dir, String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
     var fd = open(&mut thread_ring, dir, os::string(path.data, path.len), O_NOFOLLOW, 0);
 
     if (fd < 0)
+    {
+      if (fd == EPERM || fd == ENOENT || fd == EACCES || fd == EINVAL)
+        return fd;
+
       throw std::system_error(cast<std::errc>(-fd));
+    }
 
     if (var rc = stat(&mut thread_ring, fd, &stat, 0x7f); rc < 0)
     {
@@ -909,7 +1433,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn stat(sys::path_view path, stat mut &stat) throws -> i32
+  pub fn lstat(String &path, stat mut &stat) throws(std::error) -> i32
   {
     using os;
 
@@ -918,36 +1442,279 @@ pub enum permissions
     if (path.len > 0 && *path.data == cast('/'))
       dir = STDROOT_FILENO;
 
-    stat(dir, path, &mut stat);
+    if (var rc = lstat(dir, path, &mut stat); rc < 0)
+      return rc;
 
     return 0;
   }
 
-  pub fn lstat(sys::path_view path, stat mut &stat) throws -> i32
+  pub fn readlink(String &path, std::string mut &buffer) throws(std::error) -> i32
   {
     using os;
+
+    buffer.clear();
+    buffer.reserve(4096);
 
     var dir = STDCWD_FILENO;
 
     if (path.len > 0 && *path.data == cast('/'))
       dir = STDROOT_FILENO;
 
-    lstat(dir, path, &mut stat);
+    var fd = open(&mut thread_ring, dir, os::string(path.data, path.len), O_SYMLINK | O_NOFOLLOW, 0);
+
+    if (fd < 0)
+    {
+      if (fd == EPERM || fd == ENOENT || fd == EACCES || fd == EINVAL)
+        return fd;
+
+      throw std::system_error(cast<std::errc>(-fd));
+    }
+
+    if (var rc = os::read(&mut thread_ring, fd, buffer.data, buffer.capacity); rc < 0)
+    {
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+    else
+    {
+      buffer.append_from_capacity(cast(rc));
+    }
 
     return 0;
   }
 
-  pub fn getcwd(std::string mut &path) throws -> i32
+  pub fn realpath(String &path, std::string mut &buffer) throws(std::error) -> i32
+  {
+    var i = 0;
+    var j = 0;
+    var tgt = std::string();
+    var stack = std::string(path);
+
+    for (; i < stack.len; )
+    {
+      if (stack[i] == cast<u8>('/'))
+      {
+        buffer = "/";
+
+        ++i;
+      }
+
+      for (; i < stack.len; i = j + 1)
+      {
+        j = i + std::memchr(stack.data + i, cast('/'), stack.len - i);
+
+        if (stack[i .. j] == "" || stack[i .. j] == ".")
+        {
+          continue;
+        }
+
+        if (stack[i .. j] == "..")
+        {
+          if (var k = buffer.find_last('/'))
+            buffer.erase(k, buffer.end);
+
+          continue;
+        }
+
+        var n = buffer.len;
+
+        if (!buffer.ends_with(cast<u8>('/')))
+          buffer += cast<u8>('/');
+
+        buffer += stack[i .. j];
+
+        if (var rc = readlink(buffer, &mut tgt); rc < 0)
+        {
+          if (rc == EINVAL)
+            continue;
+
+          return rc;
+        }
+
+        buffer.resize(n);
+
+        stack.replace(i, j - i, tgt);
+
+        break;
+      }
+    }
+
+    return 0;
+  }
+
+  pub fn get_cwd(std::string mut &buffer) throws(std::error) -> i32
   {
     using os;
 
     switch (std::env::var("CWD"))
     {
       case Some[cwd]:
-        path = cwd;
+        buffer = cwd;
 
       else:
-        path.clear();
+        buffer.clear();
+    }
+
+    return 0;
+  }
+
+  pub fn mkdir(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = mkdir(&mut thread_ring, os::string(path.data, path.len), 0, 0o775); rc < 0)
+    {
+      if (rc == EPERM || rc == EACCES || rc == EEXIST || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn mkpath(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    var dir = STDCWD_FILENO;
+
+    if (path.len > 0 && *path.data == cast('/'))
+      dir = STDROOT_FILENO;
+
+    for (var i = 0; i < path.len; )
+    {
+      var j = i + std::memchr(path.data + i, cast('/'), path.len - i);
+
+      if (i != j)
+      {
+        var fd = open(&mut thread_ring, dir, os::string(path.data + i, j - i), O_DIRECTORY, 0);
+
+        if (fd == ENOENT)
+        {
+          if (var rc = mkdir(&mut thread_ring, dir, os::string(path.data + i, j - i), 0, 0o775); rc < 0)
+          {
+            if (dir != STDCWD_FILENO && dir != STDROOT_FILENO)
+              close(&mut thread_ring, dir);
+
+            throw std::system_error(cast<std::errc>(-rc));
+          }
+
+          fd = open(&mut thread_ring, dir, os::string(path.data + i, j - i), O_DIRECTORY, 0);
+        }
+
+        if (dir != STDCWD_FILENO && dir != STDROOT_FILENO)
+          close(&mut thread_ring, dir);
+
+        if (fd < 0)
+          throw std::system_error(cast<std::errc>(-fd));
+
+        dir = fd;
+      }
+
+      i = j + 1;
+    }
+
+    if (dir != STDCWD_FILENO && dir != STDROOT_FILENO)
+      close(&mut thread_ring, dir);
+
+    return 0;
+  }
+
+  pub fn chstat(i32 fd, os::stat &stat, u64 flags) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = chstat(&mut thread_ring, fd, &stat, flags); rc < 0)
+      throw std::system_error(cast<std::errc>(-rc));
+
+    return 0;
+  }
+
+  pub fn chstat(i32 dir, String &path, os::stat &stat, u64 flags) throws(std::error) -> i32
+  {
+    using os;
+
+    var fd = open(&mut thread_ring, dir, os::string(path.data, path.len), O_WRONLY, 0);
+
+    if (fd < 0)
+    {
+      if (fd == EPERM || fd == ENOENT || fd == EACCES || fd == EINVAL || fd == EROFS)
+        return fd;
+
+      throw std::system_error(cast<std::errc>(-fd));
+    }
+
+    if (var rc = chstat(&mut thread_ring, fd, &stat, flags); rc < 0)
+    {
+      close(&mut thread_ring, fd);
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    close(&mut thread_ring, fd);
+
+    return 0;
+  }
+
+  pub fn chstat(String &path, os::stat &stat, u64 flags) throws(std::error) -> i32
+  {
+    using os;
+
+    var dir = STDCWD_FILENO;
+
+    if (path.len > 0 && *path.data == cast('/'))
+      dir = STDROOT_FILENO;
+
+    if (var rc = chstat(dir, path, stat, flags); rc < 0)
+      return rc;
+
+    return 0;
+  }
+
+  pub fn chmod(String &path, u32 permissions) throws(std::error) -> i32
+  {
+    var stat = os::stat();
+    stat.mode = permissions;
+
+    if (var rc = chstat(path, stat, os::stats::mode); rc < 0)
+      return rc;
+
+    return 0;
+  }
+
+  pub fn chown(String &path, std::optional<u32> uid, std::optional<u32> gid) throws(std::error) -> i32
+  {
+    var mask = 0;
+    var stat = os::stat();
+
+    if (uid)
+    {
+      stat.uid = uid?!;
+      mask |= os::stats::uid;
+    }
+
+    if (gid)
+    {
+      stat.gid = gid?!;
+      mask |= os::stats::gid;
+    }
+
+    if (var rc = chstat(path, stat, mask); rc < 0)
+      return rc;
+
+    return 0;
+  }
+
+  pub fn unlink(String &path) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = unlink(&mut thread_ring, os::string(path.data, path.len), 0); rc < 0)
+    {
+      if (rc == EPERM || rc == ENOENT || rc == EACCES || rc == EROFS)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
     }
 
     return 0;
@@ -969,15 +1736,15 @@ pub enum permissions
     }
 
     #[lifetime(depend(this))]
-    pub fn path(this &) -> sys::path_view
+    pub fn path(this &) -> std::string &
     {
-      return this.pathname;
+      return &this.pathname;
     }
 
     #[lifetime(depend(this))]
-    pub fn name(this &) -> sys::path_view
+    pub fn name(this &) -> std::string_view
     {
-      return sys::path_view(this.pathname.begin + this.pathlen, this.pathname.end);
+      return std::string_view(this.pathname.begin + this.pathlen, this.pathname.end);
     }
 
     pub fn type(this &) -> filetype
@@ -1007,7 +1774,7 @@ pub enum permissions
       return unknown;
     }
 
-    pub fn is_dir(this &) -> bool
+    pub fn is_directory(this &) -> bool
     {
       return this.type == filetype::directory;
     }
@@ -1022,11 +1789,12 @@ pub enum permissions
       return this.type == filetype::symlink;
     }
 
-    pub fn stat(this &) throws -> stat
+    pub fn stat(this &) throws(std::error) -> stat
     {
       var stat = stat();
 
-      lstat(this.fd, this.name, &mut stat);
+      if (var rc = lstat(this.fd, this.name, &mut stat); rc < 0)
+        throw std::system_error(cast<std::errc>(-rc));
 
       return stat;
     }
@@ -1047,25 +1815,30 @@ pub enum permissions
     }
   }
 
-  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws -> void
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, dirp &entry) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, entry.name);
   }
 
-  pub fn opendir(dirp mut &dirp, sys::path_view &path) throws -> i32
+  pub fn opendir(dirp mut &dirp, String &path) throws(std::error) -> i32
   {
     using os;
 
     var fd = open(&mut thread_ring, os::string(path.data, path.len), O_RDONLY | O_DIRECTORY, 0);
 
     if (fd < 0)
+    {
+      if (fd == EPERM || fd == ENOENT || fd == EACCES || fd == ENOTDIR || fd == EINVAL)
+        return fd;
+
       throw std::system_error(cast<std::errc>(-fd));
+    }
 
     dirp.fd = fd;
     dirp.pathname = path;
 
-    if (!path.ends_with(sys::sep_byte()))
-      dirp.pathname += sys::sep_byte();
+    if (!path.ends_with(cast<u8>('/')))
+      dirp.pathname += cast<u8>('/');
 
     dirp.pathlen = dirp.pathname.len;
 
@@ -1074,7 +1847,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn readdir(dirp mut &dirp) throws -> i32
+  pub fn readdir(dirp mut &dirp) throws(std::error) -> i32
   {
     using os;
 
@@ -1108,26 +1881,6 @@ pub enum permissions
 
       return 0;
     }
-  }
-
-  pub fn mkdir(sys::path_view path) throws -> i32
-  {
-    using os;
-
-    if (var rc = os::mkdir(&mut thread_ring, os::string(path.data, path.len), 0, 0o775); rc < 0)
-      throw std::system_error(cast<std::errc>(-rc));
-
-    return 0;
-  }
-
-  pub fn unlink(sys::path_view path) throws -> i32
-  {
-    using os;
-
-    if (var rc = os::unlink(&mut thread_ring, os::string(path.data, path.len), 0); rc < 0)
-      throw std::system_error(cast<std::errc>(-rc));
-
-    return 0;
   }
 
 #end

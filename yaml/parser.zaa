@@ -76,7 +76,7 @@ struct parse_context
   }
 
   #[lifetime(launder(this.tok))]
-  fn consume_token(this mut &, var mut &is) throws -> void
+  fn consume_token(this mut &, var mut &is) throws(std::error) -> void
   {
     this.tok = this.scanner.fetch(&mut is);
   }
@@ -109,7 +109,7 @@ fn parse_error(parse_context mut &ctx, errc error) -> state
   return ctx.state;
 }
 
-fn parse_process_directives(parse_context mut &ctx, InputReader mut &is) throws -> void
+fn parse_process_directives(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> void
 {
   while (ctx.tok.type == token::type::directive)
   {
@@ -117,14 +117,14 @@ fn parse_process_directives(parse_context mut &ctx, InputReader mut &is) throws 
   }
 }
 
-fn stream_start(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn stream_start(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   ctx.consume_token(&mut is);
 
   return state::implicit_document_start;
 }
 
-fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) throws -> state
+fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) throws(std::error) -> state
 {
   if (!implicit)
   {
@@ -158,7 +158,7 @@ fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) th
   return ctx.state;
 }
 
-fn document_content(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn document_content(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -175,7 +175,7 @@ fn document_content(parse_context mut &ctx, InputReader mut &is) throws -> state
   return ctx.state;
 }
 
-fn document_end(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn document_end(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   if (ctx.tok.type == token::type::document_end)
     ctx.consume_token(&mut is);
@@ -183,7 +183,7 @@ fn document_end(parse_context mut &ctx, InputReader mut &is) throws -> state
   return state::document_start;
 }
 
-fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   if (ctx.tok.value == "!!seq")
     ctx.state = state::tag_seq;
@@ -259,7 +259,7 @@ fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> state
   return ctx.state;
 }
 
-fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.state)
   {
@@ -313,7 +313,7 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws -> state
   return ctx.state;
 }
 
-fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -347,7 +347,7 @@ fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
   return ctx.pop_state();
 }
 
-fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -386,7 +386,7 @@ fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
   return ctx.pop_state();
 }
 
-fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool indentless_sequence) throws -> state
+fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool indentless_sequence) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -499,7 +499,7 @@ fn anchor_entry(parse_context mut &ctx, InputReader mut &is) -> state
   return ctx.pop_state();
 }
 
-fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -521,7 +521,7 @@ fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> s
   return ctx.state;
 }
 
-fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -546,7 +546,7 @@ fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> stat
   return ctx.state;
 }
 
-fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -565,7 +565,7 @@ fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> st
   return ctx.state;
 }
 
-fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -591,7 +591,7 @@ fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
   return ctx.state;
 }
 
-fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -609,7 +609,7 @@ fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> st
   return ctx.state;
 }
 
-fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -634,7 +634,7 @@ fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
   return ctx.state;
 }
 
-fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -653,7 +653,7 @@ fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> sta
   return ctx.state;
 }
 
-fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -671,7 +671,7 @@ fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws -> sta
   return ctx.state;
 }
 
-fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -688,7 +688,7 @@ fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws
   return ctx.state;
 }
 
-fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -706,7 +706,7 @@ fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) 
   return ctx.state;
 }
 
-fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is) throws -> state
+fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
 {
   switch (ctx.tok.type)
   {
@@ -723,7 +723,7 @@ fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is
   return ctx.state;
 }
 
-pub fn parse(InputReader mut &is) throws -> parse_result
+pub fn parse(InputReader mut &is) throws(std::error) -> parse_result
 {
   var result = parse_result();
 

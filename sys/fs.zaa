@@ -6,27 +6,39 @@ import std.stdio;
 import std.string : String;
 import std.vector;
 import std.arc;
-import sys.bits.fs : getcwd, stat, lstat, filetype, dirp;
+import sys.bits.fs : filetype, permissions, stat, dirp;
 
-pub fn stat(String &path) throws -> stat
+pub fn cwd() throws(std::error) -> std::string
+{
+  var path = std::string();
+
+  if (var rc = get_cwd(&mut path); rc < 0)
+    throw std::system_error(cast<std::errc>(-rc));
+
+  return path;
+}
+
+pub fn stat(String &path) throws(std::error) -> stat
 {
   var stat = stat();
 
-  stat(sys::path_view(path), &mut stat);
+  if (var rc = stat(path, &mut stat); rc < 0)
+    throw std::system_error(cast<std::errc>(-rc));
 
   return stat;
 }
 
-pub fn lstat(String &path) throws -> stat
+pub fn lstat(String &path) throws(std::error) -> stat
 {
   var stat = stat();
 
-  lstat(sys::path_view(path), &mut stat);
+  if (var rc = lstat(path, &mut stat); rc < 0)
+    throw std::system_error(cast<std::errc>(-rc));
 
   return stat;
 }
 
-pub fn exists(String &path) throws -> bool
+pub fn exists(String &path) throws(std::error) -> bool
 {
   try
   {
@@ -39,15 +51,6 @@ pub fn exists(String &path) throws -> bool
 
     throw err;
   }
-}
-
-pub fn cwd() throws -> std::string
-{
-  var path = std::string();
-
-  getcwd(&mut path);
-
-  return path;
 }
 
 pub struct directory_view
@@ -69,7 +72,7 @@ pub struct directory_view
     pub ~directory_iterator() = default;
 
     #[lifetime(poison(this))]
-    pub fn ++(directory_iterator mut &this) throws -> directory_iterator mut &
+    pub fn ++(directory_iterator mut &this) throws(std::error) -> directory_iterator mut &
     {
       readdir(&mut *this.state);
 
@@ -109,13 +112,14 @@ pub struct directory_view
     pub ~recursive_directory_iterator() = default;
 
     #[lifetime(poison(this))]
-    pub fn ++(recursive_directory_iterator mut &this) throws -> recursive_directory_iterator mut &
+    pub fn ++(recursive_directory_iterator mut &this) throws(std::error) -> recursive_directory_iterator mut &
     {
       if (this.descend)
       {
         this.stack.push_back();
 
-        opendir(&mut *this.stack.back, this.stack[this.stack.len - 2].path);
+        if (var rc = opendir(&mut *this.stack.back, this.stack[this.stack.len - 2].path); rc < 0)
+          throw std::system_error(cast<std::errc>(-rc));
 
         this.descend = false;
 
@@ -153,13 +157,13 @@ pub struct directory_view
   }
 
   #[lifetime(depend(*this))]
-  pub fn begin(this &) throws -> directory_iterator
+  pub fn begin(this &) throws(std::error) -> directory_iterator
   {
     return directory_iterator(this.state);
   }
 
   #[lifetime(depend(*this))]
-  pub fn descend(this &) throws -> recursive_directory_iterator
+  pub fn descend(this &) throws(std::error) -> recursive_directory_iterator
   {
     return recursive_directory_iterator(this.state);
   }
@@ -190,33 +194,18 @@ pub struct directory_view
   pub ~directory_view() = default;
 }
 
-pub fn read_dir(String &path) throws -> directory_view
+pub fn read_dir(String &path) throws(std::error) -> directory_view
 {
   var state = std::arc<dirp>();
 
-  opendir(&mut *state, sys::path_view(path));
+  if (var rc = opendir(&mut *state, path); rc < 0)
+    throw std::system_error(cast<std::errc>(-rc));
 
   return directory_view(&move state);
 }
 
-pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, directory_view &dir) throws -> void
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, directory_view &dir) throws(std::error) -> void
 {
   for (var &entry : dir)
     std::print_to(&mut os, entry, " ");
-}
-
-pub fn mkdir(String &path) throws -> void
-{
-  mkdir(sys::path_view(path));
-}
-
-pub fn mkpath(String &path) throws -> void
-{
-  for (var part : sys::path_view(path))
-    mkdir(sys::path_view(path.begin, part.end));
-}
-
-pub fn unlink(String &path) throws -> void
-{
-  unlink(sys::path_view(path));
 }

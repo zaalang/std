@@ -22,7 +22,7 @@ struct parse_context
   scanner scanner;
 
   #[lifetime(launder(this.tok))]
-  fn consume_token(this mut &, var mut &is) throws -> void
+  fn consume_token(this mut &, var mut &is) throws(std::error) -> void
   {
     this.tok = this.scanner.fetch(&mut is);
   }
@@ -43,7 +43,7 @@ pub struct parse_result
   pub ~parse_result() = default;
 }
 
-fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
 {
   var mut &object = value.emplace_object();
 
@@ -98,7 +98,7 @@ fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) t
   return cast(0);
 }
 
-fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
 {
   var mut &array = value.emplace_array();
 
@@ -131,7 +131,7 @@ fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) th
   return cast(0);
 }
 
-fn parse_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+fn parse_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
 {
   switch (ctx.tok.style)
   {
@@ -147,7 +147,7 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) t
   return cast(0);
 }
 
-fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) throws -> errc
+fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
 {
   switch (ctx.tok.type)
   {
@@ -178,7 +178,7 @@ fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) th
   }
 }
 
-pub fn parse(InputReader mut &is) throws -> parse_result
+pub fn parse(InputReader mut &is) throws(std::error) -> parse_result
 {
   var result = parse_result();
 

@@ -20,10 +20,25 @@ pub fn parser()
   }
 }
 
+enum errc : u32
+{
+  format_error,
+  invalid_field,
+  invalid_argument,
+  argument_not_found,
+  argument_missing_value,
+
+  pub const fn bool(errc code) -> bool
+  {
+    return cast<u32>(code) != 0;
+  }
+}
+
 struct attr
 {
   enum type
   {
+    none = 0,
     flag,
     value,
     count,
@@ -31,8 +46,8 @@ struct attr
     free,
   }
 
-  type type = type::free;
-  std::optional<std::string_literal> short;
+  type type;
+  std::optional<char> short;
   std::optional<std::string_literal> long;
   std::optional<std::string_literal> help;
   bool required = false;
@@ -178,6 +193,9 @@ fn parse_defn(std::string_literal defn, std::source_location site) -> attr
 {
   var attr = attr();
 
+  if (defn == "")
+    return attr;
+
   var tok = token();
   var cursor = lex(defn, 0, &mut tok);
 
@@ -216,7 +234,7 @@ fn parse_defn(std::string_literal defn, std::source_location site) -> attr
         if (tok.type != token::type::char_literal)
           std::panic(site, ": arg expected char literal");
 
-        attr.short = tok.span;
+        std::sscan(tok.span, &mut attr.short);
 
       case "long":
         cursor = lex(defn, cursor, &mut tok);
@@ -289,6 +307,15 @@ pub fn usage<Opts>() -> void
 
   var gutter = 16;
 
+  for (var &opt : options)
+  {
+    if (opt.hidden)
+      continue;
+
+    if (opt.long.is_some)
+      gutter = std::clamp(opt.long?!.len + 5, gutter, 32);
+  }
+
   std::print("Usage:");
 
   for (var &opt : options)
@@ -337,7 +364,7 @@ pub fn usage<Opts>() -> void
   }
 }
 
-fn set_flag<Opts>(Opts mut &opts, usize field) -> std::errc
+fn set_flag<Opts>(Opts mut &opts, usize field) -> errc
 {
   switch (field)
   {
@@ -350,13 +377,13 @@ fn set_flag<Opts>(Opts mut &opts, usize field) -> std::errc
     }
 
     else:
-      return std::errc::format_error;
+      return errc::invalid_field;
   }
 
   return cast(0);
 }
 
-fn set_value<Opts>(Opts mut &opts, usize field, std::string_view value) -> std::errc
+fn set_value<Opts>(Opts mut &opts, usize field, std::string_view value) -> errc
 {
   switch (field)
   {
@@ -369,12 +396,12 @@ fn set_value<Opts>(Opts mut &opts, usize field, std::string_view value) -> std::
             var mut &back = opts.${k}.push_back();
 
             if (var result = std::sscan(value, &mut back); result.error || result.len != value.len)
-              return std::errc::format_error;
+              return errc::format_error;
           }
           #else
           {
             if (var result = std::sscan(value, &mut opts.${k}); result.error || result.len != value.len)
-              return std::errc::format_error;
+              return errc::format_error;
           }
         }
       }
@@ -384,7 +411,7 @@ fn set_value<Opts>(Opts mut &opts, usize field, std::string_view value) -> std::
   return cast(0);
 }
 
-fn set_count<Opts>(Opts mut &opts, usize field) -> std::errc
+fn set_count<Opts>(Opts mut &opts, usize field) -> errc
 {
   switch (field)
   {
@@ -397,7 +424,7 @@ fn set_count<Opts>(Opts mut &opts, usize field) -> std::errc
     }
 
     else:
-      return std::errc::format_error;
+      return errc::invalid_field;
   }
 
   return cast(0);
@@ -419,7 +446,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
   for (; i != args.end; ++i)
   {
     var arg = args[i];
-    var errc = cast<std::errc>(0);
+    var errc = cast<errc>(0);
 
     if (arg.starts_with("--") && arg != "--")
     {
@@ -443,14 +470,14 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
             errc = set_count(&mut opts, j);
 
           else:
-            errc = std::errc::invalid_argument;
+            errc = errc::invalid_argument;
         }
 
         present[j] = true;
       }
       else
       {
-        errc = std::errc::not_found;
+        errc = errc::argument_not_found;
       }
     }
 
@@ -458,14 +485,20 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
     {
       arg.drop_front!(1);
 
-      var [names, value] = arg.cut('=');
-
-      for (var name : names)
+      for (var ch : arg.chars)
       {
-        var j = std::find_if(options, |k| k.short.unwrap_or_default == std::string_view(&name, 1)) - options.begin;
+        var j = std::find_if(options, |k| k.short.unwrap_or_default == ch) - options.begin;
 
         if (j < options.len)
         {
+          var value = std::string_view();
+
+          if (options[j].type == attr::type::value && !arg.contains('='))
+          {
+            if (i + 1 != args.end)
+              value = args[++i];
+          }
+
           switch (options[j].type)
           {
             case flag:
@@ -478,14 +511,14 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
               errc = set_count(&mut opts, j);
 
             else:
-              errc = std::errc::invalid_argument;
+              errc = errc::invalid_argument;
           }
 
           present[j] = true;
         }
         else
         {
-          errc = std::errc::not_found;
+          errc = errc::argument_not_found;
         }
       }
     }
@@ -505,7 +538,7 @@ pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
       }
       else
       {
-        errc = std::errc::not_found;
+        errc = errc::argument_not_found;
       }
     }
 

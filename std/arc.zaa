@@ -248,7 +248,7 @@ pub fn hash<T>(var &hasher, std::arc<T> &arced) -> usize
   return hasher(*arced);
 }
 
-pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::arc<T> &arced) throws -> void
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, std::arc<T> &arced) throws(std::error) -> void
 {
   ctx.written += std::print_to(&mut os, *arced);
 }

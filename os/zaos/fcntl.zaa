@@ -4,6 +4,7 @@
 
 import std.stdlib;
 import std.atomic;
+import os.zaos.errno : *;
 
 pub using uid_t = u32;
 pub using gid_t = u32;
@@ -21,6 +22,7 @@ pub const O_CREAT = 0o100;
 pub const O_EXCL = 0o200;
 pub const O_TRUNC = 0o1000;
 pub const O_APPEND = 0o2000;
+pub const O_SYMLINK = 0o100000;
 pub const O_DIRECTORY = 0o200000;
 pub const O_NOFOLLOW = 0o400000;
 pub const O_FILESYSTEM = 0o1000000;
@@ -72,10 +74,6 @@ pub const STDOUT_FILENO = 1;
 pub const STDERR_FILENO = 2;
 pub const STDROOT_FILENO = 4;
 pub const STDCWD_FILENO = 5;
-
-pub const EINVAL = -22;
-pub const EAGAIN = -11;
-pub const ETIMEDOUT = -110;
 
 pub enum filetype
 {
@@ -292,7 +290,8 @@ pub enum ioring_ops
   pub const rename = 0x0b;
   pub const link = 0x0c;
   pub const symlink = 0x0d;
-  pub const unlink = 0x0e;
+  pub const chstat = 0x0e;
+  pub const unlink = 0x0f;
   pub const poll_create = 0x10;
   pub const poll_add = 0x11;
   pub const poll_modify = 0x12;
@@ -565,6 +564,15 @@ pub fn ioring_prep_sqe_symlink(ioring_sqe mut *sqe, i32 dir, string path, string
   sqe.args[2] = cast(target.len);
   sqe.args[3] = cast(target.data);
   sqe.args[4] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_chstat(ioring_sqe mut *sqe, i32 fd, stat *statbuf, u64 flags) -> void
+{
+  sqe.op = ioring_ops::chstat;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(statbuf);
+  sqe.args[2] = cast(flags);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -996,6 +1004,25 @@ pub fn symlink(ioring mut &ring, string path, string target, u64 flags) -> i32
     dir = STDROOT_FILENO;
 
   return symlink(&mut ring, dir, path, target, flags);
+}
+
+pub fn chstat(ioring mut &ring, i32 fd, stat *statbuf, u64 flags) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_chstat(sqe, fd, statbuf, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
 }
 
 pub fn unlink(ioring mut &ring, i32 dir, string path, u64 flags) -> i32

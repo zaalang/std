@@ -468,7 +468,7 @@ pub const fn cos<R, P>(fixed<R, P> x)
   return sign * (1 - xx * fixed<R, P>((2 - QUATPI) - xx * fixed<R, P>(1 - QUATPI)));
 }
 
-pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, fixed<R, P> &fixed) throws -> void
+pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, fixed<R, P> &fixed) throws(std::error) -> void
 {
   std::fmt_to(&mut os, &mut ctx, fixed.as<f64>);
 }

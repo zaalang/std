@@ -167,7 +167,7 @@ pub fn len(expr &expr) -> usize
   return 0;
 }
 
-fn add_range(klass mut &cc, char lo, char hi) -> void
+fn insert(klass mut &cc, char lo, char hi) -> void
 {
   var j = cc.runes.begin;
   while (j != cc.runes.end && (*j).lo < lo)
@@ -213,7 +213,7 @@ fn negate(klass mut &cc) -> void
     for (var lo = std::ctz(folddn); lo < 26; lo = std::ctz(folddn))
     {
       var hi = lo + std::ctz(~(folddn >> lo));
-      cc.add_range(cast<char>(lo + 65), cast<char>(hi + 64));
+      cc.insert(cast<char>(lo + 65), cast<char>(hi + 64));
       folddn = (folddn >> hi) << hi;
     }
 
@@ -221,7 +221,7 @@ fn negate(klass mut &cc) -> void
     for (var lo = std::ctz(foldup); lo < 26; lo = std::ctz(foldup))
     {
       var hi = lo + std::ctz(~(foldup >> lo));
-      cc.add_range(cast<char>(lo + 97), cast<char>(hi + 96));
+      cc.insert(cast<char>(lo + 97), cast<char>(hi + 96));
       foldup = (foldup >> hi) << hi;
     }
 
@@ -433,52 +433,52 @@ fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
 
   if (sv == ":alnum")
   {
-    cc.add_range('0', '9');
-    cc.add_range('A', 'Z');
-    cc.add_range('a', 'z');
+    cc.insert('0', '9');
+    cc.insert('A', 'Z');
+    cc.insert('a', 'z');
     cc.flags &= ~options::foldcase;
   }
   else if (sv == ":alpha")
   {
-    cc.add_range('A', 'Z');
-    cc.add_range('a', 'z');
+    cc.insert('A', 'Z');
+    cc.insert('a', 'z');
     cc.flags &= ~options::foldcase;
   }
   else if (sv == ":digit")
   {
-    cc.add_range('0', '9');
+    cc.insert('0', '9');
   }
   else if (sv == ":lower")
   {
-    cc.add_range('a', 'z');
+    cc.insert('a', 'z');
   }
   else if (sv == ":upper")
   {
-    cc.add_range('A', 'Z');
+    cc.insert('A', 'Z');
   }
   else if (sv == ":space")
   {
-    cc.add_range('\r', '\r');
+    cc.insert('\r', '\r');
     if (!(cc.flags & options::multiline))
-      cc.add_range('\n', '\n');
-    cc.add_range('\t', '\t');
-    cc.add_range('\f', '\f');
-    cc.add_range('\v', '\v');
-    cc.add_range(' ', ' ');
+      cc.insert('\n', '\n');
+    cc.insert('\t', '\t');
+    cc.insert('\f', '\f');
+    cc.insert('\v', '\v');
+    cc.insert(' ', ' ');
   }
   else if (sv == ":word")
   {
-    cc.add_range('0', '9');
-    cc.add_range('A', 'Z');
-    cc.add_range('_', '_');
-    cc.add_range('a', 'z');
+    cc.insert('0', '9');
+    cc.insert('A', 'Z');
+    cc.insert('_', '_');
+    cc.insert('a', 'z');
     cc.flags &= ~options::foldcase;
   }
   else if (sv == ":xdigit")
   {
-    cc.add_range('0', '9');
-    cc.add_range('A', 'F');
-    cc.add_range('a', 'f');
+    cc.insert('0', '9');
+    cc.insert('A', 'F');
+    cc.insert('a', 'f');
     cc.flags &= ~options::foldcase;
   }
   else
@@ -499,47 +499,47 @@ fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
   switch (*s)
   {
     case 'd':
-      cc.add_range('0', '9');
+      cc.insert('0', '9');
 
     case 'D':
-      cc.add_range(0, 9);
+      cc.insert(0, 9);
       if (!(cc.flags & options::multiline))
-        cc.add_range('\n', '\n');
-      cc.add_range(11, 47);
-      cc.add_range(58, 0x10FFFF);
+        cc.insert('\n', '\n');
+      cc.insert(11, 47);
+      cc.insert(58, 0x10FFFF);
       cc.flags &= ~options::foldcase;
 
     case 's':
-      cc.add_range('\r', '\r');
+      cc.insert('\r', '\r');
       if (!(cc.flags & options::multiline))
-        cc.add_range('\n', '\n');
-      cc.add_range('\t', '\t');
-      cc.add_range('\f', '\f');
-      cc.add_range('\v', '\v');
-      cc.add_range(' ', ' ');
+        cc.insert('\n', '\n');
+      cc.insert('\t', '\t');
+      cc.insert('\f', '\f');
+      cc.insert('\v', '\v');
+      cc.insert(' ', ' ');
 
     case 'S':
-      cc.add_range(0, 8);
-      cc.add_range(14, 31);
-      cc.add_range(33, 0x10FFFF);
+      cc.insert(0, 8);
+      cc.insert(14, 31);
+      cc.insert(33, 0x10FFFF);
       cc.flags &= ~options::foldcase;
 
     case 'w':
-      cc.add_range('a', 'z');
-      cc.add_range('A', 'Z');
-      cc.add_range('0', '9');
-      cc.add_range('_', '_');
-      cc.add_range(128, 0x10FFFF);
+      cc.insert('a', 'z');
+      cc.insert('A', 'Z');
+      cc.insert('0', '9');
+      cc.insert('_', '_');
+      cc.insert(128, 0x10FFFF);
       cc.flags &= ~options::foldcase;
 
     case 'W':
-      cc.add_range(0, 9);
+      cc.insert(0, 9);
       if (!(cc.flags & options::multiline))
-        cc.add_range('\n', '\n');
-      cc.add_range(11, 47);
-      cc.add_range(58, 64);
-      cc.add_range(91, 94);
-      cc.add_range(96, 96);
+        cc.insert('\n', '\n');
+      cc.insert(11, 47);
+      cc.insert(58, 64);
+      cc.insert(91, 94);
+      cc.insert(96, 96);
 
     else:
       return errc::bad_char_class;
@@ -558,7 +558,7 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
     invert = true;
 
     if (cc.flags & options::multiline)
-      cc.add_range('\n', '\n');
+      cc.insert('\n', '\n');
 
     ++s;
   }
@@ -595,7 +595,7 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
         return errc::bad_char_range;
     }
 
-    cc.add_range(lo, hi);
+    cc.insert(lo, hi);
   }
 
   if (s == end)

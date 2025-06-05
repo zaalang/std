@@ -210,7 +210,7 @@ pub fn <=><T>(Range<T> &lhs, Range<T> &rhs) -> int
   return 0;
 }
 
-pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws -> void
+pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, Range<T> &range) throws(std::error) -> void
 {
   ctx.written += std::print_to(&mut os, "[");
 
@@ -283,7 +283,7 @@ pub struct iota_view<I, J>
     }
   }
 
-  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, iota_iterator<X> &iter) throws -> void
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, iota_iterator<X> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.n);
   }
@@ -421,7 +421,7 @@ pub struct repeat_view<T, I, J>
     }
   }
 
-  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, repeat_iterator<X> &iter) throws -> void
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, repeat_iterator<X> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.n);
   }
@@ -591,7 +591,7 @@ pub struct cycle_view<R>
     pub ~cycle_sentinal() = default;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, cycle_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, cycle_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -737,7 +737,7 @@ pub struct flatten_view<R>
     pub ~flatten_sentinal() = default;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, flatten_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, flatten_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.base);
   }
@@ -854,7 +854,7 @@ pub struct reverse_view<R>
     }
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, reverse_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, reverse_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -977,7 +977,7 @@ pub struct filter_view<R, Pred>
     filter_view &view;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, filter_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, filter_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -1089,7 +1089,7 @@ pub struct take_view<R>
     pub ~take_sentinal() = default;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, take_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, take_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -1198,7 +1198,7 @@ pub struct transform_view<R, Func>
     }
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, transform_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, transform_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -1328,7 +1328,7 @@ pub struct adjacent_view<N, R>
     pub ~adjacent_sentinal() = default;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, adjacent_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, adjacent_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -1451,7 +1451,7 @@ pub struct enumerate_view<R>
     pub ~enumerate_sentinal() = default;
   }
 
-  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, enumerate_iterator<I> &iter) throws -> void
+  pub fn fmt<I>(std::OutputStream mut &os, std::fmt_context mut &ctx, enumerate_iterator<I> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -1600,7 +1600,7 @@ pub struct chain_view<Rs, I, J>
     chain_view &view;
   }
 
-  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, chain_iterator<X> &iter) throws -> void
+  pub fn fmt<X>(std::OutputStream mut &os, std::fmt_context mut &ctx, chain_iterator<X> &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }
@@ -1738,7 +1738,7 @@ pub struct zip_view<Rs, I, J>
     pub ~zip_sentinal() = default;
   }
 
-  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, zip_iterator &iter) throws -> void
+  pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, zip_iterator &iter) throws(std::error) -> void
   {
     std::fmt_to(&mut os, &mut ctx, iter.super);
   }

@@ -173,7 +173,7 @@ pub fn to_titlecase(char ch) -> caseconv_result
   return result;
 }
 
-pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, caseconv_result &str) throws -> void
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, caseconv_result &str) throws(std::error) -> void
 {
   var len = 0;
   var buf = [0; 256];

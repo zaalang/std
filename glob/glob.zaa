@@ -1,0 +1,509 @@
+//
+// glob
+//
+
+import std.string : String;
+import std.range;
+import sys.path;
+
+pub enum options
+{
+  case_insensitive = 0x01,
+  match_leading_period  = 0x02,
+
+  pub const fn bool(options lhs) -> bool { return cast<isize>(lhs) != 0; }
+
+  pub const fn ~(options lhs) -> options { return cast<options>(~cast<isize>(lhs)); }
+  pub const fn &(options lhs, options rhs) -> options { return cast<options>(cast<isize>(lhs) & cast<isize>(rhs)); }
+  pub const fn |(options lhs, options rhs) -> options { return cast<options>(cast<isize>(lhs) | cast<isize>(rhs)); }
+}
+
+pub struct glob
+{
+  options flags;
+  std::string prefix;
+  std::vector<std::vector<expr>> patterns;
+
+  pub struct glob_iterator
+  {
+    std::vector<(std::string, usize)> stack;
+
+    pub glob_iterator(glob_iterator &) = default;
+    pub ~glob_iterator() = default;
+
+    pub fn *(glob_iterator &this) -> std::string &
+    {
+      return &this.stack.back.0;
+    }
+
+    pub fn ++(glob_iterator mut &this) throws(std::error) -> glob_iterator mut &
+    {
+      this.stack.pop_back();
+
+      while (!this.stack.empty && this.stack.back.1 != this.glob.patterns.len)
+      {
+        var [path, depth] = this.stack.take_back();
+
+        fetch(&mut this.glob, &mut this.stack, path.view, depth);
+      }
+
+      return &this;
+    }
+
+    pub fn ==(glob_iterator &lhs, end_iterator rhs) -> bool
+    {
+      return lhs.stack.empty;
+    }
+
+    glob_iterator(glob mut &glob)
+      : glob(&glob)
+    {
+      stack.push_back(glob.prefix, 0);
+      stack.push_back(std::string(), 0);
+    }
+
+    glob mut &glob;
+  }
+
+  struct end_iterator
+  {
+    end_iterator() = default;
+    end_iterator(end_iterator&) = default;
+    fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
+    ~end_iterator() = default;
+  }
+
+  #[lifetime(repose(iter, this), depend(this))]
+  pub fn [](this &&, glob_iterator &iter) -> std::string &
+  {
+    return &iter.stack.back.0;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn files(this mut &) throws(std::error)
+  {
+    return std::range_view(&this, ++glob_iterator(&mut this), end_iterator());
+  }
+
+  pub glob() = default;
+  pub glob(glob &&) = default;
+  pub fn =(glob mut &, glob &&) -> glob mut & = default;
+  pub ~glob() = default;
+}
+
+struct literal
+{
+  char rune;
+
+  literal(char rune)
+    : rune(rune)
+  {
+  }
+
+  literal(literal&&) = default;
+  ~literal() = default;
+}
+
+struct klass
+{
+  struct range
+  {
+    char lo;
+    char hi;
+
+    range(char lo, char hi)
+      : lo(lo), hi(hi)
+    {
+    }
+
+    range(range&&) = default;
+    ~range() = default;
+  }
+
+  std::vector<range, N:4> runes;
+
+  klass() = default;
+  klass(klass&&) = default;
+  ~klass() = default;
+}
+
+union expr
+{
+  AnyChar,
+  AnySequence,
+  AnyRecursiveSequence,
+  Literal(literal),
+  Klass(klass),
+
+  fn is_literal(this &) -> bool
+  {
+    return this.kind == typeof(this.kind)::Literal;
+  }
+
+  fn is_recursive(this &) -> bool
+  {
+    return this.kind == typeof(this.kind)::AnyRecursiveSequence;
+  }
+
+  expr(expr&&) = default;
+  fn =(expr mut &, expr &&) -> expr mut & = default;
+  ~expr() = default;
+}
+
+fn insert(klass mut &cc, char lo, char hi) -> void
+{
+  var j = cc.runes.begin;
+  while (j != cc.runes.end && (*j).lo < lo)
+    ++j;
+
+  cc.runes.insert(j, klass::range(lo, hi));
+
+  for (var i = cc.runes.begin, j = i + 1; j != cc.runes.end; i = j++)
+  {
+    if ((*j).lo <= (*i).hi + 1)
+    {
+      (*i).hi = std::max((*i).hi, (*j).hi);
+
+      j = cc.runes.erase(j) - 1;
+    }
+  }
+}
+
+fn negate(klass mut &cc) -> void
+{
+  var next = 0;
+  var j = cc.runes.begin;
+
+  for (var range : cc.runes)
+  {
+    if (next + 1 <= range.lo)
+    {
+      (*j).lo = next;
+      (*j).hi = range.lo - 1;
+      ++j;
+    }
+
+    next = range.hi + 1;
+  }
+
+  cc.runes.erase(j, cc.runes.end);
+
+  if (next <= 0x10FFFF)
+  {
+    cc.runes.push_back(klass::range(next, 0x10FFFF));
+  }
+}
+
+fn contains(klass &cc, char ch) -> bool
+{
+  for (var range : cc.runes)
+  {
+    if (range.lo <= ch && ch <= range.hi)
+      return true;
+  }
+
+  return false;
+}
+
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, glob &glob) throws(std::error) -> void
+{
+  var i = 0;
+
+  std::fmt_to(&mut os, &mut ctx, glob.prefix);
+
+  for (var &pattern : glob.patterns)
+  {
+    if (i != 0)
+    {
+      std::fmt_to(&mut os, &mut ctx, "/");
+    }
+
+    for (var &expr : pattern)
+    {
+      switch (expr)
+      {
+        case AnyChar:
+          std::fmt_to(&mut os, &mut ctx, "?");
+
+        case AnySequence:
+          std::fmt_to(&mut os, &mut ctx, "*");
+
+        case AnyRecursiveSequence:
+          std::fmt_to(&mut os, &mut ctx, "**");
+
+        case Literal[literal]:
+          std::fmt_to(&mut os, &mut ctx, literal.rune);
+
+        case Klass[klass]:
+          std::fmt_to(&mut os, &mut ctx, "[...]");
+      }
+    }
+
+    ++i;
+  }
+}
+
+fn match(std::span<expr> pattern, std::string_view name, options flags) -> bool
+{
+  for (var i = 0; i < pattern.len; ++i)
+  {
+    switch (pattern[i])
+    {
+      case AnyChar:
+        if (name.empty)
+          return false;
+
+        name.drop!(1);
+
+      case AnySequence:
+        for (; !name.empty; name.drop!(1))
+        {
+          if (match(pattern[i + 1 .. pattern.len], name, flags))
+            return true;
+        }
+
+      case Literal[literal]:
+        if (name.empty || !name.starts_with(literal.rune))
+          return false;
+
+        name.drop!(1);
+
+      case Klass[klass]:
+        if (name.empty || !klass.contains(*name.chars.begin))
+          return false;
+
+        name.drop!(1);
+    }
+  }
+
+  return name.empty;
+}
+
+fn match(std::vector<expr> &pattern, String &name, options flags) -> bool
+{
+  if (flags & options::match_leading_period != options::match_leading_period)
+  {
+    if (name.starts_with(".") && !pattern.front.is_literal)
+      return false;
+  }
+
+  return match(std::span(pattern), std::string_view(name), flags);
+}
+
+fn fetch(glob mut &glob, std::vector<(std::string, usize)> mut &stack, std::string_view path, usize depth) throws(std::error) -> void
+{
+  var &pattern = glob.patterns[depth];
+  var is_literal = std::all_of(pattern, |expr| expr.is_literal);
+
+  switch (is_literal)
+  {
+    case true:
+      var str = std::string::with_capacity(pattern.len);
+
+      for (var &expr : pattern)
+        str += expr.Literal.rune;
+
+      var path = sys::path::join(path, str);
+
+      if (sys::exists(path))
+        stack.push_back(path, depth + 1);
+
+    case false:
+
+      var directory = path;
+
+      if (directory.empty)
+        directory = ".";
+
+      if (pattern.front.is_recursive)
+      {
+        var entries = std::vector<std::string>();
+
+        for (var &entry : sys::read_dir(directory))
+        {
+          if (entry.is_directory)
+            entries.push_back(entry.name);
+        }
+
+        rof (var &name : entries.sort!)
+        {
+          stack.push_back(sys::path::join(path, name), depth);
+        }
+
+        stack.push_back(sys::path::join(path), depth + 1);
+      }
+      else
+      {
+        var entries = std::vector<std::string>();
+
+        for (var &entry : sys::read_dir(directory))
+        {
+          if (entry.is_directory || depth + 1 == glob.patterns.len)
+            if (match(pattern, entry.name, glob.flags))
+              entries.push_back(entry.name);
+        }
+
+        rof (var &name : entries.sort!)
+        {
+          stack.push_back(sys::path::join(path, name), depth + 1);
+        }
+      }
+  }
+}
+
+fn parse_class(var mut &s, var &end, var mut &cc) -> bool
+{
+  var invert = false;
+  if (s != end && *s == '!')
+  {
+    invert = true;
+
+    ++s;
+  }
+
+  if (s != end && *s == ']')
+  {
+    cc.insert(']', ']');
+
+    ++s;
+  }
+
+  for (; s != end && *s != ']'; )
+  {
+    var lo = *s++;
+    var hi = lo;
+
+    if (s != end && *s == '-' && (s.super+1 != end && *(s.super+1) != cast(']')))
+    {
+      ++s;
+
+      hi = *s++;
+
+      if (hi < lo)
+        return false;
+    }
+
+    cc.insert(lo, hi);
+  }
+
+  if (s == end)
+    return false;
+
+  ++s;
+
+  if (invert)
+  {
+    negate(&mut cc);
+  }
+
+  if (cc.runes.empty)
+    return false;
+
+  return true;
+}
+
+fn parse(std::string_ref pattern, std::vector<expr> mut &expr) -> bool
+{
+  for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
+  {
+    var s = std::next(ch);
+
+    switch (*ch)
+    {
+      case '?':
+        expr.push_back(expr::AnyChar);
+
+      case '*':
+        while (s != end && *s == '*')
+          ++s;
+
+        switch (s - ch)
+        {
+          case 1:
+            expr.push_back(expr::AnySequence);
+
+          case 2:
+            expr.push_back(expr::AnyRecursiveSequence);
+
+          else:
+            return false;
+        }
+
+      case '[':
+        var cc = klass();
+
+        if (!parse_class(&mut s, end, &mut cc))
+          return false;
+
+        expr.push_back(expr::Klass(cc));
+
+      else:
+        expr.push_back(expr::Literal(*ch));
+    }
+
+    ch = s;
+  }
+
+  return true;
+}
+
+fn parse(glob mut &glob, std::string_view pattern) -> bool
+{
+  var prefix = sys::path_view(pattern).prefix;
+
+  for (var &part : sys::path_view(pattern[prefix.len .. pattern.len]).parts)
+  {
+    var expr = std::vector<expr>();
+
+    if (!parse(part, &mut expr))
+      return false;
+
+    glob.patterns.push_back(&move expr);
+  }
+
+  glob.prefix = prefix;
+
+  return true;
+}
+
+pub fn glob(String &pattern, options flags = cast(0)) -> glob
+{
+  var glob = glob();
+
+  glob.flags = flags;
+
+  if (!parse(&mut glob, std::string_view(pattern)))
+    glob.patterns.clear();
+
+  return glob;
+}
+
+fn is_glob(std::string_view pattern) -> bool
+{
+  var glob = false;
+
+  for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
+  {
+    switch (*ch)
+    {
+      case '?':
+      case '*':
+        glob = true;
+
+      case '[':
+        var cc = klass();
+
+        if (!parse_class(&mut std::next(ch), end, &mut cc))
+          return false;
+
+        glob = true;
+    }
+  }
+
+  return glob;
+}
+
+pub fn is_glob(String &pattern) -> bool
+{
+  return is_glob(std::string_view(pattern));
+}
