@@ -437,6 +437,11 @@ fn parse(std::string_ref pattern, std::vector<expr> mut &expr) -> bool
 
         expr.push_back(expr::Klass(cc));
 
+      case '\\':
+        if (s != end)
+          ++s;
+        expr.push_back(expr::Literal(*++ch));
+
       else:
         expr.push_back(expr::Literal(*ch));
     }
@@ -480,15 +485,13 @@ pub fn glob(String &pattern, options flags = cast(0)) -> glob
 
 fn is_glob(std::string_view pattern) -> bool
 {
-  var glob = false;
-
-  for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
+  for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; ++ch)
   {
     switch (*ch)
     {
       case '?':
       case '*':
-        glob = true;
+        return true;
 
       case '[':
         var cc = klass();
@@ -496,11 +499,15 @@ fn is_glob(std::string_view pattern) -> bool
         if (!parse_class(&mut std::next(ch), end, &mut cc))
           return false;
 
-        glob = true;
+        return true;
+
+      case '\\':
+        if (std::next(ch) != end)
+          ++ch;
     }
   }
 
-  return glob;
+  return false;
 }
 
 pub fn is_glob(String &pattern) -> bool

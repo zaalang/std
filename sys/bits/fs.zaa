@@ -1489,6 +1489,9 @@ pub enum permissions
     var tgt = std::string();
     var stack = std::string(path);
 
+    if (var rc = get_cwd(&mut buffer); rc < 0)
+      return rc;
+
     for (; i < stack.len; )
     {
       if (stack[i] == cast<u8>('/'))
@@ -1509,8 +1512,7 @@ pub enum permissions
 
         if (stack[i .. j] == "..")
         {
-          if (var k = buffer.find_last('/'))
-            buffer.erase(k, buffer.end);
+          buffer.erase(buffer.find_last('/'), buffer.end);
 
           continue;
         }
@@ -1524,7 +1526,7 @@ pub enum permissions
 
         if (var rc = readlink(buffer, &mut tgt); rc < 0)
         {
-          if (rc == EINVAL)
+          if (rc == os::EINVAL)
             continue;
 
           return rc;
