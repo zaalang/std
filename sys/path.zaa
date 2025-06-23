@@ -147,11 +147,13 @@ pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, path_view &path
   std::fmt_to(&mut os, &mut ctx, path.str);
 }
 
+#[nodiscard]
 pub fn is_absolute(path_view &path) -> bool
 {
   return scan_path_prefix(path.str) != 0;
 }
 
+#[nodiscard]
 pub fn is_relative(path_view &path) -> bool
 {
   return scan_path_prefix(path.str) == 0;
@@ -333,5 +335,29 @@ pub struct path
       return path;
 
     return path::join(base, path);
+  }
+
+  #[nodiscard]
+  pub fn is_absolute(String &path) -> bool
+  {
+    return path_view(path).is_absolute;
+  }
+
+  #[nodiscard]
+  pub fn is_relative(String &path) -> bool
+  {
+    return path_view(path).is_relative;
+  }
+
+  #[nodiscard]
+  pub fn basename(String &path) -> std::string_view
+  {
+    return path_view(path).basename;
+  }
+
+  #[nodiscard]
+  pub fn dirname(String &path) -> sys::path_view
+  {
+    return path_view(path).parent;
   }
 }

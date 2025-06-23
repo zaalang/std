@@ -241,7 +241,7 @@ pub fn get_termios(i32 fd, termios mut &state) -> i32
 
 pub fn get_termios(termios mut &state) -> i32
 {
-  return get_termios(STDIN_FILENO, &mut state);
+  return get_termios(STDOUT_FILENO, &mut state);
 }
 
 pub fn set_termios(i32 fd, termios &state) -> i32
@@ -277,7 +277,7 @@ pub fn get_winsize(i32 fd, int mut &cols, int mut &rows) -> i32
 
 pub fn get_winsize(int mut &cols, int mut &rows) -> i32
 {
-  return get_winsize(STDIN_FILENO, &mut cols, &mut rows);
+  return get_winsize(STDOUT_FILENO, &mut cols, &mut rows);
 }
 
 pub fn echo_off(i32 fd) -> i32
@@ -338,7 +338,7 @@ pub fn enable_raw_mode(i32 fd, termios mut &oldstate) -> i32
 
 pub fn enable_raw_mode(termios mut &oldstate) -> i32
 {
-  return enable_raw_mode(STDIN_FILENO, &mut oldstate);
+  return enable_raw_mode(STDOUT_FILENO, &mut oldstate);
 }
 
 pub fn restore_cooked_mode(i32 fd, termios mut &oldstate) -> i32
@@ -351,5 +351,5 @@ pub fn restore_cooked_mode(i32 fd, termios mut &oldstate) -> i32
 
 pub fn restore_cooked_mode(termios mut &oldstate) -> i32
 {
-  return restore_cooked_mode(STDIN_FILENO, &mut oldstate);
+  return restore_cooked_mode(STDOUT_FILENO, &mut oldstate);
 }
