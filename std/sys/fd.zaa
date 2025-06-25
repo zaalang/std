@@ -82,8 +82,10 @@ pub struct fd_result
 
 extern fn fd_open(uintptr mut *fd, string path, u32 oflags, u64 rights, u32 fdflags) -> u32;
 extern fn fd_stat(uintptr fd, filestat *fs) -> u32;
+extern fn fd_read(uintptr fd, u8 mut *buffer, usize length) -> fd_result;
 extern fn fd_readv(uintptr fd, iovec mut *iovs, usize n) -> fd_result;
 extern fn fd_preadv(uintptr fd, iovec mut *iovs, usize n, u64 offset) -> fd_result;
+extern fn fd_write(uintptr fd, u8 *buffer, usize length) -> fd_result;
 extern fn fd_writev(uintptr fd, ciovec *iovs, usize n) -> fd_result;
 extern fn fd_pwritev(uintptr fd, ciovec *iovs, usize n, u64 offset) -> fd_result;
 extern fn fd_close(uintptr fd) -> u32;
@@ -166,11 +168,7 @@ pub fn stat(fd &fd) throws(std::error) -> filestat
 
 pub fn read(fd &fd, u8 mut *data, usize len) throws(std::error) -> usize
 {
-  var buf = iovec(void);
-  buf.data = data;
-  buf.len = len;
-
-  var result = fd_readv(fd.fd, &buf, 1);
+  var result = fd_read(fd.fd, data, len);
 
   if (result.errno != 0)
     throw std::system_error(cast<std::errc>(result.errno));
@@ -194,11 +192,7 @@ pub fn read_at(fd &fd, u64 offset, u8 mut *data, usize len) throws(std::error) -
 
 pub fn write(fd &fd, u8 *data, usize len) throws(std::error) -> usize
 {
-  var buf = ciovec(void);
-  buf.data = data;
-  buf.len = len;
-
-  var result = fd_writev(fd.fd, &buf, 1);
+  var result = fd_write(fd.fd, data, len);
 
   if (result.errno != 0)
     throw std::system_error(cast<std::errc>(result.errno));

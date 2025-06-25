@@ -230,6 +230,28 @@ pub struct watchevt
   }
 }
 
+pub struct iovec
+{
+  pub void mut *data;
+  pub usize len;
+
+  pub iovec() = default;
+  pub iovec(iovec&) = default;
+  pub fn =(iovec mut &, iovec &) -> iovec mut & = default;
+  pub ~iovec() = default;
+}
+
+pub struct ciovec
+{
+  pub void *data;
+  pub usize len;
+
+  pub ciovec() = default;
+  pub ciovec(ciovec&) = default;
+  pub fn =(ciovec mut &, ciovec &) -> ciovec mut & = default;
+  pub ~ciovec() = default;
+}
+
 pub struct string
 {
   u8 *data;
@@ -280,33 +302,37 @@ pub enum ioring_ops
   pub const open = 0x01;
   pub const stat = 0x02;
   pub const read = 0x03;
-  pub const write = 0x04;
-  pub const ioctl = 0x05;
-  pub const close = 0x06;
-  pub const select = 0x07;
-  pub const dup = 0x08;
-  pub const dup2 = 0x09;
-  pub const mkdir = 0x0a;
-  pub const rename = 0x0b;
-  pub const link = 0x0c;
-  pub const symlink = 0x0d;
-  pub const chstat = 0x0e;
-  pub const unlink = 0x0f;
-  pub const poll_create = 0x10;
-  pub const poll_add = 0x11;
-  pub const poll_modify = 0x12;
-  pub const poll_remove = 0x13;
-  pub const poll_wait = 0x14;
-  pub const notify_create = 0x15;
-  pub const notify_add = 0x16;
-  pub const notify_modify = 0x17;
-  pub const notify_remove = 0x18;
-  pub const event_create = 0x19;
-  pub const buffer_create = 0x1a;
-  pub const channel_create = 0x1b;
-  pub const channel_read = 0x1c;
-  pub const channel_write = 0x1d;
-  pub const channel_call = 0x1e;
+  pub const readv = 0x04;
+  pub const preadv = 0x05;
+  pub const write = 0x06;
+  pub const writev = 0x07;
+  pub const pwritev = 0x08;
+  pub const ioctl = 0x09;
+  pub const close = 0x0a;
+  pub const select = 0x0b;
+  pub const dup = 0x0c;
+  pub const dup2 = 0x0d;
+  pub const mkdir = 0x0e;
+  pub const rename = 0x0f;
+  pub const link = 0x10;
+  pub const symlink = 0x11;
+  pub const chstat = 0x12;
+  pub const unlink = 0x13;
+  pub const poll_create = 0x14;
+  pub const poll_add = 0x15;
+  pub const poll_modify = 0x16;
+  pub const poll_remove = 0x17;
+  pub const poll_wait = 0x18;
+  pub const notify_create = 0x19;
+  pub const notify_add = 0x1a;
+  pub const notify_modify = 0x1b;
+  pub const notify_remove = 0x1c;
+  pub const event_create = 0x1d;
+  pub const buffer_create = 0x1e;
+  pub const channel_create = 0x1f;
+  pub const channel_read = 0x20;
+  pub const channel_write = 0x21;
+  pub const channel_call = 0x22;
 }
 
 pub enum ioring_flags
@@ -465,21 +491,59 @@ pub fn ioring_prep_sqe_stat(ioring_sqe mut *sqe, i32 fd, stat mut *statbuf, u64 
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_read(ioring_sqe mut *sqe, i32 fd, void mut *buffer, usize buflen) -> void
+pub fn ioring_prep_sqe_read(ioring_sqe mut *sqe, i32 fd, void mut *buffer, usize length) -> void
 {
   sqe.op = ioring_ops::read;
   sqe.args[0] = cast(fd);
   sqe.args[1] = cast(buffer);
-  sqe.args[2] = cast(buflen);
+  sqe.args[2] = cast(length);
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_write(ioring_sqe mut *sqe, i32 fd, void *buffer, usize buflen) -> void
+pub fn ioring_prep_sqe_readv(ioring_sqe mut *sqe, i32 fd, iovec mut *iovs, usize n) -> void
+{
+  sqe.op = ioring_ops::readv;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(iovs);
+  sqe.args[2] = cast(n);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_preadv(ioring_sqe mut *sqe, i32 fd, iovec mut *iovs, usize n, u64 position) -> void
+{
+  sqe.op = ioring_ops::preadv;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(iovs);
+  sqe.args[2] = cast(n);
+  sqe.args[3] = cast(position);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_write(ioring_sqe mut *sqe, i32 fd, void *buffer, usize length) -> void
 {
   sqe.op = ioring_ops::write;
   sqe.args[0] = cast(fd);
   sqe.args[1] = cast(buffer);
-  sqe.args[2] = cast(buflen);
+  sqe.args[2] = cast(length);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_writev(ioring_sqe mut *sqe, i32 fd, ciovec *iovs, usize n) -> void
+{
+  sqe.op = ioring_ops::writev;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(iovs);
+  sqe.args[2] = cast(n);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_pwritev(ioring_sqe mut *sqe, i32 fd, ciovec *iovs, usize n, u64 position) -> void
+{
+  sqe.op = ioring_ops::pwritev;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(iovs);
+  sqe.args[2] = cast(n);
+  sqe.args[3] = cast(position);
   sqe.flags = ioring_flags::fin;
 }
 
@@ -756,13 +820,13 @@ pub fn stat(ioring mut &ring, i32 fd, stat mut *statbuf, u64 flags) -> i32
   return result;
 }
 
-pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize buflen) -> i32
+pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize length) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_read(sqe, fd, buffer, buflen);
+  ioring_prep_sqe_read(sqe, fd, buffer, length);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -775,13 +839,89 @@ pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize buflen) -> i32
   return result;
 }
 
-pub fn write(ioring mut &ring, i32 fd, void *buffer, usize buflen) -> i32
+pub fn readv(ioring mut &ring, i32 fd, iovec mut *iovs, usize n) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_write(sqe, fd, buffer, buflen);
+  ioring_prep_sqe_readv(sqe, fd, iovs, n);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn preadv(ioring mut &ring, i32 fd, iovec mut *iovs, usize n, u64 position) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_preadv(sqe, fd, iovs, n, position);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn write(ioring mut &ring, i32 fd, void *buffer, usize length) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_write(sqe, fd, buffer, length);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn writev(ioring mut &ring, i32 fd, ciovec *iovs, usize n) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_writev(sqe, fd, iovs, n);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn pwritev(ioring mut &ring, i32 fd, ciovec *iovs, usize n, u64 position) -> i32
+{
+  if (fd < 0)
+    return EINVAL;
+
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_pwritev(sqe, fd, iovs, n, position);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
