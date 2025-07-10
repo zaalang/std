@@ -288,6 +288,11 @@ pub fn chown(u8 *path, uid_t uid, gid_t gid) -> int
   return cast<int>(std::bit_cast<intptr>(syscall3(sys_chown, path, uid, gid)));
 }
 
+pub fn rename(u8 *oldpath, u8 *newpath) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall2(sys_rename, oldpath, newpath)));
+}
+
 pub fn rmdir(u8 *path) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall1(sys_rmdir, path)));

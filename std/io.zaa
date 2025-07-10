@@ -219,7 +219,16 @@ pub struct buffered_reader<Allocator = std::allocator, N = 0>
         if (this.n == buffer.len)
         {
           buffer = this.reader.pack_and_fetch();
-          this.n += std::memchr(buffer.data + this.n, cast('\n'), buffer.len - this.n);
+
+          while (this.n < buffer.len)
+          {
+            this.n += std::memchr(buffer.data + this.n, cast('\n'), buffer.len - this.n);
+
+            if (this.n != buffer.len)
+              break;
+
+            buffer = this.reader.pack_and_fetch();
+          }
 
           if (this.n == this.reader.capacity)
             throw std::system_error(std::errc::line_too_long);

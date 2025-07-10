@@ -3,6 +3,7 @@
 //
 
 import std.stdio;
+import std.span : Span;
 import os.zaos.unistd;
 import os.zaos.fcntl : STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO;
 import os.zaos.time;
@@ -135,6 +136,17 @@ pub fn isatty(i32 fd) -> bool
   return true;
 }
 
+pub fn ttyname(Span<u8> mut &buffer, i32 fd) -> i32
+{
+  var ptn = 0;
+  if (var rc = os::ioctl(&mut thread_ring, fd, tio::getptn, &ptn, sizeof<int>); rc < 0)
+    return rc;
+
+  var len = std::sprintf(&mut buffer, "/dev/pts/{}", ptn);
+
+  return cast(len);
+}
+
 pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
 {
   if (poll(fd, 0) <= 0)
@@ -155,7 +167,7 @@ pub fn write(i32 fd, u8 *data, usize len) -> i32
       {
         var pollset = [ os::pollevt(cast(fd), os::POLLFD, os::POLLOUT, 0) ];
 
-        os::select(&mut thread_ring, pollset.data, pollset.len, 0);
+        os::select(&mut thread_ring, pollset.data, pollset.len, ~0);
 
         bytes = os::write(&mut thread_ring, fd, data + i, len - i);
       }

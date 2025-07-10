@@ -100,6 +100,7 @@ pub extern "C" fn ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesTo
 pub extern "C" fn WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, DWORD mut *lpNumberOfBytesWritten, OVERLAPPED mut *lpOverlapped) -> BOOL;
 pub extern "C" fn CreatePipe(HANDLE mut *hReadPipe, HANDLE mut *hWritePipe, SECURITY_ATTRIBUTES *lpPipeAttributes, DWORD nSize) -> BOOL;
 pub extern "C" fn PeekNamedPipe(HANDLE hNamedPipe, LPVOID lpBuffer, DWORD nBufferSize, DWORD mut *lpBytesRead, DWORD mut *lpTotalBytesAvail, DWORD mut *lpBytesLeftThisMessage) -> BOOL;
+pub extern "C" fn MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName) -> BOOL;
 pub extern "C" fn DeleteFileW(LPCWSTR lpFileName) -> BOOL;
 pub extern "C" fn RemoveDirectoryW(LPCWSTR lpPathName) -> BOOL;
 pub extern "C" fn DuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, HANDLE mut *lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions) -> BOOL;

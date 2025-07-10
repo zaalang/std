@@ -492,7 +492,9 @@ pub struct spawn_attr_t
   {
     using os;
 
-    if (wait(process.pid, null, WNOHANG | WNOWAIT) == 0)
+    var pollset = [ os::pollevt(process.pid, POLLTHREAD, POLLIN, 0) ];
+
+    if (select(&mut thread_ring, pollset.data, pollset.len, 0) <= 0)
       return None;
 
     var rval = 0;

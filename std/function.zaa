@@ -20,11 +20,6 @@ pub struct delegate<R(V), Throws = void, N = 24>
   {
     Y callable;
 
-    fn fx(this &) -> Fx *
-    {
-      return &Fx();
-    }
-
     fn invoke(void *this, V mut &v) throws(Throws) -> R
     {
       return cast<Holder<Y> mut *>(this).callable(&&v...);
@@ -58,7 +53,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
   {
     std::assert(sizeof<Holder<Y>> <= sizeof(_storage), "delegate too large for storage");
 
-    _fx = new<Holder<Y>>(cast<void mut *>(_storage.data))(&&fx).fx;
+    _fx = &impl new<Holder<Y>>(cast<void mut *>(_storage.data))(&&fx);
   }
 
   pub fn bool(this &) -> bool

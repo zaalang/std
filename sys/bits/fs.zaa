@@ -347,11 +347,11 @@ pub enum permissions
     }
   }
 
-  pub fn mkdir(std::string &path) throws(std::error) -> i32
+  pub fn mkdir(std::string &path, u32 mode = 0o775) throws(std::error) -> i32
   {
     using os;
 
-    if (var rc = mkdir(path.data, 0o755); rc < 0)
+    if (var rc = mkdir(path.data, mode); rc < 0)
     {
       if (rc == EEXIST || rc == EACCES || rc == EPERM || rc == EROFS)
         return rc;
@@ -362,7 +362,7 @@ pub enum permissions
     return 0;
   }
 
-  pub fn mkdir(String &path) throws(std::error) -> i32
+  pub fn mkdir(String &path, u32 mode = 0o775) throws(std::error) -> i32
   {
     using os;
 
@@ -373,7 +373,7 @@ pub enum permissions
     std::memcpy(pathstr.data, path.data, path.len);
     pathstr[path.len] = 0;
 
-    if (var rc = mkdir(pathstr.data, 0o755); rc < 0)
+    if (var rc = mkdir(pathstr.data, mode); rc < 0)
     {
       if (rc == EEXIST || rc == EACCES || rc == EPERM || rc == EROFS)
         return rc;
@@ -498,6 +498,50 @@ pub enum permissions
     return 0;
   }
 
+  pub fn rename(std::string &oldpath, std::string &newpath) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = rename(oldpath.data, newpath.data); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL || rc == EROFS || rc == EXDEV)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn rename(String &oldpath, String &newpath) throws(std::error) -> i32
+  {
+    using os;
+
+    if (oldpath.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var oldpathstr = [<u8>: void; 4096];
+    std::memcpy(oldpathstr.data, oldpath.data, oldpath.len);
+    oldpathstr[oldpath.len] = 0;
+
+    if (newpath.len >= 4095)
+      throw std::system_error(std::errc::name_too_long);
+
+    var newpathstr = [<u8>: void; 4096];
+    std::memcpy(newpathstr.data, newpath.data, newpath.len);
+    newpathstr[newpath.len] = 0;
+
+    if (var rc = rename(oldpathstr.data, newpathstr.data); rc < 0)
+    {
+      if (rc == ENOENT || rc == EACCES || rc == EPERM || rc == EINVAL || rc == EROFS || rc == EXDEV)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
   pub fn unlink(std::string &path) throws(std::error) -> i32
   {
     using os;
@@ -564,6 +608,54 @@ pub enum permissions
 
           throw std::system_error(cast<std::errc>(-rc));
         }
+    }
+
+    return 0;
+  }
+
+  pub fn rm_rf(String &path) throws(std::error) -> i32
+  {
+    fn rmdir(String &path) throws(std::error) -> i32
+    {
+      var dirp = dirp();
+      if (var rc = opendir(&mut dirp, path); rc < 0)
+        return rc;
+
+      while (!dirp.eof)
+      {
+        switch (dirp.type)
+        {
+          case directory:
+            if (var rc = rmdir(dirp.path); rc < 0)
+              return rc;
+
+          else:
+            if (var rc = unlink(dirp.path); rc < 0)
+              return rc;
+        }
+
+        readdir(&mut dirp);
+      }
+
+      if (var rc = unlink(path); rc < 0)
+        return rc;
+
+      return 0;
+    }
+
+    var stat = stat();
+    if (var rc = lstat(path, &mut stat); rc < 0)
+      return rc;
+
+    switch (stat.type)
+    {
+      case directory:
+        if (var rc = rmdir(path); rc < 0)
+          return rc;
+
+      else:
+        if (var rc = unlink(path); rc < 0)
+          return rc;
     }
 
     return 0;
@@ -1068,6 +1160,39 @@ pub enum permissions
     return 0;
   }
 
+  pub fn rename(String &oldpath, String &newpath) throws(std::error) -> i32
+  {
+    using os;
+
+    var oldpathstr = [<u16>: void; 2048];
+    var oldpathlen = MultiByteToWideChar(CP_UTF8, 0, oldpath.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (oldpathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    oldpathstr[cast(oldpathlen)] = 0;
+
+    var newpathstr = [<u16>: void; 2048];
+    var newpathlen = MultiByteToWideChar(CP_UTF8, 0, newpath.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+
+    if (newpathlen == 0)
+      throw std::system_error(error_code(GetLastError()));
+
+    newpathstr[cast(newpathlen)] = 0;
+
+    if (MoveFileW(oldpathstr.data, newpathstr.data) == 0)
+    {
+      var rc = error_code(GetLastError());
+
+      if (rc == std::errc::not_found || rc == std::errc::permission_denied)
+        return -cast<i32>(rc);
+
+      throw std::system_error(rc);
+    }
+
+    return 0;
+  }
+
   pub fn unlink(String &path) throws(std::error) -> i32
   {
     using os;
@@ -1107,6 +1232,54 @@ pub enum permissions
           throw std::system_error(rc);
         }
 
+    }
+
+    return 0;
+  }
+
+  pub fn rm_rf(String &path) throws(std::error) -> i32
+  {
+    fn rmdir(String &path) throws(std::error) -> i32
+    {
+      var dirp = dirp();
+      if (var rc = opendir(&mut dirp, path); rc < 0)
+        return rc;
+
+      while (!dirp.eof)
+      {
+        switch (dirp.type)
+        {
+          case directory:
+            if (var rc = rmdir(dirp.path); rc < 0)
+              return rc;
+
+          else:
+            if (var rc = unlink(dirp.path); rc < 0)
+              return rc;
+        }
+
+        readdir(&mut dirp);
+      }
+
+      if (var rc = unlink(path); rc < 0)
+        return rc;
+
+      return 0;
+    }
+
+    var stat = stat();
+    if (var rc = lstat(path, &mut stat); rc < 0)
+      return rc;
+
+    switch (stat.type)
+    {
+      case directory:
+        if (var rc = rmdir(path); rc < 0)
+          return rc;
+
+      else:
+        if (var rc = unlink(path); rc < 0)
+          return rc;
     }
 
     return 0;
@@ -1559,11 +1732,11 @@ pub enum permissions
     return 0;
   }
 
-  pub fn mkdir(String &path) throws(std::error) -> i32
+  pub fn mkdir(String &path, u32 mode = 0o775) throws(std::error) -> i32
   {
     using os;
 
-    if (var rc = mkdir(&mut thread_ring, os::string(path.data, path.len), 0, 0o775); rc < 0)
+    if (var rc = mkdir(&mut thread_ring, os::string(path.data, path.len), 0, mode); rc < 0)
     {
       if (rc == EPERM || rc == EACCES || rc == EEXIST || rc == EROFS)
         return rc;
@@ -1707,6 +1880,21 @@ pub enum permissions
     return 0;
   }
 
+  pub fn rename(String &oldpath, String &newpath) throws(std::error) -> i32
+  {
+    using os;
+
+    if (var rc = rename(&mut thread_ring, os::string(oldpath.data, oldpath.len), os::string(newpath.data, newpath.len), 0); rc < 0)
+    {
+      if (rc == EPERM || rc == ENOENT || rc == EACCES || rc == EROFS || rc == EXDEV)
+        return rc;
+
+      throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
   pub fn unlink(String &path) throws(std::error) -> i32
   {
     using os;
@@ -1717,6 +1905,54 @@ pub enum permissions
         return rc;
 
       throw std::system_error(cast<std::errc>(-rc));
+    }
+
+    return 0;
+  }
+
+  pub fn rm_rf(String &path) throws(std::error) -> i32
+  {
+    fn rmdir(String &path) throws(std::error) -> i32
+    {
+      var dirp = dirp();
+      if (var rc = opendir(&mut dirp, path); rc < 0)
+        return rc;
+
+      while (!dirp.eof)
+      {
+        switch (dirp.type)
+        {
+          case directory:
+            if (var rc = rmdir(dirp.path); rc < 0)
+              return rc;
+
+          else:
+            if (var rc = unlink(dirp.path); rc < 0)
+              return rc;
+        }
+
+        readdir(&mut dirp);
+      }
+
+      if (var rc = unlink(path); rc < 0)
+        return rc;
+
+      return 0;
+    }
+
+    var stat = stat();
+    if (var rc = lstat(path, &mut stat); rc < 0)
+      return rc;
+
+    switch (stat.type)
+    {
+      case directory:
+        if (var rc = rmdir(path); rc < 0)
+          return rc;
+
+      else:
+        if (var rc = unlink(path); rc < 0)
+          return rc;
     }
 
     return 0;
