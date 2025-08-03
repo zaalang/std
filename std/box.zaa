@@ -39,7 +39,7 @@ pub struct box<T, Allocator = std::allocator>
   }
 
   pub box<Args>(Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
     : inner(void)
   {
     inner = new<Bx>(Allocator(allocator).allocate(sizeof<Bx>, alignof<Bx>))(&&args..., allocator: allocator);

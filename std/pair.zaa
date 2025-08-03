@@ -12,7 +12,7 @@ pub struct key_value_pair<K, T, Allocator = std::allocator>
   pub T value;
 
   pub key_value_pair<Key, Args>(Key &&key, Args && ...args, Allocator &allocator = Allocator())
-    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>); T(&move args..., allocator?: std::declval<Allocator>); }
     : key(&&key, allocator?: allocator), value(&&args..., allocator?: allocator)
   {
   }

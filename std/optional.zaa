@@ -23,14 +23,14 @@ pub union optional<T, Allocator = std::allocator>
   }
 
   pub optional<Args>(Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
     : Some(&&args..., allocator?: allocator)
   {
   }
 
   #[lifetime(poison(this))]
   pub fn =<Args>(this mut &, Args && ...args) -> optional mut &
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {
     insert(&mut this, &&args...);
 
@@ -104,22 +104,6 @@ pub union optional<T, Allocator = std::allocator>
       return (this.is_some) ? &this.Some : &default;
     }
 
-    pub fn ==(optional &lhs, std::remove_reference<T> &rhs) -> bool
-    {
-      if (lhs.is_none)
-        return false;
-
-      return lhs.value == rhs;
-    }
-
-    pub fn <=>(optional &lhs, std::remove_reference<T> &rhs) -> int
-    {
-      if (lhs.is_none)
-        return -1;
-
-      return lhs.value <=> rhs;
-    }
-
   #else
 
     pub Some(T),
@@ -172,27 +156,11 @@ pub union optional<T, Allocator = std::allocator>
       return (this.is_some) ? &&this.Some : T(&&default);
     }
 
-    pub fn ==(optional &lhs, T &rhs) -> bool
-    {
-      if (lhs.is_none)
-        return false;
-
-      return lhs.value == rhs;
-    }
-
-    pub fn <=>(optional &lhs, T &rhs) -> int
-    {
-      if (lhs.is_none)
-        return -1;
-
-      return lhs.value <=> rhs;
-    }
-
   #end
 
   #[lifetime(poison(this))]
   pub fn insert<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {
     optional::~optional(this);
     new<optional>(&this)(&&args..., allocator: allocator);
@@ -200,7 +168,7 @@ pub union optional<T, Allocator = std::allocator>
 
   #[lifetime(poison(this))]
   pub fn emplace<Args>(this mut &, Args && ...args, Allocator &allocator = Allocator()) -> T mut &
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {
     insert(&mut this, &&args..., allocator: allocator);
 
@@ -214,7 +182,17 @@ pub union optional<T, Allocator = std::allocator>
     new<optional>(&this)();
   }
 
+  pub fn ==<U>(optional &lhs, U &rhs) -> bool
+    match (optional x, U y) { x.value == y; }
+  {
+    if (lhs.is_none)
+      return false;
+
+    return lhs.value == rhs;
+  }
+
   pub fn ==(optional &lhs, optional &rhs) -> bool
+    match (optional x, optional y) { x.value == y.value; }
   {
     if (lhs.is_none || rhs.is_none)
       return lhs.is_none == rhs.is_none;
@@ -222,7 +200,17 @@ pub union optional<T, Allocator = std::allocator>
     return lhs.value == rhs.value;
   }
 
+  pub fn <=><U>(optional &lhs, U &rhs) -> int
+    match (optional x, U y) { x.value <=> y; }
+  {
+    if (lhs.is_none)
+      return -1;
+
+    return lhs.value <=> rhs;
+  }
+
   pub fn <=>(optional &lhs, optional &rhs) -> int
+    match (optional x, optional y) { x.value <=> y.value; }
   {
     if (lhs.is_none || rhs.is_none)
       return lhs.is_none ? rhs.is_none ? 0 : -1 : +1;
@@ -231,7 +219,7 @@ pub union optional<T, Allocator = std::allocator>
   }
 
   pub optional<U>(optional<U> &&other, Allocator &allocator = Allocator())
-    match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>()); }
+    match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>); }
   {
     switch (other)
     {
@@ -245,7 +233,7 @@ pub union optional<T, Allocator = std::allocator>
 
   #[lifetime(poison(this))]
   pub fn =<U>(this mut &, optional<U> &&other) -> optional mut &
-    match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>()); }
+    match (typeof(other) other) { T((&move other).value, allocator?: std::declval<Allocator>); }
   {
     optional::~optional(this);
 
@@ -322,6 +310,30 @@ pub fn or_else<T, Func>(std::optional<T> &&optional, Func &&func) -> std::option
     else:
       return func();
   }
+}
+
+pub fn and_then<T, Func>(std::optional<T> &&optional, Func &&func) -> typeof(func((&&optional).value))
+{
+  switch (optional)
+  {
+    case Some:
+      return func((&&optional).value);
+
+    else:
+      return None;
+  }
+}
+
+pub fn filter<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<T>
+{
+  switch (optional)
+  {
+    case Some:
+      if (func(optional.value))
+        return &&optional;
+  }
+
+  return None;
 }
 
 pub fn transform<T, Func>(std::optional<T> &&optional, Func &&func) -> std::optional<typeof(func((&&optional).value))>

@@ -145,7 +145,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     return std::mutable_span(this.data, this.len);
   }
 
-  pub fn allocator(this &) -> Allocator &
+  pub fn allocator(this &&)
   {
     return &this._allocator;
   }
@@ -243,6 +243,24 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   }
 
   #[lifetime(depend(this))]
+  pub fn get(this &, usize index) -> std::optional<T&>
+  {
+    if (index < this._len)
+      return Some(&this[index]);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get(this mut &, usize index) -> std::optional<T mut &>
+  {
+    if (index < this._len)
+      return Some(&this[index]);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
   pub fn front(this &&)
   {
     assert(this._len != 0);
@@ -267,7 +285,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     var slot = ensure_space(&mut this, this.end, 1);
 
-    new<T>(slot)(&&args..., allocator?: this.allocator);
+    new<T>(slot)(&&args..., allocator?: this._allocator);
 
     return &*slot;
   }
@@ -288,7 +306,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     var slot = ensure_space(&mut this, position, 1);
 
-    new<T>(slot)(&&args..., allocator?: this.allocator);
+    new<T>(slot)(&&args..., allocator?: this._allocator);
 
     return slot;
   }
@@ -317,7 +335,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     for (var it = slot, var first = other.begin, var last = other.end; first != last; ++it, ++first)
     {
-      new<T>(it)((&&other)[first], allocator?: this.allocator);
+      new<T>(it)((&&other)[first], allocator?: this._allocator);
     }
 
     return slot;
@@ -341,7 +359,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
 
     for (var it = slot; first != last; ++it, ++first)
     {
-      new<T>(it)(*first, allocator?: this.allocator);
+      new<T>(it)(*first, allocator?: this._allocator);
     }
 
     return slot;
@@ -478,7 +496,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, T *first, T *last) -> vector
   {
-    var result = vector::from(moveable_span(cast<T mut *>(first), cast<T mut *>(last)), this.allocator);
+    var result = vector::from(moveable_span(cast<T mut *>(first), cast<T mut *>(last)), this._allocator);
 
     erase(&mut this, first, last - first);
 
@@ -590,7 +608,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
   fn take<M>(this mut &, vector<T, Allocator, M> mut &other) -> T mut *
   {
     assert(this.empty);
-    assert(this.allocator == other.allocator);
+    assert(this._allocator == other._allocator);
 
     if (other._data != cast(other._smallbuffer.data))
     {
@@ -621,7 +639,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
         #if (!__is_trivial_destroy<T>)
           T::~T(*dst);
 
-        new<T>(dst++)(&move *first++, allocator?: this.allocator);
+        new<T>(dst++)(&move *first++, allocator?: this._allocator);
       }
     }
     #else
@@ -642,7 +660,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
         #if (!__is_trivial_destroy<T>)
           T::~T(*(end - 1));
 
-        new<T>(--end)(&move *--last, allocator?: this.allocator);
+        new<T>(--end)(&move *--last, allocator?: this._allocator);
       }
     }
     #else
@@ -658,7 +676,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     {
       while (first != last)
       {
-        new<T>(dst++)(&move *first++, allocator?: this.allocator);
+        new<T>(dst++)(&move *first++, allocator?: this._allocator);
       }
     }
     #else

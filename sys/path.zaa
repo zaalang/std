@@ -308,10 +308,15 @@ pub struct path
 
     for (var &part : sys::path_view(path).parts)
     {
-      if (part == ".." && !parts.empty && scan_path_prefix(parts.back) == 0)
-        parts.pop_back();
+      if (part == ".." && !parts.empty)
+      {
+        if (scan_path_prefix(parts.back) == 0)
+          parts.pop_back();
+      }
       else
+      {
         parts.push_back(part);
+      }
     }
 
     return path::join(parts);

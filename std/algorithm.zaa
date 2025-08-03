@@ -175,6 +175,13 @@ pub fn max<T>(T &&a, T &&b)
   return (a < b) ? &b : &a;
 }
 
+#[lifetime(depend(a), depend(b))]
+pub fn minmax<T>(T &a, T &b) -> (T&, T&)
+  where !__is_arithmetic<T>
+{
+  return (b < a) ? (&b, &a) : (&a, &b);
+}
+
 #[lifetime(depend(*args))]
 pub fn min<Args>(Args & ...args)
   where __tuple_len<Args> > 2 && std::is_all_same<Args>
@@ -203,6 +210,24 @@ pub fn max<Args>(Args & ...args)
   }
 
   return &result;
+}
+
+#[lifetime(depend(*args))]
+pub fn minmax<Args>(Args & ...args) -> (typeof(args.0)&, typeof(args.0)&)
+  where __tuple_len<Args> > 2 && std::is_all_same<Args>
+{
+  var result = (&args.0, &args.0);
+
+  #for (const k = 1; k < __tuple_len<Args>; ++k)
+  {
+    if (args.#k < *result.0)
+      result.0 = &args.#k;
+
+    else if (*result.1 < args.#k)
+      result.1 = &args.#k;
+  }
+
+  return result;
 }
 
 pub const less = |x, y| x < y;

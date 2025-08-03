@@ -100,7 +100,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     return &this._hash;
   }
 
-  pub fn allocator(this &) -> Allocator &
+  pub fn allocator(this &&)
   {
     return &this._allocator;
   }
@@ -243,7 +243,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (pos.1)
     {
-      new<value_type>(this.data + pos.0)(&&value, allocator?: this.allocator);
+      new<value_type>(this.data + pos.0)(&&value, allocator?: this._allocator);
     }
 
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
@@ -251,7 +251,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(poison(this), repose(args, key), depend(this))]
   pub fn insert<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
-    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>); T(&move args..., allocator?: std::declval<Allocator>); }
   {
     #for (const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
@@ -260,7 +260,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (pos.1)
     {
-      new<value_type>(this.data + pos.0)(&&key, &&args..., allocator?: this.allocator);
+      new<value_type>(this.data + pos.0)(&&key, &&args..., allocator?: this._allocator);
     }
 
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
@@ -268,7 +268,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(poison(this), repose(args, key), depend(this))]
   pub fn insert_or_assign<Key, Args>(this mut &, Key &&key, Args && ...args) -> (iterator, bool)
-    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>); T(&move args..., allocator?: std::declval<Allocator>); }
   {
     #for (const k = 0; k < __tuple_len<Args>; ++k)
       assert(!(cast<void*>(this._data) <= cast<void*>(&args.#k) && cast<void*>(&args.#k) < cast<void*>(this._data + this._len)));
@@ -277,11 +277,11 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
     if (pos.1)
     {
-      new<value_type>(this.data + pos.0)(&&key, &&args..., allocator?: this.allocator);
+      new<value_type>(this.data + pos.0)(&&key, &&args..., allocator?: this._allocator);
     }
     else
     {
-      (this._data + pos.0).value = T(&&args..., allocator?: this.allocator);
+      (this._data + pos.0).value = T(&&args..., allocator?: this._allocator);
     }
 
     return (iterator(this._ctrl + pos.0, this._data + pos.0), pos.1);
@@ -322,7 +322,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   #[lifetime(poison(this), repose(args, key), depend(this))]
   pub fn emplace<Key, Args>(this mut &, Key &&key, Args && ...args) -> T mut &
-    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>()); T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Key key, Args args) { K(&move key, allocator?: std::declval<Allocator>); T(&move args..., allocator?: std::declval<Allocator>); }
   {
     return &this[insert(&mut this, &&key, &&args...).0].value;
   }
@@ -332,7 +332,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     where __is_rvalue<typeof(other)>
   {
     assert(&this != &other);
-    assert(this.allocator == other.allocator);
+    assert(this._allocator == other._allocator);
 
     for (var mut &it : &move other)
     {
@@ -405,7 +405,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, iterator first, iterator last) -> flat_hash_map
   {
-    var result = flat_hash_map::from(std::moveable_range_view(&mut this, first, last), this.allocator);
+    var result = flat_hash_map::from(std::moveable_range_view(&mut this, first, last), this._allocator);
 
     erase(&mut this, first, last);
 
@@ -416,7 +416,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   fn take(this mut &, flat_hash_map mut &other) -> void
   {
     assert(this.empty);
-    assert(this.allocator == other.allocator);
+    assert(this._allocator == other._allocator);
 
     swap(&mut this._data, &mut other._data);
     swap(&mut this._ctrl, &mut other._ctrl);
@@ -524,7 +524,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   #[unsafe]
   fn uninitialised_move(this mut &, value_type mut *dst, value_type mut *src) -> void
   {
-    new<value_type>(dst)(&move *src, allocator?: this.allocator);
+    new<value_type>(dst)(&move *src, allocator?: this._allocator);
 
     value_type::~key_value_pair(*src);
   }

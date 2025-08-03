@@ -128,7 +128,7 @@ pub struct arc<T, Allocator = std::allocator>
   }
 
   pub arc<Args>(Args && ...args, Allocator &allocator = Allocator())
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
     : inner(void)
   {
     inner = new<Ac>(Allocator(allocator).allocate(sizeof<Ac>, alignof<Ac>))(&&args..., allocator: allocator);

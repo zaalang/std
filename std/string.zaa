@@ -736,7 +736,7 @@ pub struct string<Allocator = std::allocator, N = 24>
     return std::mutable_span(this.data, this.len);
   }
 
-  pub fn allocator(this &) -> Allocator &
+  pub fn allocator(this &&)
   {
     return &this._allocator;
   }
@@ -1066,6 +1066,23 @@ pub struct string<Allocator = std::allocator, N = 24>
   }
 
   #[lifetime(poison(this))]
+  pub fn append_n<Args>(this mut &, usize times, Args & ...args) -> usize
+  {
+    try
+    {
+      var len = 0;
+      for (var i = 0; i < times; ++i)
+        len += std::print_to(&mut this, args...);
+
+      return len;
+    }
+    catch(std::error e)
+    {
+      return 0;
+    }
+  }
+
+  #[lifetime(poison(this))]
   pub fn appendf<Args>(this mut &, #string_literal format, Args & ...args, #var site = __site__) -> usize
   {
     try
@@ -1110,7 +1127,7 @@ pub struct string<Allocator = std::allocator, N = 24>
   fn take<M>(this mut &, string<Allocator, M> mut &other) -> void
   {
     assert(this.empty);
-    assert(this.allocator == other.allocator);
+    assert(this._allocator == other._allocator);
 
     if (other._data != other._smallbuffer.data)
     {
@@ -1132,6 +1149,9 @@ pub struct string<Allocator = std::allocator, N = 24>
   #[lifetime(poison(this))]
   fn insert(this mut &, usize position, u8 *src, usize len) -> void
   {
+    if (len == 0)
+      return;
+
     if (this._capacity < this._len + len)
     {
       var newcapacity = this._len + len + 1;

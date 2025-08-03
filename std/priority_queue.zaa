@@ -8,7 +8,7 @@ import std.vector;
 
 pub struct priority_queue<T = int, Cmp = typeof(std::less), Container = std::vector<T>>
 {
-  using Allocator = typeof(std::declval<Container>().allocator);
+  using Allocator = typeof(std::declval<Container>.allocator);
 
   pub priority_queue(Allocator &allocator = Allocator())
     : _container(allocator)
@@ -58,7 +58,7 @@ pub struct priority_queue<T = int, Cmp = typeof(std::less), Container = std::vec
     return &this.cmp;
   }
 
-  pub fn allocator(this &) -> Allocator &
+  pub fn allocator(this &&)
   {
     return &this._container.allocator;
   }
@@ -73,7 +73,7 @@ pub struct priority_queue<T = int, Cmp = typeof(std::less), Container = std::vec
 
   #[lifetime(poison(this), depend(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> void
-    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {
     this._container.push_back(&&args...);
 
