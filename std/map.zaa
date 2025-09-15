@@ -240,7 +240,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     }
     else
     {
-      cast<node_type mut *>(pos.0).value.value = T(&&args..., allocator?: this._allocator);
+      cast<node_type mut *>(pos.0).value.value = T(&&args..., allocator?: this._tree.allocator);
     }
 
     return (iterator(pos.0), !!pos.1);
@@ -355,7 +355,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   #[lifetime(poison(this), repose(first, this), repose(last, this))]
   pub fn take(this mut &, iterator first, iterator last) -> map
   {
-    var result = map::from(std::moveable_range_view(&mut this, first, last), this._allocator);
+    var result = map::from(std::moveable_range_view(&mut this, first, last), this._tree.allocator);
 
     erase(&mut this, first, last);
 

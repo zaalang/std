@@ -78,15 +78,7 @@ pub const fn log2<T>(T x) -> T
   if (xa.0 == 0.5)
     return cast<T>(xa.1 - 1);
 
-  return ln(xa.0) * (1.0 / Ln2) + cast<T>(xa.1);
-}
-
-pub const fn log10<T>(T x) -> T
-  where __is_floating_point<T>
-{
-  using std;
-
-  return ln(x) * (1.0 / Ln10);
+  return ln(xa.0) * Log2E + cast<T>(xa.1);
 }
 
 pub const fn ceil_log2<T>(T x) -> T
@@ -99,4 +91,60 @@ pub const fn floor_log2<T>(T x) -> T
   where __is_integral<T>
 {
   return cast<T>(63 - __clz(cast<u64>(x)));
+}
+
+pub const fn log10<T>(T x) -> T
+  where __is_floating_point<T>
+{
+  using std;
+
+  switch (std::bit_cast<u64>(cast<f64>(x)))
+  {
+    case 0x4024000000000000: return 1.0;
+    case 0x4059000000000000: return 2.0;
+    case 0x408f400000000000: return 3.0;
+    case 0x40c3880000000000: return 4.0;
+    case 0x40f86a0000000000: return 5.0;
+    case 0x412e848000000000: return 6.0;
+    case 0x416312d000000000: return 7.0;
+    case 0x4197d78400000000: return 8.0;
+    case 0x41cdcd6500000000: return 9.0;
+    case 0x4202a05f20000000: return 10.0;
+    case 0x42374876e8000000: return 11.0;
+    case 0x426d1a94a2000000: return 12.0;
+    case 0x42a2309ce5400000: return 13.0;
+    case 0x42d6bcc41e900000: return 14.0;
+    case 0x430c6bf526340000: return 15.0;
+    case 0x4341c37937e08000: return 16.0;
+  }
+
+  return ln(x) * Log10E;
+}
+
+pub const fn floor_log10<T>(T x) -> T
+  where __is_integral<T>
+{
+  var kappa = 0;
+
+  #if (sizeof<T> > 4)
+  {
+    if (x >= 10_000_000_000)
+    {
+      x /= 10_000_000_000;
+
+      kappa += 10;
+    }
+  }
+
+  #if (sizeof<T> > 2)
+  {
+    if (x >= 100_000)
+    {
+      x /= 100_000;
+
+      kappa += 5;
+    }
+  }
+
+  return kappa + cast<T>((((cast<u32>(x) + 393206) & (cast<u32>(x) + 524188)) ^ ((cast<u32>(x) + 916504) & (cast<u32>(x) + 514288))) >> 17);
 }

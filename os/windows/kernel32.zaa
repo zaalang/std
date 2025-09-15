@@ -8,6 +8,7 @@ pub using HFILE = int;
 pub using HANDLE = uintptr;
 pub using HLOCAL = void mut *;
 pub using HGLOBAL = void mut *;
+pub using HMODULE = void mut *;
 
 pub const INFINITE = 0xffffffff;
 
@@ -265,3 +266,6 @@ pub extern "C" fn GetThreadId(HANDLE Thread) -> DWORD;
 pub extern "C" fn GetProcessId(HANDLE Process) -> DWORD;
 pub extern "C" fn CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, SECURITY_ATTRIBUTES *lpProcessAttributes, SECURITY_ATTRIBUTES *lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, STARTUPINFOW *lpStartupInfo, PROCESS_INFORMATION mut *lpProcessInformation) -> BOOL;
 pub extern "C" fn GetExitCodeProcess(HANDLE hProcess, DWORD mut *lpExitCode) -> BOOL;
+
+pub extern "C" fn GetModuleHandleW(LPCWSTR lpModuleName) -> HMODULE;
+pub extern "C" fn GetStartupInfoW(STARTUPINFOW mut *lpStartupInfo) -> void;

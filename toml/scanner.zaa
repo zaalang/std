@@ -397,7 +397,7 @@ fn scan_string_scalar(scanner mut &this, InputReader mut &is, scalar_style style
 
   this.eat(&mut is);
 
-  return make_token(token::type::scalar, style, value, loc);
+  return make_token(token::type::scalar, style, &move value, loc);
 }
 
 fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws(std::error) -> token
@@ -441,7 +441,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws(std::error) 
     ch = this.peek(&mut is);
   }
 
-  return make_token(token::type::scalar, scalar_style::plain, value, loc);
+  return make_token(token::type::scalar, scalar_style::plain, &move value, loc);
 }
 
 pub fn fetch(scanner mut &this, InputReader mut &is) throws(std::error) -> token
@@ -457,20 +457,28 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws(std::error) -> token
   {
     case '[':
       return scan_token(&mut this, &mut is, token::type::l_square);
+
     case '{':
       return scan_token(&mut this, &mut is, token::type::l_brace);
+
     case ']':
       return scan_token(&mut this, &mut is, token::type::r_square);
+
     case '}':
       return scan_token(&mut this, &mut is, token::type::r_brace);
+
     case ',':
       return scan_token(&mut this, &mut is, token::type::comma);
+
     case '\'':
       return scan_string_scalar(&mut this, &mut is, scalar_style::singlequoted);
+
     case '\"':
       return scan_string_scalar(&mut this, &mut is, scalar_style::doublequoted);
+
     case '=':
       return scan_token(&mut this, &mut is, token::type::equal);
+
     case '.':
       return scan_token(&mut this, &mut is, token::type::period);
   }

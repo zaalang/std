@@ -1,0 +1,90 @@
+//
+// distribution
+//
+
+import std.stdlib;
+import rand.rng : Rng;
+
+pub concept Distribution<U>
+{
+  requires<T> (T distr, Rng rng) -> U { using T; return sample(distr, &mut rng); }
+}
+
+pub struct range_distribution<D, T>
+{
+  T low;
+  T high;
+  D distribution;
+
+  range_distribution(D &distribution, T low, T high)
+    : low(low), high(high), distribution(distribution)
+  {
+    std::assert(low <= high);
+  }
+
+  pub range_distribution(range_distribution &) = default;
+  pub fn =(range_distribution mut &, range_distribution &) -> range_distribution mut & = default;
+  pub ~range_distribution() = default;
+}
+
+pub fn range_distribution<T>(Distribution<T> &distribution, T low, T high)
+{
+  return range_distribution::range_distribution(distribution, low, high);
+}
+
+pub fn sample<D, T>(range_distribution<D, T> &range, Rng mut &rng) -> T
+  where __is_integral<T>
+{
+  using U = std::make_unsigned<T>;
+
+  var len = std::bit_cast<U>(std::add_with_carry(std::sub_with_borrow(range.high, range.low).0, 1).0);
+
+  if (len == 0)
+    return rng.sample(range.distribution);
+
+  var product = std::mul_with_carry(std::bit_cast<U>(rng.sample(range.distribution)), len);
+
+  if (product.0 < len)
+  {
+    var threshold = (~len + 1) % len;
+
+    while (product.0 < threshold)
+    {
+      product = std::mul_with_carry(std::bit_cast<U>(rng.sample(range.distribution)), len);
+    }
+  }
+
+  return std::add_with_carry(range.low, std::bit_cast<T>(product.1)).0;
+}
+
+pub fn sample<D, T>(range_distribution<D, T> &range, Rng mut &rng) -> T
+  where __is_floating_point<T>
+{
+  return rng.sample(range.distribution) * (range.high - range.low) + range.low;
+}
+
+pub fn sample<T, D, V>(range_distribution<D, V> &range, Rng mut &rng) -> T
+  where __is_tuple<T>
+{
+  var tuple = T();
+
+  #for (var mut &element : tuple)
+  {
+    element = rng.sample(range);
+  }
+
+  return tuple;
+}
+
+pub fn sample<T, D, V>(range_distribution<D, V> &range, Rng mut &rng) -> T
+  where __is_array<T>
+{
+  var array = T();
+
+  for (var mut &element : array)
+  {
+    element = rng.sample(range);
+  }
+
+  return array;
+}

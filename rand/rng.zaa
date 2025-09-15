@@ -1,0 +1,64 @@
+//
+// rng
+//
+
+import std.stdlib;
+import std.span : Span;
+import rand.distributions.distribution : Distribution, range_distribution;
+import rand.distributions.uniform : uniform_distribution;
+
+pub concept Rng
+{
+  requires<T> (T rng) -> u32 { return rng.next_u32(); }
+  requires<T> (T rng) -> u64 { return rng.next_u64(); }
+  requires<T> (T rng, std::mutable_span<u8> bytes) { rng.fill_bytes(bytes); }
+}
+
+pub fn sample<T>(Rng mut &rng, Distribution<T> &distribution) -> T
+{
+  using T;
+
+  return sample(distribution, &mut rng);
+}
+
+pub fn random<T>(Rng mut &rng) -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+{
+  return rng.sample(uniform_distribution<T>());
+}
+
+pub fn random_range<T>(Rng mut &rng, (T, T) &range) -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+  where __is_integral<T>
+{
+  return rng.sample(range_distribution(uniform_distribution<T>(), range.0, range.1 - 1));
+}
+
+pub fn random_range<T>(Rng mut &rng, (T, T) &range) -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+  where __is_floating_point<T>
+{
+  return rng.sample(range_distribution(uniform_distribution<T>(), range.0, range.1));
+}
+
+pub fn random_range<T>(Rng mut &rng, (T, T, void) &range) -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+  where __is_integral<T>
+{
+  return rng.sample(range_distribution(uniform_distribution<T>(), range.0, range.1));
+}
+
+pub fn random_bool(Rng mut &rng, f64 probability) -> bool
+{
+  return rng.random<f64>() < probability;
+}
+
+pub fn random_bool(Rng mut &rng, u32 numerator, u32 denominator) -> bool
+{
+  return cast<u64>(rng.random<u32>()) * cast<u64>(denominator) < (cast<u64>(numerator) << 32);
+}
+
+pub fn fill_bytes(Rng mut &rng, Span<u8> mut &bytes) -> void
+{
+  rng.fill_bytes(std::mutable_span(&mut bytes));
+}

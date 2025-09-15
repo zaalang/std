@@ -1,0 +1,15 @@
+//
+// random
+//
+
+import std.stdlib;
+pub import os.linux.arch : *;
+
+pub const GRND_NONBLOCK = 0x0001;
+pub const GRND_RANDOM   = 0x0002;
+pub const GRND_INSECURE = 0x0004;
+
+pub fn getrandom(void mut *buf, usize buflen, int flags) -> int
+{
+  return cast<int>(std::bit_cast<intptr>(syscall3(sys_getrandom, buf, buflen, flags)));
+}

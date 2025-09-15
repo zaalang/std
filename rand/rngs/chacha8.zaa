@@ -1,0 +1,168 @@
+//
+// chacha8 rng
+//
+
+import std.stdlib;
+import std.byteconv;
+import rand.rng : Rng;
+
+struct State
+{
+  u32 counter;
+  u32[8] seed;
+
+  u32 head;
+  u32 tail;
+  u32[64] buffer;
+
+  State() = default;
+  State(State &) = default;
+  fn =(State mut &, State &) -> State mut & = default;
+  ~State() = default;
+}
+
+pub struct ChaCha8Rng
+{
+  State state;
+
+  pub fn next_u32(this mut &) -> u32
+  {
+    if (this.state.head == this.state.tail)
+      generate(&mut this.state);
+
+    var value = this.state.buffer[cast<usize>(this.state.head)];
+
+    this.state.head += 1;
+
+    return value;
+  }
+
+  pub fn next_u64(this mut &) -> u64
+  {
+    var lo = this.next_u32();
+    var hi = this.next_u32();
+
+    return cast<u64>(hi) << 32 | cast<u64>(lo);
+  }
+
+  pub fn fill_bytes(this mut &, std::mutable_span<u8> bytes) -> void
+  {
+    for (var i = 0; i < bytes.len; )
+    {
+      var value = this.next_u32();
+
+      for (var j = 0; j < 4; ++j)
+      {
+        bytes[i] = cast<u8>(value & 0xff);
+
+        if (++i == bytes.len)
+          break;
+
+        value >>= 8;
+      }
+    }
+  }
+
+  pub fn seed_from(u8[32] &seed) -> ChaCha8Rng
+  {
+    return ChaCha8Rng(seed);
+  }
+
+  pub fn seed_from(Rng mut &rng) -> ChaCha8Rng
+  {
+    var seed = [<u8>: void; 32];
+    rng.fill_bytes(&mut seed);
+
+    return ChaCha8Rng(seed);
+  }
+
+  ChaCha8Rng(u8[32] &seed)
+  {
+    init_chacha(&mut state, seed);
+  }
+
+  pub ChaCha8Rng(ChaCha8Rng &) = default;
+  pub fn =(ChaCha8Rng mut &, ChaCha8Rng &) -> ChaCha8Rng mut & = default;
+  pub ~ChaCha8Rng() = default;
+}
+
+fn init_chacha(State mut &state, u8[32] &seed) -> void
+{
+  state.head = 0;
+  state.tail = 0;
+
+  state.seed[0] = std::load_le_u32(seed.data + 0);
+  state.seed[1] = std::load_le_u32(seed.data + 4);
+  state.seed[2] = std::load_le_u32(seed.data + 8);
+  state.seed[3] = std::load_le_u32(seed.data + 12);
+  state.seed[4] = std::load_le_u32(seed.data + 16);
+  state.seed[5] = std::load_le_u32(seed.data + 20);
+  state.seed[6] = std::load_le_u32(seed.data + 24);
+  state.seed[7] = std::load_le_u32(seed.data + 28);
+
+  state.counter = 0;
+}
+
+fn generate(State mut &state) -> void
+{
+  state.head = 0;
+  state.tail = 64;
+
+  refill4(&mut state);
+
+  if (state.counter == 16)
+  {
+    std::memcpy(state.seed.data, state.buffer.end - 8, 32);
+    state.counter = 0;
+    state.tail -= 8;
+  }
+}
+
+fn quarter_round(u32 mut &a, u32 mut &b, u32 mut &c, u32 mut &d) -> void
+{
+  a = std::add_with_carry(a, b).0;
+  d = std::rotl(d ^ a, 16);
+
+  c = std::add_with_carry(c, d).0;
+  b = std::rotl(b ^ c, 12);
+
+  a = std::add_with_carry(a, b).0;
+  d = std::rotl(d ^ a, 8);
+
+  c = std::add_with_carry(c, d).0;
+  b = std::rotl(b ^ c, 7);
+}
+
+fn refill4(State mut &state) -> void
+{
+  for (var k = 0; k < 4; ++k)
+  {
+    var x = [<u32>:
+      0x61707865, 0x3320646e, 0x79622d32, 0x6b206574,
+      state.seed[0], state.seed[1], state.seed[2], state.seed[3],
+      state.seed[4], state.seed[5], state.seed[6], state.seed[7],
+      state.counter, 0, 0, 0,
+    ];
+
+    for (var n = 0; n < 8; n += 2)
+    {
+      quarter_round(&mut x[0], &mut x[4], &mut x[8], &mut x[12]);
+      quarter_round(&mut x[1], &mut x[5], &mut x[9], &mut x[13]);
+      quarter_round(&mut x[2], &mut x[6], &mut x[10], &mut x[14]);
+      quarter_round(&mut x[3], &mut x[7], &mut x[11], &mut x[15]);
+
+      quarter_round(&mut x[0], &mut x[5], &mut x[10], &mut x[15]);
+      quarter_round(&mut x[1], &mut x[6], &mut x[11], &mut x[12]);
+      quarter_round(&mut x[2], &mut x[7], &mut x[8], &mut x[13]);
+      quarter_round(&mut x[3], &mut x[4], &mut x[9], &mut x[14]);
+    }
+
+    for (var i = 4, var j = 0; i < 12; ++i, ++j)
+      x[i] = std::add_with_carry(x[i], state.seed[j]).0;
+
+    for (var i = 0, var j = k; i < x.len; ++i, j += 4)
+      state.buffer[j] = x[i];
+
+    state.counter += 1;
+  }
+}

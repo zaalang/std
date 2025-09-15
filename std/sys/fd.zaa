@@ -216,6 +216,5 @@ pub fn write_at(fd &fd, u64 offset, u8 *data, usize len) throws(std::error) -> u
 
 pub fn close(fd &fd)
 {
-  if (fd.fd != STDIN && fd.fd != STDOUT && fd.fd != STDERR)
-    fd_close(fd.fd);
+  fd_close(fd.fd);
 }

@@ -13,6 +13,22 @@ using regex::opcode;
 using regex::condition;
 using regex::expr;
 
+pub struct compile_result
+{
+  pub errc error;
+  pub std::vector<u32> program;
+
+  pub fn bool(this &) -> bool
+  {
+    return !this.error;
+  }
+
+  pub compile_result() = default;
+  pub compile_result(compile_result&) = default;
+  pub fn =(compile_result mut &, compile_result&) -> compile_result mut & = default;
+  pub ~compile_result() = default;
+}
+
 struct compile_context
 {
   options flags;
@@ -426,17 +442,6 @@ fn encode_prefix(compile_context mut &ctx) -> void
       pc += width;
     }
   }
-}
-
-pub struct compile_result
-{
-  pub errc error;
-  pub std::vector<u32> program;
-
-  pub compile_result() = default;
-  pub compile_result(compile_result&) = default;
-  pub fn =(compile_result mut &, compile_result&) -> compile_result mut & = default;
-  pub ~compile_result() = default;
 }
 
 pub fn compile(std::vector<expr> &regex, options flags) -> compile_result

@@ -1,0 +1,30 @@
+//
+// gdi32
+//
+
+import os.windows.ntdef : *;
+
+pub using HGDIOBJ = uintptr;
+
+pub const WHITE_BRUSH         = 0;
+pub const LTGRAY_BRUSH        = 1;
+pub const GRAY_BRUSH          = 2;
+pub const DKGRAY_BRUSH        = 3;
+pub const BLACK_BRUSH         = 4;
+pub const NULL_BRUSH          = 5;
+pub const HOLLOW_BRUSH        = NULL_BRUSH;
+pub const WHITE_PEN           = 6;
+pub const BLACK_PEN           = 7;
+pub const NULL_PEN            = 8;
+pub const OEM_FIXED_FONT      = 10;
+pub const ANSI_FIXED_FONT     = 11;
+pub const ANSI_VAR_FONT       = 12;
+pub const SYSTEM_FONT         = 13;
+pub const DEVICE_DEFAULT_FONT = 14;
+pub const DEFAULT_PALETTE     = 15;
+pub const SYSTEM_FIXED_FONT   = 16;
+pub const DEFAULT_GUI_FONT    = 17;
+pub const DC_BRUSH            = 18;
+pub const DC_PEN              = 19;
+
+pub extern "C" fn GetStockObject(int) -> HGDIOBJ;

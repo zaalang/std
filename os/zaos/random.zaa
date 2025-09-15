@@ -1,0 +1,11 @@
+//
+// random
+//
+
+#[weak]
+extern fn __vdso_get_random(void mut *buffer, usize length, u64 flags) -> i32;
+
+pub fn get_random(void mut *buffer, usize length, u64 flags) -> i32
+{
+  return __vdso_get_random(buffer, length, flags);
+}

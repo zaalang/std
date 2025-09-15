@@ -48,7 +48,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, bool value) throws(std::error
   var buf = [0; 16];
   var str = std::btoa(buf.begin, buf.end, value);
 
-  ctx.written += os.write(str.ptr, str.len);
+  fmt_str(&mut os, &mut ctx, null, str.ptr, str.ptr, str.ptr + str.len, str.len);
 }
 
 fn fmt_chr(OutputStream mut &os, fmt_context mut &ctx, char value) throws(std::error) -> void

@@ -28,6 +28,13 @@ pub struct file
     return file(fd);
   }
 
+  pub fn open(String &path, fd::oflags oflags, fd::rights rights, fd::fdflags fdflags = cast(0)) throws(std::error) -> file
+  {
+    var fd = fd::open(path, oflags, rights, fdflags);
+
+    return file(fd);
+  }
+
   pub fn stat(this mut &) throws(std::error) -> std::filestat
   {
     return this.fd.stat();
@@ -65,12 +72,12 @@ pub struct file
 
     return this.fd.write(buf.data, len);
   }
-  
+
   pub fn puts(this mut &, String &str) throws(std::error) -> usize
   {
     return this.fd.write(str.data, str.len);
   }
-  
+
   pub fn print(this mut &, var & ...args) throws(std::error) -> usize
   {
     return std::print_to(&mut this, args..., '\n');
@@ -80,7 +87,7 @@ pub struct file
   {
     return std::format_to(&mut this, format, args...);
   }
-  
+
   pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) throws(std::error) -> usize
   {
     return std::format_to(&mut this, format, args..., site: site);
@@ -197,24 +204,24 @@ pub struct StdIn
   {
     try
     {
-      var fin = fd(STDIN);
-
-      return fin.read(data, len);
+      return stdin_raw.read(data, len);
     }
-    catch(std::error e)
+    catch (std::error)
     {
       return 0;
     }
   }
 
   StdIn() = default;
-  StdIn(#StdIn&) = default;
-  ~StdIn() = default;
+  pub StdIn(StdIn &&) = default;
+  pub ~StdIn() = default;
 }
 
-pub fn stdin_raw -> file
+pub fn stdin_raw -> file mut &
 {
-  return file(fd(STDIN));
+  static instance = #file(fd(STDIN));
+
+  return &instance;
 }
 
 pub fn stdin -> StdIn
@@ -229,37 +236,35 @@ pub struct StdOut
     if (len == 0)
       return 0;
 
-    if (*(data + len - 1) == cast('\n') || this.buffer.len < this.n + len)
+    if (*(data + len - 1) == cast('\n') || state.buffer.len < state.n + len)
       return write_cold(&mut this, data, len);
 
-    std::memcpy(this.buffer.data + this.n, data, len);
+    std::memcpy(state.buffer.data + state.n, data, len);
 
-    this.n += len;
+    state.n += len;
 
     return len;
   }
 
-  fn write_cold(this mut &, u8 *data, usize len) -> usize
+  pub fn write_cold(this mut &, u8 *data, usize len) -> usize
   {
     try
     {
-      var fout = fd(STDOUT);
-
-      if (this.n != 0 && this.n + len < this.buffer.len)
+      if (state.n != 0 && state.n + len < state.buffer.len)
       {
-        std::memcpy(this.buffer.data + this.n, data, len);
+        std::memcpy(state.buffer.data + state.n, data, len);
 
-        fout.write(this.buffer.data, this.n + len);
+        stdout_raw.write(state.buffer.data, state.n + len);
       }
       else
       {
-        if (this.n != 0)
-          fout.write(this.buffer.data, this.n);
+        if (state.n != 0)
+          stdout_raw.write(state.buffer.data, state.n);
 
-        fout.write(data, len);
+        stdout_raw.write(data, len);
       }
 
-      this.n = 0;
+      state.n = 0;
     }
     catch(std::error e)
     {
@@ -271,41 +276,20 @@ pub struct StdOut
 
   pub fn putc(this mut &, u8 ch) -> usize
   {
-    try
-    {
-      return this.write(&ch, 1);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
+    return this.write(&ch, 1);
   }
 
   pub fn putc(this mut &, char ch) -> usize
   {
-    try
-    {
-      var buf = [0; 8];
-      var len = std::ctoa(buf.data, buf.end, ch).len;
+    var buf = [0; 8];
+    var len = std::ctoa(buf.data, buf.end, ch).len;
 
-      return this.write(buf.data, len);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
+    return this.write(buf.data, len);
   }
 
   pub fn puts(this mut &, String &str) -> usize
   {
-    try
-    {
-      return this.write(str.data, str.len);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
+    return this.write(str.data, str.len);
   }
 
   pub fn print(this mut &, var & ...args) -> usize
@@ -346,93 +330,54 @@ pub struct StdOut
 
   pub fn flush(this mut &) -> void
   {
-    try
+    if (state.n != 0)
     {
-      if (this.n != 0)
+      try
       {
-        var fout = fd(STDOUT);
-
-        fout.write(this.buffer.data, this.n);
-
-        this.n = 0;
+        stdout_raw.write(state.buffer.data, state.n);
       }
+      catch(std::error e)
+      {
+      }
+
+      state.n = 0;
     }
-    catch(std::error e)
-    {
-    }
   }
 
-  usize n;
-  u8[256] buffer;
-
-  std::ticket_lock lock; // TODO: use reentrant lock
-
-  StdOut() = default;
-  StdOut(#StdOut&) = default;
-  ~StdOut() = default;
-}
-
-pub struct StdOutLocked
-{
-  pub fn write(this mut &, u8 *data, usize len) -> usize
+  struct State
   {
-    return this.inner.write(data, len);
+    usize n;
+    u8[256] buffer;
+
+    std::ticket_lock lock;
+
+    State() = default;
+    State(#State &) = default;
   }
 
-  pub fn putc(this mut &, u8 ch) -> usize
+  fn state() -> State mut &
   {
-    return this.inner.putc(ch);
+    static state = #State();
+
+    return &state;
   }
 
-  pub fn putc(this mut &, char ch) -> usize
+  StdOut()
   {
-    return this.inner.putc(ch);
+    state.lock.lock();
   }
 
-  pub fn puts(this mut &, String &str) -> usize
+  pub ~StdOut()
   {
-    return this.inner.puts(str);
-  }
-
-  pub fn print(this mut &, var & ...args) -> usize
-  {
-    return this.inner.print(args...);
-  }
-
-  pub fn printf(this mut &, String &format, var & ...args) -> usize
-  {
-    return this.inner.printf(format, args...);
-  }
-
-  pub fn printf(this mut &, #std::string_literal format, var & ...args, #var site = __site__) -> usize
-  {
-    return this.inner.printf(format, args..., site: site);
-  }
-
-  pub fn flush(this mut &) -> void
-  {
-    return this.inner.flush();
-  }
-
-  StdOut mut &inner;
-
-  StdOutLocked(StdOut mut &inner)
-    : inner(&inner)
-  {
-    inner.lock.lock();
-  }
-
-  pub ~StdOutLocked()
-  {
-    inner.lock.unlock();
+    state.lock.unlock();
   }
 }
 
 pub struct StdOutLocker
 {
-  pub fn lock(this mut &) -> StdOutLocked
+  pub fn lock(this mut &) -> StdOut
   {
-    return StdOutLocked(&mut this.inner);
+    return StdOut();
   }
 
   pub fn write(this mut &, u8 *data, usize len) -> usize
@@ -475,26 +420,21 @@ pub struct StdOutLocker
     return this.lock().flush();
   }
 
-  StdOut mut &inner;
-
-  StdOutLocker(StdOut mut &inner)
-    : inner(&inner)
-  {
-  }
-
+  StdOutLocker() = default;
+  pub StdOutLocker(StdOutLocker &&) = default;
   pub ~StdOutLocker() = default;
 }
 
-pub fn stdout_raw -> file
+pub fn stdout_raw -> file mut &
 {
-  return file(fd(STDOUT));
+  static instance = #file(fd(STDOUT));
+
+  return &instance;
 }
 
 pub fn stdout -> StdOutLocker
 {
-  static instance = #StdOut();
-
-  return StdOutLocker(&mut instance);
+  return StdOutLocker();
 }
 
 pub struct StdErr
@@ -503,55 +443,32 @@ pub struct StdErr
   {
     try
     {
-      var fout = fd(STDERR);
-
-      return fout.write(data, len);
+      return stderr_raw.write(data, len);
     }
     catch(std::error e)
     {
       return 0;
     }
   }
-  
+
   pub fn putc(this mut &, u8 ch) -> usize
   {
-    try
-    {
-      return this.write(&ch, 1);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
+    return this.write(&ch, 1);
   }
 
   pub fn putc(this mut &, char ch) -> usize
   {
-    try
-    {
-      var buf = [0; 8];
-      var len = std::ctoa(buf.data, buf.end, ch).len;
+    var buf = [0; 8];
+    var len = std::ctoa(buf.data, buf.end, ch).len;
 
-      return this.write(buf.data, len);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
+    return this.write(buf.data, len);
   }
-  
+
   pub fn puts(this mut &, String &str) -> usize
   {
-    try
-    {
-      return this.write(str.data, str.len);
-    }
-    catch(std::error e)
-    {
-      return 0;
-    }
+    return this.write(str.data, str.len);
   }
-  
+
   pub fn print(this mut &, var & ...args) -> usize
   {
     try
@@ -593,13 +510,15 @@ pub struct StdErr
   }
 
   StdErr() = default;
-  StdErr(#StdErr&) = default;
-  ~StdErr() = default;
+  pub StdErr(StdErr &&) = default;
+  pub ~StdErr() = default;
 }
 
-pub fn stderr_raw -> file
+pub fn stderr_raw -> file mut &
 {
-  return file(fd(STDERR));
+  static instance = #file(fd(STDERR));
+
+  return &instance;
 }
 
 pub fn stderr -> StdErr
@@ -609,32 +528,32 @@ pub fn stderr -> StdErr
 
 pub fn putc(u8 ch) -> usize
 {
-  return stdout.lock().inner.putc(ch);
+  return stdout.lock().putc(ch);
 }
 
 pub fn putc(char ch) -> usize
 {
-  return stdout.lock().inner.putc(ch);
+  return stdout.lock().putc(ch);
 }
 
-pub fn fputc(StdOutLocked mut &os, u8 ch) -> usize
+pub fn fputc(StdOut mut &os, u8 ch) -> usize
 {
-  return os.inner.putc(ch);
+  return os.putc(ch);
 }
 
 pub fn fputc(StdOutLocker mut &os, u8 ch) -> usize
 {
-  return os.lock().inner.putc(ch);
+  return os.lock().putc(ch);
 }
 
-pub fn fputc(StdOutLocked mut &os, char ch) -> usize
+pub fn fputc(StdOut mut &os, char ch) -> usize
 {
-  return os.inner.putc(ch);
+  return os.putc(ch);
 }
 
 pub fn fputc(StdOutLocker mut &os, char ch) -> usize
 {
-  return os.lock().inner.putc(ch);
+  return os.lock().putc(ch);
 }
 
 pub fn fputc(StdErr mut &os, u8 ch) -> usize
@@ -659,17 +578,17 @@ pub fn fputc(file mut &os, char ch) throws(std::error) -> usize
 
 pub fn puts(String &str) -> usize
 {
-  return stdout.lock().inner.puts(str);
+  return stdout.lock().puts(str);
 }
 
-pub fn fputs(StdOutLocked mut &os, String &str) -> usize
+pub fn fputs(StdOut mut &os, String &str) -> usize
 {
-  return os.inner.puts(str);
+  return os.puts(str);
 }
 
 pub fn fputs(StdOutLocker mut &os, String &str) -> usize
 {
-  return os.lock().inner.puts(str);
+  return os.lock().puts(str);
 }
 
 pub fn fputs(StdErr mut &os, String &str) -> usize
@@ -684,47 +603,47 @@ pub fn fputs(file mut &os, String &str) throws(std::error) -> usize
 
 pub fn print(var & ...args) -> usize
 {
-  return stdout.lock().inner.print(args...);
+  return stdout.lock().print(args...);
 }
 
 pub fn printf(String &format, var & ...args) -> usize
 {
-  return stdout.lock().inner.printf(format, args...);
+  return stdout.lock().printf(format, args...);
 }
 
 pub fn printf(#std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
-  return stdout.lock().inner.printf(format, args..., site: site);
+  return stdout.lock().printf(format, args..., site: site);
 }
 
-pub fn fprint(StdOutLocked mut &os, var & ...args) -> usize
+pub fn fprint(StdOut mut &os, var & ...args) -> usize
 {
-  return os.inner.print(args...);
+  return os.print(args...);
 }
 
 pub fn fprint(StdOutLocker mut &os, var & ...args) -> usize
 {
-  return os.lock().inner.print(args...);
+  return os.lock().print(args...);
 }
 
-pub fn fprintf(StdOutLocked mut &os, String &format, var & ...args) -> usize
+pub fn fprintf(StdOut mut &os, String &format, var & ...args) -> usize
 {
-  return os.inner.printf(format, args...);
+  return os.printf(format, args...);
 }
 
 pub fn fprintf(StdOutLocker mut &os, String &format, var & ...args) -> usize
 {
-  return os.lock().inner.printf(format, args...);
+  return os.lock().printf(format, args...);
 }
 
-pub fn fprintf(StdOutLocked mut &os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
+pub fn fprintf(StdOut mut &os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
-  return os.inner.printf(format, args..., site: site);
+  return os.printf(format, args..., site: site);
 }
 
 pub fn fprintf(StdOutLocker mut &os, #std::string_literal format, var & ...args, #var site = __site__) -> usize
 {
-  return os.lock().inner.printf(format, args..., site: site);
+  return os.lock().printf(format, args..., site: site);
 }
 
 pub fn fprint(StdErr mut &os, var & ...args) -> usize

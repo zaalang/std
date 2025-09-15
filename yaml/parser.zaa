@@ -50,15 +50,45 @@ enum state
   tag_int,
   tag_float,
   tag_unknown,
-  errored,
   end,
+}
+
+enum result : i32
+{
+  ok = 0,
+
+  fn bool(this &) -> bool
+  {
+    return cast<i32>(this) >= 0;
+  }
+
+  result(errc error)
+    : this(cast<result>(-cast<i32>(error)))
+  {
+  }
+}
+
+pub struct parse_result
+{
+  pub errc error;
+  pub mark mark;
+  pub std::vector<node> docs;
+
+  pub fn bool(this &) -> bool
+  {
+    return !this.error;
+  }
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
 }
 
 struct parse_context
 {
   token tok;
   state state;
-  errc error;
   scanner scanner;
   std::vector<node> stack;
   std::vector<state> states;
@@ -89,42 +119,26 @@ struct parse_context
   ~parse_context() = default;
 }
 
-pub struct parse_result
-{
-  pub errc error;
-  pub mark mark;
-  pub std::vector<node> docs;
-
-  pub parse_result() = default;
-  pub parse_result(parse_result&) = default;
-  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
-  pub ~parse_result() = default;
-}
-
-fn parse_error(parse_context mut &ctx, errc error) -> state
-{
-  ctx.error = error;
-  ctx.state = state::errored;
-
-  return ctx.state;
-}
-
-fn parse_process_directives(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> void
+fn parse_process_directives(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   while (ctx.tok.type == token::type::directive)
   {
     ctx.consume_token(&mut is);
   }
+
+  return ok;
 }
 
-fn stream_start(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn stream_start(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   ctx.consume_token(&mut is);
 
-  return state::implicit_document_start;
+  ctx.state = state::implicit_document_start;
+
+  return ok;
 }
 
-fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) throws(std::error) -> state
+fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) throws(std::error) -> result
 {
   if (!implicit)
   {
@@ -139,7 +153,8 @@ fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) th
       ctx.state = state::end;
 
     case directive:
-      parse_process_directives(&mut ctx, &mut is);
+      if (var rc = parse_process_directives(&mut ctx, &mut is); !rc)
+        return rc;
 
     case document_start:
       ctx.consume_token(&mut is);
@@ -148,17 +163,19 @@ fn document_start(parse_context mut &ctx, InputReader mut &is, bool implicit) th
 
     else:
       if (!implicit)
-        return parse_error(&mut ctx, yaml::errc::expected_document_start);
+        return errc::expected_document_start;
 
-      parse_process_directives(&mut ctx, &mut is);
+      if (var rc = parse_process_directives(&mut ctx, &mut is); !rc)
+        return rc;
+
       ctx.push_state(state::document_end);
       ctx.state = state::block_node;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn document_content(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn document_content(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -166,24 +183,28 @@ fn document_content(parse_context mut &ctx, InputReader mut &is) throws(std::err
     case document_start:
     case document_end:
     case stream_end:
-      parse_empty(&mut ctx, &mut is);
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
 
     else:
-      parse_node(&mut ctx, &mut is, true, false);
+      if (var rc = parse_node(&mut ctx, &mut is, true, false); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn document_end(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn document_end(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   if (ctx.tok.type == token::type::document_end)
     ctx.consume_token(&mut is);
 
-  return state::document_start;
+  ctx.state = state::document_start;
+
+  return ok;
 }
 
-fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   if (ctx.tok.value == "!!seq")
     ctx.state = state::tag_seq;
@@ -217,10 +238,10 @@ fn parse_tag(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> 
 
   ctx.consume_token(&mut is);
 
-  return ctx.state;
+  return ok;
 }
 
-fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> state
+fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> result
 {
   switch (ctx.state)
   {
@@ -248,7 +269,7 @@ fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> state
       ctx.stack.push_back("");
 
     case tag_unknown:
-      return parse_error(&mut ctx, yaml::errc::unknown_tag);
+      return errc::unknown_tag;
 
     else:
       ctx.stack.push_back(null);
@@ -256,45 +277,45 @@ fn parse_empty(parse_context mut &ctx, InputReader mut &is) -> state
 
   ctx.state = ctx.pop_state();
 
-  return ctx.state;
+  return ok;
 }
 
-fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.state)
   {
     case tag_null:
       if (ctx.tok.value != "~" && ctx.tok.value != "null")
-        return parse_error(&mut ctx, yaml::errc::invalid_null_value);
+        return errc::invalid_null_value;
 
       ctx.stack.push_back(null);
 
     case tag_bool:
       if (ctx.tok.value != "true" && ctx.tok.value != "false")
-        return parse_error(&mut ctx, yaml::errc::invalid_bool_value);
+        return errc::invalid_bool_value;
 
       ctx.stack.push_back(ctx.tok.value == "true");
 
     case tag_int:
       var integer = i64();
       if (std::sscan(ctx.tok.value, &mut integer).len != ctx.tok.value.len)
-        return parse_error(&mut ctx, yaml::errc::invalid_int_value);
+        return errc::invalid_int_value;
 
       ctx.stack.push_back(integer);
 
     case tag_float:
       var real = f64();
       if (std::sscan(ctx.tok.value, &mut real).len != ctx.tok.value.len)
-        return parse_error(&mut ctx, yaml::errc::invalid_float_value);
+        return errc::invalid_float_value;
 
       ctx.stack.push_back(real);
 
     case tag_str:
     case tag_binary:
-      ctx.stack.push_back(ctx.tok.value);
+      ctx.stack.push_back(&move ctx.tok.value);
 
     case tag_unknown:
-      return parse_error(&mut ctx, yaml::errc::unknown_tag);
+      return errc::unknown_tag;
 
     else:
       switch (ctx.tok.style)
@@ -303,17 +324,17 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws(std::error) 
           ctx.stack.push_back(node::from(ctx.tok.value));
 
         else:
-          ctx.stack.push_back(ctx.tok.value);
+          ctx.stack.push_back(&move ctx.tok.value);
       }
   }
 
   ctx.consume_token(&mut is);
   ctx.state = ctx.pop_state();
 
-  return ctx.state;
+  return ok;
 }
 
-fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -334,20 +355,22 @@ fn parse_sequence(parse_context mut &ctx, InputReader mut &is) throws(std::error
 
   ctx.stack.push_back(std::vector<node>());
 
-  return ctx.state;
+  return ok;
 }
 
-fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> state
+fn sequence_entry(parse_context mut &ctx, InputReader mut &is) -> result
 {
   var entry = ctx.stack.take_back();
   var mut &array = ctx.stack.back.Array;
 
   array.push_back(&move entry);
 
-  return ctx.pop_state();
+  ctx.state = ctx.pop_state();
+
+  return ok;
 }
 
-fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -372,10 +395,10 @@ fn parse_mapping(parse_context mut &ctx, InputReader mut &is) throws(std::error)
 
   ctx.stack.push_back(std::flat_hash_map<node, node>());
 
-  return ctx.state;
+  return ok;
 }
 
-fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
+fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> result
 {
   var value = ctx.stack.take_back();
   var key = ctx.stack.take_back();
@@ -383,15 +406,18 @@ fn mapping_entry(parse_context mut &ctx, InputReader mut &is) -> state
 
   map.insert(&move key, &move value);
 
-  return ctx.pop_state();
+  ctx.state = ctx.pop_state();
+
+  return ok;
 }
 
-fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool indentless_sequence) throws(std::error) -> state
+fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool indentless_sequence) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
     case tag:
-      ctx.state = parse_tag(&mut ctx, &mut is);
+      if (var rc = parse_tag(&mut ctx, &mut is); !rc)
+        return rc;
 
       switch (ctx.tok.type)
       {
@@ -409,7 +435,8 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
       switch (ctx.tok.type)
       {
         case tag:
-          ctx.state = parse_tag(&mut ctx, &mut is);
+          if (var rc = parse_tag(&mut ctx, &mut is); !rc)
+            return rc;
       }
   }
 
@@ -419,7 +446,7 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
       var j = ctx.anchors.find(ctx.tok.value);
 
       if (j == ctx.anchors.end)
-        return parse_error(&mut ctx, yaml::errc::anchor_not_found);
+        return errc::anchor_not_found;
 
       ctx.consume_token(&mut is);
       ctx.stack.push_back((*j).value);
@@ -434,72 +461,82 @@ fn parse_node(parse_context mut &ctx, InputReader mut &is, bool block, bool inde
     case document_start:
     case document_end:
     case stream_end:
-      parse_empty(&mut ctx, &mut is);
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
 
     case block_entry:
       if (!indentless_sequence)
-        parse_empty(&mut ctx, &mut is);
+      {
+        if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+          return rc;
+      }
       else
-        parse_sequence(&mut ctx, &mut is);
+      {
+        if (var rc = parse_sequence(&mut ctx, &mut is); !rc)
+          return rc;
+      }
 
     case block_sequence_start:
     case flow_sequence_start:
 
       if (ctx.tok.type == token::type::block_sequence_start && !block)
-        return parse_error(&mut ctx, yaml::errc::invalid_sequence_start);
+        return errc::invalid_sequence_start;
 
-      parse_sequence(&mut ctx, &mut is);
+      if (var rc = parse_sequence(&mut ctx, &mut is); !rc)
+        return rc;
 
     case block_mapping_start:
     case flow_mapping_start:
 
       if (ctx.tok.type == token::type::block_mapping_start && !block)
-        return parse_error(&mut ctx, yaml::errc::invalid_mapping_start);
+        return errc::invalid_mapping_start;
 
-      parse_mapping(&mut ctx, &mut is);
+      if (var rc = parse_mapping(&mut ctx, &mut is); !rc)
+        return rc;
 
     case scalar:
-      parse_scalar(&mut ctx, &mut is);
+      if (var rc = parse_scalar(&mut ctx, &mut is); !rc)
+        return rc;
 
     else:
       switch (ctx.tok.type)
       {
         case bad_escape:
-          ctx.error = yaml::errc::bad_escape;
+          return errc::bad_escape;
 
         case bad_indent_character:
-          ctx.error = yaml::errc::bad_indent_character;
+          return errc::bad_indent_character;
 
         case unexpected_document_indicator:
-          ctx.error = yaml::errc::unexpected_document_indicator;
+          return errc::unexpected_document_indicator;
 
         case unexpected_end_of_stream:
-          ctx.error = yaml::errc::unexpected_end_of_stream;
+          return errc::unexpected_end_of_stream;
 
         case invalid_sequence_start:
-          ctx.error = yaml::errc::invalid_sequence_start;
+          return errc::invalid_sequence_start;
 
         case invalid_mapping_start:
-          ctx.error = yaml::errc::invalid_mapping_start;
+          return errc::invalid_mapping_start;
 
         else:
-          ctx.error = yaml::errc::invalid_value;
+          return errc::invalid_value;
       }
-
-      ctx.state = state::errored;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn anchor_entry(parse_context mut &ctx, InputReader mut &is) -> state
+fn anchor_entry(parse_context mut &ctx, InputReader mut &is) -> result
 {
   ctx.anchors.insert_or_assign(ctx.names.take_back(), ctx.stack.back());
 
-  return ctx.pop_state();
+  ctx.state = ctx.pop_state();
+
+  return ok;
 }
 
-fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -511,17 +548,18 @@ fn block_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std:
       ctx.consume_token(&mut is);
       ctx.push_state(state::block_sequence_entry);
       ctx.push_state(state::sequence_entry);
-      parse_node(&mut ctx, &mut is, true, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, true, false); !rc)
+        return rc;
 
     else:
-      ctx.error = yaml::errc::expected_sequence_entry;
-      ctx.state = state::errored;
+      return errc::expected_sequence_entry;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -532,21 +570,24 @@ fn block_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::er
     case key:
       ctx.consume_token(&mut is);
       ctx.push_state(state::block_mapping_value);
-      parse_node(&mut ctx, &mut is, true, true);
+
+      if (var rc = parse_node(&mut ctx, &mut is, true, true); !rc)
+        return rc;
 
     case value:
       ctx.push_state(state::block_mapping_value);
-      parse_empty(&mut ctx, &mut is);
+
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
 
     else:
-      ctx.error = yaml::errc::expected_block_mapping_key;
-      ctx.state = state::errored;
+      return errc::expected_block_mapping_key;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -554,23 +595,27 @@ fn block_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::
       ctx.consume_token(&mut is);
       ctx.push_state(state::block_mapping_key);
       ctx.push_state(state::mapping_entry);
-      parse_node(&mut ctx, &mut is, true, true);
+
+      if (var rc = parse_node(&mut ctx, &mut is, true, true); !rc)
+        return rc;
 
     else:
       ctx.push_state(state::block_mapping_key);
       ctx.push_state(state::mapping_entry);
-      parse_empty(&mut ctx, &mut is);
+
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
     case flow_entry:
-      return parse_error(&mut ctx, yaml::errc::expected_sequence_entry);
+      return errc::expected_sequence_entry;
 
     case flow_sequence_end:
       ctx.consume_token(&mut is);
@@ -580,36 +625,41 @@ fn flow_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::
     case value:
       ctx.push_state(state::flow_sequence_entry);
       ctx.push_state(state::sequence_flow_entry);
-      parse_mapping(&mut ctx, &mut is);
+
+      if (var rc = parse_mapping(&mut ctx, &mut is); !rc)
+        return rc;
 
     else:
       ctx.push_state(state::flow_sequence_entry);
       ctx.push_state(state::sequence_flow_entry);
-      parse_node(&mut ctx, &mut is, false, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, false, false); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn sequence_flow_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
     case flow_entry:
     case flow_sequence_end:
-      ctx.state = sequence_entry(&mut ctx, &mut is);
+      if (var rc = sequence_entry(&mut ctx, &mut is); !rc)
+        return rc;
+
       if (ctx.tok.type == token::type::flow_entry)
         ctx.consume_token(&mut is);
 
     else:
-      ctx.error = yaml::errc::expected_comma;
-      ctx.state = state::errored;
+      return errc::expected_comma;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -620,21 +670,27 @@ fn flow_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::err
     case key:
       ctx.consume_token(&mut is);
       ctx.push_state(state::flow_mapping_value);
-      parse_node(&mut ctx, &mut is, false, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, false, false); !rc)
+        return rc;
 
     case value:
       ctx.push_state(state::flow_mapping_value);
-      parse_empty(&mut ctx, &mut is);
+
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
 
     else:
       ctx.push_state(state::flow_mapping_value);
-      parse_node(&mut ctx, &mut is, false, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, false, false); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -642,36 +698,41 @@ fn flow_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::e
       ctx.consume_token(&mut is);
       ctx.push_state(state::flow_mapping_key);
       ctx.push_state(state::mapping_flow_entry);
-      parse_node(&mut ctx, &mut is, true, true);
+
+      if (var rc = parse_node(&mut ctx, &mut is, true, true); !rc)
+        return rc;
 
     else:
       ctx.push_state(state::flow_mapping_key);
       ctx.push_state(state::mapping_flow_entry);
-      parse_empty(&mut ctx, &mut is);
+
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn mapping_flow_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
     case flow_entry:
     case flow_mapping_end:
-      ctx.state = mapping_entry(&mut ctx, &mut is);
+      if (var rc = mapping_entry(&mut ctx, &mut is); !rc)
+        return rc;
+
       if (ctx.tok.type == token::type::flow_entry)
         ctx.consume_token(&mut is);
 
     else:
-      ctx.error = yaml::errc::expected_comma;
-      ctx.state = state::errored;
+      return errc::expected_comma;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -679,16 +740,18 @@ fn indentless_sequence_entry(parse_context mut &ctx, InputReader mut &is) throws
       ctx.consume_token(&mut is);
       ctx.push_state(state::indentless_sequence_entry);
       ctx.push_state(state::sequence_entry);
-      parse_node(&mut ctx, &mut is, true, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, true, false); !rc)
+        return rc;
 
     else:
       ctx.state = ctx.pop_state();
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -696,31 +759,143 @@ fn flow_sequence_entry_mapping_key(parse_context mut &ctx, InputReader mut &is) 
     case flow_entry:
     case flow_sequence_end:
       ctx.push_state(state::flow_sequence_entry_mapping_value);
-      parse_empty(&mut ctx, &mut is);
+
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
 
     else:
       ctx.push_state(state::flow_sequence_entry_mapping_value);
-      parse_node(&mut ctx, &mut is, false, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, false, false); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
 }
 
-fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> state
+fn flow_sequence_entry_mapping_value(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
     case value:
       ctx.consume_token(&mut is);
       ctx.push_state(state::mapping_entry);
-      parse_node(&mut ctx, &mut is, false, false);
+
+      if (var rc = parse_node(&mut ctx, &mut is, false, false); !rc)
+        return rc;
 
     else:
       ctx.push_state(state::mapping_entry);
-      parse_empty(&mut ctx, &mut is);
+
+      if (var rc = parse_empty(&mut ctx, &mut is); !rc)
+        return rc;
   }
 
-  return ctx.state;
+  return ok;
+}
+
+fn parse(parse_context mut &ctx, InputReader mut &is) throws(std::error) -> result
+{
+  ctx.consume_token(&mut is);
+
+  while (ctx.state != state::end)
+  {
+    switch (ctx.state)
+    {
+      case stream_start:
+        if (var rc = stream_start(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case implicit_document_start:
+        if (var rc = document_start(&mut ctx, &mut is, true); !rc)
+          return rc;
+
+      case document_start:
+        if (var rc = document_start(&mut ctx, &mut is, false); !rc)
+          return rc;
+
+      case document_content:
+        if (var rc = document_content(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case document_end:
+        if (var rc = document_end(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case block_node:
+        if (var rc = parse_node(&mut ctx, &mut is, true, false); !rc)
+          return rc;
+
+      case block_sequence_entry:
+        if (var rc = block_sequence_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case flow_sequence_entry:
+        if (var rc = flow_sequence_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case sequence_flow_entry:
+        if (var rc = sequence_flow_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case indentless_sequence_entry:
+        if (var rc = indentless_sequence_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case sequence_entry:
+        if (var rc = sequence_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case block_mapping_key:
+        if (var rc = block_mapping_key(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case block_mapping_value:
+        if (var rc = block_mapping_value(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case flow_mapping_key:
+        if (var rc = flow_mapping_key(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case flow_mapping_value:
+        if (var rc = flow_mapping_value(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case mapping_flow_entry:
+        if (var rc = mapping_flow_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case flow_sequence_entry_mapping_key:
+        if (var rc = flow_sequence_entry_mapping_key(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case flow_sequence_entry_mapping_value:
+        if (var rc = flow_sequence_entry_mapping_value(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case mapping_entry:
+        if (var rc = mapping_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      case block_node_or_indentless_sequence:
+        if (var rc = parse_node(&mut ctx, &mut is, true, true); !rc)
+          return rc;
+
+      case flow_node:
+        if (var rc = parse_node(&mut ctx, &mut is, false, false); !rc)
+          return rc;
+
+      case anchor_entry:
+        if (var rc = anchor_entry(&mut ctx, &mut is); !rc)
+          return rc;
+
+      else:
+        std::panic("invalid state");
+    }
+  }
+
+  return ok;
 }
 
 pub fn parse(InputReader mut &is) throws(std::error) -> parse_result
@@ -729,86 +904,10 @@ pub fn parse(InputReader mut &is) throws(std::error) -> parse_result
 
   var ctx = parse_context();
 
-  ctx.consume_token(&mut is);
-
-  while (ctx.state != state::end)
+  if (var rc = parse(&mut ctx, &mut is); !rc)
   {
-    switch (ctx.state)
-    {
-      case stream_start:
-        ctx.state = stream_start(&mut ctx, &mut is);
-
-      case implicit_document_start:
-        ctx.state = document_start(&mut ctx, &mut is, true);
-
-      case document_start:
-        ctx.state = document_start(&mut ctx, &mut is, false);
-
-      case document_content:
-        ctx.state = document_content(&mut ctx, &mut is);
-
-      case document_end:
-        ctx.state = document_end(&mut ctx, &mut is);
-
-      case block_node:
-        ctx.state = parse_node(&mut ctx, &mut is, true, false);
-
-      case block_sequence_entry:
-        ctx.state = block_sequence_entry(&mut ctx, &mut is);
-
-      case flow_sequence_entry:
-        ctx.state = flow_sequence_entry(&mut ctx, &mut is);
-
-      case sequence_flow_entry:
-        ctx.state = sequence_flow_entry(&mut ctx, &mut is);
-
-      case indentless_sequence_entry:
-        ctx.state = indentless_sequence_entry(&mut ctx, &mut is);
-
-      case sequence_entry:
-        ctx.state = sequence_entry(&mut ctx, &mut is);
-
-      case block_mapping_key:
-        ctx.state = block_mapping_key(&mut ctx, &mut is);
-
-      case block_mapping_value:
-        ctx.state = block_mapping_value(&mut ctx, &mut is);
-
-      case flow_mapping_key:
-        ctx.state = flow_mapping_key(&mut ctx, &mut is);
-
-      case flow_mapping_value:
-        ctx.state = flow_mapping_value(&mut ctx, &mut is);
-
-      case mapping_flow_entry:
-        ctx.state = mapping_flow_entry(&mut ctx, &mut is);
-
-      case flow_sequence_entry_mapping_key:
-        ctx.state = flow_sequence_entry_mapping_key(&mut ctx, &mut is);
-
-      case flow_sequence_entry_mapping_value:
-        ctx.state = flow_sequence_entry_mapping_value(&mut ctx, &mut is);
-
-      case mapping_entry:
-        ctx.state = mapping_entry(&mut ctx, &mut is);
-
-      case block_node_or_indentless_sequence:
-        ctx.state = parse_node(&mut ctx, &mut is, true, true);
-
-      case flow_node:
-        ctx.state = parse_node(&mut ctx, &mut is, false, false);
-
-      case anchor_entry:
-        ctx.state = anchor_entry(&mut ctx, &mut is);
-
-      case errored:
-        result.error = ctx.error;
-        result.mark = ctx.tok.loc;
-        ctx.state = state::end;
-
-      else:
-        std::panic("invalid state");
-    }
+    result.error = cast<errc>(-cast<i32>(rc));
+    result.mark = ctx.tok.loc;
   }
 
   result.docs = &move ctx.stack;

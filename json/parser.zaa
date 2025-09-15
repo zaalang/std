@@ -16,6 +16,38 @@ using json::scanner;
 using json::scalar_style;
 using json::value;
 
+enum result : i32
+{
+  ok = 0,
+
+  fn bool(this &) -> bool
+  {
+    return cast<i32>(this) >= 0;
+  }
+
+  result(errc error)
+    : this(cast<result>(-cast<i32>(error)))
+  {
+  }
+}
+
+pub struct parse_result
+{
+  pub errc error;
+  pub mark mark;
+  pub value value;
+
+  pub fn bool(this &) -> bool
+  {
+    return !this.error;
+  }
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
+}
+
 struct parse_context
 {
   token tok;
@@ -31,19 +63,7 @@ struct parse_context
   ~parse_context() = default;
 }
 
-pub struct parse_result
-{
-  pub errc error;
-  pub mark mark;
-  pub value value;
-
-  pub parse_result() = default;
-  pub parse_result(parse_result&) = default;
-  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
-  pub ~parse_result() = default;
-}
-
-fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
+fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> result
 {
   var mut &object = value.emplace_object();
 
@@ -56,10 +76,10 @@ fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) t
     switch (ctx.tok.style)
     {
       case doublequoted:
-        key.emplace_string(ctx.tok.value);
+        key.emplace_string(&move ctx.tok.value);
 
       else:
-        return expected_quote;
+        return errc::expected_quote;
     }
 
     ctx.consume_token(&mut is);
@@ -70,13 +90,13 @@ fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) t
         ctx.consume_token(&mut is);
 
       else:
-        return expected_colon;
+        return errc::expected_colon;
     }
 
     var element = json::value();
 
-    if (var error = parse_value(&mut ctx, &mut is, &mut element); error)
-      return error;
+    if (var rc = parse_value(&mut ctx, &mut is, &mut element); !rc)
+      return rc;
 
     object.insert(&move key.as_str, &move element);
 
@@ -89,16 +109,16 @@ fn parse_object(parse_context mut &ctx, InputReader mut &is, value mut &value) t
         break;
 
       else:
-        return expected_comma;
+        return errc::expected_comma;
     }
   }
 
   ctx.consume_token(&mut is);
 
-  return cast(0);
+  return ok;
 }
 
-fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
+fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> result
 {
   var mut &array = value.emplace_array();
 
@@ -108,8 +128,8 @@ fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) th
   {
     var element = json::value();
 
-    if (var error = parse_value(&mut ctx, &mut is, &mut element); error)
-      return error;
+    if (var rc = parse_value(&mut ctx, &mut is, &mut element); !rc)
+      return rc;
 
     array.push_back(&move element);
 
@@ -122,16 +142,16 @@ fn parse_array(parse_context mut &ctx, InputReader mut &is, value mut &value) th
         break;
 
       else:
-        return expected_comma;
+        return errc::expected_comma;
     }
   }
 
   ctx.consume_token(&mut is);
 
-  return cast(0);
+  return ok;
 }
 
-fn parse_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
+fn parse_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> result
 {
   switch (ctx.tok.style)
   {
@@ -139,15 +159,15 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is, value mut &value) t
       value = json::value::from(ctx.tok.value);
 
     else:
-      value.emplace_string(ctx.tok.value);
+      value.emplace_string(&move ctx.tok.value);
   }
 
   ctx.consume_token(&mut is);
 
-  return cast(0);
+  return ok;
 }
 
-fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> errc
+fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) throws(std::error) -> result
 {
   switch (ctx.tok.type)
   {
@@ -164,16 +184,16 @@ fn parse_value(parse_context mut &ctx, InputReader mut &is, value mut &value) th
       switch (ctx.tok.type)
       {
         case bad_escape:
-          return bad_escape;
+          return errc::bad_escape;
 
         case unexpected_end_of_line:
-          return unexpected_end_of_line;
+          return errc::unexpected_end_of_line;
 
         case unexpected_end_of_stream:
-          return unexpected_end_of_stream;
+          return errc::unexpected_end_of_stream;
 
         else:
-          return invalid_value;
+          return errc::invalid_value;
       }
   }
 }
@@ -186,9 +206,9 @@ pub fn parse(InputReader mut &is) throws(std::error) -> parse_result
 
   ctx.consume_token(&mut is);
 
-  if (var error = parse_value(&mut ctx, &mut is, &mut result.value); error)
+  if (var rc = parse_value(&mut ctx, &mut is, &mut result.value); !rc)
   {
-    result.error = error;
+    result.error = cast<errc>(-cast<i32>(rc));
     result.mark = ctx.tok.loc;
   }
 

@@ -350,13 +350,13 @@ pub struct string_view : pub std::span<u8>
 
       if (this.count > 2)
       {
-        var it = find_first(string_view(this.super, this.end), this.seperator);
+        var it = find_first(string_view(this.super, this.end), this.separator);
 
         this.n = this.m = it - this.super;
 
         if (it != this.end)
         {
-          this.n += this.seperator.len;
+          this.n += this.separator.len;
         }
         else
         {
@@ -390,15 +390,15 @@ pub struct string_view : pub std::span<u8>
       return lhs.count == 0;
     }
 
-    split_iterator(u8 *beg, u8 *end, String &seperator, bool inclusive, usize count)
-      : super(beg), end(end), seperator(seperator.data, seperator.len), inclusive(inclusive), count(count)
+    split_iterator(u8 *beg, u8 *end, String &separator, bool inclusive, usize count)
+      : super(beg), end(end), separator(separator.data, separator.len), inclusive(inclusive), count(count)
     {
     }
 
     usize count;
     bool inclusive;
     usize n, usize m;
-    string_view seperator;
+    string_view separator;
     u8 *end;
   }
 
@@ -492,27 +492,27 @@ pub struct string_view : pub std::span<u8>
   }
 
   #[lifetime(depend(*this))]
-  pub fn split(this &, String &seperator)
+  pub fn split(this &, String &separator)
   {
-    return iterator_pair(++split_iterator(this.begin, this.end, seperator, false, ~0), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, separator, false, ~0), end_iterator());
   }
 
   #[lifetime(depend(*this))]
-  pub fn split_after(this &, String &seperator)
+  pub fn split_after(this &, String &separator)
   {
-    return iterator_pair(++split_iterator(this.begin, this.end, seperator, true, ~0), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, separator, true, ~0), end_iterator());
   }
 
   #[lifetime(depend(*this))]
-  pub fn split_n(this &, usize n, String &seperator)
+  pub fn split_n(this &, usize n, String &separator)
   {
-    return iterator_pair(++split_iterator(this.begin, this.end, seperator, false, n + 1), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, separator, false, n + 1), end_iterator());
   }
 
   #[lifetime(depend(*this))]
-  pub fn split_after_n(this &, usize n, String &seperator)
+  pub fn split_after_n(this &, usize n, String &separator)
   {
-    return iterator_pair(++split_iterator(this.begin, this.end, seperator, true, n + 1), end_iterator());
+    return iterator_pair(++split_iterator(this.begin, this.end, separator, true, n + 1), end_iterator());
   }
 
   #[lifetime(assign(this, depend(*that.data)), repose(that, this), depend(this))]
@@ -1268,9 +1268,9 @@ pub fn sprint<Args>(string mut &str, Args & ...args) -> usize
 }
 
 #[lifetime(poison(str))]
-pub fn sprintf<Args>(string mut &str, #string_literal format, Args & ...args) -> usize
+pub fn sprintf<Args>(string mut &str, #string_literal format, Args & ...args, #var site = __site__) -> usize
 {
-  return str.appendf(format, args...);
+  return str.appendf(format, args..., site: site);
 }
 
 #[lifetime(poison(str))]
@@ -1334,27 +1334,27 @@ pub fn words(String &str, String &delimiters = " \r\n\t")
 }
 
 #[lifetime(depend(*str.data))]
-pub fn split(String &str, String &seperator)
+pub fn split(String &str, String &separator)
 {
-  return string_view(str.data, str.len).split(seperator);
+  return string_view(str.data, str.len).split(separator);
 }
 
 #[lifetime(depend(*str.data))]
-pub fn split_after(String &str, String &seperator)
+pub fn split_after(String &str, String &separator)
 {
-  return string_view(str.data, str.len).split_after(seperator);
+  return string_view(str.data, str.len).split_after(separator);
 }
 
 #[lifetime(depend(*str.data))]
-pub fn split_n(String &str, usize n, String &seperator)
+pub fn split_n(String &str, usize n, String &separator)
 {
-  return string_view(str.data, str.len).split_n(n, seperator);
+  return string_view(str.data, str.len).split_n(n, separator);
 }
 
 #[lifetime(depend(*str.data))]
-pub fn split_after_n(String &str, usize n, String &seperator)
+pub fn split_after_n(String &str, usize n, String &separator)
 {
-  return string_view(str.data, str.len).split_after_n(n, seperator);
+  return string_view(str.data, str.len).split_after_n(n, separator);
 }
 
 #[lifetime(depend(*haystack.data))]
@@ -2145,13 +2145,13 @@ pub fn to_uppercase!(string &&str)
 }
 
 #[nodiscard]
-pub fn join(Range<String> &strings, String &seperator = "") -> string
+pub fn join(Range<String> &strings, String &separator = "") -> string
 {
   var len = 0;
 
   for (var &s : strings)
   {
-    len += s.len + seperator.len;
+    len += s.len + separator.len;
   }
 
   var str = string::with_capacity(len);
@@ -2166,7 +2166,7 @@ pub fn join(Range<String> &strings, String &seperator = "") -> string
 
   while (first != last)
   {
-    str += seperator;
+    str += separator;
     str += strings[first++];
   }
 
@@ -2182,9 +2182,9 @@ pub fn format(String &format, var & ...args) -> string
 }
 
 #[nodiscard]
-pub fn format(#string_literal format, var & ...args) -> string
+pub fn format(#string_literal format, var & ...args, #var site = __site__) -> string
 {
   var str = string();
-  str.appendf(format, args...);
+  str.appendf(format, args..., site: site);
   return str;
 }

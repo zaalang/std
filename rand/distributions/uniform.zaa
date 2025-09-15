@@ -1,0 +1,110 @@
+//
+// uniform distribution
+//
+
+import std.stdlib;
+import rand.rng : Rng;
+
+pub struct uniform_distribution<T>
+{
+  pub uniform_distribution() = default;
+  pub uniform_distribution(uniform_distribution &) = default;
+  pub fn =(uniform_distribution mut &, uniform_distribution &) -> uniform_distribution mut & = default;
+  pub ~uniform_distribution() = default;
+}
+
+pub fn sample(uniform_distribution<u8>, Rng mut &rng) -> u8
+{
+  return cast(rng.next_u32() & 0xff);
+}
+
+pub fn sample(uniform_distribution<u16>, Rng mut &rng) -> u16
+{
+  return cast(rng.next_u32() & 0xffff);
+}
+
+pub fn sample(uniform_distribution<u32>, Rng mut &rng) -> u32
+{
+  return rng.next_u32();
+}
+
+pub fn sample(uniform_distribution<u64>, Rng mut &rng) -> u64
+{
+  return rng.next_u64();
+}
+
+pub fn sample(uniform_distribution<usize>, Rng mut &rng) -> usize
+{
+  return cast(rng.next_u64());
+}
+
+pub fn sample(uniform_distribution<i8>, Rng mut &rng) -> i8
+{
+  return std::bit_cast<i8>(cast<u8>(rng.next_u32() & 0xff));
+}
+
+pub fn sample(uniform_distribution<i16>, Rng mut &rng) -> i16
+{
+  return std::bit_cast<i16>(cast<u16>(rng.next_u32() & 0xffff));
+}
+
+pub fn sample(uniform_distribution<i32>, Rng mut &rng) -> i32
+{
+  return std::bit_cast<i32>(rng.next_u32());
+}
+
+pub fn sample(uniform_distribution<i64>, Rng mut &rng) -> i64
+{
+  return std::bit_cast<i64>(rng.next_u64());
+}
+
+pub fn sample(uniform_distribution<isize>, Rng mut &rng) -> isize
+{
+  return std::bit_cast<isize>(rng.next_u64());
+}
+
+pub fn sample(uniform_distribution<bool>, Rng mut &rng) -> bool
+{
+  return cast(rng.next_u32() & 1);
+}
+
+pub fn sample(uniform_distribution<char>, Rng mut &rng) -> char
+{
+  return cast(rng.next_u32() & 0x10ffff);
+}
+
+pub fn sample(uniform_distribution<f32>, Rng mut &rng) -> f32
+{
+  return cast<f32>(rng.next_u32() >> (32 - 24)) * (1.0 / cast<f32>(1 << 24));
+}
+
+pub fn sample(uniform_distribution<f64>, Rng mut &rng) -> f64
+{
+  return cast<f64>(rng.next_u64() >> (64 - 53)) * (1.0 / cast<f64>(1 << 53));
+}
+
+pub fn sample<T>(uniform_distribution<T>, Rng mut &rng) -> T
+  where __is_tuple<T>
+{
+  var tuple = T();
+
+  #for (var mut &element : tuple)
+  {
+    element = rng.sample(uniform_distribution<typeof(element)>());
+  }
+
+  return tuple;
+}
+
+pub fn sample<T>(uniform_distribution<T>, Rng mut &rng) -> T
+  where __is_array<T>
+{
+  var array = T();
+
+  for (var mut &element : array)
+  {
+    element = rng.sample(uniform_distribution<typeof(element)>());
+  }
+
+  return array;
+}

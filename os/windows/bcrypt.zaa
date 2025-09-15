@@ -1,0 +1,15 @@
+//
+// bcrypt
+//
+
+import os.windows.ntdef : *;
+import os.windows.kernel32 : *;
+
+pub using BCRYPT_ALG_HANDLE = uintptr;
+
+pub const BCRYPT_RNG_USE_ENTROPY_IN_BUFFER = 0x1;
+pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG = 0x2;
+
+pub extern "C" fn BCryptOpenAlgorithmProvider(BCRYPT_ALG_HANDLE mut *phAlgorithm, LPCWSTR pszAlgId, LPCWSTR pszImplementation, ULONG dwFlags) -> DWORD;
+pub extern "C" fn BCryptGenRandom(BCRYPT_ALG_HANDLE hAlgorithm, LPVOID pbBuffer, ULONG cbBuffer, ULONG dwFlags) -> DWORD;
+pub extern "C" fn BCryptCloseAlgorithmProvider(BCRYPT_ALG_HANDLE hAlgorithm, ULONG dwFlags) -> DWORD;

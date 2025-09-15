@@ -31,7 +31,8 @@ pub const ENABLE_LVB_GRID_WORLDWIDE = 0x10;
 
 pub struct termios
 {
-  u32 mode;
+  u32 input;
+  u32 output;
 
   pub termios() = default;
   pub termios(termios&) = default;
@@ -114,56 +115,65 @@ pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
             switch (event.Char)
             {
               case 0:
-
-                switch (event.wVirtualKeyCode)
+              
+                if (event.dwControlKeyState & 0xc != 0) // Control
                 {
-                  case 0x25: // VK_LEFT
-                    if (event.dwControlKeyState & 0xc != 0)
-                    {
+                  switch (event.wVirtualKeyCode)
+                  {
+                    case 0x25: // VK_LEFT
                       buf = [ 0x1b, 0x5b, 0x31, 0x3b, 0x35, 0x44, 0, 0 ];
                       n = 6;
-                    }
-                    else
-                    {
-                      buf = [ 0x1b, 0x4f, 0x44, 0, 0, 0, 0, 0 ];
-                      n = 3;
-                    }
 
-                  case 0x27: // VK_RIGHT
-                    if (event.dwControlKeyState & 0xc != 0)
-                    {
+                    case 0x27: // VK_RIGHT
                       buf = [ 0x1b, 0x5b, 0x31, 0x3b, 0x35, 0x43, 0, 0 ];
                       n = 6;
-                    }
-                    else
-                    {
-                      buf = [ 0x1b, 0x4f, 0x43, 0, 0, 0, 0, 0 ];
-                      n = 3;
-                    }
 
-                  case 0x26: // VK_UP
-                    if (event.dwControlKeyState & 0xc != 0)
-                    {
+                    case 0x26: // VK_UP
                       buf = [ 0x1b, 0x5b, 0x31, 0x3b, 0x35, 0x41, 0, 0 ];
                       n = 6;
-                    }
-                    else
-                    {
-                      buf = [ 0x1b, 0x4f, 0x41, 0, 0, 0, 0, 0 ];
-                      n = 3;
-                    }
 
-                  case 0x28: // VK_DOWN
-                    if (event.dwControlKeyState & 0xc != 0)
-                    {
+                    case 0x28: // VK_DOWN
                       buf = [ 0x1b, 0x5b, 0x31, 0x3b, 0x35, 0x42, 0, 0 ];
                       n = 6;
-                    }
-                    else
-                    {
+                  }
+                }
+                
+                if (event.dwControlKeyState & 0xf == 0) // None
+                {
+                  switch (event.wVirtualKeyCode)
+                  {
+                    case 0x25: // VK_LEFT
+                      buf = [ 0x1b, 0x4f, 0x44, 0, 0, 0, 0, 0 ];
+                      n = 3;
+
+                    case 0x27: // VK_RIGHT
+                      buf = [ 0x1b, 0x4f, 0x43, 0, 0, 0, 0, 0 ];
+                      n = 3;
+
+                    case 0x26: // VK_UP
+                      buf = [ 0x1b, 0x4f, 0x41, 0, 0, 0, 0, 0 ];
+                      n = 3;
+
+                    case 0x28: // VK_DOWN
                       buf = [ 0x1b, 0x4f, 0x42, 0, 0, 0, 0, 0 ];
                       n = 3;
-                    }
+                      
+                    case 0x24: // VK_HOME
+                      buf = [ 0x1b, 0x4f, 0x48, 0, 0, 0, 0, 0 ];
+                      n = 3;
+                      
+                    case 0x23: // VK_END
+                      buf = [ 0x1b, 0x4f, 0x46, 0, 0, 0, 0, 0 ];
+                      n = 3;
+                      
+                    case 0x2d: // VK_INSERT
+                      buf = [ 0x1b, 0x5b, 0x32, 0x7e, 0, 0, 0, 0 ];
+                      n = 4;
+                     
+                    case 0x2e: // VK_DELETE
+                      buf = [ 0x1b, 0x5b, 0x33, 0x7e, 0, 0, 0, 0 ];
+                      n = 4;
+                  }
                 }
 
               case 0x01 ..= 0x7f:
@@ -231,9 +241,10 @@ pub fn get_termios(i32 fd, termios mut &state) -> i32
 {
   using os;
 
-  var handle = GetStdHandle(STD_INPUT_HANDLE);
-
-  if (GetConsoleMode(handle, &state.mode) == 0)
+  if (GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &state.input) == 0)
+    return -cast<i32>(error_code(GetLastError()));
+	
+  if (GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &state.output) == 0)
     return -cast<i32>(error_code(GetLastError()));
 
   return 0;
@@ -248,12 +259,13 @@ pub fn set_termios(i32 fd, termios &state) -> i32
 {
   using os;
 
-  var handle = GetStdHandle(STD_INPUT_HANDLE);
-
-  if (SetConsoleMode(handle, state.mode) == 0)
+  if (SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), state.input) == 0)
     return -cast<i32>(error_code(GetLastError()));
 
-  FlushConsoleInputBuffer(handle);
+  if (SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), state.output) == 0)
+    return -cast<i32>(error_code(GetLastError()));
+
+  FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
 
   return 0;
 }
@@ -262,11 +274,9 @@ pub fn get_winsize(i32 fd, int mut &cols, int mut &rows) -> i32
 {
   using os;
 
-  var handle = GetStdHandle(STD_OUTPUT_HANDLE);
-
   var info = CONSOLE_SCREEN_BUFFER_INFO();
 
-  if (GetConsoleScreenBufferInfo(handle, &info) == 0)
+  if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info) == 0)
     return -cast<i32>(error_code(GetLastError()));
 
   cols = cast(info.srWindow.Right - info.srWindow.Left + 1);
@@ -280,6 +290,38 @@ pub fn get_winsize(int mut &cols, int mut &rows) -> i32
   return get_winsize(STDOUT_FILENO, &mut cols, &mut rows);
 }
 
+pub fn ansi_off(i32 fd) -> i32
+{
+  using os;
+
+  var state = termios(void);
+  if (var rc = get_termios(fd, &mut state); rc < 0)
+    return rc;
+
+  state.output &= ~ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+  if (SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), state.output) == 0)
+    return -cast<i32>(error_code(GetLastError()));
+
+  return 0;
+}
+
+pub fn ansi_on(i32 fd) -> i32
+{
+  using os;
+
+  var state = termios(void);
+  if (var rc = get_termios(fd, &mut state); rc < 0)
+    return rc;
+
+  state.output |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+  if (SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), state.output) == 0)
+    return -cast<i32>(error_code(GetLastError()));
+
+  return 0;
+}
+
 pub fn echo_off(i32 fd) -> i32
 {
   using os;
@@ -288,10 +330,10 @@ pub fn echo_off(i32 fd) -> i32
   if (var rc = get_termios(fd, &mut state); rc < 0)
     return rc;
 
-  state.mode &= ~ENABLE_ECHO_INPUT;
+  state.input &= ~ENABLE_ECHO_INPUT;
 
-  if (var rc = set_termios(fd, state); rc < 0)
-    return rc;
+  if (SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), state.input) == 0)
+    return -cast<i32>(error_code(GetLastError()));
 
   return 0;
 }
@@ -304,10 +346,10 @@ pub fn echo_on(i32 fd) -> i32
   if (var rc = get_termios(fd, &mut state); rc < 0)
     return rc;
 
-  state.mode |= ENABLE_ECHO_INPUT;
+  state.input |= ENABLE_ECHO_INPUT;
 
-  if (var rc = set_termios(fd, state); rc < 0)
-    return rc;
+  if (SetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), state.input) == 0)
+    return -cast<i32>(error_code(GetLastError()));
 
   return 0;
 }
@@ -320,15 +362,15 @@ pub fn enable_raw_mode(i32 fd, termios mut &oldstate) -> i32
     return rc;
 
   var state = oldstate;
-  state.mode &= ~ENABLE_ECHO_INPUT;
-  state.mode &= ~ENABLE_LINE_INPUT;
-  state.mode &= ~ENABLE_MOUSE_INPUT;
-  state.mode &= ~ENABLE_WINDOW_INPUT;
-  state.mode &= ~ENABLE_PROCESSED_INPUT;
+  state.input &= ~ENABLE_ECHO_INPUT;
+  state.input &= ~ENABLE_LINE_INPUT;
+  state.input &= ~ENABLE_MOUSE_INPUT;
+  state.input &= ~ENABLE_WINDOW_INPUT;
+  state.input &= ~ENABLE_PROCESSED_INPUT;
 
-  state.mode |= ENABLE_EXTENDED_FLAGS;
-  state.mode |= ENABLE_INSERT_MODE;
-  state.mode |= ENABLE_QUICK_EDIT_MODE;
+  state.input |= ENABLE_EXTENDED_FLAGS;
+  state.input |= ENABLE_INSERT_MODE;
+  state.input |= ENABLE_QUICK_EDIT_MODE;
 
   if (var rc = set_termios(fd, state); rc < 0)
     return rc;

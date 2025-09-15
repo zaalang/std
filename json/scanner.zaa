@@ -332,16 +332,22 @@ pub fn fetch(scanner mut &this, InputReader mut &is) throws(std::error) -> token
   {
     case '[':
       return scan_token(&mut this, &mut is, token::type::l_square);
+
     case '{':
       return scan_token(&mut this, &mut is, token::type::l_brace);
+
     case ']':
       return scan_token(&mut this, &mut is, token::type::r_square);
+
     case '}':
       return scan_token(&mut this, &mut is, token::type::r_brace);
+
     case ':':
       return scan_token(&mut this, &mut is, token::type::colon);
+
     case ',':
       return scan_token(&mut this, &mut is, token::type::comma);
+
     case '\"':
       return scan_string_scalar(&mut this, &mut is, scalar_style::doublequoted);
   }

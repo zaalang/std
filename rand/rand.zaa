@@ -1,0 +1,73 @@
+//
+// rand
+//
+
+import std.span;
+import rand.rng;
+import rand.rngs.os;
+import rand.rngs.chacha8;
+
+pub struct ThreadRng
+{
+  pub fn next_u32(this mut &) -> u32
+  {
+    return instance.next_u32();
+  }
+
+  pub fn next_u64(this mut &) -> u64
+  {
+    return instance.next_u64();
+  }
+
+  pub fn fill_bytes(this mut &, std::mutable_span<u8> bytes) -> void
+  {
+    instance.fill_bytes(bytes);
+  }
+
+  fn instance() -> ChaCha8Rng mut &
+  {
+    static thread_local instance = #std::optional<ChaCha8Rng>();
+
+    if (!instance)
+      instance = ChaCha8Rng::seed_from(OsRng());
+
+    return &instance.value;
+  }
+
+  pub ThreadRng() = default;
+  pub ~ThreadRng() = default;
+}
+
+pub fn rng() -> ThreadRng
+{
+  return ThreadRng();
+}
+
+pub fn random<T>() -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+{
+  return rng().random<T>();
+}
+
+pub fn random_range<T>((T, T) &range) -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+{
+  return rng().random_range<T>(range);
+}
+
+pub fn random_range<T>((T, T, void) &range) -> T
+  where __is_match<Distribution<T>, uniform_distribution<T>>
+  where __is_integral<T>
+{
+  return rng().random_range<T>(range);
+}
+
+pub fn random_bool(f64 probability) -> bool
+{
+  return rng().random_bool(probability);
+}
+
+pub fn random_bool(u32 numerator, u32 denominator) -> bool
+{
+  return rng().random_bool(numerator, denominator);
+}

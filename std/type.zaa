@@ -164,3 +164,20 @@ struct decay_t<T>
 }
 
 pub using decay<T> = decay_t<T>::type;
+
+struct make_unsigned_t<T>
+{
+  #if (__is_same<T, i8>)
+    using type = u8;
+  #else if (__is_same<T, i16>)
+    using type = u16;
+  #else if (__is_same<T, i32>)
+    using type = u32;
+  #else if (__is_same<T, i64>)
+    using type = u64;
+  #else if (__is_same<T, isize>)
+    using type = usize;
+  #end
+}
+
+pub using make_unsigned<T> = make_unsigned_t<T>::type;

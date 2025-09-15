@@ -62,6 +62,18 @@ pub const fn signextend<T, U>(U x, U signbit) -> T
   return std::bit_cast<T>(__sub_with_borrow(x ^ signbit, signbit).0);
 }
 
+pub const fn rotl<T>(T x, int s) -> T
+  where __is_integral<T> && __is_unsigned<T>
+{
+  return __rotl(x, s);
+}
+
+pub const fn rotr<T>(T x, int s) -> T
+  where __is_integral<T> && __is_unsigned<T>
+{
+  return __rotr(x, s);
+}
+
 pub const fn byteswap<T>(T x) -> T
   where __is_integral<T>
 {
@@ -312,6 +324,23 @@ pub fn saturating_add(usize x, isize y) -> usize
     return x - __min(cast<usize>(x), cast<usize>(-y));
   else
     return x + __min(std::numeric_traits<usize>::max - cast<usize>(x), cast<usize>(y));
+}
+
+pub fn saturating_sub<T>(T x, int y) -> T
+  where __is_unsigned<T>
+{
+  if (y < 0)
+    return x + cast<T>(__min(std::numeric_traits<T>::max - cast<usize>(x), cast<usize>(-y)));
+  else
+    return x - cast<T>(__min(cast<usize>(x), cast<usize>(y)));
+}
+
+pub fn saturating_sub(usize x, isize y) -> usize
+{
+  if (y < 0)
+    return x + __min(std::numeric_traits<usize>::max - cast<usize>(x), cast<usize>(-y));
+  else
+    return x - __min(cast<usize>(x), cast<usize>(y));
 }
 
 pub const fn ceil_div<T>(T x, T y) -> T

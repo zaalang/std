@@ -36,7 +36,7 @@ enum errc : u32
 
 struct attr
 {
-  enum type
+  enum type : u8
   {
     none = 0,
     flag,

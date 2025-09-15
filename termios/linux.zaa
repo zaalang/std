@@ -246,7 +246,7 @@ pub fn enable_raw_mode(i32 fd, termios mut &oldstate) -> i32
   raw.c_cflag |= (CFLAG::CS8);
   raw.c_lflag &= ~(LFLAG::ECHO | LFLAG::ICANON | LFLAG::IEXTEN | LFLAG::ISIG);
   raw.c_cc[CC::VMIN] = 0;
-  raw.c_cc[CC::VTIME] = 1;
+  raw.c_cc[CC::VTIME] = 0;
 
   if (var rc = os::ioctl(fd, TCSETS + TCSAFLUSH, &raw); rc < 0)
     return rc;

@@ -1,0 +1,67 @@
+//
+// os rng
+//
+
+import std.span;
+import rand.rng : Rng;
+
+pub struct OsRng
+{
+  pub fn next_u32(this mut &) -> u32
+  {
+    var value = u32(void);
+    getrandom(&value, sizeof(value));
+
+    return value;
+  }
+
+  pub fn next_u64(this mut &) -> u64
+  {
+    var value = u64(void);
+    getrandom(&value, sizeof(value));
+
+    return value;
+  }
+
+  pub fn fill_bytes(this mut &, std::mutable_span<u8> bytes) -> void
+  {
+    getrandom(bytes.data, bytes.len);
+  }
+
+  pub OsRng() = default;
+  pub fn =(OsRng mut &, OsRng &) -> OsRng mut & = default;
+  pub ~OsRng() = default;
+}
+
+#if __cfg("os.linux")
+
+  import os.linux.random;
+
+  fn getrandom(void mut *buffer, usize buflen) -> void
+  {
+    os::getrandom(buffer, buflen, 0);
+  }
+
+#end
+
+#if __cfg("os.windows")
+
+  import os.windows.bcrypt : *;
+
+  fn getrandom(void mut *buffer, usize buflen) -> void
+  {
+    os::BCryptGenRandom(0, buffer, cast(buflen), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+  }
+
+#end
+
+#if __cfg("os.zaos")
+
+  import os.zaos.random : *;
+
+  fn getrandom(void mut *buffer, usize buflen) -> void
+  {
+    os::get_random(buffer, buflen, 0);
+  }
+
+#end

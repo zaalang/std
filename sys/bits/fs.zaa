@@ -1165,7 +1165,7 @@ pub enum permissions
     using os;
 
     var oldpathstr = [<u16>: void; 2048];
-    var oldpathlen = MultiByteToWideChar(CP_UTF8, 0, oldpath.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+    var oldpathlen = MultiByteToWideChar(CP_UTF8, 0, oldpath.data, cast(oldpath.len), oldpathstr.data, cast(oldpathstr.len - 1));
 
     if (oldpathlen == 0)
       throw std::system_error(error_code(GetLastError()));
@@ -1173,7 +1173,7 @@ pub enum permissions
     oldpathstr[cast(oldpathlen)] = 0;
 
     var newpathstr = [<u16>: void; 2048];
-    var newpathlen = MultiByteToWideChar(CP_UTF8, 0, newpath.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
+    var newpathlen = MultiByteToWideChar(CP_UTF8, 0, newpath.data, cast(newpath.len), newpathstr.data, cast(newpathstr.len - 1));
 
     if (newpathlen == 0)
       throw std::system_error(error_code(GetLastError()));

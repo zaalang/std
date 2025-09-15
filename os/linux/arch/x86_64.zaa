@@ -472,6 +472,7 @@ pub const sys_finit_module = 313;
 pub const sys_sched_setattr = 314;
 pub const sys_sched_getattr = 315;
 pub const sys_renameat2 = 316;
+pub const sys_getrandom = 318;
 
 pub fn syscall0(usize n) -> uintptr
 {

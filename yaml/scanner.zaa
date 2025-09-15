@@ -417,7 +417,7 @@ fn scan_directive(scanner mut &this, InputReader mut &is) throws(std::error) -> 
 
   skip_break(&mut this, &mut is);
 
-  this.tokens.push_back(make_token(token::type::directive, scalar_style::plain, value, loc));
+  this.tokens.push_back(make_token(token::type::directive, scalar_style::plain, &move value, loc));
 }
 
 fn is_document_start(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
@@ -522,7 +522,7 @@ fn scan_tag(scanner mut &this, InputReader mut &is) throws(std::error) -> void
     ch = this.peek(&mut is);
   }
 
-  this.tokens.push_back(make_token(token::type::tag, scalar_style::plain, value, loc));
+  this.tokens.push_back(make_token(token::type::tag, scalar_style::plain, &move value, loc));
 }
 
 fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) throws(std::error) -> void
@@ -723,7 +723,7 @@ fn scan_flow_scalar(scanner mut &this, InputReader mut &is, scalar_style style) 
 
   this.eat(&mut is);
 
-  this.tokens.push_back(make_token(token::type::scalar, style, value, loc));
+  this.tokens.push_back(make_token(token::type::scalar, style, &move value, loc));
 }
 
 fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws(std::error) -> void
@@ -746,7 +746,7 @@ fn scan_anchor(scanner mut &this, InputReader mut &is, token::type type) throws(
     ch = this.peek(&mut is);
   }
 
-  this.tokens.push_back(make_token(type, value, loc));
+  this.tokens.push_back(make_token(type, &move value, loc));
 }
 
 fn is_key(scanner mut &this, InputReader mut &is) throws(std::error) -> bool
@@ -985,7 +985,7 @@ fn scan_block_scalar(scanner mut &this, InputReader mut &is, scalar_style style)
   if (chomping == +1)
     value += trailing_breaks;
 
-  this.tokens.push_back(make_token(token::type::scalar, style, value, loc));
+  this.tokens.push_back(make_token(token::type::scalar, style, &move value, loc));
 }
 
 fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws(std::error) -> void
@@ -1111,7 +1111,7 @@ fn scan_plain_scalar(scanner mut &this, InputReader mut &is) throws(std::error) 
   if (leading_blanks)
     this.allow_simple_key = true;
 
-  this.tokens.push_back(make_token(token::type::scalar, scalar_style::plain, value, loc));
+  this.tokens.push_back(make_token(token::type::scalar, scalar_style::plain, &move value, loc));
 }
 
 fn scan(scanner mut &this, InputReader mut &is) throws(std::error) -> void
@@ -1140,36 +1140,50 @@ fn scan(scanner mut &this, InputReader mut &is) throws(std::error) -> void
   {
     case '[':
       return scan_flow_collection_start(&mut this, &mut is, token::type::flow_sequence_start);
+
     case '{':
       return scan_flow_collection_start(&mut this, &mut is, token::type::flow_mapping_start);
+
     case ']':
       return scan_flow_collection_end(&mut this, &mut is, token::type::flow_sequence_end);
+
     case '}':
       return scan_flow_collection_end(&mut this, &mut is, token::type::flow_mapping_end);
+
     case ',':
       return scan_flow_entry(&mut this, &mut is);
+
     case '!':
       return scan_tag(&mut this, &mut is);
+
     case '\'':
       return scan_flow_scalar(&mut this, &mut is, scalar_style::singlequoted);
+
     case '\"':
       return scan_flow_scalar(&mut this, &mut is, scalar_style::doublequoted);
+
     case '*':
       return scan_anchor(&mut this, &mut is, token::type::alias);
+
     case '&':
       return scan_anchor(&mut this, &mut is, token::type::anchor);
+
     case '?':
       if (is_key(&mut this, &mut is))
         return scan_key(&mut this, &mut is);
+
     case ':':
       if (is_value(&mut this, &mut is))
         return scan_value(&mut this, &mut is);
+
     case '-':
       if (is_block_entry(&mut this, &mut is))
         return scan_block_entry(&mut this, &mut is);
+
     case '|':
       if (this.flow_level == 0)
         return scan_block_scalar(&mut this, &mut is, scalar_style::literal);
+
     case '>':
       if (this.flow_level == 0)
         return scan_block_scalar(&mut this, &mut is, scalar_style::folded);

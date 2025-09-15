@@ -1,0 +1,82 @@
+//
+// test
+//
+
+import std.stdio;
+import os.windows.ntdef : *;
+import os.windows.kernel32 : *;
+import os.windows.user32 : *;
+import os.windows.gdi32 : *;
+
+fn wndproc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT
+{
+  switch (uMsg)
+  {
+    case WM_CREATE:
+      ;
+
+    case WM_CLOSE:
+      DestroyWindow(hWnd);
+
+    case WM_DESTROY:
+      PostQuitMessage(0);
+
+    case WM_MOVE:
+      ;
+
+    else:
+      return DefWindowProcA(hWnd, uMsg, wParam, lParam);
+  }
+
+  return 0;
+}
+
+pub fn main() -> i32
+{
+  var hInstance = GetModuleHandleW(null);
+
+  var si = STARTUPINFOW();
+  GetStartupInfoW(&si);
+
+  var wc = WNDCLASSEXA();
+  wc.lpszClassName = "Test".data;
+  wc.lpfnWndProc = &cast<(HWND, UINT, WPARAM, LPARAM) -> LRESULT>(wndproc);
+  wc.cbSize = sizeof(wc);
+  wc.style = 0;
+  wc.cbClsExtra = 0;
+  wc.cbWndExtra = 0;
+  wc.hInstance = hInstance;
+  wc.hIcon = LoadIconW(null, IDI_APPLICATION);
+  wc.hCursor = LoadCursorW(null, IDC_ARROW);
+  wc.hbrBackground = COLOR_BACKGROUND + 1; //GetStockObject(BLACK_BRUSH);
+  wc.lpszMenuName = null;
+  wc.hIconSm = LoadIconW(null, IDI_APPLICATION);
+
+  if (RegisterClassExA(&wc) == 0)
+    std::panic("Error registering window class");
+
+  var width = 640;
+  var height = 480;
+  var dwstyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+  var dwexstyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
+
+  var rect = RECT(0, 0, width, height);
+  AdjustWindowRectEx(&rect, dwstyle, FALSE, dwexstyle);
+
+  var hwnd = CreateWindowExA(dwexstyle, wc.lpszClassName, wc.lpszClassName, dwstyle, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, 0, 0, hInstance, null) -> HWND;
+
+  if (hwnd == 0)
+    std::panic("Error creating window");
+
+  ShowWindow(hwnd, cast(si.wShowWindow));
+
+  var msg = MSG();
+
+  while (GetMessageA(&msg, 0, 0, 0) > 0)
+  {
+    TranslateMessage(&msg);
+    DispatchMessageA(&msg);
+  }
+
+  return 0;
+}

@@ -298,6 +298,37 @@ fn maybe_empty(expr *first, expr *last) -> bool
   return true;
 }
 
+enum result : i32
+{
+  ok = 0,
+
+  fn bool(this &) -> bool
+  {
+    return cast<i32>(this) >= 0;
+  }
+
+  result(errc error)
+    : this(cast<result>(-cast<i32>(error)))
+  {
+  }
+}
+
+pub struct parse_result
+{
+  pub errc error;
+  pub std::vector<expr> regex;
+
+  pub fn bool(this &) -> bool
+  {
+    return !this.error;
+  }
+
+  pub parse_result() = default;
+  pub parse_result(parse_result&) = default;
+  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
+  pub ~parse_result() = default;
+}
+
 struct parse_context
 {
   std::vector<expr> regex;
@@ -349,7 +380,7 @@ fn collapse(parse_context mut &ctx) -> void
   }
 }
 
-fn parse_int(var mut &s, var &end, var mut &v) -> errc
+fn parse_int(var mut &s, var &end, var mut &v) -> result
 {
   if (s == end || !std::is_digit(*s))
     return errc::invalid_digit;
@@ -360,10 +391,10 @@ fn parse_int(var mut &s, var &end, var mut &v) -> errc
   while (std::is_digit(*s))
     ++s;
 
-  return cast<errc>(0);
+  return ok;
 }
 
-fn parse_escape_char(var mut &s, var &end, var mut &ch) -> errc
+fn parse_escape_char(var mut &s, var &end, var mut &ch) -> result
 {
   if (s == end)
     return errc::trailing_backslash;
@@ -398,23 +429,23 @@ fn parse_escape_char(var mut &s, var &end, var mut &ch) -> errc
       return errc::bad_escape;
   }
 
-  return cast<errc>(0);
+  return ok;
 }
 
-fn parse_char(var mut &s, var &end, var mut &ch) -> errc
+fn parse_char(var mut &s, var &end, var mut &ch) -> result
 {
   ch = *s++;
 
   if (ch == '\\')
   {
-    if (var err = parse_escape_char(&mut s, end, &mut ch); err)
-      return err;
+    if (var rc = parse_escape_char(&mut s, end, &mut ch); !rc)
+      return rc;
   }
 
-  return cast<errc>(0);
+  return ok;
 }
 
-fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
+fn parse_named_class(var mut &s, var &end, var mut &cc) -> result
 {
   if (s == end)
     return errc::missing_bracket;
@@ -488,10 +519,10 @@ fn parse_named_class(var mut &s, var &end, var mut &cc) -> errc
 
   s = ++i;
 
-  return cast<errc>(0);
+  return ok;
 }
 
-fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
+fn parse_escape_class(var mut &s, var &end, var mut &cc) -> result
 {
   if (s == end)
     return errc::trailing_backslash;
@@ -547,10 +578,10 @@ fn parse_escape_class(var mut &s, var &end, var mut &cc) -> errc
 
   ++s;
 
-  return cast<errc>(0);
+  return ok;
 }
 
-fn parse_class(var mut &s, var &end, var mut &cc) -> errc
+fn parse_class(var mut &s, var &end, var mut &cc) -> result
 {
   var invert = false;
   if (s != end && *s == '^')
@@ -569,17 +600,17 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
 
     if (lo == '[')
     {
-      if (var err = parse_named_class(&mut s, end, &mut cc); !err)
+      if (parse_named_class(&mut s, end, &mut cc))
         continue;
     }
 
     if (lo == '\\')
     {
-      if (var err = parse_escape_class(&mut s, end, &mut cc); !err)
+      if (parse_escape_class(&mut s, end, &mut cc))
         continue;
 
-      if (var err = parse_escape_char(&mut s, end, &mut lo); err)
-        return err;
+      if (var rc = parse_escape_char(&mut s, end, &mut lo); !rc)
+        return rc;
     }
 
     var hi = lo;
@@ -588,8 +619,8 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
     {
       ++s;
 
-      if (var err = parse_char(&mut s, end, &mut hi); err)
-        return err;
+      if (var rc = parse_char(&mut s, end, &mut hi); !rc)
+        return rc;
 
       if (hi < lo)
         return errc::bad_char_range;
@@ -611,10 +642,10 @@ fn parse_class(var mut &s, var &end, var mut &cc) -> errc
   if (cc.runes.empty)
     return errc::bad_char_range;
 
-  return cast<errc>(0);
+  return ok;
 }
 
-fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> errc
+fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> result
 {
   for (var chars = pattern.chars, var ch = chars.begin, var end = chars.end; ch != end; )
   {
@@ -640,8 +671,8 @@ fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> err
       case '[':
         var cc = klass(flags);
 
-        if (var err = parse_class(&mut s, end, &mut cc); err)
-          return err;
+        if (var rc = parse_class(&mut s, end, &mut cc); !rc)
+          return rc;
 
         ctx.push(expr::Klass(cc));
 
@@ -799,8 +830,8 @@ fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> err
         {
           var cc = klass(flags);
 
-          if (var err = parse_escape_class(&mut s, end, &mut cc); err)
-            return err;
+          if (var rc = parse_escape_class(&mut s, end, &mut cc); !rc)
+            return rc;
 
           ctx.push(expr::Klass(cc));
         }
@@ -808,8 +839,8 @@ fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> err
         {
           var lit = 0;
 
-          if (var err = parse_escape_char(&mut s, end, &mut lit); err)
-            return err;
+          if (var rc = parse_escape_char(&mut s, end, &mut lit); !rc)
+            return rc;
 
           ctx.push(expr::Literal(lit, flags));
         }
@@ -826,18 +857,7 @@ fn parse(parse_context mut &ctx, std::string_view pattern, options flags) -> err
   if (ctx.stack.len != 0)
     return errc::missing_paren;
 
-  return cast<errc>(0);
-}
-
-pub struct parse_result
-{
-  pub errc error;
-  pub std::vector<expr> regex;
-
-  pub parse_result() = default;
-  pub parse_result(parse_result&) = default;
-  pub fn =(parse_result mut &, parse_result&) -> parse_result mut & = default;
-  pub ~parse_result() = default;
+  return ok;
 }
 
 pub fn parse(String &pattern, options flags = cast(0)) -> parse_result
@@ -846,8 +866,8 @@ pub fn parse(String &pattern, options flags = cast(0)) -> parse_result
 
   var ctx = parse_context();
 
-  if (var err = parse(&mut ctx, std::string_view(pattern), flags); err)
-    result.error = err;
+  if (var rc = parse(&mut ctx, std::string_view(pattern), flags); !rc)
+    result.error = cast<errc>(-cast<i32>(rc));
 
   result.regex = &move ctx.regex;
 

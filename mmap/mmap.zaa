@@ -436,12 +436,14 @@ pub struct mutable_file
 
   fn open_file(std::string_view path, mode mode) throws(std::error) -> HANDLE
   {
-    var pathstr = [0; 2048];
+    var pathstr = [<u16>: void; 2048];
 
-    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len));
+    var nchars = MultiByteToWideChar(CP_UTF8, 0, path.data, cast(path.len), pathstr.data, cast(pathstr.len - 1));
 
     if (nchars == 0)
       throw mmap_error(cast<uintptr>(GetLastError()));
+
+    pathstr[cast(pathlen)] = 0;
 
     var access = (mode == mode::readonly) ? GENERIC_READ : GENERIC_READ | GENERIC_WRITE;
 
