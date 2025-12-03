@@ -6,8 +6,8 @@ import std.fmt;
 import std.optional;
 import lml.point : Point;
 import lml.vector : Vector;
+import lml.matrix : Matrix;
 import lml.quaternion;
-import lml.matrix;
 
 pub concept Bound<U, T, N>
 {
@@ -426,7 +426,7 @@ pub fn halfdim<U, T, N>(Bound<U, T, N> &bound) -> lml::vector<T, N>
 }
 
 /// transform
-pub fn transform<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N> &bound) -> U
+pub fn transform<U, T, N>(Matrix<T, N, N> &m, Bound<U, T, N> &bound) -> U
 {
   var centre = transform(m, lml::centre(bound));
   var halfdim = transform(abs(m), lml::halfdim(bound));
@@ -440,10 +440,10 @@ pub fn *<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N> &bound) -> U
 }
 
 /// transform
-pub fn transform<U, T, N>(lml::matrix<T, N, N> &m, Bound<U, T, N-1> &bound) -> U
+pub fn transform<U, T, N>(Matrix<T, N, N> &m, Bound<U, T, N-1> &bound) -> U
 {
   var centre = transform(m, lml::centre(bound));
-  var halfdim = transform(abs(m), lml::halfdim(bound));
+  var halfdim = transform(abs(m), lml::halfdim(bound), T(0.0));
 
   return make_bound<U>(centre - halfdim, centre + halfdim);
 }

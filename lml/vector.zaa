@@ -407,7 +407,7 @@ pub const fn *<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
 
 /// elementwise scalar division
 pub const fn /<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
-  match (T x, S y) { x = x * y; }
+  match (T x, S y) { T(x * y); }
 {
   return scale(u, T(1.0) / s);
 }

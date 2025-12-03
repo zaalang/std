@@ -21,7 +21,7 @@ pub struct env
 
   pub fn set(this mut &, String &&name, String &&value) -> void
   {
-    this.vars.insert(&&name, &&value);
+    this.vars.insert_or_assign(&&name, &&value);
   }
 
   pub fn unset(this mut &, String &&name) -> void
@@ -29,7 +29,7 @@ pub struct env
     if (this.clear)
       this.vars.erase(name);
     else
-      this.vars.insert(&&name);
+      this.vars.insert_or_assign(&&name);
   }
 
   pub env() = default;

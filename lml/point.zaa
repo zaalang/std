@@ -3,8 +3,8 @@
 //
 
 import std.type;
-import lml.vector;
-import lml.matrix;
+import lml.vector : Vector;
+import lml.matrix : Matrix;
 import lml.quaternion;
 
 pub concept Point<T, N>
@@ -51,7 +51,7 @@ pub fn -<T, N>(Point<T, N> &pt, lml::vector<T, N> &v) -> typeof(pt)
   return translate(pt, -v);
 }
 
-pub fn transform<T>(lml::matrix<T, 2, 2> &m, Point<T, 2> &pt) -> typeof(pt)
+pub fn transform<T>(Matrix<T, 2, 2> &m, Point<T, 2> &pt) -> typeof(pt)
 {
   var x = m[0,0]*get<0>(pt) + m[0,1]*get<1>(pt);
   var y = m[1,0]*get<0>(pt) + m[1,1]*get<1>(pt);
@@ -59,7 +59,7 @@ pub fn transform<T>(lml::matrix<T, 2, 2> &m, Point<T, 2> &pt) -> typeof(pt)
   return typeof(pt)(x, y);
 }
 
-pub fn transform<T>(lml::matrix<T, 3, 3> &m, Point<T, 3> &pt) -> typeof(pt)
+pub fn transform<T>(Matrix<T, 3, 3> &m, Point<T, 3> &pt) -> typeof(pt)
 {
   var x = m[0,0]*get<0>(pt) + m[0,1]*get<1>(pt) + m[0,2]*get<2>(pt);
   var y = m[1,0]*get<0>(pt) + m[1,1]*get<1>(pt) + m[1,2]*get<2>(pt);
@@ -68,7 +68,7 @@ pub fn transform<T>(lml::matrix<T, 3, 3> &m, Point<T, 3> &pt) -> typeof(pt)
   return typeof(pt)(x, y, z);
 }
 
-pub fn transform<T>(lml::matrix<T, 4, 4> &m, Point<T, 4> &pt) -> typeof(pt)
+pub fn transform<T>(Matrix<T, 4, 4> &m, Point<T, 4> &pt) -> typeof(pt)
 {
   var x = m[0,0]*get<0>(pt) + m[0,1]*get<1>(pt) + m[0,2]*get<2>(pt) + m[0,3]*get<3>(pt);
   var y = m[1,0]*get<0>(pt) + m[1,1]*get<1>(pt) + m[1,2]*get<2>(pt) + m[1,3]*get<3>(pt);
@@ -78,7 +78,7 @@ pub fn transform<T>(lml::matrix<T, 4, 4> &m, Point<T, 4> &pt) -> typeof(pt)
   return typeof(pt)(x, y, z, w);
 }
 
-pub fn transform<T>(lml::matrix<T, 3, 3> &m, Point<T, 2> &pt, T w = T(1.0)) -> typeof(pt)
+pub fn transform<T>(Matrix<T, 3, 3> &m, Point<T, 2> &pt, T w = T(1.0)) -> typeof(pt)
 {
   var x = m[0,0]*get<0>(pt) + m[0,1]*get<1>(pt) + m[0,2]*w;
   var y = m[1,0]*get<0>(pt) + m[1,1]*get<1>(pt) + m[1,2]*w;
@@ -86,7 +86,7 @@ pub fn transform<T>(lml::matrix<T, 3, 3> &m, Point<T, 2> &pt, T w = T(1.0)) -> t
   return typeof(pt)(x, y);
 }
 
-pub fn transform<T>(lml::matrix<T, 4, 4> &m, Point<T, 3> &pt, T w = T(1.0)) -> typeof(pt)
+pub fn transform<T>(Matrix<T, 4, 4> &m, Point<T, 3> &pt, T w = T(1.0)) -> typeof(pt)
 {
   var x = m[0,0]*get<0>(pt) + m[0,1]*get<1>(pt) + m[0,2]*get<2>(pt) + m[0,3]*w;
   var y = m[1,0]*get<0>(pt) + m[1,1]*get<1>(pt) + m[1,2]*get<2>(pt) + m[1,3]*w;

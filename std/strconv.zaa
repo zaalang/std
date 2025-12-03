@@ -15,6 +15,11 @@ pub struct strconv_result
   pub u8 *ptr;
   pub std::errc error;
 
+  pub const fn bool(this &) -> bool
+  {
+    return !this.error;
+  }
+
   pub strconv_result() = default;
   pub strconv_result(strconv_result&) = default;
   pub fn =(strconv_result mut &, strconv_result&) -> strconv_result mut & = default;

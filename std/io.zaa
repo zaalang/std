@@ -34,6 +34,12 @@ pub concept OutputStream
     {
     }
   }
+
+  pub fn flush<T>(T mut &os) throws(std::error) -> void
+  {
+    #if (requires (T os) { try { os.flush(); } catch (std::error e) { } })
+      os.flush();
+  }
 }
 
 pub fn OutputStream<N>(u8[N] mut &array)
@@ -80,10 +86,16 @@ pub struct output_stream
 {
   void mut &_stream;
   fn (*_write)(void mut &, u8 *, usize) throws(std::error) -> usize;
+  fn (*_flush)(void mut &) throws(std::error) -> void;
 
   pub fn write(this mut &, u8 *data, usize len) throws(std::error) -> usize
   {
     return this._write(&mut this._stream, data, len);
+  }
+
+  pub fn flush(this mut &) throws(std::error) -> void
+  {
+    this._flush(&mut this._stream);
   }
 
   #[lifetime(depends(os))]
@@ -94,6 +106,10 @@ pub struct output_stream
 
     _write = fn (void mut &stream, u8 *data, usize len) throws(std::error) -> usize {
       return cast<T mut &>(stream).write(data, len);
+    };
+
+    _flush = fn (void mut &stream) throws(std::error) -> void {
+      OutputStream::flush(&mut cast<T mut &>(stream));
     };
   }
 
@@ -358,6 +374,7 @@ pub struct buffered_writer<Allocator = std::allocator, N = 0>
 {
   void mut &_stream;
   fn (*_write)(void mut &, u8 *, usize) throws(std::error) -> usize;
+  fn (*_flush)(void mut &) throws(std::error) -> void;
 
   #[lifetime(depends(os))]
   pub buffered_writer<T>(T mut &os, usize capacity, Allocator &allocator = Allocator())
@@ -367,6 +384,10 @@ pub struct buffered_writer<Allocator = std::allocator, N = 0>
 
     _write = fn (void mut &stream, u8 *data, usize len) throws(std::error) -> usize {
       return cast<T mut &>(stream).write(data, len);
+    };
+
+    _flush= fn (void mut &stream) throws(std::error) -> void {
+      OutputStream::flush(&mut cast<T mut &>(stream));
     };
 
     _buffer.reserve(capacity);
@@ -416,6 +437,8 @@ pub struct buffered_writer<Allocator = std::allocator, N = 0>
 
       this._buffer.clear();
     }
+
+    this._flush(&mut this._stream);
   }
 
   std::vector<u8, Allocator, N> _buffer;
@@ -427,6 +450,7 @@ pub struct line_writer<Allocator = std::allocator, N = 0>
 {
   void mut &_stream;
   fn (*_write)(void mut &, u8 *, usize) throws(std::error) -> usize;
+  fn (*_flush)(void mut &) throws(std::error) -> void;
 
   #[lifetime(depends(os))]
   pub line_writer<T>(T mut &os, usize capacity, Allocator &allocator = Allocator())
@@ -436,6 +460,10 @@ pub struct line_writer<Allocator = std::allocator, N = 0>
 
     _write = fn (void mut &stream, u8 *data, usize len) throws(std::error) -> usize {
       return cast<T mut &>(stream).write(data, len);
+    };
+
+    _flush = fn (void mut &stream) throws(std::error) -> void {
+      OutputStream::flush(&mut cast<T mut &>(stream));
     };
 
     _buffer.reserve(capacity);
@@ -518,6 +546,8 @@ pub struct line_writer<Allocator = std::allocator, N = 0>
 
       this._buffer.clear();
     }
+
+    this._flush(&mut this._stream);
   }
 
   std::vector<u8, Allocator, N> _buffer;

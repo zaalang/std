@@ -476,37 +476,37 @@ pub const sys_getrandom = 318;
 
 pub fn syscall0(usize n) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},~{rcx},~{r11},~{memory}", n);
+  return __asm("syscall", "={rax},{rax},~{rcx},~{r11},~{memory}", n);
 }
 
 pub fn syscall1(usize n, var a1) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},{rdi},~{rcx},~{r11},~{memory}", n, a1);
+  return __asm("syscall", "={rax},{rax},{rdi},~{rcx},~{r11},~{memory}", n, a1);
 }
 
 pub fn syscall2(usize n, var a1, var a2) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},{rdi},{rsi},~{rcx},~{r11},~{memory}", n, a1, a2);
+  return __asm("syscall", "={rax},{rax},{rdi},{rsi},~{rcx},~{r11},~{memory}", n, a1, a2);
 }
 
 pub fn syscall3(usize n, var a1, var a2, var a3) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},~{rcx},~{r11},~{memory}", n, a1, a2, a3);
+  return __asm("syscall", "={rax},{rax},{rdi},{rsi},{rdx},~{rcx},~{r11},~{memory}", n, a1, a2, a3);
 }
 
 pub fn syscall4(usize n, var a1, var a2, var a3, var a4) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},{r10},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4);
+  return __asm("syscall", "={rax},{rax},{rdi},{rsi},{rdx},{r10},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4);
 }
 
 pub fn syscall5(usize n, var a1, var a2, var a3, var a4, var a5) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},{r10},{r8},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4, a5);
+  return __asm("syscall", "={rax},{rax},{rdi},{rsi},{rdx},{r10},{r8},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4, a5);
 }
 
 pub fn syscall6(usize n, var a1, var a2, var a3, var a4, var a5, var a6) -> uintptr
 {
-  return __asm("syscall", "=r,{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4, a5, a6);
+  return __asm("syscall", "={rax},{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", n, a1, a2, a3, a4, a5, a6);
 }
 
 pub fn __clone(void mut *stack, fn (*start_routine)(void mut *) -> int, u64 flags, int mut *parent_tid, int mut *child_tid, void *tls) -> uintptr
@@ -515,7 +515,7 @@ pub fn __clone(void mut *stack, fn (*start_routine)(void mut *) -> int, u64 flag
 
   var ret = __asm (
     "syscall; test eax, eax; jnz 1f; xor ebp, ebp; mov rdi, rsp; and rsp, -16; call r9; mov rdi, rax; mov rax, 60; syscall; hlt; 1:\n",
-    "=r,{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", n, flags, stack, parent_tid, child_tid, tls, start_routine
+    "={rax},{rax},{rdi},{rsi},{rdx},{r10},{r8},{r9},~{rcx},~{r11},~{memory}", n, flags, stack, parent_tid, child_tid, tls, start_routine
   );
 
   return ret;

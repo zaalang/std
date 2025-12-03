@@ -76,6 +76,12 @@ pub union optional<T, Allocator = std::allocator>
       return (this.is_some) ? &this.Some : &default;
     }
 
+    pub fn unwrap_or<U>(this &&, U &&default) -> std::remove_reference<T>
+      match (U default) { std::remove_reference<T>(default); }
+    {
+      return (this.is_some) ? this.Some : std::remove_reference<T>(&&default);
+    }
+
     pub fn unwrap_or_else<Func>(this &&, Func &&func) -> std::remove_reference<T>
     {
       return (this.is_some) ? this.Some : func();
@@ -102,6 +108,12 @@ pub union optional<T, Allocator = std::allocator>
     pub fn ??(this &&, std::remove_reference<T> &&default)
     {
       return (this.is_some) ? &this.Some : &default;
+    }
+
+    pub fn ??<U>(this &&, U &&default) -> std::remove_reference<T>
+      match (U default) { std::remove_reference<T>(default); }
+    {
+      return (this.is_some) ? this.Some : std::remove_reference<T>(&&default);
     }
 
   #else

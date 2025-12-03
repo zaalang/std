@@ -230,6 +230,19 @@ pub fn minmax<Args>(Args & ...args) -> (typeof(args.0)&, typeof(args.0)&)
   return result;
 }
 
+pub fn sum<Args>(Args & ...args)
+  where __tuple_len<Args> > 1 && std::is_all_same<Args>
+{
+  var result = args.0;
+
+  #for (const k = 1; k < __tuple_len<Args>; ++k)
+  {
+    result += args.#k;
+  }
+
+  return result;
+}
+
 pub const less = |x, y| x < y;
 pub const greater = |x, y| x > y;
 pub const equal_to = |x, y| x == y;

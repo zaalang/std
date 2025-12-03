@@ -9,7 +9,7 @@ import sys.path;
 pub enum options
 {
   case_insensitive = 0x01,
-  match_leading_period  = 0x02,
+  match_leading_period = 0x02,
 
   pub const fn bool(options lhs) -> bool { return cast<isize>(lhs) != 0; }
 
@@ -26,6 +26,7 @@ pub struct glob
 
   pub struct glob_iterator
   {
+    std::string_view cwd;
     std::vector<(std::string, usize)> stack;
 
     pub glob_iterator(glob_iterator &) = default;
@@ -44,7 +45,7 @@ pub struct glob
       {
         var [path, depth] = this.stack.take_back();
 
-        fetch(&mut this.glob, &mut this.stack, path.view, depth);
+        fetch(&mut this.glob, &mut this.stack, this.cwd, path.view, depth);
       }
 
       return &this;
@@ -55,8 +56,8 @@ pub struct glob
       return lhs.stack.empty;
     }
 
-    glob_iterator(glob mut &glob)
-      : glob(&glob)
+    glob_iterator(glob mut &glob, std::string_view cwd)
+      : glob(&glob), cwd(cwd)
     {
       stack.push_back(glob.prefix, 0);
       stack.push_back(std::string(), 0);
@@ -79,10 +80,10 @@ pub struct glob
     return &iter.stack.back.0;
   }
 
-  #[lifetime(depend(this))]
-  pub fn files(this mut &) throws(std::error)
+  #[lifetime(depend(this), depend(cwd))]
+  pub fn files(this mut &, String &cwd = ".") throws(std::error)
   {
-    return std::range_view(&this, ++glob_iterator(&mut this), end_iterator());
+    return std::range_view(&this, ++glob_iterator(&mut this, std::string_view(cwd)), end_iterator());
   }
 
   pub glob() = default;
@@ -290,9 +291,10 @@ fn match(std::vector<expr> &pattern, String &name, options flags) -> bool
   return match(std::span(pattern), std::string_view(name), flags);
 }
 
-fn fetch(glob mut &glob, std::vector<(std::string, usize)> mut &stack, std::string_view path, usize depth) throws(std::error) -> void
+fn fetch(glob mut &glob, std::vector<(std::string, usize)> mut &stack, std::string_view cwd, std::string_view path, usize depth) throws(std::error) -> void
 {
   var &pattern = glob.patterns[depth];
+  var directory = sys::path::resolve(cwd, path);
   var is_literal = std::all_of(pattern, |expr| expr.is_literal);
 
   switch (is_literal)
@@ -303,17 +305,10 @@ fn fetch(glob mut &glob, std::vector<(std::string, usize)> mut &stack, std::stri
       for (var &expr : pattern)
         str += expr.Literal.rune;
 
-      var path = sys::path::join(path, str);
-
-      if (sys::exists(path))
-        stack.push_back(path, depth + 1);
+      if (sys::exists(sys::path::join(directory, str)))
+        stack.push_back(sys::path::join(path, str), depth + 1);
 
     case false:
-
-      var directory = path;
-
-      if (directory.empty)
-        directory = ".";
 
       if (pattern.front.is_recursive)
       {

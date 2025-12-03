@@ -386,21 +386,21 @@ pub const fn *<T, M, N, O>(Matrix<T, M, O> &p, Matrix<T, O, N> &q)
 
 /// elementwise scalar multiplication
 pub const fn *<T, M, N, S>(S &s, Matrix<T, M, N> &p)
-  match (T x, S y) { x * y; }
+  match (T x, S y) { T(x * y); }
 {
   return scale(p, s);
 }
 
 /// elementwise scalar multiplication
 pub const fn *<T, M, N, S>(Matrix<T, M, N> &p, S &s)
-  match (T x, S y) { x * y; }
+  match (T x, S y) { T(x * y); }
 {
   return scale(p, s);
 }
 
 /// elementwise scalar division
 pub const fn /<T, M, N, S>(Matrix<T, M, N> &p, S &s)
-  match (T x, S y) { x * y; }
+  match (T x, S y) { T(x * y); }
 {
   return scale(p, T(1.0) / s);
 }

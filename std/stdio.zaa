@@ -505,10 +505,6 @@ pub struct StdErr
     }
   }
 
-  pub fn flush(this mut &) -> void
-  {
-  }
-
   StdErr() = default;
   pub StdErr(StdErr &&) = default;
   pub ~StdErr() = default;

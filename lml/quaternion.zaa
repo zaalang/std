@@ -10,7 +10,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
   pub T scalar;
   pub V vector;
 
-  pub using vector_t = Vector<quaternion<T, V>, f32, 4>;
+  pub using vector_t = Vector<quaternion<T, V>, T, 4>;
 
   pub quaternion(T w, T x, T y, T z)
     : scalar(w), vector(x, y, z)
