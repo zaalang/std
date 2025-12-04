@@ -35,7 +35,7 @@ pub concept OutputStream
     }
   }
 
-  pub fn flush<T>(T mut &os) throws(std::error) -> void
+  pub static fn flush<T>(T mut &os) throws(std::error) -> void
   {
     #if (requires (T os) { try { os.flush(); } catch (std::error e) { } })
       os.flush();
@@ -386,7 +386,7 @@ pub struct buffered_writer<Allocator = std::allocator, N = 0>
       return cast<T mut &>(stream).write(data, len);
     };
 
-    _flush= fn (void mut &stream) throws(std::error) -> void {
+    _flush = fn (void mut &stream) throws(std::error) -> void {
       OutputStream::flush(&mut cast<T mut &>(stream));
     };
 
