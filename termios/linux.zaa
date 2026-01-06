@@ -149,7 +149,7 @@ pub fn poll(i32 fd, u64 timeout = ~0) -> i32
 {
   var readset = os::fd_set();
   os::fd_set(&mut readset, fd);
-  var tv = os::timeval(timeout / 1_000_000_000, timeout % 1_000_000_000);
+  var tv = os::timeval(timeout / 1_000_000_000, (timeout / 1_000) % 1_000_000);
 
   return os::select(fd + 1, &readset, null, null, &tv);
 }

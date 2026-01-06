@@ -187,7 +187,7 @@ pub fn write(i32 fd, u8 *data, usize len) -> i32
 pub fn poll(i32 fd, u64 timeout = ~0) -> i32
 {
   var tp = os::timespec(void);
-  if (var rc = os::clock_time(os::clock::monotonic, &tp); rc < 0)
+  if (var rc = os::clock_gettime(os::clock::monotonic, &tp); rc < 0)
     return rc;
 
   var pollset = [ os::pollevt(fd, os::POLLFD, os::POLLIN, 0) ];

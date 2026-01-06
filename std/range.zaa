@@ -1257,11 +1257,11 @@ pub struct adjacent_view<N, R>
   pub struct adjacent_iterator<I> : pub I
   {
     adjacent_iterator(I beg, Sentinal<I> end)
-      : super(beg)
+      : super(beg), window(void)
     {
-      window[0] = super;
+      new<I>(&window[0])(super);
       #for (const k = 1; k < N; ++k)
-        window[k] = this.super = std::next(this.super, 1, end);
+        new<I>(&window[k])(this.super = std::next(this.super, 1, end));
     }
 
     pub adjacent_iterator() = default;

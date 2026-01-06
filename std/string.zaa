@@ -1363,10 +1363,10 @@ pub fn find_first(String &&haystack, char needle)
   return find_first(&&haystack, haystack.begin, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_first(String &&haystack, u8 *pos, char needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_first(String &&haystack, u8 *position, char needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   if (needle < 0x80)
     return haystack.data + n + memchr(haystack.data + n, cast<u8>(needle), haystack.len - n);
@@ -1374,7 +1374,7 @@ pub fn find_first(String &&haystack, u8 *pos, char needle)
   var buf = [0; 8];
   var len = utf::encode(buf.data, needle);
 
-  return find_first(&&haystack, pos, string_view(buf.data, len));
+  return find_first(&&haystack, position, string_view(buf.data, len));
 }
 
 #[lifetime(depend(*haystack.data))]
@@ -1383,10 +1383,10 @@ pub fn find_first(String &&haystack, String &needle)
   return find_first(&&haystack, haystack.begin, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_first(String &&haystack, u8 *pos, String &needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_first(String &&haystack, u8 *position, String &needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   if (needle.len == 0)
     return haystack.data + n;
@@ -1409,10 +1409,10 @@ pub fn find_first_of(String &&haystack, String &needle)
   return find_first_of(&&haystack, haystack.begin, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_first_of(String &&haystack, u8 *pos, String &needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_first_of(String &&haystack, u8 *position, String &needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   for (var i = haystack.data + n, var end = haystack.end; i != end; ++i)
   {
@@ -1436,10 +1436,10 @@ pub fn find_first_not_of(String &&haystack, String &needle)
   return find_first_not_of(&&haystack, haystack.begin, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_first_not_of(String &&haystack, u8 *pos, String &needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_first_not_of(String &&haystack, u8 *position, String &needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   for (var i = haystack.data + n, var end = haystack.end; i != end; ++i)
   {
@@ -1470,10 +1470,10 @@ pub fn find_last(String &&haystack, char needle)
   return find_last(&&haystack, haystack.end, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_last(String &&haystack, u8 *pos, char needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_last(String &&haystack, u8 *position, char needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   if (needle < 0x80)
     return haystack.data + memrchr(haystack.data, cast<u8>(needle), n);
@@ -1481,7 +1481,7 @@ pub fn find_last(String &&haystack, u8 *pos, char needle)
   var buf = [0; 8];
   var len = utf::encode(buf.data, needle);
 
-  return find_last(&&haystack, pos, string_view(buf.data, len));
+  return find_last(&&haystack, position, string_view(buf.data, len));
 }
 
 #[lifetime(depend(*haystack.data))]
@@ -1490,10 +1490,10 @@ pub fn find_last(String &&haystack, String &needle)
   return find_last(&&haystack, haystack.end, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_last(String &&haystack, u8 *pos, String &needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_last(String &&haystack, u8 *position, String &needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   if (needle.len == 0)
     return haystack.data + n;
@@ -1516,10 +1516,10 @@ pub fn find_last_of(String &&haystack, String &needle)
   return find_last_of(&&haystack, haystack.end, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_last_of(String &&haystack, u8 *pos, String &needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_last_of(String &&haystack, u8 *position, String &needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   rof (var i = haystack.data + n, var end = haystack.data; i == end; --i)
   {
@@ -1543,10 +1543,10 @@ pub fn find_last_not_of(String &&haystack, String &needle)
   return find_last_not_of(&&haystack, haystack.end, needle);
 }
 
-#[lifetime(repose(pos, haystack), depend(*haystack.data))]
-pub fn find_last_not_of(String &&haystack, u8 *pos, String &needle)
+#[lifetime(repose(position, haystack), depend(*haystack.data))]
+pub fn find_last_not_of(String &&haystack, u8 *position, String &needle)
 {
-  var n = pos - haystack.data;
+  var n = position - haystack.data;
 
   rof (var i = haystack.data + n, var end = haystack.data; i == end; --i)
   {

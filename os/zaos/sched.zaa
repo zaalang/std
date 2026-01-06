@@ -134,7 +134,7 @@ pub fn wait(i32 id, i32 mut *rvalbuf, u64 flags) -> i32
 pub fn sleep(u64 timeout) -> i32
 {
   var tp = os::timespec(void);
-  if (var rc = os::clock_time(os::clock::monotonic, &tp); rc < 0)
+  if (var rc = os::clock_gettime(os::clock::monotonic, &tp); rc < 0)
     return rc;
 
   return __vdso_sleep(tp + std::min(timeout, ~0 - tp));

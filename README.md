@@ -1,4 +1,4 @@
 # zaalang
-> Peter Niekamp, 2020
+> Peter Niekamp, 2026
 
 Standard Library for zaalang

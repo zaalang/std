@@ -399,9 +399,6 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
         {
           switch (*ch)
           {
-            case '{':
-              ;
-
             case ' ':
               len = beg;
               while (len != str.end && !std::is_whitespace(*len))
@@ -413,6 +410,10 @@ pub fn sscanf<Args>(String &str, String &format, Args mut & ...args) -> scan_res
                 ++len;
               if (len != beg && *(len - 1) == cast('\r'))
                 --len;
+
+            case '{':
+              if (ch + 1 != end && *(ch + 1) == *ch)
+                goto else;
 
             else:
               len = beg;
