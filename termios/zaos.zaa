@@ -149,7 +149,7 @@ pub fn ttyname(Span<u8> mut &buffer, i32 fd) -> i32
 
 pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
 {
-  if (poll(fd, 0) <= 0)
+  if (poll(fd, 0) == 0)
     return os::EAGAIN;
 
   return os::read(&mut thread_ring, fd, buffer, len);
