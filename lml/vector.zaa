@@ -68,7 +68,7 @@ pub static fn get<i, U, T, N>(Vector<U, T, N> &vector)
   return &&vector.get<i>();
 }
 
-pub fn map<U, T, N, Func>(Vector<U, T, N> &u, Func &&func) -> U
+pub fn transform<U, T, N, Func>(Vector<U, T, N> &u, Func &&func) -> U
 {
   var storage = [<T>: void; N];
 
@@ -78,7 +78,7 @@ pub fn map<U, T, N, Func>(Vector<U, T, N> &u, Func &&func) -> U
   return U(storage...);
 }
 
-pub fn map<U, T, N, Func>(Vector<U, T, N> &u, Vector<U, T, N> &v, Func &&func) -> U
+pub fn transform<U, T, N, Func>(Vector<U, T, N> &u, Vector<U, T, N> &v, Func &&func) -> U
 {
   var storage = [<T>: void; N];
 
@@ -88,17 +88,7 @@ pub fn map<U, T, N, Func>(Vector<U, T, N> &u, Vector<U, T, N> &v, Func &&func) -
   return U(storage...);
 }
 
-pub fn foldl<R, U, T, N, Func>(Vector<U, T, N> &u, R &init, Func &&func) -> R
-{
-  var result = func(init, get<0>(u));
-
-  #for (const i = 1; i < N; ++i)
-    result = func(result, get<i>(u));
-
-  return result;
-}
-
-fn foldl<U, T, N, Func>(Func &&func, Vector<U, T, N> &u) -> T
+pub fn reduce<U, T, N, Func>(Vector<U, T, N> &u, Func &&func) -> T
 {
   var result = get<0>(u);
 
@@ -116,7 +106,7 @@ pub fn fmt<T, N>(std::OutputStream mut &os, std::fmt_context mut &ctx, vector<T,
 /// norm of the vector squared
 pub const fn normsqr<U, T, N>(Vector<U, T, N> &u) -> T
 {
-  return foldl(|s, xx| s + xx, map(u, |x| x * x));
+  return reduce(transform(u, |x| x * x), |s, xx| s + xx);
 }
 
 /// norm of the vector
@@ -131,14 +121,14 @@ pub const fn norm<U, T, N>(Vector<U, T, N> &u) -> T
 /// translate a vector
 pub const fn translate<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
 {
-  return map(u, v, |x, y| x + y);
+  return transform(u, v, |x, y| x + y);
 }
 
 /// scales a vector
 pub const fn scale<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
   match (T x, S y) { T(x * y); }
 {
-  return map(u, |x| x * s);
+  return transform(u, |x| x * s);
 }
 
 /// normalise a vector to a unit vector
@@ -165,7 +155,7 @@ pub const fn abs<U, T, N>(Vector<U, T, N> &u) -> U
   using T;
   using std::abs;
 
-  return map(u, |x| abs(x));
+  return transform(u, |x| abs(x));
 }
 
 /// elementwise min
@@ -174,7 +164,7 @@ pub const fn min<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
   using T;
   using std::min;
 
-  return map(u, v, |x, y| min(x, y));
+  return transform(u, v, |x, y| min(x, y));
 }
 
 /// elementwise max
@@ -183,7 +173,7 @@ pub const fn max<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
   using T;
   using std::max;
 
-  return map(u, v, |x, y| max(x, y));
+  return transform(u, v, |x, y| max(x, y));
 }
 
 /// elementwise floor
@@ -192,7 +182,7 @@ pub const fn floor<U, T, N>(Vector<U, T, N> &u) -> U
   using T;
   using std::floor;
 
-  return map(u, |x| floor(x));
+  return transform(u, |x| floor(x));
 }
 
 /// elementwise ceil
@@ -201,7 +191,7 @@ pub const fn ceil<U, T, N>(Vector<U, T, N> &u) -> U
   using T;
   using std::ceil;
 
-  return map(u, |x| ceil(x));
+  return transform(u, |x| ceil(x));
 }
 
 /// elementwise trunc
@@ -210,7 +200,7 @@ pub const fn trunc<U, T, N>(Vector<U, T, N> &u) -> U
   using T;
   using std::trunc;
 
-  return map(u, |x| trunc(x));
+  return transform(u, |x| trunc(x));
 }
 
 /// elementwise fract
@@ -219,7 +209,7 @@ pub const fn fract<U, T, N>(Vector<U, T, N> &u) -> U
   using T;
   using std::fract;
 
-  return map(u, |x| fract(x));
+  return transform(u, |x| fract(x));
 }
 
 /// elementwise clamp
@@ -228,7 +218,7 @@ pub const fn clamp<U, T, N>(Vector<U, T, N> &u, T lower, T upper) -> U
   using T;
   using std::clamp;
 
-  return map(u, |x| clamp(x, lower, upper));
+  return transform(u, |x| clamp(x, lower, upper));
 }
 
 /// elementwise lerp
@@ -237,25 +227,35 @@ pub const fn lerp<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v, T alpha) -> U
   using T;
   using std::lerp;
 
-  return map(u, v, |x, y| lerp(x, y, alpha));
+  return transform(u, v, |x, y| lerp(x, y, alpha));
 }
 
 /// min element
 pub const fn min_element<U, T, N>(Vector<U, T, N> &u) -> T
 {
-  using T;
-  using std::min;
+  var result = get<0>(u);
 
-  return foldl(|s, x| min(s, x), u);
+  #for (const i = 1; i < N; ++i)
+  {
+    if (get<i>(u) < result)
+      result = get<i>(u);
+  }
+
+  return result;
 }
 
 /// max element
 pub const fn max_element<U, T, N>(Vector<U, T, N> &u) -> T
 {
-  using T;
-  using std::max;
+  var result = get<0>(u);
 
-  return foldl(|s, x| max(s, x), u);
+  #for (const i = 1; i < N; ++i)
+  {
+    if (result < get<i>(u))
+      result = get<i>(u);
+  }
+
+  return result;
 }
 
 /// perp operator
@@ -273,7 +273,7 @@ pub const fn perp<U, T>(Vector<U, T, 2> &u, Vector<U, T, 2> &v) -> T
 /// dot product
 pub const fn dot<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> T
 {
-  return foldl(|s, xy| s + xy, map(u, v, |x, y| x * y));
+  return reduce(transform(u, v, |x, y| x * y), |s, xy| s + xy);
 }
 
 /// cross product
@@ -285,7 +285,7 @@ pub const fn cross<U, T>(Vector<U, T, 3> &u, Vector<U, T, 3> &v) -> U
 /// hadamard product
 pub const fn hadamard<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
 {
-  return map(u, v, |x, y| x * y);
+  return transform(u, v, |x, y| x * y);
 }
 
 /// orthogonal vector
@@ -376,19 +376,19 @@ pub const fn theta<U, T>(Vector<U, T, 3> &u, Vector<U, T, 3> &v, Vector<U, T, 3>
 /// elementwise negation
 pub const fn -<U, T, N>(Vector<U, T, N> &u) -> U
 {
-  return map(u, |x| -x);
+  return transform(u, |x| -x);
 }
 
 /// elementwise addition
 pub const fn +<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
 {
-  return map(u, v, |x, y| x + y);
+  return transform(u, v, |x, y| x + y);
 }
 
 /// elementwise subtraction
 pub const fn -<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> U
 {
-  return map(u, v, |x, y| x - y);
+  return transform(u, v, |x, y| x - y);
 }
 
 /// elementwise scalar multiplication
@@ -415,11 +415,12 @@ pub const fn /<U, T, N, S>(Vector<U, T, N> &u, S &s) -> U
 /// elementwise equality
 pub const fn ==<U, T, N>(Vector<U, T, N> &u, Vector<U, T, N> &v) -> bool
 {
-  #for (const i = 0; i < N; ++i)
-    if (get<i>(u) != get<i>(v))
-      return false;
+  var result = true;
 
-  return true;
+  #for (const i = 0; i < N; ++i)
+    result &= (get<i>(u) == get<i>(v));
+
+  return result;
 }
 
 /// matrix-vector multiplication

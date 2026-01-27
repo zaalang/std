@@ -124,21 +124,23 @@ pub struct bound_traits<bound>
 /// elementwise equality
 pub const fn ==<U, T, N>(Bound<U, T, N> &lhs, Bound<U, T, N> &rhs) -> bool
 {
-  #for (const i = 0; i < N; ++i)
-    if (low<i>(lhs) != low<i>(rhs) || high<i>(lhs) != high<i>(rhs))
-      return false;
+  var result = true;
 
-  return true;
+  #for (const i = 0; i < N; ++i)
+    result &= (low<i>(lhs) == low<i>(rhs)) & (high<i>(lhs) == high<i>(rhs));
+
+  return result;
 }
 
 /// empty
 pub fn empty<U, T, N>(Bound<U, T, N> &bound) -> bool
 {
-  #for (const i = 0; i < N; ++i)
-    if (high<i>(bound) <= low<i>(bound))
-      return true;
+  var result = false;
 
-  return false;
+  #for (const i = 0; i < N; ++i)
+    result |= (high<i>(bound) <= low<i>(bound));
+
+  return result;
 }
 
 /// volume
@@ -309,11 +311,12 @@ pub const fn clamp<U, T, N>(Point<T, N> &pt, Bound<U, T, N> &bound) -> typeof(pt
 /// intersects
 pub const fn intersects<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> bool
 {
-  #for (const i = 0; i < N; ++i)
-    if (low<i>(b1) > high<i>(b2) || high<i>(b1) < low<i>(b2))
-      return false;
+  var result = true;
 
-  return true;
+  #for (const i = 0; i < N; ++i)
+    result &= (low<i>(b1) <= high<i>(b2)) & (high<i>(b1) >= low<i>(b2));
+
+  return result;
 }
 
 /// intersection
@@ -380,21 +383,23 @@ pub fn intersection<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &a, Point<T, N> 
 /// contains point
 pub const fn contains<U, T, N>(Bound<U, T, N> &bound, Point<T, N> &pt) -> bool
 {
-  #for (const i = 0; i < N; ++i)
-    if (get<i>(pt) < low<i>(bound) || get<i>(pt) > high<i>(bound))
-      return false;
+  var result = true;
 
-  return true;
+  #for (const i = 0; i < N; ++i)
+    result &= (low<i>(bound) <= get<i>(pt)) & (get<i>(pt) <= high<i>(bound));
+
+  return result;
 }
 
 /// contains bound
 pub const fn contains<U, T, N>(Bound<U, T, N> &b1, Bound<U, T, N> &b2) -> bool
 {
-  #for (const i = 0; i < N; ++i)
-    if (low<i>(b2) < low<i>(b1) || high<i>(b2) > high<i>(b1))
-      return false;
+  var result = true;
 
-  return true;
+  #for (const i = 0; i < N; ++i)
+    result &= (low<i>(b1) <= low<i>(b2)) & (high<i>(b2) <= high<i>(b1));
+
+  return result;
 }
 
 /// centre
