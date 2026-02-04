@@ -1,0 +1,14 @@
+//
+// halt
+//
+
+pub const HALT_REBOOT = 0x1;
+pub const HALT_POWEROFF = 0x2;
+
+#[weak]
+extern fn __vdso_halt(u64 flags) -> i32;
+
+pub fn halt(u64 flags) -> i32
+{
+  return __vdso_halt(flags);
+}
