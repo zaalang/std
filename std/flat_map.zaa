@@ -28,7 +28,7 @@ pub struct flat_map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, flat_map &&other) -> flat_map mut &
   {
     std::launder(other);

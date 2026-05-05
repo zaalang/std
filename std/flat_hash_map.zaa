@@ -31,7 +31,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
     insert(&mut this, &&other);
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, flat_hash_map &&other) -> flat_hash_map mut &
   {
     std::launder(other);

@@ -68,6 +68,23 @@ fn fmt<T>(std::OutputStream mut &os, fmt_context mut &ctx, Range<T> &range) thro
   ctx.written += std::print_to(&mut os, "]");
 }
 
+fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, std::flat_hash_map<std::string, T> &map) throws(std::error) -> void
+{
+  ctx.written += std::print_to(&mut os, "{");
+
+  for (var k = 0, var &[key, value] : map;; ++k)
+  {
+    if (k != 0)
+      ctx.written += std::print_to(&mut os, ",");
+
+    ctx.written += std::print_to(&mut os, '"', key, '"', ":");
+
+    fmt_to(&mut os, &mut ctx, value);
+  }
+
+  ctx.written += std::print_to(&mut os, "}");
+}
+
 fn fmt<T>(OutputStream mut &os, fmt_context mut &ctx, T &object) throws(std::error) -> void
   where __is_struct<T>
 {

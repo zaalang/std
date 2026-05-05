@@ -615,7 +615,7 @@ pub struct string<Allocator = std::allocator, N = 24>
       this.insert(this._len, other.data, other.len);
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), depend(this))]
   pub fn =(this mut &, String &&other) -> string mut &
   {
     std::launder(other);

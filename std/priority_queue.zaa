@@ -26,7 +26,7 @@ pub struct priority_queue<T = int, Cmp = typeof(std::less), Container = std::vec
     insert(&mut this._container, &&other._container);
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, priority_queue &&other) -> priority_queue mut &
   {
     std::launder(other);

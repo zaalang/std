@@ -158,7 +158,7 @@ pub struct arc<T, Allocator = std::allocator>
     return std::atomic_load(&this.inner.refcnt);
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(arc mut &this, arc &&other) -> arc mut &
   {
     std::launder(other);

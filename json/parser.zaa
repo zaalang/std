@@ -53,7 +53,7 @@ struct parse_context
   token tok;
   scanner scanner;
 
-  #[lifetime(launder(this.tok))]
+  #[lifetime(launder(this.tok), poison(this.tok))]
   fn consume_token(this mut &, var mut &is) throws(std::error) -> void
   {
     this.tok = this.scanner.fetch(&mut is);

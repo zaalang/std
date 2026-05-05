@@ -40,7 +40,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return &this;
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, circular_buffer &&other) -> circular_buffer mut &
   {
     std::launder(other);

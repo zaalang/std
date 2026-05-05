@@ -25,7 +25,7 @@ pub struct list<T, Allocator = std::allocator>
     insert(&mut this, this.end, &&other);
   }
 
-  #[lifetime(poison(this), launder(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
   pub fn =(this mut &, list &&other) -> list mut &
   {
     std::launder(other);

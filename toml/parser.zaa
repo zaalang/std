@@ -83,7 +83,7 @@ struct parse_context
     return this.states.take_back();
   }
 
-  #[lifetime(launder(this.tok))]
+  #[lifetime(launder(this.tok), poison(this.tok))]
   fn consume_token(this mut &, var mut &is) throws(std::error) -> void
   {
     this.tok = this.scanner.fetch(&mut is);
