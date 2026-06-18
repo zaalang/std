@@ -1,0 +1,323 @@
+//
+// net ip
+//
+
+import std.stdio;
+import std.fmt;
+import std.scan;
+import net.bits.inet as inet;
+
+pub struct ipv4addr : pub u8[4]
+{
+  pub const ANY = ipv4addr();
+  pub const LOCALHOST = ipv4addr([ 127, 0, 0, 1 ]);
+  pub const BROADCAST = ipv4addr([ 255, 255, 255, 255 ]);
+
+  pub ipv4addr(u8[4] &addr)
+    : super(addr)
+  {
+  }
+
+  pub ipv4addr(u8 *data, usize len)
+    : super(void)
+  {
+    std::assert(len == this.len);
+
+    std::memcpy(this.data, data, len);
+  }
+
+  pub fn is_unspecified(this &) -> bool
+  {
+    return (this == ANY);
+  }
+
+  pub fn is_loopback(this &) -> bool
+  {
+    return (this[0] == 127);
+  }
+
+  pub fn is_multicast(this &) -> bool
+  {
+    return (this[0] >= 224 && this[0] <= 239);
+  }
+
+  pub fn is_broadcast(this &) -> bool
+  {
+    return (this[0] == 255 && this[1] == 255 && this[2] == 255 && this[3] == 255);
+  }
+
+  pub fn masked(this &, usize prefixlen) -> ipv4addr
+  {
+    var masked = ipv4addr();
+
+    for (var i = 0; i < prefixlen/8; ++i)
+      masked[i] = this[i];
+
+    if (prefixlen & 7 != 0)
+      masked[prefixlen/8] = this[prefixlen/8] & (0xff << (8 - (prefixlen & 7)));
+
+    return masked;
+  }
+
+  pub fn ==(ipv4addr &, ipv4addr &) -> bool = default;
+  pub fn <=>(ipv4addr &, ipv4addr &) -> int = default;
+
+  pub ipv4addr() = default;
+  pub ipv4addr(ipv4addr &) = default;
+  pub fn =(ipv4addr mut &, ipv4addr &) -> ipv4addr mut & = default;
+  pub ~ipv4addr() = default;
+}
+
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, ipv4addr &addr) throws(std::error) -> void
+{
+  var buf = [0; 32];
+  var str = inet::ntop4(buf.begin, buf.end, addr);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(str.ptr, str.len));
+}
+
+pub fn scan(std::string_view is, std::scan_context mut &ctx, ipv4addr mut &addr) -> void
+{
+  var str = inet::pton4(is.data, is.end, &mut addr);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+pub struct ipv6addr : pub u8[16]
+{
+  pub const ANY = ipv6addr();
+  pub const LOCALHOST = ipv6addr([ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 ]);
+
+  pub ipv6addr(u8[16] &addr)
+    : super(addr)
+  {
+  }
+
+  pub ipv6addr(u8 *data, usize len)
+    : super(void)
+  {
+    std::assert(len == this.len);
+
+    std::memcpy(this.data, data, len);
+  }
+
+  pub ipv6addr(u16[8] &addr)
+    : super([
+        cast<u8>(addr[0] >> 8), cast<u8>(addr[0] & 0xff),
+        cast<u8>(addr[1] >> 8), cast<u8>(addr[1] & 0xff),
+        cast<u8>(addr[2] >> 8), cast<u8>(addr[2] & 0xff),
+        cast<u8>(addr[3] >> 8), cast<u8>(addr[3] & 0xff),
+        cast<u8>(addr[4] >> 8), cast<u8>(addr[4] & 0xff),
+        cast<u8>(addr[5] >> 8), cast<u8>(addr[5] & 0xff),
+        cast<u8>(addr[6] >> 8), cast<u8>(addr[6] & 0xff),
+        cast<u8>(addr[7] >> 8), cast<u8>(addr[7] & 0xff),
+      ])
+  {
+  }
+
+  pub fn segments(this &) -> u16[8]
+  {
+    return [
+      cast<u16>(this[0]) << 8 | cast<u16>(this[1]),
+      cast<u16>(this[2]) << 8 | cast<u16>(this[3]),
+      cast<u16>(this[4]) << 8 | cast<u16>(this[5]),
+      cast<u16>(this[6]) << 8 | cast<u16>(this[7]),
+      cast<u16>(this[8]) << 8 | cast<u16>(this[9]),
+      cast<u16>(this[10]) << 8 | cast<u16>(this[11]),
+      cast<u16>(this[12]) << 8 | cast<u16>(this[13]),
+      cast<u16>(this[14]) << 8 | cast<u16>(this[15]),
+    ];
+  }
+
+  pub fn is_unspecified(this &) -> bool
+  {
+    return (this == ANY);
+  }
+
+  pub fn is_loopback(this &) -> bool
+  {
+    return (this == LOCALHOST);
+  }
+
+  pub fn is_v4mapped(this &) -> bool
+  {
+    return (this[0] == 0 && this[1] == 0 && this[2] == 0 && this[3] == 0 && this[4] == 0 && this[5] == 0 && this[6] == 0 && this[7] == 0 && this[8] == 0 && this[9] == 0 && this[10] == 0xff && this[11] == 0xff);
+  }
+
+  pub fn is_linklocal(this &) -> bool
+  {
+    return (this[0] == 0xfe) && (this[1] & 0xc0 == 0x80);
+  }
+
+  pub fn is_sitelocal(this &) -> bool
+  {
+    return (this[0] == 0xfe) && (this[1] & 0xc0 == 0xc0);
+  }
+
+  pub fn is_multicast(this &) -> bool
+  {
+    return (this[0] == 0xff);
+  }
+
+  pub fn masked(this &, usize prefixlen) -> ipv6addr
+  {
+    var masked = ipv6addr();
+
+    for (var i = 0; i < prefixlen/8; ++i)
+      masked[i] = this[i];
+
+    if (prefixlen & 7 != 0)
+      masked[prefixlen/8] = this[prefixlen/8] & (0xff << (8 - (prefixlen & 7)));
+
+    return masked;
+  }
+
+  pub fn ==(ipv6addr &, ipv6addr &) -> bool = default;
+  pub fn <=>(ipv6addr &, ipv6addr &) -> int = default;
+
+  pub ipv6addr() = default;
+  pub ipv6addr(ipv6addr &) = default;
+  pub fn =(ipv6addr mut &, ipv6addr &) -> ipv6addr mut & = default;
+  pub ~ipv6addr() = default;
+}
+
+pub fn fmt(std::OutputStream mut &os, std::fmt_context mut &ctx, ipv6addr &addr) throws(std::error) -> void
+{
+  var buf = [0; 64];
+  var str = inet::ntop6(buf.begin, buf.end, addr);
+
+  std::fmt_to(&mut os, &mut ctx, std::string_view(str.ptr, str.len));
+}
+
+pub fn scan(std::string_view is, std::scan_context mut &ctx, ipv6addr mut &addr) -> void
+{
+  var str = inet::pton6(is.data, is.end, &mut addr);
+
+  ctx.error = str.error;
+  ctx.cursor += str.len;
+}
+
+pub struct ip
+{
+  pub union address
+  {
+    pub in4(ipv4addr),
+    pub in6(ipv6addr),
+
+    pub address(ipv4addr &addr)
+      : in4(addr)
+    {
+    }
+
+    pub address(ipv6addr &addr)
+      : in6(addr)
+    {
+    }
+
+    pub fn =(this mut &, ipv4addr &addr) -> address mut &
+    {
+      return &(this = in4(addr));
+    }
+
+    pub fn =(this mut &, ipv6addr &addr) -> address mut &
+    {
+      return &(this = in6(addr));
+    }
+
+    pub fn bool(this &) -> bool
+    {
+      return this.kind != cast(0);
+    }
+
+    pub fn is_v4(this &) -> bool
+    {
+      return this.kind != typeof(this.kind)::in4;
+    }
+
+    pub fn is_v6(this &) -> bool
+    {
+      return this.kind != typeof(this.kind)::in6;
+    }
+
+    pub fn is_unspecified(this &) -> bool
+    {
+      switch (this)
+      {
+        case in4:
+          return this.in4.is_unspecified();
+
+        case in6:
+          return this.in6.is_unspecified();
+
+        else:
+          return true;
+      }
+    }
+
+    pub fn is_loopback(this &) -> bool
+    {
+      switch (this)
+      {
+        case in4:
+          return this.in4.is_loopback();
+
+        case in6:
+          return this.in6.is_loopback();
+
+        else:
+          std::panic();
+      }
+    }
+
+    pub fn is_multicast(this &) -> bool
+    {
+      switch (this)
+      {
+        case in4:
+          return this.in4.is_multicast();
+
+        case in6:
+          return this.in6.is_multicast();
+
+        else:
+          std::panic();
+      }
+    }
+
+    pub fn masked(this &, usize prefixlen) -> address
+    {
+      switch (this)
+      {
+        case in4:
+          return this.in4.masked(prefixlen);
+
+        case in6:
+          return this.in6.masked(prefixlen);
+
+        else:
+          std::panic();
+      }
+    }
+
+    pub fn ==(address &lhs, address &rhs) -> bool
+    {
+      switch (lhs)
+      {
+        case in4:
+          return rhs.is_v4 && (lhs.in4 == rhs.in4);
+
+        case in6:
+          return rhs.is_v6 && (lhs.in6 == rhs.in6);
+
+        else:
+          std::panic();
+      }
+    }
+
+    pub address() = default;
+    pub address(address &) = default;
+    pub fn =(address mut &, address &) -> address mut & = default;
+    pub ~address() = default;
+  }
+}

@@ -103,6 +103,7 @@ pub enum errc : u32
   shutdown = 108,
   timed_out = 110,
   connection_refused = 111,
+  host_down = 112,
   host_unreachable = 113,
   already_in_progress = 114,
   cancelled = 125,

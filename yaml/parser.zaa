@@ -329,6 +329,7 @@ fn parse_scalar(parse_context mut &ctx, InputReader mut &is) throws(std::error) 
   }
 
   ctx.consume_token(&mut is);
+
   ctx.state = ctx.pop_state();
 
   return ok;

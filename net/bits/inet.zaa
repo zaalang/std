@@ -1,0 +1,267 @@
+//
+// net inet
+//
+
+import std.error;
+import std.string;
+import std.strconv;
+
+pub struct inet_result
+{
+  pub usize len;
+  pub u8 *ptr;
+  pub std::errc error;
+
+  pub const fn bool(this &) -> bool
+  {
+    return !this.error;
+  }
+
+  pub inet_result() = default;
+  pub inet_result(inet_result&) = default;
+  pub fn =(inet_result mut &, inet_result&) -> inet_result mut & = default;
+  pub ~inet_result() = default;
+}
+
+pub fn ntop4(u8 mut *beg, u8 *end, u8[4] &addr) -> inet_result
+{
+  var result = inet_result();
+
+  result.ptr = beg + (end - beg);
+
+  rof (var i = addr.len; i == 0; --i)
+  {
+    var str = std::itoa(beg, end, addr[i]);
+
+    if (!str)
+    {
+      result.error = str.error;
+      return result;
+    }
+
+    end = str.ptr;
+    result.ptr = str.ptr;
+    result.len += str.len;
+
+    if (i != 0)
+    {
+      if (end == beg)
+      {
+        result.error = std::errc::value_too_large;
+        return result;
+      }
+
+      result.ptr -= 1;
+      result.len += 1;
+      *(beg + (--end - beg)) = cast<u8>('.');
+    }
+  }
+
+  return result;
+}
+
+pub fn ntop6(u8 mut *beg, u8 *end, u8[16] &addr) -> inet_result
+{
+  var words = [<u16>: 0; 8];
+
+  for (var i = 0; i < addr.len; ++i)
+  {
+    words[i / 2] |= cast<u16>(addr[i]) << ((1 - (i % 2)) << 3);
+  }
+
+  var bestrun = 1;
+  var bestidx = words.len;
+
+  for (var i = 0; i < words.len; )
+  {
+    if (words[i] == 0)
+    {
+      var count = 1;
+      for (var j = i + 1; j < words.len; ++j)
+      {
+        if (words[j] != 0)
+          break;
+
+        ++count;
+      }
+
+      if (count > bestrun)
+      {
+        bestidx = i;
+        bestrun = count;
+      }
+
+      i += count;
+    }
+    else
+    {
+      ++i;
+    }
+  }
+
+  var result = inet_result();
+
+  result.ptr = beg + (end - beg);
+
+  rof (var i = words.len; i == 0; --i)
+  {
+    if (i >= bestidx && i < bestidx + bestrun)
+    {
+      if (i == bestidx || i + 1 == bestidx + bestrun)
+      {
+        if (end == beg)
+        {
+          result.error = std::errc::value_too_large;
+          return result;
+        }
+
+        result.ptr -= 1;
+        result.len += 1;
+        *(beg + (--end - beg)) = cast<u8>(':');
+      }
+
+      continue;
+    }
+
+    var str = std::itoa(beg, end, words[i], 16);
+
+    if (!str)
+    {
+      result.error = str.error;
+      return result;
+    }
+
+    end = str.ptr;
+    result.ptr = str.ptr;
+    result.len += str.len;
+
+    if (i != 0 && i != bestidx + bestrun)
+    {
+      if (end == beg)
+      {
+        result.error = std::errc::value_too_large;
+        return result;
+      }
+
+      result.ptr -= 1;
+      result.len += 1;
+      *(beg + (--end - beg)) = cast<u8>(':');
+    }
+  }
+
+  return result;
+}
+
+pub fn pton4(u8 *beg, u8 *end, u8[4] mut &addr) -> inet_result
+{
+  var result = inet_result();
+
+  result.ptr = beg;
+
+  for (var i = 0; i < addr.len; ++i)
+  {
+    var str = std::atoi(beg, end, &mut addr[i]);
+
+    if (!str)
+    {
+      result.error = str.error;
+      return result;
+    }
+
+    beg += str.len;
+    result.len += str.len;
+
+    if (i + 1 != addr.len)
+    {
+      if (beg == end || *beg != cast<u8>('.'))
+      {
+        result.error = std::errc::invalid_argument;
+        return result;
+      }
+
+      beg += 1;
+      result.len += 1;
+    }
+  }
+
+  return result;
+}
+
+pub fn pton6(u8 *beg, u8 *end, u8[16] mut &addr) -> inet_result
+{
+  var result = inet_result();
+
+  var ch = beg;
+  var i = addr.begin;
+  var j = addr.end;
+  var word = u16();
+
+  result.ptr = beg;
+
+  if (ch != end && *ch == cast<u8>(':'))
+  {
+    ch += 1;
+
+    if (ch == end || *ch != cast<u8>(':'))
+    {
+      result.error = std::errc::invalid_argument;
+      return result;
+    }
+  }
+
+  for (; i < addr.end; )
+  {
+    var str = std::atoi(ch, end, &mut word, 16);
+
+    if (str)
+    {
+      addr[i++] = cast<u8>(word >> 8);
+      addr[i++] = cast<u8>(word & 0xff);
+
+      ch += str.len;
+
+      if (ch == end || *ch != cast<u8>(':'))
+        break;
+
+      ch += 1;
+
+      continue;
+    }
+
+    if (ch == end || *ch != cast<u8>(':'))
+      break;
+
+    if (j != addr.end)
+    {
+      result.error = std::errc::invalid_argument;
+      return result;
+    }
+
+    j = i;
+    ch += 1;
+  }
+
+  if (j != addr.end)
+  {
+    if (i == addr.end)
+    {
+      result.error = std::errc::invalid_argument;
+      return result;
+    }
+
+    std::memmove(j + (addr.end - i), j, i - j);
+    std::memset(j, 0, addr.end - i);
+
+    i = addr.end;
+  }
+
+  if (i != addr.end)
+  {
+    result.error = std::errc::invalid_argument;
+    return result;
+  }
+
+  result.len = ch - beg;
+
+  return result;
+}

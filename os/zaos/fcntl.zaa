@@ -333,7 +333,15 @@ pub enum ioring_ops
   pub const channel_read = 0x20;
   pub const channel_write = 0x21;
   pub const channel_call = 0x22;
-  pub const sleep = 0x23;
+  pub const socket = 0x23;
+  pub const socket_bind = 0x24;
+  pub const socket_connect = 0x25;
+  pub const socket_accept = 0x26;
+  pub const socket_listen = 0x27;
+  pub const socket_read = 0x28;
+  pub const socket_write = 0x29;
+  pub const socket_shutdown = 0x2a;
+  pub const sleep = 0x2b;
 }
 
 pub enum ioring_flags

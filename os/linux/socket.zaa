@@ -12,6 +12,7 @@ pub const AF_INET6 = 10;
 
 pub const SOCK_STREAM = 1;
 pub const SOCK_DGRAM = 2;
+pub const SOCK_RAW = 3;
 
 pub const SOL_SOCKET = 65535;
 
@@ -64,8 +65,17 @@ pub struct in4_addr : pub u8[4]
 {
   pub fn s_addr(this&&) { return &cast<u32&&>(this.super); }
 
+  pub in4_addr(u8[4] &addr)
+    : super(addr)
+  {
+  }
+
+  pub fn =(this mut &, u8[4] &addr) -> in4_addr mut &
+  {
+    return &(this = in4_addr(addr));
+  }
+
   pub in4_addr() = default;
-  pub in4_addr(u8[4] &addr) : super(addr) { }
   pub in4_addr(in4_addr &) = default;
   pub fn =(in4_addr mut &, in4_addr &) -> in4_addr mut & = default;
   pub ~in4_addr() = default;
@@ -92,8 +102,17 @@ pub struct in6_addr : pub u8[16]
   pub fn s6_addr16(this&&) { return &cast<u16[8]&&>(this.super); }
   pub fn s6_addr32(this&&) { return &cast<u32[4]&&>(this.super); }
 
+  pub in6_addr(u8[16] &addr)
+    : super(addr)
+  {
+  }
+
+  pub fn =(this mut &, u8[16] &addr) -> in6_addr mut &
+  {
+    return &(this = in6_addr(addr));
+  }
+
   pub in6_addr() = default;
-  pub in6_addr(u8[16] &addr) : super(addr) { }
   pub in6_addr(in6_addr &) = default;
   pub fn =(in6_addr mut &, in6_addr &) -> in6_addr mut & = default;
   pub ~in6_addr() = default;

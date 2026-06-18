@@ -1,0 +1,198 @@
+//
+// socket
+//
+
+import std.stdlib;
+import os.zaos.fcntl : *;
+
+pub const AF_INET6 = 10;
+
+pub const SOCK_STREAM = 1;
+pub const SOCK_DGRAM = 2;
+pub const SOCK_RAW = 3;
+
+pub const IPPROTO_IP = 0;
+pub const IPPROTO_ICMP = 1;
+pub const IPPROTO_TCP = 6;
+pub const IPPROTO_UDP = 17;
+pub const IPPROTO_IPV6 = 41;
+pub const IPPROTO_ICMPV6 = 58;
+
+pub const SIO_GETSOCKNAME = 0x8003001b;
+pub const SIO_GETPEERNAME = 0x8003001c;
+pub const SIO_SETPEERNAME = 0x8003011c;
+
+pub struct sockaddr
+{
+  pub u16 sa_family;
+
+  sockaddr() = default;
+  ~sockaddr() = default;
+}
+
+pub struct in6_addr : pub u8[16]
+{
+  pub fn s6_addr(this&&) { return &this.super; }
+  pub fn s6_addr16(this&&) { return &cast<u16[8]&&>(this.super); }
+  pub fn s6_addr32(this&&) { return &cast<u32[4]&&>(this.super); }
+
+  pub in6_addr(u8[16] &addr)
+    : super(addr)
+  {
+  }
+
+  pub fn =(this mut &, u8[16] &addr) -> in6_addr mut &
+  {
+    return &(this = in6_addr(addr));
+  }
+
+  pub in6_addr() = default;
+  pub in6_addr(in6_addr &) = default;
+  pub fn =(in6_addr mut &, in6_addr &) -> in6_addr mut & = default;
+  pub ~in6_addr() = default;
+}
+
+pub const in6addr_any = in6_addr([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]);
+pub const in6addr_loopback = in6_addr([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]);
+
+pub struct sockaddr_in6 : pub sockaddr
+{
+  pub u16 sin6_port;
+  pub u32 sin6_flowinfo;
+  pub in6_addr sin6_addr;
+  pub u32 sin6_scope_id;
+
+  pub sockaddr_in6() = default;
+  pub sockaddr_in6(sockaddr_in6 &) = default;
+  pub fn =(sockaddr_in6 mut &, sockaddr_in6 &) -> sockaddr_in6 mut & = default;
+  pub ~sockaddr_in6() = default;
+}
+
+pub const IPV6_SRCIP = 1;
+pub const IPV6_HOPLIMIT = 52;
+
+pub struct ctrlhdr
+{
+  pub u32 ctrl_len;
+  pub u32 ctrl_flags;
+
+  pub ctrlhdr() = default;
+  pub ctrlhdr(ctrlhdr &) = default;
+  pub fn =(ctrlhdr mut &, ctrlhdr &) -> ctrlhdr mut & = default;
+  pub ~ctrlhdr() = default;
+}
+
+pub struct ctrlattr
+{
+  pub u32 cta_len;
+  pub i32 cta_level;
+  pub u16 cta_type;
+  pub u8[0] cta_value;
+}
+
+pub fn ioring_prep_sqe_socket(ioring_sqe mut *sqe, i32 family, i32 type, i32 protocol) -> void
+{
+  sqe.op = ioring_ops::socket;
+  sqe.args[0] = cast(family);
+  sqe.args[1] = cast(type);
+  sqe.args[2] = cast(protocol);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_socket_bind(ioring_sqe mut *sqe, i32 fd, sockaddr *addr, usize alen) -> void
+{
+  sqe.op = ioring_ops::socket_bind;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(addr);
+  sqe.args[2] = cast(alen);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_socket_read(ioring_sqe mut *sqe, i32 fd, iovec mut *iovs, usize iovslen, ctrlhdr mut *ctrl, usize ctrllen, u64 flags) -> void
+{
+  sqe.op = ioring_ops::socket_read;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(iovs);
+  sqe.args[2] = cast(iovslen);
+  sqe.args[3] = cast(ctrl);
+  sqe.args[4] = cast(ctrllen);
+  sqe.args[5] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_socket_write(ioring_sqe mut *sqe, i32 fd, ciovec *iovs, usize iovslen, ctrlhdr *ctrl, usize ctrllen, u64 flags) -> void
+{
+  sqe.op = ioring_ops::socket_write;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(iovs);
+  sqe.args[2] = cast(iovslen);
+  sqe.args[3] = cast(ctrl);
+  sqe.args[4] = cast(ctrllen);
+  sqe.args[5] = cast(flags);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn socket(ioring mut &ring, i32 family, i32 type, i32 protocol) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket(sqe, family, type, protocol);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_bind(ioring mut &ring, i32 fd, sockaddr *addr, usize alen) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_bind(sqe, fd, addr, alen);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_read(ioring mut &ring, i32 fd, iovec mut *iovs, usize iovslen, ctrlhdr mut *ctrl, usize ctrllen, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_read(sqe, fd, iovs, iovslen, ctrl, ctrllen, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_write(ioring mut &ring, i32 fd, ciovec *iovs, usize iovslen, ctrlhdr *ctrl, usize ctrllen, u64 flags) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_write(sqe, fd, iovs, iovslen, ctrl, ctrllen, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
