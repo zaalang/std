@@ -551,8 +551,17 @@ struct tcache
 {
   const N = 8;
 
-  std::spin_lock[N] locks;
-  heap::entry mut *[40][N] entries;
+  struct thread
+  {
+    std::spin_lock lock;
+    heap::entry mut *[40] entries;
+
+    thread() = default;
+    thread(#thread &) = default;
+    ~thread() = default;
+  }
+
+  thread[N] threads;
 
   fn push<T>(T mut * mut &head, T mut *node) -> void
   {
@@ -583,29 +592,31 @@ struct tcache
     if (sc >= 40)
       return result;
 
+    static thread_local n = #usize(0);
+
     for (var i = 0; i < N; ++i)
     {
-      static thread_local n = #usize(0);
+      var mut &thread = tcache.threads[n];
 
-      if (!tcache.locks[n].try_lock())
+      if (!thread.lock.try_lock())
       {
         n = (n + 1) % N;
 
         continue;
       }
 
-      if (!tcache.entries[n][sc])
+      if (!thread.entries[sc])
       {
-        tcache.entries[n][sc] = heap::siphon(&mut heap::instance, size);
+        thread.entries[sc] = heap::siphon(&mut heap::instance, size);
       }
 
-      if (tcache.entries[n][sc])
+      if (thread.entries[sc])
       {
-        result.addr = &pop(&mut tcache.entries[n][sc]).next;
+        result.addr = &pop(&mut thread.entries[sc]).next;
         result.size = heap::size_of_klass(sc) - sizeof<heap::prefix>;
       }
 
-      tcache.locks[n].unlock();
+      thread.lock.unlock();
 
       break;
     }
@@ -615,17 +626,17 @@ struct tcache
 
   fn reap(tcache mut &tcache) -> void
   {
-    for (var n = 0; n < N; ++n)
+    for (var mut &thread : tcache.threads)
     {
-      tcache.locks[n].lock();
+      thread.lock.lock();
 
       for (var sc = 0; sc < 40; ++sc)
       {
-        while (tcache.entries[n][sc])
-          heap::free(&mut heap::instance, &pop(&mut tcache.entries[n][sc]).next);
+        while (thread.entries[sc])
+          heap::free(&mut heap::instance, &pop(&mut thread.entries[sc]).next);
       }
 
-      tcache.locks[n].unlock();
+      thread.lock.unlock();
     }
   }
 
