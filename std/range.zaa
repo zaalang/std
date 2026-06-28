@@ -1521,8 +1521,15 @@ pub struct chain_view<Rs, I, J>
       {
         switch (this.n)
         {
-          #{ #for (const k = 0; k < __tuple_len<X>; ++k)
-            -> { case ${k}: if (this.super.${k} != end.${k}) break; }
+          #{
+            #for (const k = 0; k < __tuple_len<X>; ++k)
+            {
+              -> {
+                case ${k}:
+                  if (this.super.${k} != end.${k})
+                    break;
+              }
+            }
           }
         }
 
@@ -1544,8 +1551,14 @@ pub struct chain_view<Rs, I, J>
     {
       switch (this.n)
       {
-        #{ #for (const k = 0; k < __tuple_len<X>; ++k)
-          -> { case ${k}: ++this.super.${k}; }
+        #{
+          #for (const k = 0; k < __tuple_len<X>; ++k)
+          {
+            -> {
+              case ${k}:
+                ++this.super.${k};
+            }
+          }
         }
       }
 
@@ -1553,8 +1566,15 @@ pub struct chain_view<Rs, I, J>
       {
         switch (this.n)
         {
-          #{ #for (const k = 0; k < __tuple_len<X>; ++k)
-            -> { case ${k}: if (this.super.${k} != this.view.second.super.${k}) break; }
+          #{
+            #for (const k = 0; k < __tuple_len<X>; ++k)
+            {
+              -> {
+                case ${k}:
+                  if (this.super.${k} != this.view.second.super.${k})
+                    break;
+              }
+            }
           }
         }
 
@@ -1570,8 +1590,15 @@ pub struct chain_view<Rs, I, J>
       {
         switch (this.n)
         {
-          #{ #for (const k = 0; k < __tuple_len<X>; ++k)
-            -> { case ${k}: if (this.super.${k} != this.view.first.super.${k}) break; }
+          #{
+            #for (const k = 0; k < __tuple_len<X>; ++k)
+            {
+              -> {
+                case ${k}:
+                  if (this.super.${k} != this.view.first.super.${k})
+                    break;
+              }
+            }
           }
         }
 
@@ -1580,8 +1607,14 @@ pub struct chain_view<Rs, I, J>
 
       switch (this.n)
       {
-        #{ #for (const k = 0; k < __tuple_len<X>; ++k)
-          -> { case ${k}: --this.super.${k}; }
+        #{
+          #for (const k = 0; k < __tuple_len<X>; ++k)
+          {
+            -> {
+              case ${k}:
+                --this.super.${k};
+            }
+          }
         }
       }
 
@@ -1642,8 +1675,14 @@ pub struct chain_view<Rs, I, J>
   {
     switch (iter.n)
     {
-      #{ #for (const k = 0; k < __tuple_len<I>; ++k)
-        -> { case ${k}: return &&(&&this.rs.${k})[iter.super.${k}]; }
+      #{
+        #for (const k = 0; k < __tuple_len<I>; ++k)
+        {
+          -> {
+            case ${k}:
+              return &&(&&this.rs.${k})[iter.super.${k}];
+          }
+        }
       }
     }
 

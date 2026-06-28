@@ -302,17 +302,38 @@ pub struct ip
 
     pub fn ==(address &lhs, address &rhs) -> bool
     {
-      switch (lhs)
+      switch ((lhs.kind, rhs.kind))
       {
-        case in4:
-          return rhs.is_v4 && (lhs.in4 == rhs.in4);
-
-        case in6:
-          return rhs.is_v6 && (lhs.in6 == rhs.in6);
-
-        else:
-          std::panic();
+        #{
+          #for (const k = 1; k != std::meta::fields_of($address).len; ++k)
+          {
+            -> {
+              case (cast<typeof(lhs.kind)>(${k}), cast<typeof(rhs.kind)>(${k})):
+                return lhs.${k} == rhs.${k};
+            }
+          }
+        }
       }
+
+      return false;
+    }
+
+    pub fn <=>(address &lhs, address &rhs) -> int
+    {
+      switch ((lhs.kind, rhs.kind))
+      {
+        #{
+          #for (const k = 1; k != std::meta::fields_of($address).len; ++k)
+          {
+            -> {
+              case (cast<typeof(lhs.kind)>(${k}), cast<typeof(rhs.kind)>(${k})):
+                return lhs.${k} <=> rhs.${k};
+            }
+          }
+        }
+      }
+
+      return lhs.kind <=> rhs.kind;
     }
 
     pub address() = default;

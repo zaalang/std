@@ -230,7 +230,10 @@ pub struct meta
       #{
         #for (const k : std::meta::enumerators_of($T))
         {
-          -> { case ${T::#k}: return ${std::meta::name_of(k)}; }
+          -> {
+            case ${T::#k}:
+              return ${std::meta::name_of(k)};
+          }
         }
       }
     }

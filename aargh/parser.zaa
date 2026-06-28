@@ -301,9 +301,14 @@ fn parse_options<Opts>() -> std::vector<attr>
   return options;
 }
 
+fn parsed_options<Opts>()
+{
+  return #parse_options<Opts>().as_literal;
+}
+
 pub fn usage<Opts>() -> void
 {
-  let options = #parse_options<Opts>().as_literal;
+  let options = #parsed_options<Opts>();
 
   var gutter = 16;
 
@@ -369,15 +374,19 @@ fn set_flag<Opts>(Opts mut &opts, usize field) -> errc
   switch (field)
   {
     #{
+      const options = #parsed_options<Opts>();
+
       #for (const k = 0; k < std::tuple_len<Opts>; ++k)
       {
-        #if (requires (Opts opts) { opts.#k = true; })
-          -> { case ${k}: opts.${k} = true; }
+        if (options[k].type != attr::type::flag)
+          continue;
+
+        -> {
+          case ${k}:
+            opts.${k} = true;
+        }
       }
     }
-
-    else:
-      return errc::invalid_field;
   }
 
   return cast(0);
@@ -388,21 +397,27 @@ fn set_value<Opts>(Opts mut &opts, usize field, std::string_view value) -> errc
   switch (field)
   {
     #{
+      const options = #parsed_options<Opts>();
+
       #for (const k = 0; k < std::tuple_len<Opts>; ++k)
       {
-        -> { case ${k}:
-          #if (requires (Opts opts) { opts.${k}.push_back(); })
-          {
-            var mut &back = opts.${k}.push_back();
+        if (options[k].type != attr::type::value && options[k].type != attr::type::free)
+          continue;
 
-            if (var result = std::sscan(value, &mut back); result.error || result.len != value.len)
-              return errc::format_error;
-          }
-          #else
-          {
-            if (var result = std::sscan(value, &mut opts.${k}); result.error || result.len != value.len)
-              return errc::format_error;
-          }
+        -> {
+          case ${k}:
+            #if (requires (Opts opts) { opts.${k}.push_back(); })
+            {
+              var mut &back = opts.${k}.push_back();
+
+              if (var result = std::sscan(value, &mut back); result.error || result.len != value.len)
+                return errc::format_error;
+            }
+            #else
+            {
+              if (var result = std::sscan(value, &mut opts.${k}); result.error || result.len != value.len)
+                return errc::format_error;
+            }
         }
       }
     }
@@ -416,15 +431,19 @@ fn set_count<Opts>(Opts mut &opts, usize field) -> errc
   switch (field)
   {
     #{
+      const options = #parsed_options<Opts>();
+
       #for (const k = 0; k < std::tuple_len<Opts>; ++k)
       {
-        #if (requires (Opts opts) { opts.#k += 1; })
-          -> { case ${k}: opts.${k} += 1; }
+        if (options[k].type != attr::type::count)
+          continue;
+
+        -> {
+          case ${k}:
+            opts.${k} += 1;
+        }
       }
     }
-
-    else:
-      return errc::invalid_field;
   }
 
   return cast(0);
@@ -432,7 +451,7 @@ fn set_count<Opts>(Opts mut &opts, usize field) -> errc
 
 pub fn parse<Opts>(Opts mut &opts, Range<std::string_view> &args) -> void
 {
-  let options = #parse_options<Opts>().as_literal;
+  let options = #parsed_options<Opts>();
 
   var present = [false; std::tuple_len<Opts>];
 

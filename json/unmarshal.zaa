@@ -281,8 +281,9 @@ fn scan<T>(std::string_stream mut &is, scan_context mut &ctx, T mut &object) -> 
           #{
             #for (const k : std::meta::fields_of($T))
             {
-              -> { case ${std::meta::name_of(k)}:
-                scan_to(&mut is, &mut ctx, &mut object.${k});
+              -> {
+                case ${std::meta::name_of(k)}:
+                  scan_to(&mut is, &mut ctx, &mut object.${k});
               }
             }
           }
