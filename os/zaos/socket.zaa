@@ -68,8 +68,9 @@ pub struct sockaddr_in6 : pub sockaddr
   pub ~sockaddr_in6() = default;
 }
 
-pub const IPV6_SRCIP = 1;
-pub const IPV6_HOPLIMIT = 52;
+pub const SCM_TIMESTAMP = 1;
+pub const SCM_IPV6_SRCIP = 50;
+pub const SCM_IPV6_HOPLIMIT = 52;
 
 pub struct ctrlhdr
 {
@@ -84,9 +85,9 @@ pub struct ctrlhdr
 
 pub struct ctrlattr
 {
-  pub u32 cta_len;
-  pub i32 cta_level;
+  pub u16 cta_len;
   pub u16 cta_type;
+  pub i32 cta_level;
   pub u8[0] cta_value;
 }
 
@@ -195,4 +196,3 @@ pub fn socket_write(ioring mut &ring, i32 fd, ciovec *iovs, usize iovslen, ctrlh
 
   return result;
 }
-
