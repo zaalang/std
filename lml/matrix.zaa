@@ -34,12 +34,12 @@ pub struct matrix<T, M, N> : pub T[N][M]
   {
   }
 
-  pub const fn rows(this&) -> usize
+  pub const fn rows(this &) -> usize
   {
     return M;
   }
 
-  pub const fn cols(this&) -> usize
+  pub const fn cols(this &) -> usize
   {
     return N;
   }
@@ -50,7 +50,7 @@ pub struct matrix<T, M, N> : pub T[N][M]
   }
 
   pub matrix() = default;
-  pub matrix(matrix&&) = default;
+  pub matrix(matrix &&) = default;
   pub fn =(matrix mut &, matrix &&) -> matrix mut & = default;
   pub ~matrix() = default;
 }

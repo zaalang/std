@@ -54,7 +54,7 @@ struct attr
   bool hidden = false;
 
   attr() = default;
-  attr(attr&&) = default;
+  attr(attr &&) = default;
   ~attr() = default;
 }
 
@@ -82,7 +82,7 @@ struct token
   }
 
   token() = default;
-  token(token&) = default;
+  token(token &) = default;
   fn =(token mut &, token &) -> token mut & = default;
   ~token() = default;
 }

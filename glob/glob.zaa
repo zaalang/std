@@ -69,7 +69,7 @@ pub struct glob
   struct end_iterator
   {
     end_iterator() = default;
-    end_iterator(end_iterator&) = default;
+    end_iterator(end_iterator &) = default;
     fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
     ~end_iterator() = default;
   }
@@ -101,7 +101,7 @@ struct literal
   {
   }
 
-  literal(literal&&) = default;
+  literal(literal &&) = default;
   ~literal() = default;
 }
 
@@ -117,14 +117,14 @@ struct klass
     {
     }
 
-    range(range&&) = default;
+    range(range &&) = default;
     ~range() = default;
   }
 
   std::vector<range, N:4> runes;
 
   klass() = default;
-  klass(klass&&) = default;
+  klass(klass &&) = default;
   ~klass() = default;
 }
 
@@ -146,7 +146,7 @@ union expr
     return this.kind == typeof(this.kind)::AnyRecursiveSequence;
   }
 
-  expr(expr&&) = default;
+  expr(expr &&) = default;
   fn =(expr mut &, expr &&) -> expr mut & = default;
   ~expr() = default;
 }

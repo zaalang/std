@@ -45,7 +45,7 @@ pub struct delegate<R(V), Throws = void, N = 24>
   }
 
   pub delegate() = default;
-  pub delegate(#delegate&) = default;
+  pub delegate(#delegate &) = default;
 
   #[lifetime(depends(*fx))]
   pub delegate<Y>(Y &&fx)

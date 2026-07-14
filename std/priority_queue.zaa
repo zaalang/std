@@ -71,7 +71,7 @@ pub struct priority_queue<T = int, Cmp = typeof(std::less), Container = std::vec
     return &&this._container.front;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> void
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {

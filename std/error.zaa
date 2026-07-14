@@ -106,6 +106,7 @@ pub enum errc : u32
   host_down = 112,
   host_unreachable = 113,
   already_in_progress = 114,
+  in_progress = 115,
   cancelled = 125,
   overflow = 139,
   line_too_long = 175,

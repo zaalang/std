@@ -24,7 +24,7 @@ pub struct spawn_attr_t
   }
 
   pub spawn_attr_t() = default;
-  pub spawn_attr_t(spawn_attr_t&) = default;
+  pub spawn_attr_t(spawn_attr_t &) = default;
   pub fn =(spawn_attr_t mut &, spawn_attr_t &) -> spawn_attr_t mut & = default;
   pub ~spawn_attr_t() = default;
 }
@@ -49,7 +49,7 @@ pub struct spawn_attr_t
     }
 
     pub process() = default;
-    pub process(process&) = default;
+    pub process(process &) = default;
     pub fn =(process mut &, process &) -> process mut & = default;
     pub ~process() = default;
   }
@@ -197,7 +197,7 @@ pub struct spawn_attr_t
     }
 
     pub process() = default;
-    pub process(process&) = default;
+    pub process(process &) = default;
     pub fn =(process mut &, process &) -> process mut & = default;
     pub ~process() = default;
   }
@@ -401,7 +401,7 @@ pub struct spawn_attr_t
     }
 
     pub process() = default;
-    pub process(process&) = default;
+    pub process(process &) = default;
     pub fn =(process mut &, process &) -> process mut & = default;
     pub ~process() = default;
   }

@@ -28,7 +28,7 @@ struct spec
   const auto = -1;
 
   spec() = default;
-  spec(spec&) = default;
+  spec(spec &) = default;
   fn =(this mut &, spec &hat) -> spec mut & = default;
   ~spec() = default;
 }
@@ -328,7 +328,7 @@ fn fmt(OutputStream mut &os, fmt_context mut &ctx, void *pointer) throws(std::er
 
   buf[0] = cast('0');
   buf[1] = cast('x');
-  
+
   for (var ch = buf.begin + 2, var end = buf.end - str.len; ch != end; ++ch)
     *ch = cast('0');
 
@@ -884,7 +884,7 @@ struct arguments<N>
   spec[N] specs;
 
   arguments() = default;
-  arguments(arguments&) = default;
+  arguments(arguments &) = default;
   ~arguments() = default;
 }
 
@@ -983,7 +983,7 @@ fn fmt_piece(OutputStream mut &os, fmt_context mut &ctx, u8 *beg, u8 *end) throw
 }
 
 pub fn format_to<Args>(OutputStream mut &os, #std::string_literal format, Args & ...args, #var site = __site__) throws(std::error) -> usize
-{ 
+{
   var ctx = fmt_context();
   var os = std::output_stream(&mut os);
 

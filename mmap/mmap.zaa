@@ -67,7 +67,7 @@ pub struct file
     return file(addr, length);
   }
 
-  pub fn bool(this&) -> bool
+  pub fn bool(this &) -> bool
   {
     return this._data != null;
   }
@@ -206,7 +206,7 @@ pub struct mutable_file
     return mutable_file(addr, length);
   }
 
-  pub fn bool(this&) -> bool
+  pub fn bool(this &) -> bool
   {
     return this._data != null;
   }

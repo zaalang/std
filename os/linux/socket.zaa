@@ -63,7 +63,7 @@ pub struct sockaddr_un : pub sockaddr
 
 pub struct in4_addr : pub u8[4]
 {
-  pub fn s_addr(this&&) { return &cast<u32&&>(this.super); }
+  pub fn s_addr(this &&) { return &cast<u32&&>(this.super); }
 
   pub in4_addr(u8[4] &addr)
     : super(addr)
@@ -81,8 +81,8 @@ pub struct in4_addr : pub u8[4]
   pub ~in4_addr() = default;
 }
 
-pub const in4addr_any = in6_addr([0,0,0,0]);
-pub const in4addr_loopback = in6_addr([255,255,255,255]);
+pub const in4addr_any = in4_addr([0,0,0,0]);
+pub const in4addr_loopback = in4_addr([255,255,255,255]);
 
 pub struct sockaddr_in4 : pub sockaddr
 {
@@ -98,9 +98,9 @@ pub struct sockaddr_in4 : pub sockaddr
 
 pub struct in6_addr : pub u8[16]
 {
-  pub fn s6_addr(this&&) { return &this.super; }
-  pub fn s6_addr16(this&&) { return &cast<u16[8]&&>(this.super); }
-  pub fn s6_addr32(this&&) { return &cast<u32[4]&&>(this.super); }
+  pub fn s6_addr(this &&) { return &this.super; }
+  pub fn s6_addr16(this &&) { return &cast<u16[8]&&>(this.super); }
+  pub fn s6_addr32(this &&) { return &cast<u32[4]&&>(this.super); }
 
   pub in6_addr(u8[16] &addr)
     : super(addr)

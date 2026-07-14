@@ -117,7 +117,7 @@ pub enum permissions
     }
 
     pub stat() = default;
-    pub stat(stat&) = default;
+    pub stat(stat &) = default;
     pub fn =(stat mut &, stat &) -> stat mut & = default;
     pub ~stat() = default;
   }
@@ -920,7 +920,7 @@ pub enum permissions
     }
 
     pub stat() = default;
-    pub stat(stat&) = default;
+    pub stat(stat &) = default;
     pub fn =(stat mut &, stat &) -> stat mut & = default;
     pub ~stat() = default;
   }
@@ -1524,7 +1524,7 @@ pub enum permissions
     }
 
     pub stat() = default;
-    pub stat(stat&) = default;
+    pub stat(stat &) = default;
     pub fn =(stat mut &, stat &) -> stat mut & = default;
     pub ~stat() = default;
   }

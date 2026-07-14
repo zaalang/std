@@ -26,7 +26,7 @@ pub struct arg
   }
 
   pub arg() = default;
-  pub arg(arg&) = default;
+  pub arg(arg &) = default;
   pub fn =(arg mut &, arg &) -> arg mut & = default;
   pub ~arg() = default;
 }
@@ -50,7 +50,7 @@ pub struct attr
   }
 
   pub attr() = default;
-  pub attr(attr&) = default;
+  pub attr(attr &) = default;
   pub fn =(attr mut &, attr &) -> attr mut & = default;
   pub ~attr() = default;
 }
@@ -70,7 +70,7 @@ pub struct sched_param
   pub int sched_priority;
 
   pub sched_param() = default;
-  pub sched_param(sched_param&) = default;
+  pub sched_param(sched_param &) = default;
   pub fn =(sched_param mut &, sched_param &) -> sched_param mut & = default;
   pub ~sched_param() = default;
 }

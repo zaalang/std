@@ -40,7 +40,7 @@ struct thread
   {
   }
 
-  thread(thread&) = default;
+  thread(thread &) = default;
   ~thread() = default;
 }
 

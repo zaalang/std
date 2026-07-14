@@ -108,7 +108,7 @@ pub struct string_view : pub std::span<u8>
   pub struct char_iterator : pub u8 *
   {
     pub char_iterator() = default;
-    pub char_iterator(char_iterator&) = default;
+    pub char_iterator(char_iterator &) = default;
     pub fn =(char_iterator mut &this, char_iterator &that) -> char_iterator mut & = default;
     pub ~char_iterator() = default;
 
@@ -193,7 +193,7 @@ pub struct string_view : pub std::span<u8>
   pub struct line_iterator : pub u8 *
   {
     pub line_iterator() = default;
-    pub line_iterator(line_iterator&) = default;
+    pub line_iterator(line_iterator &) = default;
     pub fn =(line_iterator mut &this, line_iterator &that) -> line_iterator mut & = default;
     pub ~line_iterator() = default;
 
@@ -257,7 +257,7 @@ pub struct string_view : pub std::span<u8>
   pub struct word_iterator : pub u8 *
   {
     pub word_iterator() = default;
-    pub word_iterator(word_iterator&) = default;
+    pub word_iterator(word_iterator &) = default;
     pub fn =(word_iterator mut &this, word_iterator &that) -> word_iterator mut & = default;
     pub ~word_iterator() = default;
 
@@ -333,7 +333,7 @@ pub struct string_view : pub std::span<u8>
   pub struct split_iterator : pub u8 *
   {
     pub split_iterator() = default;
-    pub split_iterator(split_iterator&) = default;
+    pub split_iterator(split_iterator &) = default;
     pub fn =(split_iterator mut &this, split_iterator &that) -> split_iterator mut & = default;
     pub ~split_iterator() = default;
 
@@ -411,7 +411,7 @@ pub struct string_view : pub std::span<u8>
   struct end_iterator
   {
     end_iterator() = default;
-    end_iterator(end_iterator&) = default;
+    end_iterator(end_iterator &) = default;
     fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
     ~end_iterator() = default;
   }

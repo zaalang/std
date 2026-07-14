@@ -21,8 +21,8 @@ pub struct strconv_result
   }
 
   pub strconv_result() = default;
-  pub strconv_result(strconv_result&) = default;
-  pub fn =(strconv_result mut &, strconv_result&) -> strconv_result mut & = default;
+  pub strconv_result(strconv_result &) = default;
+  pub fn =(strconv_result mut &, strconv_result &) -> strconv_result mut & = default;
   pub ~strconv_result() = default;
 }
 
@@ -61,7 +61,7 @@ pub fn itoa(u8 mut *beg, u8 *end, char value, int base = 10) -> strconv_result
 pub fn itoa(u8 mut *beg, u8 *end, usize value, int base = 10) -> strconv_result
 {
   std::assert(2 <= base && base < cast(digits.len));
-  
+
   var result = strconv_result();
 
   var i = 0;
@@ -78,15 +78,15 @@ pub fn itoa(u8 mut *beg, u8 *end, usize value, int base = 10) -> strconv_result
     if (value == 0)
       break;
   }
-  
+
   result.ptr = end - i;
   result.len = i;
-  
+
   if (value != 0)
   {
     result.error = std::errc::value_too_large;
   }
-  
+
   return result;
 }
 
@@ -121,7 +121,7 @@ pub fn itoa(u8 mut *beg, u8 *end, isize value, int base = 10) -> strconv_result
   else if (beg != end)
   {
     result = itoa(beg + 1, end, cast<usize>(~value) + 1, base);
-    
+
     result.ptr -= 1;
     result.len += 1;
     *(beg + (result.ptr - beg)) = cast('-');
@@ -129,13 +129,13 @@ pub fn itoa(u8 mut *beg, u8 *end, isize value, int base = 10) -> strconv_result
   else
   {
     result.error = std::errc::value_too_large;
-  }    
+  }
 
   return result;
 }
 
 pub fn btoa(u8 mut *beg, u8 *end, bool value) -> strconv_result
-{ 
+{
   const true_str = "true";
   const false_str = "false";
 
@@ -156,9 +156,9 @@ pub fn btoa(u8 mut *beg, u8 *end, bool value) -> strconv_result
 }
 
 pub fn ctoa(u8 mut *beg, u8 *end, char value) -> strconv_result
-{  
+{
   var result = strconv_result();
-  
+
   result.ptr = beg;
 
   if (value <= 0x7f && end - beg >= 1)
@@ -238,7 +238,7 @@ fn ftoa_scientific(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int s
 
     *ch++ = cast('-');
   }
-  
+
   if (prec > -1)
   {
     if (prec == 0)
@@ -254,7 +254,7 @@ fn ftoa_scientific(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int s
   }
 
   *ch++ = *digits;
-  
+
   if (len != 1 || prec > cast(len))
     *ch++ = cast('.');
 
@@ -277,34 +277,34 @@ fn ftoa_scientific(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int s
   *ch++ = cast('e');
 
   var exp = cast<int>(len) + K - 1;
-  
+
   if (exp < 0)
   {
-    exp = -exp;    
+    exp = -exp;
     *ch++ = cast('-');
   }
   else
   {
     *ch++ = cast('+');
   }
-  
+
   var pow = 1000;
   while (exp < pow)
     pow /= 10;
-  
+
   while (pow >= 10)
   {
-    var digit = exp / pow;   
+    var digit = exp / pow;
     *ch++ = cast(digit + cast('0'));
     exp -= digit * pow;
     pow /= 10;
   }
 
   *ch++ = cast(exp + cast('0'));
-  
+
   result.len = ch - beg;
 
-  return result;  
+  return result;
 }
 
 fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbit, int prec) -> strconv_result
@@ -312,7 +312,7 @@ fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbi
   var result = strconv_result();
 
   result.ptr = beg;
-  
+
   var ch = beg;
 
   if (signbit != 0)
@@ -340,7 +340,7 @@ fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbi
       result.error = std::errc::value_too_large;
       return result;
     }
-    
+
     ch = std::copy_n(ch, end, digits, len);
     ch = std::fill_n(ch, end, cast<u8>('0'), k);
     *ch++ = cast('.');
@@ -356,7 +356,7 @@ fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbi
       result.error = std::errc::value_too_large;
       return result;
     }
-    
+
     *ch++ = cast('0');
     *ch++ = cast('.');
     ch = std::fill_n(ch, end, cast<u8>('0'), k - len);
@@ -366,7 +366,7 @@ fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbi
   else
   {
     var k = cast<usize>(-K);
-    
+
     if (end - ch < len + 1)
     {
       result.error = std::errc::value_too_large;
@@ -392,7 +392,7 @@ fn ftoa_fixed(u8 mut *beg, u8 *end, u8 mut *digits, int K, usize len, int signbi
 
   if (prec == 0)
     ch -= 2;
-  
+
   result.len = ch - beg;
 
   return result;
@@ -857,9 +857,9 @@ pub fn atob(u8 *beg, u8 *end, bool mut &value) -> strconv_result
 }
 
 pub fn atoc(u8 *beg, u8 *end, char mut &value) -> strconv_result
-{   
+{
   var result = strconv_result();
-  
+
   var v = 0;
   var ch = beg;
   var state = 0;
@@ -868,7 +868,7 @@ pub fn atoc(u8 *beg, u8 *end, char mut &value) -> strconv_result
   {
     if (utf::decode(&mut state, &mut v, *ch) != utf::REJECT)
       ++ch;
-    
+
     if (state == utf::ACCEPT || state == utf::REJECT)
       break;
   }

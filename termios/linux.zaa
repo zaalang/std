@@ -104,7 +104,7 @@ pub struct termios
   pub u32 __c_ospeed;
 
   pub termios() = default;
-  pub termios(termios&) = default;
+  pub termios(termios &) = default;
   pub fn =(termios mut &, termios &) -> termios mut & = default;
   pub ~termios() = default;
 }
@@ -117,7 +117,7 @@ pub struct winsize
   pub u16 ws_ypixel;
 
   pub winsize() = default;
-  pub winsize(winsize&) = default;
+  pub winsize(winsize &) = default;
   pub fn =(winsize mut &, winsize &) -> winsize mut & = default;
   pub ~winsize() = default;
 }

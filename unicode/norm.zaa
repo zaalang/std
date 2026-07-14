@@ -65,8 +65,8 @@ pub struct decomp_result
   pub fn [](this &, usize index) -> char & { return &this.str[index]; }
 
   pub decomp_result() = default;
-  pub decomp_result(decomp_result&) = default;
-  pub fn =(decomp_result mut &, decomp_result&) -> decomp_result mut & = default;
+  pub decomp_result(decomp_result &) = default;
+  pub fn =(decomp_result mut &, decomp_result &) -> decomp_result mut & = default;
   pub ~decomp_result() = default;
 
   char[4] str;

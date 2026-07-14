@@ -441,7 +441,7 @@ pub union value
   }
 
   pub value() = default;
-  pub value(value&&) = default;
+  pub value(value &&) = default;
   pub fn =(value mut &, value &&) -> value mut & = default;
   pub ~value() = default;
 }

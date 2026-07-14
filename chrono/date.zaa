@@ -14,7 +14,7 @@ pub enum day : pub u8
     this = cast<day>(n);
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return 1 <= cast<u8>(this) && cast<u8>(this) <= 31;
   }
@@ -93,7 +93,7 @@ pub enum month : pub u8
     this = cast<month>(n);
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return 1 <= cast<u8>(this) && cast<u8>(this) <= 12;
   }
@@ -157,12 +157,12 @@ pub enum year : pub i16
     this = cast<year>(n);
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return cast<i16>(this) > -32_768;
   }
 
-  pub fn is_leap(this&) -> bool
+  pub fn is_leap(this &) -> bool
   {
     return (cast<i16>(this) % 4 == 0) && (cast<i16>(this) % 100 != 0 || cast<i16>(this) % 400 == 0);
   }
@@ -232,7 +232,7 @@ pub fn fmt<R, P>(std::OutputStream mut &os, std::fmt_context mut &ctx, year n) t
 struct last_spec
 {
   last_spec() = default;
-  last_spec(last_spec&) = default;
+  last_spec(last_spec &) = default;
   pub ~last_spec() = default;
 }
 
@@ -267,7 +267,7 @@ pub enum weekday : pub u8
     return &this;
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return cast<u8>(this) <= 6;
   }
@@ -364,22 +364,22 @@ pub struct weekday_indexed
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.day.ok && 1 <= this.index && this.index <= 5;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return this.day;
   }
 
-  pub fn index(this&)
+  pub fn index(this &)
   {
     return this.index;
   }
 
-  pub const fn ==(weekday_indexed&, weekday_indexed&) -> bool = default;
+  pub const fn ==(weekday_indexed&, weekday_indexed &) -> bool = default;
 
   pub weekday_indexed() = default;
   pub weekday_indexed(weekday_indexed &) = default;
@@ -404,17 +404,17 @@ pub struct weekday_last
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.day.ok;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return this.day;
   }
 
-  pub const fn ==(weekday_last&, weekday_last&) -> bool = default;
+  pub const fn ==(weekday_last&, weekday_last &) -> bool = default;
 
   pub weekday_last() = default;
   pub weekday_last(weekday_last &) = default;
@@ -440,23 +440,23 @@ pub struct month_day
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.month.ok && 1 <= cast<u8>(this.day) && cast<u8>(this.day) <= month::days[cast<usize>(this.month) - 1];
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     return this.day;
   }
 
-  pub const fn ==(month_day&, month_day&) -> bool = default;
-  pub const fn <=>(month_day&, month_day&) -> int = default;
+  pub const fn ==(month_day&, month_day &) -> bool = default;
+  pub const fn <=>(month_day&, month_day &) -> int = default;
 
   pub month_day() = default;
   pub month_day(month_day &) = default;
@@ -481,18 +481,18 @@ pub struct month_day_last
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.month.ok;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub const fn ==(month_day_last&, month_day_last&) -> bool = default;
-  pub const fn <=>(month_day_last&, month_day_last&) -> int = default;
+  pub const fn ==(month_day_last&, month_day_last &) -> bool = default;
+  pub const fn <=>(month_day_last&, month_day_last &) -> int = default;
 
   pub month_day_last() = default;
   pub month_day_last(month_day_last &) = default;
@@ -518,32 +518,32 @@ pub struct month_weekday
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.month.ok && this.day.ok;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return this.day.weekday;
   }
 
-  pub fn index(this&)
+  pub fn index(this &)
   {
     return this.day.index;
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     return this.day;
   }
 
-  pub const fn ==(month_weekday&, month_weekday&) -> bool = default;
+  pub const fn ==(month_weekday&, month_weekday &) -> bool = default;
 
   pub month_weekday() = default;
   pub month_weekday(month_weekday &) = default;
@@ -569,27 +569,27 @@ pub struct month_weekday_last
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.month.ok && this.day.ok;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return this.day.weekday;
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     return this.day;
   }
 
-  pub const fn ==(month_weekday_last&, month_weekday_last&) -> bool = default;
+  pub const fn ==(month_weekday_last&, month_weekday_last &) -> bool = default;
 
   pub month_weekday_last() = default;
   pub month_weekday_last(month_weekday_last &) = default;
@@ -615,17 +615,17 @@ pub struct year_month
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.year.ok && this.month.ok;
   }
 
-  pub fn year(this&)
+  pub fn year(this &)
   {
     return this.year;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
@@ -658,8 +658,8 @@ pub struct year_month
     return &this;
   }
 
-  pub const fn ==(year_month&, year_month&) -> bool = default;
-  pub const fn <=>(year_month&, year_month&) -> int = default;
+  pub const fn ==(year_month&, year_month &) -> bool = default;
+  pub const fn <=>(year_month&, year_month &) -> int = default;
 
   pub year_month() = default;
   pub year_month(year_month &) = default;
@@ -768,27 +768,27 @@ pub struct year_month_day
     return &this;
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.year.ok && this.month.ok && 1 <= cast<u8>(this.day) && this.day <= year_month_day_last(this.year, this.month).day;
   }
 
-  pub fn year(this&)
+  pub fn year(this &)
   {
     return this.year;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     return this.day;
   }
 
-  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  pub fn as_local_time(this &) -> chrono::local_time<chrono::days>
   {
     let d = cast<i64>(this.day);
     let m = cast<i64>(this.month);
@@ -829,8 +829,8 @@ pub struct year_month_day
     return &this;
   }
 
-  pub const fn ==(year_month_day&, year_month_day&) -> bool = default;
-  pub const fn <=>(year_month_day&, year_month_day&) -> int = default;
+  pub const fn ==(year_month_day&, year_month_day &) -> bool = default;
+  pub const fn <=>(year_month_day&, year_month_day &) -> int = default;
 
   pub year_month_day() = default;
   pub year_month_day(year_month_day &) = default;
@@ -886,32 +886,32 @@ pub struct year_month_day_last
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.year.ok && this.month_day_last.ok;
   }
 
-  pub fn year(this&)
+  pub fn year(this &)
   {
     return this.year;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month_day_last.month;
   }
 
-  pub fn month_day_last(this&)
+  pub fn month_day_last(this &)
   {
     return this.month_day_last;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return weekday(this.as_local_time);
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     if (this.month == month::february && !this.year.is_leap)
       return day(28);
@@ -919,7 +919,7 @@ pub struct year_month_day_last
     return day(month::days[cast<usize>(this.month) - 1]);
   }
 
-  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  pub fn as_local_time(this &) -> chrono::local_time<chrono::days>
   {
     return year_month_day(this).as_local_time;
   }
@@ -952,8 +952,8 @@ pub struct year_month_day_last
     return &this;
   }
 
-  pub const fn ==(year_month_day_last&, year_month_day_last&) -> bool = default;
-  pub const fn <=>(year_month_day_last&, year_month_day_last&) -> int = default;
+  pub const fn ==(year_month_day_last&, year_month_day_last &) -> bool = default;
+  pub const fn <=>(year_month_day_last&, year_month_day_last &) -> int = default;
 
   pub year_month_day_last() = default;
   pub year_month_day_last(year_month_day_last &) = default;
@@ -1022,7 +1022,7 @@ pub struct year_month_weekday
     return &this;
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     if (!this.year.ok || !this.month.ok || !this.day.ok)
       return false;
@@ -1036,32 +1036,32 @@ pub struct year_month_weekday
     return cast<u8>(days.count) <= cast<u8>(year_month_day_last(this.year, this.month).day);
   }
 
-  pub fn year(this&)
+  pub fn year(this &)
   {
     return this.year;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return this.day.weekday;
   }
 
-  pub fn index(this&)
+  pub fn index(this &)
   {
     return this.day.index;
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     return this.day;
   }
 
-  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  pub fn as_local_time(this &) -> chrono::local_time<chrono::days>
   {
     let tp = year_month_day(this.year, this.month, day(1)).as_local_time;
 
@@ -1096,7 +1096,7 @@ pub struct year_month_weekday
     return &this;
   }
 
-  pub const fn ==(year_month_weekday&, year_month_weekday&) -> bool = default;
+  pub const fn ==(year_month_weekday&, year_month_weekday &) -> bool = default;
 
   pub year_month_weekday() = default;
   pub year_month_weekday(year_month_weekday &) = default;
@@ -1148,32 +1148,32 @@ pub struct year_month_weekday_last
   {
   }
 
-  pub fn ok(this&) -> bool
+  pub fn ok(this &) -> bool
   {
     return this.year.ok && this.month.ok && this.day.ok;
   }
 
-  pub fn year(this&)
+  pub fn year(this &)
   {
     return this.year;
   }
 
-  pub fn month(this&)
+  pub fn month(this &)
   {
     return this.month;
   }
 
-  pub fn weekday(this&)
+  pub fn weekday(this &)
   {
     return this.day.weekday;
   }
 
-  pub fn day(this&)
+  pub fn day(this &)
   {
     return this.day;
   }
 
-  pub fn as_local_time(this&) -> chrono::local_time<chrono::days>
+  pub fn as_local_time(this &) -> chrono::local_time<chrono::days>
   {
     let tp = year_month_day_last(this.year, this.month).as_local_time;
 
@@ -1208,7 +1208,7 @@ pub struct year_month_weekday_last
     return &this;
   }
 
-  pub const fn ==(year_month_weekday_last&, year_month_weekday_last&) -> bool = default;
+  pub const fn ==(year_month_weekday_last&, year_month_weekday_last &) -> bool = default;
 
   pub year_month_weekday_last() = default;
   pub year_month_weekday_last(year_month_weekday_last &) = default;

@@ -19,7 +19,7 @@ pub struct time_point<Clock, Duration>
   {
   }
 
-  pub fn time_since_epoch(this&) -> duration
+  pub fn time_since_epoch(this &) -> duration
   {
     return this.time;
   }

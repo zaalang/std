@@ -116,7 +116,7 @@ pub struct stat
   pub dev_t device,
 
   pub stat() = default;
-  pub stat(stat&) = default;
+  pub stat(stat &) = default;
   pub fn =(stat mut &, stat &) -> stat mut & = default;
   pub ~stat() = default;
 }
@@ -169,6 +169,7 @@ pub struct dirent
 }
 
 pub const POLLIN = 0x001;
+pub const POLLPRI = 0x002;
 pub const POLLOUT = 0x004;
 
 pub const POLLFD = 0x1;
@@ -177,17 +178,18 @@ pub const POLLTHREAD = 0x2;
 pub struct pollevt
 {
   pub i32 id;
-  pub u16 type;
-  pub u16 mask;
+  pub u8 type;
+  pub u8 mask;
+  pub u16 revents;
   pub uintptr user_data;
 
-  pub pollevt(i32 id, u16 type, u16 mask, uintptr user_data)
+  pub pollevt(i32 id, u8 type, u8 mask, uintptr user_data)
     : id(id), type(type), mask(mask), user_data(user_data)
   {
   }
 
   pub pollevt() = default;
-  pub pollevt(pollevt&) = default;
+  pub pollevt(pollevt &) = default;
   pub fn =(pollevt mut &, pollevt &) -> pollevt mut & = default;
   pub ~pollevt() = default;
 }
@@ -236,7 +238,7 @@ pub struct iovec
   pub usize len;
 
   pub iovec() = default;
-  pub iovec(iovec&) = default;
+  pub iovec(iovec &) = default;
   pub fn =(iovec mut &, iovec &) -> iovec mut & = default;
   pub ~iovec() = default;
 }
@@ -247,7 +249,7 @@ pub struct ciovec
   pub usize len;
 
   pub ciovec() = default;
-  pub ciovec(ciovec&) = default;
+  pub ciovec(ciovec &) = default;
   pub fn =(ciovec mut &, ciovec &) -> ciovec mut & = default;
   pub ~ciovec() = default;
 }
@@ -267,7 +269,7 @@ pub struct string
   {
   }
 
-  pub string(string&) = default;
+  pub string(string &) = default;
   pub ~string() = default;
 }
 
@@ -279,7 +281,7 @@ pub struct msg
   pub usize nfds;
 
   pub msg() = default;
-  pub msg(msg&) = default;
+  pub msg(msg &) = default;
   pub fn =(msg mut &, msg &) -> msg mut & = default;
   pub ~msg() = default;
 }
@@ -292,7 +294,7 @@ pub struct cmsg
   pub usize nfds;
 
   pub cmsg() = default;
-  pub cmsg(cmsg&) = default;
+  pub cmsg(cmsg &) = default;
   pub fn =(cmsg mut &, cmsg &) -> cmsg mut & = default;
   pub ~cmsg() = default;
 }
@@ -387,7 +389,7 @@ pub struct ioring
   pub ioring_header mut *header;
 
   pub ioring() = default;
-  pub ioring(ioring&) = default;
+  pub ioring(ioring &) = default;
   pub fn =(ioring mut &, ioring &) -> ioring mut & = default;
   pub ~ioring() = default;
 }
@@ -665,7 +667,7 @@ pub fn ioring_prep_sqe_poll_create(ioring_sqe mut *sqe, u64 flags) -> void
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_poll_add(ioring_sqe mut *sqe, i32 fd, i32 id, u16 type, u16 mask, uintptr user_data, u64 flags) -> void
+pub fn ioring_prep_sqe_poll_add(ioring_sqe mut *sqe, i32 fd, i32 id, u8 type, u8 mask, uintptr user_data, u64 flags) -> void
 {
   sqe.op = ioring_ops::poll_add;
   sqe.args[0] = cast(fd);
@@ -677,7 +679,7 @@ pub fn ioring_prep_sqe_poll_add(ioring_sqe mut *sqe, i32 fd, i32 id, u16 type, u
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_poll_remove(ioring_sqe mut *sqe, i32 fd, i32 id, u16 type) -> void
+pub fn ioring_prep_sqe_poll_remove(ioring_sqe mut *sqe, i32 fd, i32 id, u8 type) -> void
 {
   sqe.op = ioring_ops::poll_remove;
   sqe.args[0] = cast(fd);
@@ -686,12 +688,12 @@ pub fn ioring_prep_sqe_poll_remove(ioring_sqe mut *sqe, i32 fd, i32 id, u16 type
   sqe.flags = ioring_flags::fin;
 }
 
-pub fn ioring_prep_sqe_poll_wait(ioring_sqe mut *sqe, i32 fd, pollevt mut *evts, usize n, u64 abstime) -> void
+pub fn ioring_prep_sqe_poll_wait(ioring_sqe mut *sqe, i32 fd, pollevt mut *evts, usize evtslen, u64 abstime) -> void
 {
   sqe.op = ioring_ops::poll_wait;
   sqe.args[0] = cast(fd);
   sqe.args[1] = cast(evts);
-  sqe.args[2] = cast(n);
+  sqe.args[2] = cast(evtslen);
   sqe.args[3] = cast(abstime);
   sqe.flags = ioring_flags::fin;
 }
@@ -855,13 +857,13 @@ pub fn read(ioring mut &ring, i32 fd, void mut *buffer, usize length) -> i32
   return result;
 }
 
-pub fn readv(ioring mut &ring, i32 fd, iovec mut *iovs, usize n) -> i32
+pub fn readv(ioring mut &ring, i32 fd, iovec mut *iovs, usize iovlen) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_readv(sqe, fd, iovs, n);
+  ioring_prep_sqe_readv(sqe, fd, iovs, iovlen);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -874,13 +876,13 @@ pub fn readv(ioring mut &ring, i32 fd, iovec mut *iovs, usize n) -> i32
   return result;
 }
 
-pub fn preadv(ioring mut &ring, i32 fd, iovec mut *iovs, usize n, u64 position) -> i32
+pub fn preadv(ioring mut &ring, i32 fd, iovec mut *iovs, usize iovlen, u64 position) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_preadv(sqe, fd, iovs, n, position);
+  ioring_prep_sqe_preadv(sqe, fd, iovs, iovlen, position);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -912,13 +914,13 @@ pub fn write(ioring mut &ring, i32 fd, void *buffer, usize length) -> i32
   return result;
 }
 
-pub fn writev(ioring mut &ring, i32 fd, ciovec *iovs, usize n) -> i32
+pub fn writev(ioring mut &ring, i32 fd, ciovec *iovs, usize iovlen) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_writev(sqe, fd, iovs, n);
+  ioring_prep_sqe_writev(sqe, fd, iovs, iovlen);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -931,13 +933,13 @@ pub fn writev(ioring mut &ring, i32 fd, ciovec *iovs, usize n) -> i32
   return result;
 }
 
-pub fn pwritev(ioring mut &ring, i32 fd, ciovec *iovs, usize n, u64 position) -> i32
+pub fn pwritev(ioring mut &ring, i32 fd, ciovec *iovs, usize iovlen, u64 position) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_pwritev(sqe, fd, iovs, n, position);
+  ioring_prep_sqe_pwritev(sqe, fd, iovs, iovlen, position);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -988,10 +990,10 @@ pub fn close(ioring mut &ring, i32 fd) -> i32
   return result;
 }
 
-pub fn select(ioring mut &ring, pollevt mut *evts, usize n, u64 abstime) -> i32
+pub fn select(ioring mut &ring, pollevt mut *evts, usize evtslen, u64 abstime) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_select(sqe, evts, n, abstime);
+  ioring_prep_sqe_select(sqe, evts, evtslen, abstime);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)
@@ -1226,7 +1228,7 @@ pub fn poll_create(ioring mut &ring, u64 flags) -> i32
   return result;
 }
 
-pub fn poll_add(ioring mut &ring, i32 fd, i32 id, u16 type, u16 mask, uintptr user_data, u64 flags) -> i32
+pub fn poll_add(ioring mut &ring, i32 fd, i32 id, u8 type, u8 mask, uintptr user_data, u64 flags) -> i32
 {
   if (fd < 0)
     return EINVAL;
@@ -1248,7 +1250,7 @@ pub fn poll_add(ioring mut &ring, i32 fd, i32 id, u16 type, u16 mask, uintptr us
   return result;
 }
 
-pub fn poll_remove(ioring mut &ring, i32 fd, i32 id, u16 type) -> i32
+pub fn poll_remove(ioring mut &ring, i32 fd, i32 id, u8 type) -> i32
 {
   if (fd < 0)
     return EINVAL;
@@ -1270,13 +1272,13 @@ pub fn poll_remove(ioring mut &ring, i32 fd, i32 id, u16 type) -> i32
   return result;
 }
 
-pub fn poll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize n, u64 abstime) -> i32
+pub fn poll_wait(ioring mut &ring, i32 fd, pollevt mut *evts, usize evtslen, u64 abstime) -> i32
 {
   if (fd < 0)
     return EINVAL;
 
   var sqe = ioring_get_sqe(&mut ring);
-  ioring_prep_sqe_poll_wait(sqe, fd, evts, n, abstime);
+  ioring_prep_sqe_poll_wait(sqe, fd, evts, evtslen, abstime);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = __vdso_ioring_enter(ring.fd, 1, 1, 0); rc < 0)

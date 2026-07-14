@@ -82,7 +82,7 @@ pub struct map<K, T, Cmp = typeof(std::less), Allocator = std::allocator>
   pub struct iterator
   {
     pub iterator() = default;
-    pub iterator(iterator&) = default;
+    pub iterator(iterator &) = default;
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 

@@ -24,8 +24,8 @@ pub struct scan_result
   }
 
   pub scan_result() = default;
-  pub scan_result(scan_result&) = default;
-  pub fn =(scan_result mut &, scan_result&) -> scan_result mut & = default;
+  pub scan_result(scan_result &) = default;
+  pub fn =(scan_result mut &, scan_result &) -> scan_result mut & = default;
   pub ~scan_result() = default;
 }
 

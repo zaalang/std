@@ -51,8 +51,8 @@ pub struct caseconv_result
   pub fn [](this &, usize index) -> char & { return &this.str[index]; }
 
   pub caseconv_result() = default;
-  pub caseconv_result(caseconv_result&) = default;
-  pub fn =(caseconv_result mut &, caseconv_result&) -> caseconv_result mut & = default;
+  pub caseconv_result(caseconv_result &) = default;
+  pub fn =(caseconv_result mut &, caseconv_result &) -> caseconv_result mut & = default;
   pub ~caseconv_result() = default;
 
   char[3] str;

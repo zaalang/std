@@ -694,7 +694,7 @@ pub struct vector<T, Allocator = std::allocator, N = 0>
     }
   }
 
-  pub vector(#vector&) = default;
+  pub vector(#vector &) = default;
 
   usize _len;
   T mut *_data;

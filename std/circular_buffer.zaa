@@ -130,7 +130,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   pub struct iterator
   {
     pub iterator() = default;
-    pub iterator(iterator&) = default;
+    pub iterator(iterator &) = default;
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 
@@ -212,7 +212,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return &*(this._data + (this._head + this._len - 1) & (this._capacity - 1));
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this))]
   pub fn push_back<Args>(this mut &, Args && ...args) -> void
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {
@@ -231,7 +231,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     this._len += 1;
   }
 
-  #[lifetime(poison(this), depend(this))]
+  #[lifetime(poison(this))]
   pub fn push_front<Args>(this mut &, Args && ...args) -> void
     match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
   {
@@ -265,6 +265,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
       if (var index = position.cursor - this._head; index != 0)
       {
         pop_front(&mut this);
+
         position = iterator(this._head + index - 1);
       }
     }
@@ -566,7 +567,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     }
   }
 
-  pub circular_buffer(#circular_buffer&) = default;
+  pub circular_buffer(#circular_buffer &) = default;
 
   usize _len;
   usize _head;

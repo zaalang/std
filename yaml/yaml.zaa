@@ -349,7 +349,7 @@ pub union node
   }
 
   pub node() = default;
-  pub node(node&&) = default;
+  pub node(node &&) = default;
   pub fn =(node mut &, node &&) -> node mut & = default;
   pub ~node() = default;
 }

@@ -61,7 +61,7 @@ pub struct path_view
   pub struct part_iterator : pub u8 *
   {
     pub part_iterator() = default;
-    pub part_iterator(part_iterator&) = default;
+    pub part_iterator(part_iterator &) = default;
     pub fn =(part_iterator mut &this, part_iterator &that) -> part_iterator mut & = default;
     pub ~part_iterator() = default;
 

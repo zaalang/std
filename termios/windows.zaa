@@ -35,7 +35,7 @@ pub struct termios
   u32 output;
 
   pub termios() = default;
-  pub termios(termios&) = default;
+  pub termios(termios &) = default;
   pub fn =(termios mut &, termios &) -> termios mut & = default;
   pub ~termios() = default;
 }
@@ -48,7 +48,7 @@ pub struct winsize
   pub u16 ws_ypixel;
 
   pub winsize() = default;
-  pub winsize(winsize&) = default;
+  pub winsize(winsize &) = default;
   pub fn =(winsize mut &, winsize &) -> winsize mut & = default;
   pub ~winsize() = default;
 }
@@ -115,7 +115,7 @@ pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
             switch (event.Char)
             {
               case 0:
-              
+
                 if (event.dwControlKeyState & 0xc != 0) // Control
                 {
                   switch (event.wVirtualKeyCode)
@@ -137,7 +137,7 @@ pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
                       n = 6;
                   }
                 }
-                
+
                 if (event.dwControlKeyState & 0xf == 0) // None
                 {
                   switch (event.wVirtualKeyCode)
@@ -157,19 +157,19 @@ pub fn read(i32 fd, u8 mut *buffer, usize len) -> i32
                     case 0x28: // VK_DOWN
                       buf = [ 0x1b, 0x4f, 0x42, 0, 0, 0, 0, 0 ];
                       n = 3;
-                      
+
                     case 0x24: // VK_HOME
                       buf = [ 0x1b, 0x4f, 0x48, 0, 0, 0, 0, 0 ];
                       n = 3;
-                      
+
                     case 0x23: // VK_END
                       buf = [ 0x1b, 0x4f, 0x46, 0, 0, 0, 0, 0 ];
                       n = 3;
-                      
+
                     case 0x2d: // VK_INSERT
                       buf = [ 0x1b, 0x5b, 0x32, 0x7e, 0, 0, 0, 0 ];
                       n = 4;
-                     
+
                     case 0x2e: // VK_DELETE
                       buf = [ 0x1b, 0x5b, 0x33, 0x7e, 0, 0, 0, 0 ];
                       n = 4;
@@ -243,7 +243,7 @@ pub fn get_termios(i32 fd, termios mut &state) -> i32
 
   if (GetConsoleMode(GetStdHandle(STD_INPUT_HANDLE), &state.input) == 0)
     return -cast<i32>(error_code(GetLastError()));
-	
+
   if (GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), &state.output) == 0)
     return -cast<i32>(error_code(GetLastError()));
 

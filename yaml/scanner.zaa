@@ -12,7 +12,7 @@ pub struct mark
   pub int column;
 
   pub mark() = default;
-  pub mark(mark&) = default;
+  pub mark(mark &) = default;
   pub fn =(mark mut &, mark &&) -> mark mut & = default;
   pub ~mark() = default;
 }
@@ -69,7 +69,7 @@ pub struct token
   pub mark loc;
 
   pub token() = default;
-  pub token(token&&) = default;
+  pub token(token &&) = default;
   pub fn =(token mut &, token &&) -> token mut & = default;
   pub ~token() = default;
 }
@@ -112,7 +112,7 @@ pub struct simple_key
   pub mark loc;
 
   pub simple_key() = default;
-  pub simple_key(simple_key&&) = default;
+  pub simple_key(simple_key &&) = default;
   pub fn =(simple_key mut &, simple_key &&) -> simple_key mut & = default;
   pub ~simple_key() = default;
 }

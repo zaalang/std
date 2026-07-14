@@ -108,7 +108,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
   pub struct iterator
   {
     pub iterator() = default;
-    pub iterator(iterator&) = default;
+    pub iterator(iterator &) = default;
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 
@@ -565,7 +565,7 @@ pub struct flat_hash_map<K, T, Hash = std::hash, Cmp = typeof(std::equal_to), Al
 
   fn H2(usize hash) -> i8 { return cast<i8>((hash & 0x180) >> 7 | (hash & 0x18000) >> 13 | (hash & 0x1800000) >> 19 | (hash & 0x80000000) >> 25); }
 
-  pub flat_hash_map(#flat_hash_map&) = default;
+  pub flat_hash_map(#flat_hash_map &) = default;
 
   pub using value_type = std::key_value_pair<K, T, Allocator>;
 

@@ -24,8 +24,8 @@ pub struct compile_result
   }
 
   pub compile_result() = default;
-  pub compile_result(compile_result&) = default;
-  pub fn =(compile_result mut &, compile_result&) -> compile_result mut & = default;
+  pub compile_result(compile_result &) = default;
+  pub fn =(compile_result mut &, compile_result &) -> compile_result mut & = default;
   pub ~compile_result() = default;
 }
 
@@ -260,7 +260,7 @@ fn emit_repeat(compile_context mut &ctx, var &rep, expr *first, expr *last) -> v
   }
 
   if (rep.max == ~0)
-  { 
+  {
     emit_fork(&mut ctx, n);
 
     if (rep.min == 0)

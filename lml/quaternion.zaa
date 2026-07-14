@@ -70,28 +70,28 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
     }
   }
 
-  pub const fn w(this&) -> T
+  pub const fn w(this &) -> T
   {
     return this.scalar;
   }
 
-  pub const fn x(this&) -> T
+  pub const fn x(this &) -> T
   {
     return get<0>(this.vector);
   }
 
-  pub const fn y(this&&) -> T
+  pub const fn y(this &&) -> T
   {
     return get<1>(this.vector);
   }
 
-  pub const fn z(this&&) -> T
+  pub const fn z(this &&) -> T
   {
     return get<2>(this.vector);
   }
 
   // Euler
-  pub const fn ax(this&) -> T
+  pub const fn ax(this &) -> T
   {
     using T;
     using std::atan2;
@@ -104,7 +104,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
     return atan2(2.0*(y*z + x*w), w*w - x*x - y*y + z*z);
   }
 
-  pub const fn ay(this&) -> T
+  pub const fn ay(this &) -> T
   {
     using T;
     using std::asin;
@@ -118,7 +118,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
     return asin(clamp(2.0*(y*w - x*z)/(w*w + x*x + y*y + z*z), T(-1.0), T(1.0)));
   }
 
-  pub const fn az(this&) -> T
+  pub const fn az(this &) -> T
   {
     using T;
     using std::atan2;
@@ -132,7 +132,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
   }
 
   // Basis
-  pub fn xaxis(this&) -> V
+  pub fn xaxis(this &) -> V
   {
     var &&w = this.scalar;
     var &&x = get<0>(this.vector);
@@ -142,7 +142,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
     return V(w*w + x*x - y*y - z*z, 2.0*(x*y + z*w), 2.0*(x*z - y*w));
   }
 
-  pub fn yaxis(this&) -> V
+  pub fn yaxis(this &) -> V
   {
     var &&w = this.scalar;
     var &&x = get<0>(this.vector);
@@ -152,7 +152,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
     return V(2.0*(x*y - z*w), w*w - x*x + y*y - z*z, 2.0*(y*z + x*w));
   }
 
-  pub fn zaxis(this&) -> V
+  pub fn zaxis(this &) -> V
   {
     var &&w = this.scalar;
     var &&x = get<0>(this.vector);
@@ -171,7 +171,7 @@ pub struct quaternion<T, V = lml::vector<T, 3>>
   }
 
   pub quaternion() = default;
-  pub quaternion(quaternion&&) = default;
+  pub quaternion(quaternion &&) = default;
   pub fn =(quaternion mut &, quaternion &&) -> quaternion mut & = default;
   pub ~quaternion() = default;
 }

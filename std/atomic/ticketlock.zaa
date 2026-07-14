@@ -23,7 +23,7 @@ pub struct ticket_lock
   }
 
   pub ticket_lock() = default;
-  pub ticket_lock(#ticket_lock&) = default;
+  pub ticket_lock(#ticket_lock &) = default;
   pub ~ticket_lock() = default;
 }
 
@@ -96,6 +96,6 @@ pub struct shared_ticket_lock
   }
 
   pub shared_ticket_lock() = default;
-  pub shared_ticket_lock(#shared_ticket_lock&) = default;
+  pub shared_ticket_lock(#shared_ticket_lock &) = default;
   pub ~shared_ticket_lock() = default;
 }

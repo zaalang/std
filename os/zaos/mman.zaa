@@ -26,7 +26,7 @@ pub struct mmvec
   pub u32 prot;
 
   pub mmvec() = default;
-  pub mmvec(mmvec&) = default;
+  pub mmvec(mmvec &) = default;
   pub fn =(mmvec mut &, mmvec &) -> mmvec mut & = default;
   pub ~mmvec() = default;
 }

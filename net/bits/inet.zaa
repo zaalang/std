@@ -18,8 +18,8 @@ pub struct inet_result
   }
 
   pub inet_result() = default;
-  pub inet_result(inet_result&) = default;
-  pub fn =(inet_result mut &, inet_result&) -> inet_result mut & = default;
+  pub inet_result(inet_result &) = default;
+  pub fn =(inet_result mut &, inet_result &) -> inet_result mut & = default;
   pub ~inet_result() = default;
 }
 

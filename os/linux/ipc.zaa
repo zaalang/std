@@ -36,7 +36,7 @@ pub struct ipc_perm
   pub i64 __pad2;
 
   pub ipc_perm() = default;
-  pub ipc_perm(ipc_perm&) = default;
+  pub ipc_perm(ipc_perm &) = default;
   pub fn =(ipc_perm mut &, ipc_perm &) -> ipc_perm mut & = default;
   pub ~ipc_perm() = default;
 }
@@ -55,7 +55,7 @@ pub struct shmid_ds
   pub u64 __pad2;
 
   pub shmid_ds() = default;
-  pub shmid_ds(shmid_ds&) = default;
+  pub shmid_ds(shmid_ds &) = default;
   pub fn =(shmid_ds mut &, shmid_ds &) -> shmid_ds mut & = default;
   pub ~shmid_ds() = default;
 }

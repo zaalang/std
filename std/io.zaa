@@ -234,7 +234,7 @@ pub struct buffered_reader<Allocator = std::allocator, N = 0>
 
   pub struct line_iterator
   {
-    pub line_iterator(line_iterator&) = default;
+    pub line_iterator(line_iterator &) = default;
     pub ~line_iterator() = default;
 
     pub fn ++(line_iterator mut &this) throws(std::error) -> line_iterator mut &
@@ -298,7 +298,7 @@ pub struct buffered_reader<Allocator = std::allocator, N = 0>
   struct end_iterator
   {
     end_iterator() = default;
-    end_iterator(end_iterator&) = default;
+    end_iterator(end_iterator &) = default;
     fn =(end_iterator mut &this, end_iterator &that) -> end_iterator mut & = default;
     ~end_iterator() = default;
   }

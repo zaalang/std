@@ -12,15 +12,15 @@ pub struct mem_result
   pub void mut *addr;
 
   pub mem_result() = default;
-  pub mem_result(mem_result&) = default;
+  pub mem_result(mem_result &) = default;
   pub ~mem_result() = default;
 }
 
 pub struct allocator
 {
   pub allocator() = default;
-  pub allocator(allocator&) = default;
-  pub fn =(allocator mut &, allocator&) -> allocator mut & = default;
+  pub allocator(allocator &) = default;
+  pub fn =(allocator mut &, allocator &) -> allocator mut & = default;
   pub ~allocator() = default;
 
   pub fn allocate(this mut &, usize size, usize alignment) -> void mut *

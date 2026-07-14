@@ -64,7 +64,7 @@ pub struct fixed<R = i32, P = 0>
     return &lhs;
   }
 
-  pub fn as<T>(this&) -> T
+  pub fn as<T>(this &) -> T
   {
     #if (__is_floating_point<T>)
       return cast<T>(this.value) * std::pow(2.0, exponent);
@@ -77,7 +77,7 @@ pub struct fixed<R = i32, P = 0>
     return fixed(value, exponent);
   }
 
-  pub fn to_rep(this&) -> R
+  pub fn to_rep(this &) -> R
   {
     return this.value;
   }

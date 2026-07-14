@@ -12,15 +12,15 @@ struct DiyFp
 {
   u64 f;
   int e;
-  
+
   DiyFp(u64 f, int e)
     : f(f), e(e)
   {
   }
 
   DiyFp() = default;
-  DiyFp(DiyFp&) = default;
-  fn =(DiyFp mut &, DiyFp&) -> DiyFp mut & = default;
+  DiyFp(DiyFp &) = default;
+  fn =(DiyFp mut &, DiyFp &) -> DiyFp mut & = default;
   ~DiyFp() = default;
 }
 
@@ -30,7 +30,7 @@ struct ParsedFp
   DiyFp value;
 
   ParsedFp() = default;
-  ParsedFp(ParsedFp&) = default;
+  ParsedFp(ParsedFp &) = default;
   ~ParsedFp() = default;
 }
 
@@ -39,9 +39,9 @@ struct BoundedFp
   DiyFp value;
   DiyFp lower;
   DiyFp upper;
-  
+
   BoundedFp() = default;
-  BoundedFp(BoundedFp&) = default;
+  BoundedFp(BoundedFp &) = default;
   ~BoundedFp() = default;
 }
 
@@ -55,7 +55,7 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
   const min_normal_e = std::F32::min_exponent - std::F64::digits;
 
   var result = BoundedFp();
-  
+
   var u = std::bit_cast<u64>(cast<f64>(value));
   var biased_e = cast<int>((u & exponent_mask) >> mantisa_bits);
   var significand = u & significand_mask;
@@ -70,7 +70,7 @@ fn compute_bounded_fp<T>(T value) -> BoundedFp
     result.value.f = significand;
     result.value.e = 1 - exponent_bias;
   }
-  
+
   #if (std::is_same<T, f32>)
   {
     var half_ulp = 1 << (std::F64::digits - std::F32::digits - 1);
@@ -118,13 +118,13 @@ fn normalize(DiyFp mut &fp) -> void
   assert(fp.f != 0);
 
   var shift = std::clz(fp.f);
-  
+
   fp.f <<= shift;
   fp.e -= shift;
 }
 
 fn *(DiyFp &lhs, DiyFp &rhs) -> DiyFp
-{ 
+{
   var p = std::mul_with_carry(lhs.f, rhs.f);
 
   if (p.0 & (1 << 63) != 0)
@@ -188,9 +188,9 @@ fn f64(DiyFp &fp) -> f64
 fn pow10(int index) -> u64
 {
   const Pow10 = [ 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000 ];
-  
+
   assert(0 <= index && cast(index) < Pow10.len);
-  
+
   return Pow10[cast(index)];
 }
 
@@ -267,14 +267,14 @@ fn grisu_round_weed(u8 mut *digit, u64 delta, u64 mut &remainder, u64 divisor, u
   var wp_up = (diff - 1) * ulp;
   var wp_down = (diff + 1) * ulp;
 
-  while (remainder < wp_up && delta - remainder >= divisor && 
+  while (remainder < wp_up && delta - remainder >= divisor &&
         (remainder + divisor < wp_up || wp_up - remainder >= remainder + divisor - wp_up))
   {
     *digit -= 1;
     remainder += divisor;
   }
 
-  if (remainder < wp_down && delta - remainder >= divisor && 
+  if (remainder < wp_down && delta - remainder >= divisor &&
      (remainder + divisor < wp_down || wp_down - remainder >= remainder + divisor - wp_down))
     return false;
 
@@ -312,7 +312,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
   var delta = fp.upper.f - fp.lower.f;
   var diff = fp.upper.f - fp.value.f;
   var ulp = 1;
-  
+
   var kappa = 1;
   for (var pow = 10; pow <= integral; pow *= 10)
     ++kappa;
@@ -324,9 +324,9 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
   while (kappa > 0)
   {
     var divisor = pow10(kappa - 1);
-    
+
     var digit = integral / divisor;
-    
+
     *ch++ = cast(digit + cast('0'));
 
     integral -= digit * divisor;
@@ -341,7 +341,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
       return grisu_round_weed(ch - 1, delta, &mut remainder, divisor << shift, diff, ulp);
     }
   }
-  
+
   for (;;)
   {
     ulp *= 10;
@@ -349,7 +349,7 @@ fn grisu_digits(u8 mut *beg, u8 mut *end, BoundedFp mut &fp, int mut &K, usize m
     fractional *= 10;
 
     var digit = fractional >> shift;
-    
+
     *ch++ = cast(digit + cast('0'));
 
     fractional -= digit << shift;
@@ -430,7 +430,7 @@ pub fn grisu<T>(u8 mut *beg, u8 mut *end, T value, int mut &K, usize mut &len) -
 
     K = 0;
     len = 1;
-    
+
     return;
   }
 

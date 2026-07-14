@@ -9,7 +9,7 @@ import std.algorithm;
 pub struct bigint<N>
 {
   pub bigint() = default;
-  pub bigint(bigint&) = default;
+  pub bigint(bigint &) = default;
   pub ~bigint() = default;
 
   pub bigint(u64 value)
@@ -22,7 +22,7 @@ pub struct bigint<N>
   {
     this.n = 0;
     this.bits[0] = value;
-    
+
     return &this;
   }
 
@@ -30,29 +30,29 @@ pub struct bigint<N>
   {
     this.n = that.n;
     this.bits = that.bits;
-    
+
     return &this;
   }
-  
+
   pub fn +=(this mut &, u64 y) -> bigint mut &
   {
     var sum = std::add_with_carry(this.bits[0], y);
-    
+
     for (var i = 0; i != this.n; ++i)
     {
       this.bits[i] = sum.0;
-      
+
       sum = std::add_with_carry(this.bits[i + 1], sum.1);
     }
-    
+
     this.bits[this.n] = sum.0;
-    
+
     if (sum.1 != 0)
     {
       this.n += 1;
       this.bits[this.n] = 1;
     }
-    
+
     return &this;
   }
 
@@ -63,23 +63,23 @@ pub struct bigint<N>
     for (var i = 0; i != this.n; ++i)
     {
       this.bits[i] = mul.0;
-      
+
       mul = std::muladd_with_carry(this.bits[i + 1], y, mul.1);
     }
 
     this.bits[this.n] = mul.0;
-    
+
     if (mul.1 != 0)
     {
       this.n += 1;
       this.bits[this.n] = mul.1;
     }
-    
+
     return &this;
   }
 
   pub fn <<=(this mut &, int shift) -> bigint mut &
-  {  
+  {
     var offset = cast<usize>(shift) / 64;
     shift %= 64;
 
@@ -105,11 +105,11 @@ pub struct bigint<N>
   {
     if (this.n != that.n)
       return false;
-    
+
     for (var i = 0; i != this.n; ++i)
       if (this.bits[i] != that.bits[0])
         return false;
-      
+
     return true;
   }
 

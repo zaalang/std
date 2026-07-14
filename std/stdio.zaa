@@ -137,7 +137,7 @@ pub struct file
       fd.close();
   }
 
-  file(#file&) = default;
+  file(#file &) = default;
 
   std::fd fd;
 }

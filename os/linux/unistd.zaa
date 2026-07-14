@@ -154,7 +154,7 @@ pub struct siginfo_t
   pub fn sigpoll(this &) { return &cast<sigpoll&>(this.fields); }
 
   pub siginfo_t() = default;
-  pub siginfo_t(siginfo_t&) = default;
+  pub siginfo_t(siginfo_t &) = default;
   pub fn =(siginfo_t mut &, siginfo_t &) -> siginfo_t mut & = default;
   pub ~siginfo_t() = default;
 }
@@ -177,4 +177,3 @@ pub fn wait4(pid_t pid, int mut *wstatus, int options, void mut *rusage) -> int
 {
   return cast<int>(std::bit_cast<intptr>(syscall4(sys_wait4, pid, wstatus, options, rusage)));
 }
-

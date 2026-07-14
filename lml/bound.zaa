@@ -52,7 +52,7 @@ pub struct bound<T, N>
   }
 
   pub bound() = default;
-  pub bound(bound&&) = default;
+  pub bound(bound &&) = default;
   pub fn =(bound mut &, bound &&) -> bound mut & = default;
   pub ~bound() = default;
 }
@@ -341,12 +341,12 @@ pub struct slabintersect<U, T, N> : pub std::optional<U>
   pub T tmin;
   pub T tmax;
 
-  pub fn ray(this&) -> bool { using T; using std; return this.tmax > max(this.tmin, T(0.0)); }
-  pub fn seg(this&) -> bool { using T; using std; return this.tmax > max(this.tmin, T(0.0)) && this.tmin < T(1.0); }
-  pub fn inside(this&) -> bool { return this.tmax > T(0.0) && this.tmin < T(0.0); }
+  pub fn ray(this &) -> bool { using T; using std; return this.tmax > max(this.tmin, T(0.0)); }
+  pub fn seg(this &) -> bool { using T; using std; return this.tmax > max(this.tmin, T(0.0)) && this.tmin < T(1.0); }
+  pub fn inside(this &) -> bool { return this.tmax > T(0.0) && this.tmin < T(0.0); }
 
   slabintersect() = default;
-  pub slabintersect(slabintersect&) = default;
+  pub slabintersect(slabintersect &) = default;
   pub ~slabintersect() = default;
 }
 

@@ -10,7 +10,7 @@ pub struct clk_result
   pub u64 timestamp;
 
   pub clk_result() = default;
-  pub clk_result(clk_result&) = default;
+  pub clk_result(clk_result &) = default;
   pub ~clk_result() = default;
 }
 

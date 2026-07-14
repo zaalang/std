@@ -21,7 +21,7 @@ pub struct timeval
   }
 
   pub timeval() = default;
-  pub timeval(timeval&) = default;
+  pub timeval(timeval &) = default;
   pub fn =(timeval mut &, timeval &) -> timeval mut & = default;
   pub ~timeval() = default;
 }
@@ -37,7 +37,7 @@ pub struct timespec
   }
 
   pub timespec() = default;
-  pub timespec(timespec&) = default;
+  pub timespec(timespec &) = default;
   pub fn =(timespec mut &, timespec &) -> timespec mut & = default;
   pub ~timespec() = default;
 }

@@ -92,7 +92,7 @@ pub struct list<T, Allocator = std::allocator>
   pub struct iterator
   {
     pub iterator() = default;
-    pub iterator(iterator&) = default;
+    pub iterator(iterator &) = default;
     pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
     pub ~iterator() = default;
 
@@ -294,7 +294,7 @@ pub struct list<T, Allocator = std::allocator>
   pub fn pop_front(this mut &) -> void
   {
     assert(!this.empty);
-    
+
     erase(&mut this, this._root.next, this._root.next.next);
   }
 
@@ -305,7 +305,7 @@ pub struct list<T, Allocator = std::allocator>
 
     erase(&mut this, this._root.prev, this._root.prev.next);
   }
-  
+
   #[lifetime(poison(this))]
   pub fn take_front(this mut &) -> T
   {
@@ -381,7 +381,7 @@ pub struct list<T, Allocator = std::allocator>
   {
     erase(&mut this, this._root.next, &this._root);
   }
-  
+
   struct Link
   {
     Link mut *next;
@@ -426,7 +426,7 @@ pub struct list<T, Allocator = std::allocator>
     node.next.prev = node.prev.next = node;
 
     this._len += 1;
-    
+
     return node;
   }
 

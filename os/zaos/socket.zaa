@@ -18,6 +18,11 @@ pub const IPPROTO_UDP = 17;
 pub const IPPROTO_IPV6 = 41;
 pub const IPPROTO_ICMPV6 = 58;
 
+pub const SHUT_RD = 1;
+pub const SHUT_WR = 2;
+pub const SHUT_RDWR = 3;
+
+pub const SIO_SOERROR = 0x80030004;
 pub const SIO_GETSOCKNAME = 0x8003001b;
 pub const SIO_GETPEERNAME = 0x8003001c;
 pub const SIO_SETPEERNAME = 0x8003011c;
@@ -32,9 +37,9 @@ pub struct sockaddr
 
 pub struct in6_addr : pub u8[16]
 {
-  pub fn s6_addr(this&&) { return &this.super; }
-  pub fn s6_addr16(this&&) { return &cast<u16[8]&&>(this.super); }
-  pub fn s6_addr32(this&&) { return &cast<u32[4]&&>(this.super); }
+  pub fn s6_addr(this &&) { return &this.super; }
+  pub fn s6_addr16(this &&) { return &cast<u16[8]&&>(this.super); }
+  pub fn s6_addr32(this &&) { return &cast<u32[4]&&>(this.super); }
 
   pub in6_addr(u8[16] &addr)
     : super(addr)
@@ -68,9 +73,11 @@ pub struct sockaddr_in6 : pub sockaddr
   pub ~sockaddr_in6() = default;
 }
 
-pub const SCM_TIMESTAMP = 1;
-pub const SCM_IPV6_SRCIP = 50;
-pub const SCM_IPV6_HOPLIMIT = 52;
+pub const IP_PKTSRC = 1;
+pub const IP_PKTDST = 2;
+pub const IP_TIMESTAMP = 3;
+pub const IPV6_HOPLIMIT = 52;
+pub const IPV6_PATHMTU = 62;
 
 pub struct ctrlhdr
 {
@@ -133,6 +140,14 @@ pub fn ioring_prep_sqe_socket_write(ioring_sqe mut *sqe, i32 fd, ciovec *iovs, u
   sqe.flags = ioring_flags::fin;
 }
 
+pub fn ioring_prep_sqe_socket_shutdown(ioring_sqe mut *sqe, i32 fd, u64 how) -> void
+{
+  sqe.op = ioring_ops::socket_shutdown;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(how);
+  sqe.flags = ioring_flags::fin;
+}
+
 pub fn socket(ioring mut &ring, i32 family, i32 type, i32 protocol) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
@@ -185,6 +200,22 @@ pub fn socket_write(ioring mut &ring, i32 fd, ciovec *iovs, usize iovslen, ctrlh
 {
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_socket_write(sqe, fd, iovs, iovslen, ctrl, ctrllen, flags);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_shutdown(ioring mut &ring, i32 fd, u64 how) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_shutdown(sqe, fd, how);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)

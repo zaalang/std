@@ -43,7 +43,7 @@ pub struct vector<T, N> : pub T[N]
   }
 
   pub vector() = default;
-  pub vector(vector&&) = default;
+  pub vector(vector &&) = default;
   pub fn =(vector mut &, vector &&) -> vector mut & = default;
   pub ~vector() = default;
 }

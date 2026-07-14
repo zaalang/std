@@ -67,7 +67,7 @@ pub struct iovec
   pub usize len;
 
   pub iovec() = default;
-  pub iovec(iovec&) = default;
+  pub iovec(iovec &) = default;
   pub fn =(iovec mut &, iovec &) -> iovec mut & = default;
   pub ~iovec() = default;
 }
@@ -78,7 +78,7 @@ pub struct ciovec
   pub usize len;
 
   pub ciovec() = default;
-  pub ciovec(ciovec&) = default;
+  pub ciovec(ciovec &) = default;
   pub fn =(ciovec mut &, ciovec &) -> ciovec mut & = default;
   pub ~ciovec() = default;
 }
@@ -104,7 +104,7 @@ pub struct stat
   pub u8[24] __unused;
 
   pub stat() = default;
-  pub stat(stat&) = default;
+  pub stat(stat &) = default;
   pub fn =(stat mut &, stat &) -> stat mut & = default;
   pub ~stat() = default;
 }
@@ -117,7 +117,7 @@ pub struct dirent
   pub u8 d_type;
   pub u8[0] d_name;
 
-  pub fn name(this&) -> std::string_view
+  pub fn name(this &) -> std::string_view
   {
     return std::string_view(this.d_name.data, std::memchr(this.d_name.data, 0, cast<usize>(this.d_reclen - offsetof(dirent::d_name))));
   }
@@ -238,7 +238,7 @@ pub struct fd_set
   u64[16] bits;
 
   pub fd_set() = default;
-  pub fd_set(fd_set&) = default;
+  pub fd_set(fd_set &) = default;
   pub fn =(fd_set mut &, fd_set &) -> fd_set mut & = default;
   pub ~fd_set() = default;
 }

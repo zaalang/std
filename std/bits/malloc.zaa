@@ -13,7 +13,7 @@ struct mem_result
   void mut *addr;
 
   mem_result() = default;
-  mem_result(mem_result&) = default;
+  mem_result(mem_result &) = default;
   ~mem_result() = default;
 }
 
@@ -227,7 +227,7 @@ struct heap
     void mut *addr;
 
     allocation() = default;
-    allocation(allocation&) = default;
+    allocation(allocation &) = default;
     ~allocation() = default;
   }
 
@@ -464,7 +464,7 @@ struct heap
   }
 
   heap() = default;
-  heap(#heap&) = default;
+  heap(#heap &) = default;
   ~heap() = default;
 }
 
@@ -648,7 +648,7 @@ struct tcache
   }
 
   tcache() = default;
-  tcache(#tcache&) = default;
+  tcache(#tcache &) = default;
   ~tcache() = default;
 }
 

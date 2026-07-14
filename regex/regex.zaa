@@ -89,7 +89,7 @@ pub struct ctre
   }
 
   ctre() = default;
-  ctre(#ctre&) = default;
+  ctre(#ctre &) = default;
   pub ~ctre() = default;
 }
 
@@ -127,7 +127,7 @@ pub struct regex
   }
 
   pub regex() = default;
-  pub regex(regex&&) = default;
+  pub regex(regex &&) = default;
   pub fn =(regex mut &, regex &&) -> regex mut & = default;
   pub ~regex() = default;
 }

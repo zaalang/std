@@ -30,7 +30,7 @@ pub struct filestat
   pub u64 ctime;
 
   pub filestat() = default;
-  pub filestat(filestat&) = default;
+  pub filestat(filestat &) = default;
   pub fn =(filestat mut &, filestat &) -> filestat mut & = default;
   pub ~filestat() = default;
 }
@@ -41,7 +41,7 @@ pub struct iovec
   pub usize len;
 
   pub iovec() = default;
-  pub iovec(iovec&) = default;
+  pub iovec(iovec &) = default;
   pub fn =(iovec mut &, iovec &) -> iovec mut & = default;
   pub ~iovec() = default;
 }
@@ -52,7 +52,7 @@ pub struct ciovec
   pub usize len;
 
   pub ciovec() = default;
-  pub ciovec(ciovec&) = default;
+  pub ciovec(ciovec &) = default;
   pub fn =(ciovec mut &, ciovec &) -> ciovec mut & = default;
   pub ~ciovec() = default;
 }
@@ -76,7 +76,7 @@ pub struct fd_result
   pub usize length;
 
   pub fd_result() = default;
-  pub fd_result(fd_result&) = default;
+  pub fd_result(fd_result &) = default;
   pub ~fd_result() = default;
 }
 
@@ -91,7 +91,7 @@ extern fn fd_pwritev(uintptr fd, ciovec *iovs, usize n, u64 offset) -> fd_result
 extern fn fd_close(uintptr fd) -> u32;
 
 pub struct fd
-{ 
+{
   pub enum oflags
   {
     open = 0x0,
@@ -148,7 +148,7 @@ pub struct fd
   }
 
   pub fd() = default;
-  pub fd(fd&) = default;
+  pub fd(fd &) = default;
   pub fn =(fd mut &, fd &) -> fd mut & = default;
   pub ~fd() = default;
 
