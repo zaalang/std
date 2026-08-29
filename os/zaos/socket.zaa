@@ -25,7 +25,6 @@ pub const SHUT_RDWR = 3;
 pub const SIO_SOERROR = 0x80030004;
 pub const SIO_GETSOCKNAME = 0x8003001b;
 pub const SIO_GETPEERNAME = 0x8003001c;
-pub const SIO_SETPEERNAME = 0x8003011c;
 
 pub struct sockaddr
 {
@@ -116,6 +115,15 @@ pub fn ioring_prep_sqe_socket_bind(ioring_sqe mut *sqe, i32 fd, sockaddr *addr, 
   sqe.flags = ioring_flags::fin;
 }
 
+pub fn ioring_prep_sqe_socket_connect(ioring_sqe mut *sqe, i32 fd, sockaddr *addr, usize alen) -> void
+{
+  sqe.op = ioring_ops::socket_connect;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(addr);
+  sqe.args[2] = cast(alen);
+  sqe.flags = ioring_flags::fin;
+}
+
 pub fn ioring_prep_sqe_socket_read(ioring_sqe mut *sqe, i32 fd, iovec mut *iovs, usize iovslen, ctrlhdr mut *ctrl, usize ctrllen, u64 flags) -> void
 {
   sqe.op = ioring_ops::socket_read;
@@ -168,6 +176,22 @@ pub fn socket_bind(ioring mut &ring, i32 fd, sockaddr *addr, usize alen) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_socket_bind(sqe, fd, addr, alen);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_connect(ioring mut &ring, i32 fd, sockaddr *addr, usize alen) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_connect(sqe, fd, addr, alen);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)

@@ -119,14 +119,6 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return &this._allocator;
   }
 
-  #[lifetime(depend(this))]
-  pub fn [](this &&, usize index)
-  {
-    assert(index < this.len);
-
-    return &cast<&&typeof(this)>(*(this._data + (this._head + index) & (this._capacity - 1)));
-  }
-
   pub struct iterator
   {
     pub iterator() = default;
@@ -190,10 +182,18 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     return iterator(this._head + this._len);
   }
 
+  #[lifetime(depend(this))]
+  pub fn [](this &&, usize index)
+  {
+    assert(index < this.len);
+
+    return &cast<&&typeof(this)>(*slot(&&this, this._head + index));
+  }
+
   #[lifetime(repose(iter, this), depend(this))]
   pub fn [](this &&, iterator iter)
   {
-    return &cast<&&typeof(this)>(*(this._data + iter.cursor & (this._capacity - 1)));
+    return &cast<&&typeof(this)>(*slot(&&this, iter.cursor));
   }
 
   #[lifetime(depend(this))]
@@ -201,7 +201,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    return &*(this._data + this._head);
+    return &cast<&&typeof(this)>(*slot(&&this, this._head));
   }
 
   #[lifetime(depend(this))]
@@ -209,7 +209,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    return &*(this._data + (this._head + this._len - 1) & (this._capacity - 1));
+    return &cast<&&typeof(this)>(*slot(&&this, this._head + this._len - 1));
   }
 
   #[lifetime(poison(this))]
@@ -224,9 +224,9 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
       pop_front(&mut this);
     }
 
-    var tail = (this._head + this._len) & (this._capacity - 1);
+    var slot = slot(&mut this, this._head + this._len);
 
-    new<T>(this._data + tail)(&&args..., allocator?: this._allocator);
+    new<T>(slot)(&&args..., allocator?: this._allocator);
 
     this._len += 1;
   }
@@ -274,12 +274,14 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
     if (index != this._head + this._len)
     {
-      uninitialised_move(&mut this, this._data + (this._head + this._len) & (this._capacity - 1), this._head + this._len - 1, this._head + this._len);
-      initialised_move_backward(&mut this, index + 1, index, this._head + this._len - 1);
-      destruct(&mut this, index, index + 1);
+      uninitialised_move(&mut this, slot(&mut this, this._head + this._len), this.begin + this._len - 1, this.begin + this._len);
+      initialised_move_backward(&mut this, position + 1, position, this.begin + this._len - 1);
+      destruct(&mut this, position, position + 1);
     }
 
-    new<T>(this._data + index & (this._capacity - 1))(&&args..., allocator?: this._allocator);
+    var slot = slot(&mut this, index);
+
+    new<T>(slot)(&&args..., allocator?: this._allocator);
 
     this._len += 1;
 
@@ -355,7 +357,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    T::~T(*(this._data + this._head & (this._capacity - 1)));
+    T::~T(*slot(&mut this, this._head));
 
     this._len -= 1;
     this._head = (this._head + 1) & (this._capacity - 1);
@@ -366,7 +368,7 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   {
     assert(!this.empty);
 
-    T::~T(*(this._data + (this._head + this._len - 1) & (this._capacity - 1)));
+    T::~T(*slot(&mut this, this._head + this._len - 1));
 
     this._len -= 1;
   }
@@ -414,8 +416,8 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
     var index = position.cursor;
 
-    initialised_move(&mut this, index, index + count, this._head + this._len);
-    destruct(&mut this, this._head + this._len - count, this._head + this._len);
+    initialised_move(&mut this, position, position + count, this.begin + this._len);
+    destruct(&mut this, this.begin + this._len - count, this.begin + this._len);
 
     this._len -= count;
 
@@ -431,8 +433,8 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
 
       var newdata = cast<T mut *>(this._allocator.allocate(mincapacity * sizeof<T>, alignof<T>));
 
-      uninitialised_move(&mut this, newdata, this._head, this._head + this._len);
-      destruct(&mut this, this._head, this._head + this._len);
+      uninitialised_move(&mut this, newdata, this.begin, this.begin + this._len);
+      destruct(&mut this, this.begin, this.begin + this._len);
 
       if (this._data && this._data != cast(this._smallbuffer.data))
         this._allocator.free(this._data, this._capacity * sizeof<T>);
@@ -472,6 +474,11 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
     assert(this._capacity == 0 || this._capacity & (this._capacity - 1) == 0);
   }
 
+  fn slot(this &&, usize index)
+  {
+    return this._data + index & (this._capacity - 1);
+  }
+
   #[lifetime(poison(this), poison(other))]
   fn take<M>(this mut &, circular_buffer<T, Allocator, M> mut &other) -> iterator
   {
@@ -499,71 +506,46 @@ pub struct circular_buffer<T, Allocator = std::allocator, N = 0>
   }
 
   #[unsafe]
-  fn initialised_move(this mut &, usize dst, usize first, usize last) -> void
+  fn initialised_move(this mut &, iterator dst, iterator first, iterator last) -> void
   {
-    var dst = this._data + dst & (this._capacity - 1);
-    var last = this._data + last & (this._capacity - 1);
-    var first = this._data + first & (this._capacity - 1);
-
     while (first != last)
     {
-      T::~T(*dst);
+      #if (!__is_trivial_destroy<T>)
+        T::~T(this[dst]);
 
-      new<T>(dst++)(&move *first++, allocator?: this._allocator);
-
-      if (first == this._data + this._capacity)
-        first = this._data;
-
-      if (dst == this._data + this._capacity)
-        dst = this._data;
+      new<T>(&this[dst++])(&move this[first++], allocator?: this._allocator);
     }
   }
 
   #[unsafe]
-  fn initialised_move_backward(this mut &, usize dst, usize first, usize last) -> void
+  fn initialised_move_backward(this mut &, iterator dst, iterator first, iterator last) -> void
   {
-    var end = this._data + (dst + (last - first)) & (this._capacity - 1);
-    var first = this._data + first & (this._capacity - 1);
-    var last = this._data + last & (this._capacity - 1);
+    var end = dst + (last - first);
 
     while (first != last)
     {
-      if (end == this._data)
-        end = this._data + this._capacity;
+      #if (!__is_trivial_destroy<T>)
+        T::~T(this(end - 1));
 
-      if (last == this._data)
-        last = this._data + this._capacity;
-
-      T::~T(*(end - 1));
-
-      new<T>(--end)(&move *--last, allocator?: this._allocator);
+      new<T>(&this[--end])(&move this[--last], allocator?: this._allocator);
     }
   }
 
   #[unsafe]
-  fn uninitialised_move(this mut &, T mut *dst, usize first, usize last) -> void
+  fn uninitialised_move(this mut &, T mut *dst, iterator first, iterator last) -> void
   {
-    if (first != last)
+    while (first != last)
     {
-      var last = this._data + last & (this._capacity - 1);
-      var first = this._data + first & (this._capacity - 1);
-
-      while (first != last)
-      {
-        new<T>(dst++)(&move *first++, allocator?: this._allocator);
-
-        if (first == this._data + this._capacity)
-          first = this._data;
-      }
+      new<T>(dst++)(&move this[first++], allocator?: this._allocator);
     }
   }
 
-  fn destruct(this mut &, usize first, usize last) -> void
+  fn destruct(this mut &, iterator first, iterator last) -> void
   {
     #if (!__is_trivial_destroy<T>)
     {
       while (first != last)
-        T::~T(*(this._data + first++ & (this._capacity - 1)));
+        T::~T(this[first++]);
     }
   }
 

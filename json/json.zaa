@@ -461,7 +461,7 @@ pub fn ==(value &lhs, value &rhs) -> bool
     }
   }
 
-  return false;
+  return (lhs.kind == rhs.kind);
 }
 
 pub fn <=>(value &lhs, value &rhs) -> int
@@ -479,7 +479,7 @@ pub fn <=>(value &lhs, value &rhs) -> int
     }
   }
 
-  return lhs.kind <=> rhs.kind;
+  return (lhs.kind <=> rhs.kind);
 }
 
 pub fn fmt<T>(std::OutputStream mut &os, std::fmt_context mut &ctx, value &value) throws(std::error) -> void

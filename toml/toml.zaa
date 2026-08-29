@@ -344,7 +344,7 @@ pub fn ==(node &lhs, node &rhs) -> bool
     }
   }
 
-  return false;
+  return (lhs.kind == rhs.kind);
 }
 
 pub fn <=>(node &lhs, node &rhs) -> int
@@ -362,7 +362,7 @@ pub fn <=>(node &lhs, node &rhs) -> int
     }
   }
 
-  return lhs.kind <=> rhs.kind;
+  return (lhs.kind <=> rhs.kind);
 }
 
 pub fn load_from_string(String &src) -> parse_result

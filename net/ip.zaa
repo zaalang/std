@@ -315,7 +315,7 @@ pub struct ip
         }
       }
 
-      return false;
+      return (lhs.kind == rhs.kind);
     }
 
     pub fn <=>(address &lhs, address &rhs) -> int
@@ -333,7 +333,7 @@ pub struct ip
         }
       }
 
-      return lhs.kind <=> rhs.kind;
+      return (lhs.kind <=> rhs.kind);
     }
 
     pub address() = default;

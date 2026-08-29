@@ -1,0 +1,821 @@
+//
+// std deque
+//
+
+import std.memory;
+import std.stdlib : assert;
+import std.algorithm : find, find_if, find_if_not, count, count_if, count_if_not, sort!, uniq, uniq!, is_sorted;
+import std.algorithm.iteration : each, min, max, sum, mean;
+import std.range : Sentinal, Range;
+import std.type : as_const;
+
+pub struct deque<T, Allocator = std::allocator>
+{
+  const block_size = std::max(4096 / sizeof<T>, 16);
+
+  pub deque(Allocator &allocator = Allocator())
+    : _allocator(allocator)
+  {
+    init(&mut this);
+  }
+
+  pub deque(deque &&other, Allocator &allocator = Allocator())
+    : _allocator(allocator)
+  {
+    init(&mut this);
+
+    insert(&mut this, this.end, &&other);
+  }
+
+  #[lifetime(launder(this), poison(this), repose(other, this), assign(this, depend(*other)), depend(this))]
+  pub fn =(this mut &, deque &&other) -> deque mut &
+  {
+    std::launder(other);
+
+    if (&this != &other)
+    {
+      clear(&mut this);
+
+      insert(&mut this, this.end, &&other);
+    }
+
+    return &this;
+  }
+
+  pub fn with_size(usize size, Allocator &allocator = Allocator()) -> deque
+  {
+    var result = deque(allocator);
+
+    resize(&mut result, size);
+
+    return result;
+  }
+
+  pub fn from(Range<T> &&other, Allocator &allocator = Allocator()) -> deque
+  {
+    var result = deque(allocator);
+
+    insert(&mut result, result.end, &&other);
+
+    return result;
+  }
+
+  pub fn from<U>(Range<U> &&other, Allocator &allocator = Allocator()) -> deque
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>); }
+    where !__is_same<U, T>
+  {
+    var result = deque(allocator);
+
+    insert(&mut result, result.end, &&other);
+
+    return result;
+  }
+
+  pub ~deque()
+  {
+    clear(&mut this);
+
+    if (this._map_head)
+    {
+      for (var i = this._map_head; i != this._map_tail; ++i)
+        this._allocator.free(*i, block_size * sizeof<T**>);
+
+      this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T**>);
+    }
+  }
+
+  pub fn len(this &) -> usize
+  {
+    return this._len;
+  }
+
+  pub fn empty(this &) -> bool
+  {
+    return this._len == 0;
+  }
+
+  pub fn allocator(this &&)
+  {
+    return &this._allocator;
+  }
+
+  pub struct iterator
+  {
+    pub iterator() = default;
+    pub iterator(iterator &) = default;
+    pub fn =(iterator mut &this, iterator &that) -> iterator mut & = default;
+    pub ~iterator() = default;
+
+    #[lifetime(depend(*this))]
+    pub fn ++(iterator mut &this) -> iterator mut &
+    {
+      ++this.cursor;
+
+      if (this.cursor - *this.block == block_size)
+      {
+        ++this.block;
+        this.cursor = *this.block;
+      }
+
+      return &this;
+    }
+
+    #[lifetime(depend(*this))]
+    pub fn --(iterator mut &this) -> iterator mut &
+    {
+      if (this.cursor == *this.block)
+      {
+        --this.block;
+        this.cursor = *this.block + block_size;
+      }
+
+      --this.cursor;
+
+      return &this;
+    }
+
+    iterator(T **block, T *cursor)
+      : block(block), cursor(cursor)
+    {
+    }
+
+    T **block;
+    T *cursor;
+  }
+
+  pub fn ==(iterator lhs, iterator rhs) -> bool
+  {
+    return lhs.cursor == rhs.cursor;
+  }
+
+  pub fn -(iterator lhs, iterator rhs) -> usize
+  {
+    if (lhs == rhs)
+      return 0;
+
+    return (lhs.block - rhs.block) * block_size + (lhs.cursor - *lhs.block) - (rhs.cursor - *rhs.block);
+  }
+
+  #[lifetime(depend(*lhs))]
+  pub fn -(iterator lhs, usize rhs) -> iterator
+  {
+    if (rhs == 0)
+      return lhs;
+
+    var n = rhs + (block_size - 1) - (lhs.cursor - *lhs.block);
+    var block = lhs.block - (n / block_size);
+    var cursor = *block + (block_size - 1) - (n % block_size);
+
+    return iterator(block, cursor);
+  }
+
+  #[lifetime(depend(*lhs))]
+  pub fn +(iterator lhs, usize rhs) -> iterator
+  {
+    if (rhs == 0)
+      return lhs;
+
+    var n = rhs + (lhs.cursor - *lhs.block);
+    var block = lhs.block + (n / block_size);
+    var cursor = *block + (n % block_size);
+
+    return iterator(block, cursor);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn begin(this &)
+  {
+    var n = this._head;
+    var block = this._map_head + (n / block_size);
+    var cursor = this._map_head ? slot(this, n) : null;
+
+    return iterator(block, cursor);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn end(this &)
+  {
+    var n = this._head + this._len;
+    var block = this._map_head + (n / block_size);
+    var cursor = this._map_head ? slot(this, n) : null;
+
+    return iterator(block, cursor);
+  }
+
+  #[lifetime(depend(this))]
+  pub fn [](this &&, usize index)
+  {
+    assert(index < this._len);
+
+    return &cast<&&typeof(this)>(*slot(&&this, this._head + index));
+  }
+
+  #[lifetime(repose(iter, this), depend(this))]
+  pub fn [](this &&, iterator iter)
+  {
+    assert(this._map_head <= iter.block && iter.block < this._map_tail);
+
+    return &cast<&&typeof(this)>(*cast<T mut *>(iter.cursor));
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get(this &, usize index) -> std::optional<T&>
+  {
+    if (index < this._len)
+      return Some(&this[index]);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn get(this mut &, usize index) -> std::optional<T mut &>
+  {
+    if (index < this._len)
+      return Some(&this[index]);
+
+    return None;
+  }
+
+  #[lifetime(depend(this))]
+  pub fn front(this &&)
+  {
+    assert(this._len != 0);
+
+    return &cast<&&typeof(this)>(*slot(&&this, this._head));
+  }
+
+  #[lifetime(depend(this))]
+  pub fn back(this &&)
+  {
+    assert(this._len != 0);
+
+    return &cast<&&typeof(this)>(*slot(&&this, this._head + this._len - 1));
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn push_front<Args>(this mut &, Args && ...args) -> T mut &
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
+  {
+    if (this._head == 0)
+      add_front_capacity(&mut this, 1);
+
+    var slot = slot(&mut this, this._head - 1);
+
+    new<T>(slot)(&&args..., allocator?: this._allocator);
+
+    this._len += 1;
+    this._head -= 1;
+
+    return &*slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn push_back<Args>(this mut &, Args && ...args) -> T mut &
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>); }
+  {
+    if (this._capacity - (this._head + this._len) == 0)
+      add_back_capacity(&mut this, 1);
+
+    var slot = slot(&mut this, this._head + this._len);
+
+    new<T>(slot)(&&args..., allocator?: this._allocator);
+
+    this._len += 1;
+
+    return &*slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<Args>(this mut &, usize position, Args && ...args) -> iterator
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    return insert(&mut this, this.begin + position, &&args...);
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn insert<Args>(this mut &, iterator position, Args && ...args) -> iterator
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    var slot = ensure_space(&mut this, position, 1);
+
+    new<T>(&this[slot])(&&args..., allocator?: this._allocator);
+
+    return slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<U>(this mut &, usize position, Range<U> &&other) -> iterator
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
+  {
+    return insert(&mut this, this.begin + position, &&other);
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn insert<U>(this mut &, iterator position, Range<U> &&other) -> iterator
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
+  {
+    #if (__is_same<deque, typeof(other)>)
+      assert(&this != &other);
+
+    #if (__is_rvalue<typeof(other)> && requires (typeof(this) this, typeof(other) other) { this.take(&mut other); })
+    {
+      if (this.empty)
+        return this.take(&mut other);
+    }
+
+    var slot = ensure_space(&mut this, position, std::count(other));
+
+    for (var it = slot, var first = other.begin, var last = other.end; first != last; ++it, ++first)
+    {
+      new<T>(&this[it])((&&other)[first], allocator?: this._allocator);
+    }
+
+    return slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn insert<I>(this mut &, usize position, I first, Sentinal<I> last) -> iterator
+    where requires (I i) { T(*i); }
+  {
+    return insert(&mut this, this.begin + position, first, last);
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn insert<I>(this mut &, iterator position, I first, Sentinal<I> last) -> iterator
+    where requires (I i) { T(*i); }
+  {
+    var slot = ensure_space(&mut this, position, std::distance(first, last));
+
+    for (var it = slot; first != last; ++it, ++first)
+    {
+      new<T>(&this[it])(*first, allocator?: this._allocator);
+    }
+
+    return slot;
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn emplace<Args>(this mut &, usize position, Args && ...args) -> T mut &
+      match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &this[insert(&mut this, this.begin + position, &&args...)];
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn emplace<Args>(this mut &, iterator position, Args && ...args) -> T mut &
+    match (Args args) { T(&move args..., allocator?: std::declval<Allocator>()); }
+  {
+    return &this[insert(&mut this, position, &&args...)];
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn append<U>(this mut &, Range<U> &&other) -> iterator
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
+  {
+    return insert(&mut this, this.end, &&other);
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn append<I>(this mut &, I first, Sentinal<I> last) -> iterator
+    where requires (I i) { T(*i); }
+  {
+    return insert(&mut this, this.end, first, last);
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn prepend<U>(this mut &, Range<U> &&other) -> iterator
+    match (U u) { T(&move u, allocator?: std::declval<Allocator>()); }
+  {
+    return insert(&mut this, this.begin, &&other);
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn prepend<I>(this mut &, I first, Sentinal<I> last) -> iterator
+    where requires (I i) { T(*i); }
+  {
+    return insert(&mut this, this.begin, first, last);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn pop_front(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    erase(&mut this, 0, 1);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn pop_back(this mut &) -> void
+  {
+    assert(!this.empty);
+
+    erase(&mut this, this._len - 1, 1);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_front(this mut &) -> T
+  {
+    var result = &move this.front;
+
+    std::launder(this);
+
+    erase(&mut this, 0, 1);
+
+    return result;
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_back(this mut &) -> T
+  {
+    var result = &move this.back;
+
+    std::launder(this);
+
+    erase(&mut this, this._len - 1, 1);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), repose(first, this), repose(last, this), depend(this))]
+  pub fn erase(this mut &, iterator first, iterator last) -> iterator
+  {
+    return erase(&mut this, first - this.begin, last - first);
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn erase(this mut &, iterator position, usize count = 1) -> iterator
+  {
+    return erase(&mut this, position - this.begin, count);
+  }
+
+  #[lifetime(poison(this), depend(this))]
+  pub fn erase(this mut &, usize position, usize count = 1) -> iterator
+  {
+    assert(position + count <= this._len);
+
+    if (position < this._len/2)
+    {
+      initialised_move_backward(&mut this, this.begin + count, this.begin, this.begin + position);
+      destruct(&mut this, this.begin, this.begin + count);
+
+      this._head += count;
+    }
+    else
+    {
+      initialised_move(&mut this, this.begin + position, this.begin + position + count, this.begin + this._len);
+      destruct(&mut this, this.begin + this._len - count, this.begin + this._len);
+    }
+
+    this._len -= count;
+
+    return this.begin + position;
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn swap_erase(this mut &, iterator position) -> iterator
+  {
+    return swap_erase(&mut this, position - this.begin);
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  pub fn swap_erase(this mut &, usize position) -> iterator
+  {
+    assert(position < this._len);
+
+    if (position != this._len - 1)
+      initialised_move(&mut this, this.begin + position, this.begin + this._len - 1, this.begin + this._len);
+
+    erase(&mut this, this._len - 1, 1);
+
+    return this.begin + position;
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_erase(this mut &, usize position) -> T
+  {
+    var result = &move this[position];
+
+    std::launder(this);
+
+    erase(&mut this, position);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_erase(this mut &, iterator position) -> T
+  {
+    return take_erase(&mut this, position - this.begin);
+  }
+
+  #[lifetime(poison(this))]
+  pub fn take_swap_erase(this mut &, usize position) -> T
+  {
+    var result = &move this[position];
+
+    std::launder(this);
+
+    swap_erase(&mut this, position);
+
+    return result;
+  }
+
+  #[lifetime(poison(this), repose(position, this))]
+  pub fn take_swap_erase(this mut &, iterator position) -> T
+  {
+    return take_swap_erase(&mut this, position - this.begin);
+  }
+
+  pub fn resize(this mut &, usize size) -> void
+  {
+    while (size < this._len)
+      this.pop_back();
+
+    while (this._len < size)
+      this.push_back();
+  }
+
+  #[lifetime(launder(this), poison(this))]
+  pub fn clear(this mut &) -> void
+  {
+    erase(&mut this, this.begin, this._len);
+  }
+
+  fn init(this mut &)
+  {
+    this._len = 0;
+  }
+
+  fn slot(this &&, usize index)
+  {
+    return *(this._map_head + index / block_size) + index % block_size;
+  }
+
+  #[lifetime(poison(this), poison(other))]
+  fn take(this mut &, deque mut &other) -> iterator
+  {
+    assert(this.empty);
+    assert(this._allocator == other._allocator);
+
+    std::swap(&mut this._len, &mut other._len);
+    std::swap(&mut this._head, &mut other._head);
+    std::swap(&mut this._capacity, &mut other._capacity);
+
+    std::swap(&mut this._map_before, &mut other._map_before);
+    std::swap(&mut this._map_head, &mut other._map_head);
+    std::swap(&mut this._map_tail, &mut other._map_tail);
+    std::swap(&mut this._map_after, &mut other._map_after);
+
+    return this.begin;
+  }
+
+  fn add_back_capacity(this mut &, usize n) -> void
+  {
+    var current_blocks = this._map_tail - this._map_head;
+    var required_blocks = n / block_size + cast(n % block_size != 0) + cast(current_blocks == 0);
+
+    if (this._map_after < required_blocks)
+    {
+      var new_map_capacity = current_blocks + required_blocks;
+
+      if (new_map_capacity < 2 * current_blocks)
+        new_map_capacity = 2 * current_blocks;
+
+      var newmap = cast<T mut * mut *>(this._allocator.allocate(new_map_capacity * sizeof<T**>, alignof<T**>));
+
+      std::memcpy(newmap, this._map_head, current_blocks * sizeof<T**>);
+      std::memset(newmap + current_blocks, 0, (new_map_capacity - current_blocks) * sizeof<T**>);
+
+      if (this._map_head)
+        this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T**>);
+
+      this._map_before = 0;
+      this._map_head = newmap;
+      this._map_tail = newmap + current_blocks;
+      this._map_after = new_map_capacity - current_blocks;
+    }
+
+    for (var i = current_blocks; i < current_blocks + required_blocks; ++i)
+    {
+      *(this._map_head + i) = cast<T mut *>(this._allocator.allocate(block_size * sizeof<T*>, alignof<T*>));
+    }
+
+    this._map_tail += required_blocks;
+    this._map_after -= required_blocks;
+
+    this._capacity = (this._map_tail - this._map_head) * block_size - 1;
+  }
+
+  fn add_front_capacity(this mut &, usize n) -> void
+  {
+    var current_blocks = this._map_tail - this._map_head;
+    var required_blocks = n / block_size + cast(n % block_size != 0) + cast(current_blocks == 0);
+
+    if (this._map_before < required_blocks)
+    {
+      var new_map_capacity = current_blocks + required_blocks;
+
+      if (new_map_capacity < 2 * current_blocks)
+        new_map_capacity = 2 * current_blocks;
+
+      var newmap = cast<T mut * mut *>(this._allocator.allocate(new_map_capacity * sizeof<T**>, alignof<T**>));
+
+      std::memset(newmap, 0, (new_map_capacity - current_blocks) * sizeof<T**>);
+      std::memcpy(newmap + new_map_capacity - current_blocks, this._map_head, current_blocks * sizeof<T**>);
+
+      if (this._map_head)
+        this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T**>);
+
+      this._map_before = new_map_capacity - current_blocks;
+      this._map_head = newmap + new_map_capacity - current_blocks;
+      this._map_tail = newmap + new_map_capacity;
+      this._map_after = 0;
+    }
+
+    for (var i = 1; i <= required_blocks; ++i)
+    {
+      *(this._map_head - i) = cast<T mut *>(this._allocator.allocate(block_size * sizeof<T*>, alignof<T*>));
+    }
+
+    this._map_head -= required_blocks;
+    this._map_before -= required_blocks;
+
+    this._capacity = (this._map_tail - this._map_head) * block_size - 1;
+    this._head += required_blocks * block_size - cast(current_blocks == 0);
+  }
+
+  #[lifetime(poison(this), repose(position, this), depend(this))]
+  fn ensure_space(this mut &, iterator position, usize len) -> iterator
+  {
+    var index = position - this.begin;
+
+    if (index < this._len/2)
+    {
+      if (this._head < len)
+        add_front_capacity(&mut this, len);
+
+      if (var rem = index; rem != 0)
+      {
+        if (rem > len)
+        {
+          for (var i = this._head - len, var j = this.begin; j != this.begin + len; ++i, ++j)
+            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          initialised_move(&mut this, this.begin, this.begin + len, this.begin + index);
+          destruct(&mut this, this.begin + index - len, this.begin + index);
+        }
+        else
+        {
+          for (var i = this._head - len, var j = this.begin; j != this.begin + rem; ++i, ++j)
+            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          destruct(&mut this, this.begin + index - rem, this.begin + index);
+        }
+      }
+
+      this._head -= len;
+    }
+    else
+    {
+      if (this._capacity - (this._head + this._len) < len)
+        add_back_capacity(&mut this, len);
+
+      if (var rem = this._len - index; rem != 0)
+      {
+        if (rem > len)
+        {
+          for (var i = this._head + this._len, var j = this.begin + this._len - len; j != this.begin + this._len; ++i, ++j)
+            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          initialised_move_backward(&mut this, this.begin + index + len, this.begin + index, this.begin + this._len - len);
+          destruct(&mut this, this.begin + index, this.begin + index + len);
+        }
+        else
+        {
+          for (var i = this._head + this._len + (len - rem), var j = this.begin + this._len - rem; j != this.begin + this._len; ++i, ++j)
+            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          destruct(&mut this, this.begin + index, this.begin + index + rem);
+        }
+      }
+    }
+
+    this._len += len;
+
+    return this.begin + index;
+  }
+
+  #[unsafe]
+  fn initialised_move(this mut &, iterator dst, iterator first, iterator last) -> void
+  {
+    while (first != last)
+    {
+      #if (!__is_trivial_destroy<T>)
+        T::~T(this[dst]);
+
+      new<T>(&this[dst++])(&move this[first++], allocator?: this._allocator);
+    }
+  }
+
+  #[unsafe]
+  fn initialised_move_backward(this mut &, iterator dst, iterator first, iterator last) -> void
+  {
+    var end = dst + (last - first);
+
+    while (first != last)
+    {
+      #if (!__is_trivial_destroy<T>)
+        T::~T(this(end - 1));
+
+      new<T>(&this[--end])(&move this[--last], allocator?: this._allocator);
+    }
+  }
+
+  #[unsafe]
+  fn uninitialised_move(this mut &, T mut *dst, iterator first, iterator last) -> void
+  {
+    while (first != last)
+    {
+      new<T>(dst++)(&move this[first++], allocator?: this._allocator);
+    }
+  }
+
+  fn destruct(this mut &, iterator first, iterator last) -> void
+  {
+    #if (!__is_trivial_destroy<T>)
+    {
+      while (first != last)
+        T::~T(this[first++]);
+    }
+  }
+
+  pub deque(#deque &) = default;
+
+  usize _len;
+  usize _head;
+  usize _capacity;
+
+  usize _map_before;
+  T mut * mut * _map_head;
+  T mut * mut * _map_tail;
+  usize _map_after;
+
+  Allocator _allocator;
+}
+
+pub fn hash<T>(var &hasher, deque<T> &que) -> usize
+{
+  return hasher.combine_range(que, que.begin, que.end);
+}
+
+#[lifetime(poison(range), depend(range))]
+pub fn drop_n!<T>(deque<T> mut &range, usize n)
+{
+  range.erase(range.begin, std::min(range.len, n));
+
+  return &range;
+}
+
+#[lifetime(poison(range), depend(range))]
+pub fn take_n!<T>(deque<T> mut &range, usize n)
+{
+  range.erase(range.begin + std::min(range.len, n), range.len - std::min(range.len, n));
+
+  return &range;
+}
+
+#[lifetime(poison(range))]
+pub fn erase<T, Value>(deque<T> mut &range, Value &value) -> usize
+  match (T u, Value v) { u == v; }
+{
+  var n = range.len;
+
+  range.erase(std::remove(&mut range, value), range.end);
+
+  return n - range.len;
+}
+
+#[lifetime(poison(range))]
+pub fn erase_if<T, Pred>(deque<T> mut &range, Pred &pred) -> usize
+  where requires (T i, Pred &pred) { pred(i); }
+{
+  var n = range.len;
+
+  range.erase(std::remove_if(&mut range, pred), range.end);
+
+  return n - range.len;
+}
+
+#[lifetime(poison(range))]
+pub fn unordered_erase_if<T, Pred>(deque<T> mut &range, Pred &pred) -> usize
+  where requires (T i, Pred &pred) { pred(i); }
+{
+  var n = range.len;
+  var first = range.begin;
+
+  for (; first != range.end; )
+  {
+    if (pred(range[first]))
+      range.swap_erase(first);
+    else
+      ++first;
+  }
+
+  return n - range.len;
+}
