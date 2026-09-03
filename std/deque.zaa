@@ -11,7 +11,7 @@ import std.type : as_const;
 
 pub struct deque<T, Allocator = std::allocator>
 {
-  const block_size = std::max(4096 / sizeof<T>, 16);
+  const block_size = 8;//std::max(4096 / sizeof<T>, 16);
 
   pub deque(Allocator &allocator = Allocator())
     : _allocator(allocator)
@@ -78,9 +78,9 @@ pub struct deque<T, Allocator = std::allocator>
     if (this._map_head)
     {
       for (var i = this._map_head; i != this._map_tail; ++i)
-        this._allocator.free(*i, block_size * sizeof<T**>);
+        this._allocator.free(*i, block_size * sizeof<T>);
 
-      this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T**>);
+      this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T*>);
     }
   }
 
@@ -581,13 +581,13 @@ pub struct deque<T, Allocator = std::allocator>
       if (new_map_capacity < 2 * current_blocks)
         new_map_capacity = 2 * current_blocks;
 
-      var newmap = cast<T mut * mut *>(this._allocator.allocate(new_map_capacity * sizeof<T**>, alignof<T**>));
+      var newmap = cast<T mut * mut *>(this._allocator.allocate(new_map_capacity * sizeof<T*>, alignof<T*>));
 
-      std::memcpy(newmap, this._map_head, current_blocks * sizeof<T**>);
-      std::memset(newmap + current_blocks, 0, (new_map_capacity - current_blocks) * sizeof<T**>);
+      std::memcpy(newmap, this._map_head, current_blocks * sizeof<T*>);
+      std::memset(newmap + current_blocks, 0, (new_map_capacity - current_blocks) * sizeof<T*>);
 
       if (this._map_head)
-        this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T**>);
+        this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T*>);
 
       this._map_before = 0;
       this._map_head = newmap;
@@ -597,7 +597,7 @@ pub struct deque<T, Allocator = std::allocator>
 
     for (var i = current_blocks; i < current_blocks + required_blocks; ++i)
     {
-      *(this._map_head + i) = cast<T mut *>(this._allocator.allocate(block_size * sizeof<T*>, alignof<T*>));
+      *(this._map_head + i) = cast<T mut *>(this._allocator.allocate(block_size * sizeof<T>, alignof<T>));
     }
 
     this._map_tail += required_blocks;
@@ -618,13 +618,13 @@ pub struct deque<T, Allocator = std::allocator>
       if (new_map_capacity < 2 * current_blocks)
         new_map_capacity = 2 * current_blocks;
 
-      var newmap = cast<T mut * mut *>(this._allocator.allocate(new_map_capacity * sizeof<T**>, alignof<T**>));
+      var newmap = cast<T mut * mut *>(this._allocator.allocate(new_map_capacity * sizeof<T*>, alignof<T*>));
 
-      std::memset(newmap, 0, (new_map_capacity - current_blocks) * sizeof<T**>);
-      std::memcpy(newmap + new_map_capacity - current_blocks, this._map_head, current_blocks * sizeof<T**>);
+      std::memset(newmap, 0, (new_map_capacity - current_blocks) * sizeof<T*>);
+      std::memcpy(newmap + new_map_capacity - current_blocks, this._map_head, current_blocks * sizeof<T*>);
 
       if (this._map_head)
-        this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T**>);
+        this._allocator.free(this._map_head - this._map_before, (this._map_before + (this._map_tail - this._map_head) + this._map_after) * sizeof<T*>);
 
       this._map_before = new_map_capacity - current_blocks;
       this._map_head = newmap + new_map_capacity - current_blocks;
@@ -634,7 +634,7 @@ pub struct deque<T, Allocator = std::allocator>
 
     for (var i = 1; i <= required_blocks; ++i)
     {
-      *(this._map_head - i) = cast<T mut *>(this._allocator.allocate(block_size * sizeof<T*>, alignof<T*>));
+      *(this._map_head - i) = cast<T mut *>(this._allocator.allocate(block_size * sizeof<T>, alignof<T>));
     }
 
     this._map_head -= required_blocks;
@@ -658,15 +658,13 @@ pub struct deque<T, Allocator = std::allocator>
       {
         if (rem > len)
         {
-          for (var i = this._head - len, var j = this.begin; j != this.begin + len; ++i, ++j)
-            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          uninitialised_move(&mut this, this._head - len, this.begin, this.begin + len);
           initialised_move(&mut this, this.begin, this.begin + len, this.begin + index);
           destruct(&mut this, this.begin + index - len, this.begin + index);
         }
         else
         {
-          for (var i = this._head - len, var j = this.begin; j != this.begin + rem; ++i, ++j)
-            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          uninitialised_move(&mut this, this._head - len, this.begin, this.begin + rem);
           destruct(&mut this, this.begin + index - rem, this.begin + index);
         }
       }
@@ -682,15 +680,13 @@ pub struct deque<T, Allocator = std::allocator>
       {
         if (rem > len)
         {
-          for (var i = this._head + this._len, var j = this.begin + this._len - len; j != this.begin + this._len; ++i, ++j)
-            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          uninitialised_move(&mut this, this._head + this._len, this.begin + this._len - len, this.begin + this._len);
           initialised_move_backward(&mut this, this.begin + index + len, this.begin + index, this.begin + this._len - len);
           destruct(&mut this, this.begin + index, this.begin + index + len);
         }
         else
         {
-          for (var i = this._head + this._len + (len - rem), var j = this.begin + this._len - rem; j != this.begin + this._len; ++i, ++j)
-            uninitialised_move(&mut this, slot(&mut this, i), j, j + 1);
+          uninitialised_move(&mut this, this._head + this._len + (len - rem), this.begin + this._len - rem, this.begin + this._len);
           destruct(&mut this, this.begin + index, this.begin + index + rem);
         }
       }
@@ -721,7 +717,7 @@ pub struct deque<T, Allocator = std::allocator>
     while (first != last)
     {
       #if (!__is_trivial_destroy<T>)
-        T::~T(this(end - 1));
+        T::~T(this[end - 1]);
 
       new<T>(&this[--end])(&move this[--last], allocator?: this._allocator);
     }
@@ -733,6 +729,24 @@ pub struct deque<T, Allocator = std::allocator>
     while (first != last)
     {
       new<T>(dst++)(&move this[first++], allocator?: this._allocator);
+    }
+  }
+
+  #[unsafe]
+  fn uninitialised_move(this mut &, usize index, iterator first, iterator last) -> void
+  {
+    var idx = index % block_size;
+    var blk = *(this._map_head + index / block_size);
+
+    while (first != last)
+    {
+      var cnt = std::min(block_size - idx, last - first);
+
+      uninitialised_move(&mut this, blk + idx, first, first + cnt);
+
+      first += cnt;
+      blk += 1;
+      idx = 0;
     }
   }
 
