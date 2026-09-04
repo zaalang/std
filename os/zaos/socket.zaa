@@ -115,6 +115,23 @@ pub fn ioring_prep_sqe_socket_bind(ioring_sqe mut *sqe, i32 fd, sockaddr *addr, 
   sqe.flags = ioring_flags::fin;
 }
 
+pub fn ioring_prep_sqe_socket_listen(ioring_sqe mut *sqe, i32 fd, i32 backlog) -> void
+{
+  sqe.op = ioring_ops::socket_listen;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(backlog);
+  sqe.flags = ioring_flags::fin;
+}
+
+pub fn ioring_prep_sqe_socket_accept(ioring_sqe mut *sqe, i32 fd, sockaddr mut *addr, usize mut *alen) -> void
+{
+  sqe.op = ioring_ops::socket_accept;
+  sqe.args[0] = cast(fd);
+  sqe.args[1] = cast(addr);
+  sqe.args[2] = cast(alen);
+  sqe.flags = ioring_flags::fin;
+}
+
 pub fn ioring_prep_sqe_socket_connect(ioring_sqe mut *sqe, i32 fd, sockaddr *addr, usize alen) -> void
 {
   sqe.op = ioring_ops::socket_connect;
@@ -176,6 +193,38 @@ pub fn socket_bind(ioring mut &ring, i32 fd, sockaddr *addr, usize alen) -> i32
 {
   var sqe = ioring_get_sqe(&mut ring);
   ioring_prep_sqe_socket_bind(sqe, fd, addr, alen);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_listen(ioring mut &ring, i32 fd, i32 backlog) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_listen(sqe, fd, backlog);
+  ioring_advance_sqe(&mut ring);
+
+  if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
+    return rc;
+
+  var cqe = ioring_get_cqe(&mut ring);
+  var result = cqe.result;
+  ioring_advance_cqe(&mut ring);
+
+  return result;
+}
+
+pub fn socket_accept(ioring mut &ring, i32 fd, sockaddr mut *addr, usize mut *alen) -> i32
+{
+  var sqe = ioring_get_sqe(&mut ring);
+  ioring_prep_sqe_socket_accept(sqe, fd, addr, alen);
   ioring_advance_sqe(&mut ring);
 
   if (var rc = ioring_enter(ring.fd, 1, 1, 0); rc < 0)
