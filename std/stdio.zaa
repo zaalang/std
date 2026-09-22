@@ -246,6 +246,7 @@ pub struct StdOut
     return len;
   }
 
+  #[noinline]
   pub fn write_cold(this mut &, u8 *data, usize len) -> usize
   {
     try

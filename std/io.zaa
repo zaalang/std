@@ -412,19 +412,35 @@ pub struct buffered_writer<Allocator = std::allocator, N = 0>
 
   pub fn write(this mut &, u8 *data, usize len) throws(std::error) -> usize
   {
-    if (this._buffer.capacity - this._buffer.len < len)
-    {
-      flush(&mut this);
-    }
+    if (len == 0)
+      return 0;
 
-    if (len < this._buffer.capacity)
+    if (this._buffer.capacity < this._buffer.len + len)
+      return write_cold(&mut this, data, len);
+
+    this._buffer.append(data, data + len);
+
+    return len;
+  }
+
+  #[noinline]
+  pub fn write_cold(this mut &, u8 *data, usize len) throws(std::error) -> usize
+  {
+    if (this._buffer.len != 0 && this._buffer.len + len < this._buffer.capacity)
     {
       this._buffer.append(data, data + len);
+
+      this._write(&mut this._stream, this._buffer.data, this._buffer.len);
     }
     else
     {
+      if (this._buffer.len != 0)
+        this._write(&mut this._stream, this._buffer.data, this._buffer.len);
+
       this._write(&mut this._stream, data, len);
     }
+
+    this._buffer.clear();
 
     return len;
   }
@@ -491,7 +507,7 @@ pub struct line_writer<Allocator = std::allocator, N = 0>
     if (len == 0)
       return 0;
 
-    if (*(data + len - 1) == cast('\n') || this._buffer.capacity - this._buffer.len < len)
+    if (*(data + len - 1) == cast('\n') || this._buffer.capacity < this._buffer.len + len)
       return write_cold(&mut this, data, len);
 
     this._buffer.append(data, data + len);
@@ -499,6 +515,7 @@ pub struct line_writer<Allocator = std::allocator, N = 0>
     return len;
   }
 
+  #[noinline]
   pub fn write_cold(this mut &, u8 *data, usize len) throws(std::error) -> usize
   {
     if (this._buffer.len != 0 && this._buffer.len + len < this._buffer.capacity)
